@@ -23,6 +23,7 @@
     lm_sensors
     libvirt
     zfs
+    tor
   ];
 
   security.sudo.wheelNeedsPassword = false;
@@ -56,9 +57,9 @@
   imports = [
     <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
     ./nixos/16_03.nix
-
     ./kernels/4_2.nix
 
+    ./services/tor-relay.nix
     ./users.nix
   ];
 }
