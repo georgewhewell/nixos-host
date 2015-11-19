@@ -83,10 +83,8 @@
     ./services/fancontrol.nix
     ./services/samba.nix
     ./services/docker.nix
-    /*
     ./services/sonarr.nix
     ./services/couchpotato.nix
-    */
     ./services/transmission.nix
     ./services/virt/host.nix
     ./services/backup.nix

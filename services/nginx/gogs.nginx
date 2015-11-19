@@ -1,0 +1,33 @@
+server {
+    listen 80;
+    server_name git.tsar.su;
+    # keepalive_timeout    70;
+
+    # ssl_session_cache    shared:SSL:10m;
+    # ssl_session_timeout  10m;
+    # ssl_certificate     /root/ssl/hydra.crt;
+    # ssl_certificate_key /root/ssl/hydra.key;
+
+    ### We want full access to SSL via backend ###
+    location / {
+        proxy_pass http://127.0.0.1:3000/;
+
+        ### force timeouts if one of backend is died ##
+        # proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+
+        ### Set headers ####
+        proxy_set_header        Accept-Encoding   "";
+        proxy_set_header        Host            $host;
+        proxy_set_header        X-Real-IP       $remote_addr;
+        proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        ### Most PHP, Python, Rails, Java App can use this header ###
+        #proxy_set_header X-Forwarded-Proto https;##
+        #This is better##
+        proxy_set_header        X-Forwarded-Proto $scheme;
+        add_header              Front-End-Https   on;
+
+        ### By default we don't want to redirect it ####
+        proxy_redirect     off;
+    }
+}
