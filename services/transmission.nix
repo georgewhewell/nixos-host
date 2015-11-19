@@ -7,5 +7,7 @@
     download-dir = "/storage/downloads";
     umask = 0;
   };
+  networking.firewall.allowedTCPPorts = [ 51413 ];
+  networking.firewall.allowedUDPPorts = [ 51413 ];
 
 }

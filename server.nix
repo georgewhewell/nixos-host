@@ -23,7 +23,6 @@
     lm_sensors
     libvirt
     zfs
-    tor
   ];
 
   security.sudo.wheelNeedsPassword = false;
@@ -46,20 +45,20 @@
     { device = "zpool/root/nixos";
       fsType = "zfs";
     };
-
-  /*
   fileSystems."/var/lib/docker" =
     { device = "zpool/docker";
       fsType = "zfs";
     };
-  */
 
   imports = [
     <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
     ./nixos/16_03.nix
     ./kernels/4_2.nix
 
+    ./services/docker.nix
+    ./services/transmission.nix
     ./services/tor-relay.nix
+    ./services/gogs.nix
     ./users.nix
   ];
 }
