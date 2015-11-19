@@ -3,8 +3,8 @@
   <uuid>b21e2fa9-02bb-4acf-a487-f6e9ce1805d5</uuid>
 
   <!-- Hugepages -->
-  <memory unit='KiB'>25165824</memory>
-  <currentMemory unit='KiB'>25165824</currentMemory>
+  <memory unit='GiB'>16</memory>
+  <currentMemory unit='GiB'>16</currentMemory>
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
@@ -12,9 +12,9 @@
   <!-- CPU Config. Cores 2-7 are isolated -->
   <cpu mode='custom' match='exact'>
     <model fallback='allow'>core2duo</model>
-    <topology sockets='1' cores='6' threads='1'/>
+    <topology sockets='1' cores='8' threads='1'/>
   </cpu>
-  <vcpu placement='static'>6</vcpu>
+  <vcpu placement='static'>8</vcpu>
   <cputune>
     <vcpupin vcpu='0' cpuset='1'/>
     <vcpupin vcpu='1' cpuset='2'/>
@@ -84,25 +84,6 @@
       <alias name='pci.2'/>
       <address type='pci' domain='0x0000' bus='0x01' slot='0x01' function='0x0'/>
     </controller>
-    <controller type='usb' index='0' model='ich9-ehci1'>
-      <alias name='usb'/>
-      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x7'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci1'>
-      <alias name='usb'/>
-      <master startport='0'/>
-      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x0' multifunction='on'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci2'>
-      <alias name='usb'/>
-      <master startport='2'/>
-      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x1'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci3'>
-      <alias name='usb'/>
-      <master startport='4'/>
-      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x2'/>
-    </controller>
 
     <!-- Host VLAN -->
     <interface type='network'>
@@ -124,37 +105,6 @@
       <address type='pci' domain='0x0000' bus='0x02' slot='0x09' function='0x0'/>
     </interface>
 
-    <hostdev mode='subsystem' type='usb'>
-      <source startupPolicy='optional'>
-        <vendor id='0x0b05'/>
-        <product id='0x17cb'/>
-      </source>
-    </hostdev>
-    <hostdev mode='subsystem' type='usb'>
-      <source startupPolicy='optional'>
-        <vendor id='0x1852'/>
-        <product id='0x7022'/>
-      </source>
-    </hostdev>
-    <hostdev mode='subsystem' type='usb'>
-      <source startupPolicy='optional'>
-        <vendor id='0x046d'/>
-        <product id='0xc247'/>
-      </source>
-    </hostdev>
-    <hostdev mode='subsystem' type='usb'>
-      <source startupPolicy='optional'>
-        <vendor id='0x046d'/>
-        <product id='0xc31d'/>
-      </source>
-    </hostdev>
-    <hostdev mode='subsystem' type='usb'>
-      <source startupPolicy='optional'>
-        <vendor id='0x0b05'/>
-        <product id='0x17a0'/>
-      </source>
-    </hostdev>
-
     <!-- GFX -->
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <driver name='vfio'/>
@@ -169,6 +119,24 @@
         <address domain='0x0000' bus='0x01' slot='0x00' function='0x1'/>
       </source>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
+    </hostdev>
+
+    <!-- Audio Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x00' slot='0x1f' function='0x3'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x05' function='0x0'/>
+    </hostdev>
+
+    <!-- USB Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x00' slot='0x14' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x06' function='0x0'/>
     </hostdev>
   </devices>
 

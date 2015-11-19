@@ -8,8 +8,8 @@ or other application using the libvirt API.
 <domain type='kvm'>
   <name>Windows10</name>
   <uuid>057ae68b-8a83-4f2d-8d4a-db3888724f91</uuid>
-  <memory unit='KiB'>2048576</memory>
-  <currentMemory unit='KiB'>2048576</currentMemory>
+  <memory unit='KiB'>8048576</memory>
+  <currentMemory unit='KiB'>8048576</currentMemory>
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
@@ -56,10 +56,16 @@ or other application using the libvirt API.
   <devices>
     <emulator>/usr/bin/qemu-kvm-nvidia-vga</emulator>
     <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
-      <source dev='/dev/sm951/windows10'/>
+      <driver name='qemu' type='raw' cache='none' io='threads'/>
+      <source dev='/dev/sm951/gnome'/>
       <target dev='sda' bus='scsi'/>
       <address type='drive' controller='0' bus='0' target='0' unit='1'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu'/>
+      <source file='/var/lib/libvirt/images/ubuntu-15.10-desktop-amd64.iso'/>
+      <target dev='hda'/>
+      <readonly/>
     </disk>
     <controller type='pci' index='0' model='pci-root'/>
     <controller type='pci' index='1' model='pci-bridge'>
@@ -68,7 +74,7 @@ or other application using the libvirt API.
       <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
     </controller>
     <controller type='scsi' index='0' model='virtio-scsi'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x0'/>
     </controller>
     <interface type='network'>
       <mac address='52:54:00:f9:f7:15'/>
@@ -76,17 +82,46 @@ or other application using the libvirt API.
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
+
+    <!-- GPU -->
     <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
       <source>
-        <address domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+        <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x01' slot='0x01' function='0x0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
     </hostdev>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x01' slot='0x00' function='0x1'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
+    </hostdev>
+
+    <!-- Audio Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x00' slot='0x1f' function='0x3'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x05' function='0x0'/>
+    </hostdev>
+
+    <!-- USB Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x00' slot='0x14' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x06' function='0x0'/>
+    </hostdev>
+
     <memballoon model='none'>
     </memballoon>
   </devices>
-<qemu:commandline>
-   <qemu:arg value='-cpu'/>
-   <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
-</qemu:commandline>
+  <qemu:commandline>
+     <qemu:arg value='-cpu'/>
+     <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
+  </qemu:commandline>
 </domain>

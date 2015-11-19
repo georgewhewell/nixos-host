@@ -1,0 +1,90 @@
+<domain type='kvm'>
+  <name>Tails</name>
+  <uuid>057ae68b-8a83-4f2d-cd4a-db3888724f91</uuid>
+  <memory unit='KiB'>2048576</memory>
+  <currentMemory unit='KiB'>2048576</currentMemory>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-2.4'>hvm</type>
+    <boot dev='cdrom'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+    <kvm>
+      <hidden state='on'/>
+    </kvm>
+    <vmport state='off'/>
+  </features>
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+    <topology sockets='1' cores='2' threads='1'/>
+  </cpu>
+  <clock offset='localtime'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <!-- <emulator>/run/current-system/sw/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu'/>
+      <source file='/var/lib/libvirt/images/tails-i386-1.7/tails-i386-1.7.iso'/>
+      <target dev='sda' bus='usb' removable='on'/>
+      <readonly/>
+    </disk> -->
+    <disk type='file' device='disk'>
+      <driver name='qemu'/>
+      <source file='/dev/sm951/tails'/>
+      <target dev='sdb' bus='usb' removable='on'/>
+    </disk>
+    <controller type='pci' index='0' model='pci-root'/>
+    <controller type='pci' index='1' model='pci-bridge'>
+      <model name='pci-bridge'/>
+      <target chassisNr='1'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </controller>
+    <controller type='scsi' index='0' model='virtio-scsi'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x0'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-ehci1'>
+      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x7'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci1'>
+      <master startport='0'/>
+      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x0' multifunction='on'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci2'>
+      <master startport='2'/>
+      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x1'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci3'>
+      <master startport='4'/>
+      <address type='pci' domain='0x0000' bus='0x02' slot='0x01' function='0x2'/>
+    </controller>
+    <interface type='network'>
+      <mac address='52:54:00:f9:f7:15'/>
+      <source network='VLAN-Open'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <input type='tablet' bus='usb'/>
+    <input type='keyboard' bus='usb'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
+    <memballoon model='none'>
+    </memballoon>
+  </devices>
+  <qemu:commandline>
+     <qemu:arg value='-cpu'/>
+     <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
+  </qemu:commandline>
+</domain>

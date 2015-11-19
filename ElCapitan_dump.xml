@@ -3,8 +3,8 @@
   <uuid>b21e2fa9-02bb-4acf-a487-f6e9ce1805d5</uuid>
 
   <!-- Hugepages -->
-  <memory unit='KiB'>25165824</memory>
-  <currentMemory unit='KiB'>25165824</currentMemory>
+  <memory unit='KiB'>16165824</memory>
+  <currentMemory unit='KiB'>16165824</currentMemory>
   <memoryBacking>
     <hugepages/>
   </memoryBacking>

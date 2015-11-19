@@ -20,8 +20,8 @@
         -p 8989:8989 \
         -e PUID=1000 -e PGID=100 \
         -v /dev/rtc:/dev/rtc:ro \
-        -v /storage/Media/TV:/tv \
-        -v /storage/downloads/.sonarr:/downloads \
+        -v /mnt/Media/TV:/tv \
+        -v /mnt/storage/downloads/.sonarr:/downloads \
         -v /config/sonarr_config:/config \
         linuxserver/sonarr'';
       ExecStop = ''${pkgs.docker}/bin/docker stop sonarr'';

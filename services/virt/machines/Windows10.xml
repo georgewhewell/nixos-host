@@ -13,7 +13,7 @@ or other application using the libvirt API.
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
-  <vcpu placement='static'>6</vcpu>
+  <vcpu placement='static'>8</vcpu>
   <cputune>
     <vcpupin vcpu='0' cpuset='1'/>
     <vcpupin vcpu='1' cpuset='2'/>
@@ -39,7 +39,7 @@ or other application using the libvirt API.
   </features>
   <cpu mode='host-model'>
     <model fallback='allow'/>
-    <topology sockets='1' cores='6' threads='1'/>
+    <topology sockets='1' cores='8' threads='1'/>
   </cpu>
   <clock offset='localtime'>
     <timer name='rtc' tickpolicy='catchup'/>
@@ -56,26 +56,11 @@ or other application using the libvirt API.
   <devices>
     <emulator>/usr/bin/qemu-kvm-nvidia-vga</emulator>
     <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
-      <source dev='/dev/evo/windows10'/>
+      <driver name='qemu' type='raw' cache='none' io='threads'/>
+      <source dev='/dev/sm951/windows10'/>
       <target dev='sda' bus='scsi'/>
       <address type='drive' controller='0' bus='0' target='0' unit='1'/>
     </disk>
-    <controller type='usb' index='0' model='ich9-ehci1'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x7'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci1'>
-      <master startport='0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0' multifunction='on'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci2'>
-      <master startport='2'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x1'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci3'>
-      <master startport='4'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x2'/>
-    </controller>
     <controller type='pci' index='0' model='pci-root'/>
     <controller type='pci' index='1' model='pci-bridge'>
       <model name='pci-bridge'/>
@@ -83,7 +68,7 @@ or other application using the libvirt API.
       <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
     </controller>
     <controller type='scsi' index='0' model='virtio-scsi'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x0'/>
     </controller>
     <interface type='network'>
       <mac address='52:54:00:f9:f7:15'/>
@@ -91,35 +76,45 @@ or other application using the libvirt API.
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
+
     <hostdev mode='subsystem' type='pci' managed='yes'>
-      <source>
-        <address domain='0x0000' bus='0x00' slot='0x1f' function='0x3'/>
-      </source>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
-    </hostdev>
-    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
       <source>
         <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x01' slot='0x01' function='0x0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
     </hostdev>
-    <hostdev mode='subsystem' type='usb' managed='yes'>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
       <source>
-        <vendor id='0x046d'/>
-        <product id='0xc247'/>
+        <address domain='0x0000' bus='0x01' slot='0x00' function='0x1'/>
       </source>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
     </hostdev>
-    <hostdev mode='subsystem' type='usb' managed='yes'>
+
+    <!-- Audio Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
       <source>
-        <vendor id='0x046d'/>
-        <product id='0xc31d'/>
+        <address domain='0x0000' bus='0x00' slot='0x1f' function='0x3'/>
       </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x05' function='0x0'/>
     </hostdev>
+
+    <!-- USB Controller -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <driver name='vfio'/>
+      <source>
+        <address domain='0x0000' bus='0x00' slot='0x14' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x01' slot='0x06' function='0x0'/>
+    </hostdev>
+
     <memballoon model='none'>
     </memballoon>
   </devices>
-<qemu:commandline>
-   <qemu:arg value='-cpu'/>
-   <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
-</qemu:commandline>
+  <qemu:commandline>
+     <qemu:arg value='-cpu'/>
+     <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
+  </qemu:commandline>
 </domain>

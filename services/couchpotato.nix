@@ -20,8 +20,8 @@
         -e EDGE=1 \
         -p 5050:5050 \
         -v /etc/localtime:/etc/localtime:ro \
-        -v /storage/Media/Movies:/movies \
-        -v /storage/downloads:/downloads \
+        -v /mnt/Media/Movies:/movies \
+        -v /mnt/storage/downloads:/downloads \
         -v /config/couchpotato_config:/config \
         needo/couchpotato'';
       ExecStop = ''${pkgs.docker}/bin/docker stop couchpotato'';
