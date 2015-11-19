@@ -15,6 +15,7 @@
     extraGroups = [];
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
-      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5bUrPJz6vHugl5FqI8B4J0josCaujleg7EKUn6ZPJF0BbX5/v0nTpQE3bQ4iPr6wtpqxSLpNaGwshq/Zq2Wnq8kXbHlje5VBaTVGs/6HlgJNSNzE1/TutvNd1bk36Of+IPvPbIEmejvnYZ9gDxEPRS2PZ0C6aOSOhjaZTgqwrY8Dp0q0DMMo5FyQcQ7GhUHeW76CQ/GOdMeJjXNUei6pYem9m61VOfm6E/uXBZ4KmjecqFqbW7Q9jMWnWsCixF1PrKS8aXQhIKKrdoiiXHD7iTP0WgYx/ftvC5io/Osf1vok8rvl4KeYr37PoZCvMGTy0uvPBQcyOtoT0g0t1w7B5 munin@tsar.su" ] ;
+     "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBACnIBkcB5RYj2T4cgq0+0qEapeTFNSClYj2vzXXcm/zfH/a1pWCnB24x+wn3yzpFFvb+sHEFSVHaOOfFHQby3ULzwHHVLJK9N593TWGGTbz6xj4LTQs2LNZHB07jd7rhOHaE31FKIoAphcfOqbgLiw6gKvXP3/3Yqb/NVmNXmF+wPwB+w== munin@tsar.su"
+    ];
    };
 }
