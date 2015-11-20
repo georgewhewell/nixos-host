@@ -27,6 +27,15 @@
 
   security.sudo.wheelNeedsPassword = false;
   services.openssh.enable = true;
+  services.munin-cron.enable = true;
+  services.munin-cron.hosts = ''
+   [tsar.su]
+   address localhost
+   [nixhost]
+   address ssh://86.3.184.2/run/current-system/sw/bin/nc localhost 4949
+  '';
+  services.postgresql.enable = true;
+  services.postgresql.enableTCPIP = true;
   services.munin-node.enable = true;
 
   services.fail2ban.enable = true;
