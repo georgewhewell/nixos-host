@@ -64,6 +64,7 @@
     ./nixos/16_03.nix
     ./kernels/4_2.nix
 
+    ./services/tinc.nix
     ./services/docker.nix
     ./services/transmission.nix
     ./services/tor-relay.nix
