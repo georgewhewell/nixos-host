@@ -80,6 +80,8 @@
 
     ./hardware/efiboot.nix
     ./network/wlan.nix
+    ./services/tinc/tinc.nix
+
     ./services/fancontrol.nix
     ./services/samba.nix
     ./services/docker.nix
