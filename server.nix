@@ -36,6 +36,9 @@
   '';
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
+  services.postgresql.authentication = ''
+    host  all  all 172.17.0.0/16 md5
+  '';
   services.munin-node.enable = true;
 
   services.fail2ban.enable = true;
@@ -64,7 +67,7 @@
     ./nixos/16_03.nix
     ./kernels/4_2.nix
 
-    ./services/tinc.nix
+    ./services/tinc/tinc.nix
     ./services/docker.nix
     ./services/transmission.nix
     ./services/tor-relay.nix

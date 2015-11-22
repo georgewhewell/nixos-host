@@ -3,7 +3,7 @@
 {
   services.transmission.enable = true;
   services.transmission.settings = {
-    rpc-whitelist = "127.0.0.1,192.168.*.*,172.*.*.*";
+    rpc-whitelist = "127.0.0.1,192.168.*.*,172.*.*.*,10.0.0.*";
     download-dir = "/storage/downloads";
     umask = 0;
   };
