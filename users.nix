@@ -6,7 +6,7 @@
     isNormalUser = true;
     uid = 1000;
      openssh.authorizedKeys.keys = [
-      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDW9YJVC34+IfBRAMhwtiENOJfUd00jsQhoFMBrGWPclniC1iyxxWpyAXSlvVrIKqxRxoK55Pz9bg3eId5H0iybFIukta+AcWrI6Ny2s0O1f/Q6tv93NPKvVEo+tPwarsEDuwxSGlernBuYa35G6popuRsn//seuQ/hIHneoOIAtG6wGJ38kqT+iKHCCJBfY1c6Hcw09rbm4NBpwbBONhSW9MAQa34mt41jBXmwmsZVEA0fQVuDZtb9PDgc8+ciks75b5Li3WWxo1BP3+A/vAQhat0JRicSa4JXCJs+cadIXoIHvlsYyJZKUXJXDciGkRaV/lYtQZlzvGgy5dtsnlFl grw@h9fp4whfi.local.tld"
+      "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHCp/KhshTrp+p1TQOp3PZfwvj+pAGzm7Z4tbRYImpHNS9octfJ4sSmL4X4YQSu4PbpM/9Jo5UzVPpCRpD6OOiA= grw@nixhost"
       "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAARQekrodVEAhnQ+N49sazaTKtlXmu4riUmArsY7H01zHHtVR+ISM8zvq0yQVbTNw2VRJ4sfKUjqXLM2FGUIHuN7AAQWuajvDbqjBC+IBr5+kKVdFMz1sF/T0Ov9R68k3ebBw7W/lsegdB479IBq+9CHN5HYnSMLu+rrL/zsvnXISuidQ== grw@Georges-Mac-Pro"
       "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHCp/KhshTrp+p1TQOp3PZfwvj+pAGzm7Z4tbRYImpHNS9octfJ4sSmL4X4YQSu4PbpM/9Jo5UzVPpCRpD6OOiA= grw@nixhost"
 
