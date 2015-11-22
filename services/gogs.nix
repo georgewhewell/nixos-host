@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
-  networking.firewall.allowedTCPPorts = [ 10080 2222];
+  networking.firewall.allowedTCPPorts = [ 2222 ];
 
   systemd.services.gogs = {
     wantedBy = [ "multi-user.target" ];
@@ -24,5 +24,5 @@
       ExecStop = ''${pkgs.docker}/bin/docker stop gogs'';
     };
   };
-  
+
 }
