@@ -19,14 +19,14 @@
     }
   '';
 
-  environment.etc."drone/dronerc" = ''
+  environment.etc.dronerc.text = ''
 DATABASE_DRIVER=postgres
-DATABASE_CONFIG=postgres://drone:drone@localhost:5432/drone?sslmode=disable
+DATABASE_CONFIG=postgres://drone:drone@172.17.42.1:5432/drone?sslmode=disable
 REMOTE_DRIVER=gogs
 REMOTE_CONFIG=http://git.tsar.su?open=false
   '';
 
-  systemd.services.gogs = {
+  systemd.services.drone = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -42,10 +42,10 @@ REMOTE_CONFIG=http://git.tsar.su?open=false
         --name drone \
         --volume /var/lib/drone:/var/lib/drone \
         --volume /var/run/docker.sock:/var/run/docker.sock \
-        --env-file /etc/drone/dronerc \
+        --env-file /etc/dronerc \
         --publish 8000:8000 \
-        gogs/gogs'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop gogs'';
+        drone/drone:0.4'';
+      ExecStop = ''${pkgs.docker}/bin/docker stop drone'';
     };
   };
 
