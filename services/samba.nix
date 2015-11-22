@@ -20,7 +20,8 @@
         };
       Media =
         { path = "/mnt/Media";
-          "read only" = "no";
+          "writable" = "yes";
+          "public" = "yes";
           "browsable" = "yes";
           "guest_ok" = "yes";
         };
