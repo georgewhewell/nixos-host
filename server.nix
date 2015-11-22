@@ -40,6 +40,7 @@
     host  all  all 172.17.0.0/16 md5
   '';
   services.munin-node.enable = true;
+  services.redis.enable = true;
 
   services.fail2ban.enable = true;
   services.fail2ban.jails.ssh-iptables = "enabled = true";
