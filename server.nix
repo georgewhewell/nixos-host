@@ -73,7 +73,7 @@
     ./services/tor-relay.nix
     ./services/gogs.nix
     ./services/drone.nix
-    ./services/nginx/nginx.nix
+    ./services/nginx.nix
 
     ./users.nix
   ];
