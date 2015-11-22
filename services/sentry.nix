@@ -1,15 +1,13 @@
 { config, lib, pkgs, ... }:
 
 {
-  networking.firewall.allowedTCPPorts = [ 2222 ];
-
   services.nginx.httpConfig = ''
     server {
         listen 80;
-        server_name git.tsar.su;
+        server_name sentry.tsar.su;
 
         location / {
-            proxy_pass http://127.0.0.1:3000/;
+            proxy_pass http://127.0.0.1:9000/;
 
             proxy_set_header        Accept-Encoding   "";
             proxy_set_header        Host            $host;
@@ -21,7 +19,7 @@
     }
   '';
 
-  systemd.services.gogs = {
+  systemd.services.sentry = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -29,17 +27,19 @@
       TimeoutStartSec = 0;
       Restart = "always";
       ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker pull gogs/gogs''
-        ''-${pkgs.docker}/bin/docker stop gogs''
-        ''-${pkgs.docker}/bin/docker rm gogs''
+        ''-${pkgs.docker}/bin/docker pull sentry''
+        ''-${pkgs.docker}/bin/docker stop sentry''
+        ''-${pkgs.docker}/bin/docker rm sentry''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name gogs \
-        -p 3000:3000 \
-        -p 2222:22 \
-        -v /mnt/gogs:/data \
-        gogs/gogs'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop gogs'';
+        --name sentry \
+        -p 9000 \
+        -e SENTRY_REDIS_HOST=172.17.42.1 \
+        -e SENTRY_POSTGRES_HOST=172.17.42.1 \
+        -e SENTRY_DB_USER=sentry \
+        -e SENTRY_DB_PASSWORD=sentry \
+        sentry'';
+      ExecStop = ''${pkgs.docker}/bin/docker stop sentry'';
     };
   };
 
