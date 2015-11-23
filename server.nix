@@ -42,6 +42,12 @@
   services.munin-node.enable = true;
   services.redis.enable = true;
 
+
+  services.collectd.enable = true;
+  services.collectd.autoLoadPlugin = true;
+
+  services.graphite.web.enable = true;
+
   services.fail2ban.enable = true;
   services.fail2ban.jails.ssh-iptables = "enabled = true";
 
