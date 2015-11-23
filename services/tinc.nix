@@ -2,7 +2,6 @@
 
 {
   services.tinc.networks."darknet" = {
-    debugLevel = 5;
     hosts = {
       tsar_su = ''
         Address = tsar.su
