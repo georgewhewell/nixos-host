@@ -7,7 +7,7 @@
         server_name drone.tsar.su;
         
         ssl_certificate /etc/letsencrypt/live/git.tsar.su/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/0010_key-letsencrypt.pem;
+        ssl_certificate_key /etc/letsencrypt/keys/0011_key-letsencrypt.pem;
 
         location / {
             proxy_pass http://127.0.0.1:8000/;
@@ -26,8 +26,8 @@
 DATABASE_DRIVER=postgres
 DATABASE_CONFIG=postgres://drone:drone@172.17.42.1:5432/drone?sslmode=disable
 REMOTE_DRIVER=gogs
-REMOTE_CONFIG=http://git.tsar.su?open=false
-  '';
+REMOTE_CONFIG=https://git.tsar.su?open=false
+'';
 
   systemd.services.drone = {
     wantedBy = [ "multi-user.target" ];

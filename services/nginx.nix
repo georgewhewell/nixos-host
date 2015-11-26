@@ -11,7 +11,7 @@
         server_name tsar.su www.tsar.su;
 
         ssl_certificate /etc/letsencrypt/live/git.tsar.su/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/0010_key-letsencrypt.pem;
+        ssl_certificate_key /etc/letsencrypt/keys/0011_key-letsencrypt.pem;
         root /var/www/munin;
     }
   '';
