@@ -16,7 +16,7 @@
         ssl_certificate_key /etc/letsencrypt/keys/0011_key-letsencrypt.pem;
         ssl_session_cache shared:SSL:128m;
         ssl_session_timeout 10m;
-        
+
         proxy_set_header   Host                 $http_host;
         proxy_set_header   X-Forwarded-Proto    $scheme;
         proxy_set_header   X-Forwarded-For      $remote_addr;
