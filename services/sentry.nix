@@ -35,7 +35,7 @@
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --name sentry \
-        -p 9000:9000 \
+        -p 127.0.0.1:9000:9000 \
         -e SENTRY_REDIS_HOST=172.17.42.1 \
         -e SENTRY_POSTGRES_HOST=172.17.42.1 \
         -e SENTRY_DB_USER=sentry \

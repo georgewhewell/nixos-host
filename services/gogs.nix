@@ -38,8 +38,8 @@
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --name gogs \
-        -p 3000:3000 \
-        -p 2222:22 \
+        -p 127.0.0.1:3000:3000 \
+        -p 0.0.0.0:2222:22 \
         -v /mnt/gogs:/data \
         gogs/gogs'';
       ExecStop = ''${pkgs.docker}/bin/docker stop gogs'';

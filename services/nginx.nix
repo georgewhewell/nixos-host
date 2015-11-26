@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  networking.firewall.allowedTCPPorts = [ 80 443 2222 ];
 
   services.nginx.enable = true;
   services.nginx.httpConfig = ''

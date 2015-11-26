@@ -5,12 +5,12 @@
     server {
         listen 443 ssl;
         server_name drone.tsar.su;
-        
+
         ssl_certificate /etc/letsencrypt/live/git.tsar.su/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/keys/0011_key-letsencrypt.pem;
 
         location / {
-            proxy_pass http://127.0.0.1:8000/;
+            proxy_pass http://127.0.0.1:8005/;
 
             proxy_set_header        Accept-Encoding   "";
             proxy_set_header        Host            $host;
@@ -46,7 +46,7 @@ REMOTE_CONFIG=https://git.tsar.su?open=false
         --volume /var/lib/drone:/var/lib/drone \
         --volume /var/run/docker.sock:/var/run/docker.sock \
         --env-file /etc/dronerc \
-        --publish 8000:8000 \
+        --publish 127.0.0.1:8005:8000 \
         drone/drone:0.4'';
       ExecStop = ''${pkgs.docker}/bin/docker stop drone'';
     };
