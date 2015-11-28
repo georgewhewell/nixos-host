@@ -78,6 +78,7 @@
     ./services/docker.nix
     ./services/transmission.nix
     ./services/tor-relay.nix
+    ./services/docker-registry.nix
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
