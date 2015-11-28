@@ -23,6 +23,7 @@
     lm_sensors
     libvirt
     zfs
+    mosh
   ];
 
   security.sudo.wheelNeedsPassword = false;
@@ -41,7 +42,7 @@
   '';
   services.munin-node.enable = true;
   services.redis.enable = true;
-
+  services.redis.bind = "172.17.42.1";
 
   services.collectd.enable = true;
   services.collectd.autoLoadPlugin = true;
