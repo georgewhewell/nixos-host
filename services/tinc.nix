@@ -19,6 +19,7 @@ MkBaMchUKanqib4HW3lmt5Tkp1qJB0fQumDCz7LeAyswHW6stdrLsExhRKFKDu79
 0OimIqUrtgqp/8hQnB63BA10nJh0Jye4RH3kiq85kVvyv2sQA8OOkQX+k5mefoG2
 ZM3vOuYrHhB+zWk2Vm9BEL9GKHWwyRl8MrAeGvTBaGuILB+Uar2gxh8CAwEAAQ==
 -----END RSA PUBLIC KEY-----
+Ed25519PublicKey = Uv0u+p5xpxjqVDcFjFaS2wkmcjMkLiDo5fzIOlqs0XH
       '';
       nixhost = ''
 Subnet 10.0.0.2
@@ -35,6 +36,7 @@ ZqeaYEKM8Y//v17FjAMZYALvYt7eDEWb84v8nNRd5/YTJmjolzsI3ZMU6SXgwvHJ
 36jsQo7G+NmpFpLWZBWJ+/MZbAcksnaJ4h3470hHUhQBj4KOvcsJQtmMwjq8Fg2P
 AddZiU/4B+zsXy/s4sMKHuR/jQUje8ljzsHCylDRfali2Ngjf0A+BA0CAwEAAQ==
 -----END RSA PUBLIC KEY-----
+Ed25519PublicKey = pFg5yd5fvc2ZkfyKhJj550qXNNMxYVVkF+Ig5y9Z8dC
       '';
       Georges-Mac-Pro = ''
 Subnet 10.0.0.3
