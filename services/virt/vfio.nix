@@ -47,12 +47,11 @@
 
     boot.blacklistedKernelModules = [
         "nouveau"
-	      "i915"
     ];
 
     boot.kernelParams = [
         # Use IOMMU
-        "intel_iommu=on,igfx_on,pass-through"
+        "intel_iommu=on"
         "vfio_iommu_type1.allow_unsafe_interrupts=1"
 
         # Assign devices to vfio
@@ -61,10 +60,8 @@
         # Needed by OS X
         "kvm.ignore_msrs=1"
 
-        "serial"
-
         # Only schedule cpus 0,1
-        "isolcpus=1-3,5-7"
+  #      "isolcpus=1-3,5-7"
 
     ];
 
