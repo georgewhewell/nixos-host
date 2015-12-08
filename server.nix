@@ -6,6 +6,14 @@
   networking.hostId = "cd499340";
   networking.hostName = "tsar.su";
 
+boot.kernel.sysctl = {
+"net.core.wmem_max"=12582912;
+"net.core.rmem_max"=12582912;
+"net.ipv4.tcp_rmem"="10240 87380 12582912";
+"net.ipv4.tcp_wmem"="10240 87380 12582912";
+"net.core.netdev_max_backlog"=5000;
+};
+
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
 
@@ -44,11 +52,6 @@
   services.redis.enable = true;
   services.redis.bind = "172.17.42.1";
 
-  services.collectd.enable = true;
-  services.collectd.autoLoadPlugin = true;
-
-  services.graphite.web.enable = true;
-
   services.fail2ban.enable = true;
   services.fail2ban.jails.ssh-iptables = "enabled = true";
 
@@ -77,7 +80,7 @@
 
     ./services/tinc.nix
     ./services/docker.nix
-    ./services/transmission.nix
+#    ./services/transmission.nix
     ./services/tor-relay.nix
     ./services/docker-registry.nix
     ./services/gogs.nix
