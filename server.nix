@@ -80,7 +80,9 @@ boot.kernel.sysctl = {
 
     ./services/tinc.nix
     ./services/docker.nix
+    ./services/openvpn.nix
 #    ./services/transmission.nix
+
     ./services/tor-relay.nix
     ./services/docker-registry.nix
     ./services/gogs.nix
