@@ -88,8 +88,10 @@
     ./services/sonarr.nix
     ./services/couchpotato.nix
     ./services/transmission.nix
-    ./services/virt/host.nix
-    ./services/backup.nix
+    ./services/upnpc.nix
+
+   # ./services/virt/host.nix
+   # ./services/backup.nix
 
     ./users.nix
   ];
