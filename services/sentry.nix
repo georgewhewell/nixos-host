@@ -59,8 +59,8 @@
         --name sentry \
         -p 127.0.0.1:9000:9000 \
         -e SENTRY_URL_PREFIX=https://sentry.tsar.su \
-        -e SENTRY_REDIS_HOST=172.17.42.1 \
-        -e SENTRY_POSTGRES_HOST=172.17.42.1 \
+        -e SENTRY_REDIS_HOST=172.17.0.1 \
+        -e SENTRY_POSTGRES_HOST=172.17.0.1 \
         -e SENTRY_DB_USER=sentry \
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
@@ -81,8 +81,8 @@
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --rm \
-        -e SENTRY_REDIS_HOST=172.17.42.1 \
-        -e SENTRY_POSTGRES_HOST=172.17.42.1 \
+        -e SENTRY_REDIS_HOST=172.17.0.1 \
+        -e SENTRY_POSTGRES_HOST=172.17.0.1 \
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_USER=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
@@ -99,8 +99,8 @@
       Restart = "always";
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --rm \
-        -e SENTRY_REDIS_HOST=172.17.42.1 \
-        -e SENTRY_POSTGRES_HOST=172.17.42.1 \
+        -e SENTRY_REDIS_HOST=172.17.0.1 \
+        -e SENTRY_POSTGRES_HOST=172.17.0.1 \
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_USER=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
