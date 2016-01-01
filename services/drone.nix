@@ -54,6 +54,7 @@ SERVER_ADDR=0.0.0.0:8005
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --name drone \
+        --privileged \
         --volume /var/lib/drone:/var/lib/drone \
         --volume /var/run/docker.sock:/var/run/docker.sock \
         --env-file /etc/dronerc \
