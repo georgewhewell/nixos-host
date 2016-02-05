@@ -67,10 +67,13 @@ boot.kernel.sysctl = {
   '';
   services.munin-node.enable = true;
   services.redis.enable = true;
-  services.redis.bind = "172.17.42.1";
+  security.pam.loginLimits = [
+    { domain = "redis"; item = "nofile"; type = "soft"; value = 65536; }
+    { domain = "redis"; item = "nofile"; type = "hard"; value = 65536; }
+  ];	
 
   services.fail2ban.enable = true;
-  services.fail2ban.jails.ssh-iptables = "enabled = true";
+  # services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
   boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
@@ -93,7 +96,7 @@ boot.kernel.sysctl = {
   imports = [
     <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
     ./nixos/16_03.nix
-    ./kernels/4_2.nix
+    ./kernels/latest.nix
 
     ./services/tinc.nix
     ./services/docker.nix
@@ -101,7 +104,6 @@ boot.kernel.sysctl = {
 
     ./services/kinto.nix
     ./services/tor-relay.nix
-    ./services/docker-registry.nix
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
