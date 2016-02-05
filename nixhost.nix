@@ -1,11 +1,12 @@
 { config, lib, pkgs, ... }:
 
 {
+  nixpkgs.config.allowUnfree = true;
+
   networking.hostName = "nixhost";
   networking.hostId = "dd499341";
 
   time.timeZone = "Europe/London";
-  networking.firewall.enable = false;
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
@@ -41,14 +42,9 @@
     { device = "/dev/nvme0n1p1";
       fsType = "vfat";
     };
-
   fileSystems."/" =
-    { device = "/dev/disk/by-id/dm-name-sm951-nixos";
-      fsType = "ext4";
-    };
-  fileSystems."/backups" =
-    { device = "/dev/sdb1";
-      fsType = "ext4";
+    { device = "zpool/nixos";
+      fsType = "zfs";
     };
   fileSystems."/mnt/storage" =
     { device = "zpool/storage";
@@ -58,7 +54,6 @@
     { device = "zpool/docker";
       fsType = "zfs";
     };
-
   fileSystems."/mnt/Home" =
       { device = "zpool/Home";
         fsType = "zfs";
