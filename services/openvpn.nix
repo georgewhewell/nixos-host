@@ -18,7 +18,7 @@
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --restart always \
         --name openvpn \
-        --net="host" \
+        -p 1194:1194/udp \
         --cap-add=NET_ADMIN \
         --volumes-from ovpn-data \
         kylemanna/openvpn'';
