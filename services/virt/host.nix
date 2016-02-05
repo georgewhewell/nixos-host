@@ -2,10 +2,10 @@
 
 {
   # 30GB RAM for guests
-  boot.kernel.sysctl."vm.nr_hugepages" = 10000;
+#  boot.kernel.sysctl."vm.nr_hugepages" = 10000;
 
   imports = [
-    ./vfio.nix
+    /*./vfio.nix*/
   ];
 
   # Turn on virt

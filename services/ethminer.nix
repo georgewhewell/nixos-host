@@ -2,10 +2,13 @@
 
 {
 
-  jobs.spaceheater = {
+  systemd.services.spaceheater = {
     description = "ethminer";
     requires = [ "docker.service" ];
     serviceConfig = {
+      ExecStartPre = [
+        ''-${pkgs.docker}/bin/docker rm ethminer''
+      ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
        --name=ethminer \
        --privileged=true \

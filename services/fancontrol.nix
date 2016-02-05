@@ -1,9 +1,11 @@
 { config, lib, pkgs, ... }:
 
 {
-  jobs.fancontrol = {
+
+  systemd.services.fancontrol = {
     description = "fancontrol daemon";
-wantedBy = [ "multi-user.target" ];
-    exec = "${pkgs.lm_sensors}/sbin/fancontrol /etc/nixos/fancontrol";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig.Exec = "${pkgs.lm_sensors}/sbin/fancontrol /etc/nixos/fancontrol";
   };
+
 }

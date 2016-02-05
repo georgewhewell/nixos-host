@@ -74,7 +74,7 @@
     after = [ "network.target" ];
     requires = [ "docker.service" ];
     serviceConfig = {
-      TimeoutStartSec = 0;
+    TimeoutStartSec = 0;,
       Restart = "always";
       ExecStartPre = [
         ''-${pkgs.docker}/bin/docker pull sentry''

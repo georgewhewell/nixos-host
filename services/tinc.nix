@@ -2,6 +2,7 @@
 
 {
   services.tinc.networks."darknet" = {
+    interfaceType = "tap";
     hosts = {
       tsar_su = ''
 Address = tsar.su

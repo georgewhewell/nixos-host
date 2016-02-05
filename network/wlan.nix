@@ -8,10 +8,10 @@
   networking.wireless.enable = true;
 
   # wl driver
-  boot.extraModulePackages = [ "${config.boot.kernelPackages.broadcom_sta}" ];
+  boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
 
   # enable MASQUERADE
-  networking.localCommands = ''
+  /*networking.localCommands = ''
     /run/current-system/sw/bin/iptables -t nat -A POSTROUTING -o wlp4s0 -j MASQUERADE
-  '';
+  '';*/
 }

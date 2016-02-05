@@ -1,10 +1,3 @@
-<!--
-WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
-OVERWRITTEN AND LOST. Changes to this xml configuration should be made using:
-  virsh edit Windows10
-or other application using the libvirt API.
--->
-
 <domain type='kvm'>
   <name>Windows10</name>
   <uuid>057ae68b-8a83-4f2d-8d4a-db3888724f91</uuid>
@@ -13,7 +6,7 @@ or other application using the libvirt API.
   <memoryBacking>
     <hugepages/>
   </memoryBacking>
-  <vcpu placement='static'>8</vcpu>
+  <vcpu placement='static'>6</vcpu>
   <cputune>
     <vcpupin vcpu='0' cpuset='1'/>
     <vcpupin vcpu='1' cpuset='2'/>
@@ -55,12 +48,34 @@ or other application using the libvirt API.
   </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm-nvidia-vga</emulator>
+    <memballoon model='none'></memballoon>
+
+    <!-- Main HDD -->
     <disk type='block' device='disk'>
       <driver name='qemu' type='raw' cache='none' io='threads'/>
       <source dev='/dev/sm951/windows10'/>
       <target dev='sda' bus='scsi'/>
-      <address type='drive' controller='0' bus='0' target='0' unit='1'/>
     </disk>
+
+    <!-- Install CDROM -->
+    <!--
+    <disk type='file' device='cdrom'>
+      <source file='/mnt/storage/installmedia/Win10.iso'/>
+      <target dev='hda'/>
+      <readonly/>
+    </disk>
+    -->
+
+    <!-- VirtIO Driver CD -->
+    <!--
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw' cache='none' io='threads'/>
+      <source file='/var/lib/libvirt/images/virtio-win-0.1.110.iso'/>
+      <target dev='hdb'/>
+    </disk>
+    -->
+
+    <!-- Platform stuff -->
     <controller type='pci' index='0' model='pci-root'/>
     <controller type='pci' index='1' model='pci-bridge'>
       <model name='pci-bridge'/>
@@ -70,6 +85,8 @@ or other application using the libvirt API.
     <controller type='scsi' index='0' model='virtio-scsi'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x0'/>
     </controller>
+
+    <!-- VirtIO net -->
     <interface type='network'>
       <mac address='52:54:00:f9:f7:15'/>
       <source network='VLAN-Open'/>
@@ -77,6 +94,7 @@ or other application using the libvirt API.
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
 
+    <!-- GFX -->
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <driver name='vfio'/>
       <source>
@@ -109,12 +127,12 @@ or other application using the libvirt API.
       </source>
       <address type='pci' domain='0x0000' bus='0x01' slot='0x06' function='0x0'/>
     </hostdev>
-
-    <memballoon model='none'>
-    </memballoon>
   </devices>
+
+  <!-- Trick nvidia drivers to load -->
   <qemu:commandline>
      <qemu:arg value='-cpu'/>
      <qemu:arg value='host,hv_time,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,kvm=off,hv_vendor_id='/>
   </qemu:commandline>
+
 </domain>

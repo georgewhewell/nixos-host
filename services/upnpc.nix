@@ -5,7 +5,7 @@
       {
         description = "Run upnpc to redirect port 22";
         serviceConfig.ExecStart = "${pkgs.miniupnpc}/bin/upnpc -r 22 tcp";
-        startAt = "00:00";
+        startAt = "*:0";
         serviceConfig.Type = "oneshot";
       };
 

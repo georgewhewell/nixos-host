@@ -17,4 +17,6 @@
      "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBACnIBkcB5RYj2T4cgq0+0qEapeTFNSClYj2vzXXcm/zfH/a1pWCnB24x+wn3yzpFFvb+sHEFSVHaOOfFHQby3ULzwHHVLJK9N593TWGGTbz6xj4LTQs2LNZHB07jd7rhOHaE31FKIoAphcfOqbgLiw6gKvXP3/3Yqb/NVmNXmF+wPwB+w== munin@tsar.su"
     ];
    };
+
+   security.sudo.wheelNeedsPassword = false;
 }

@@ -3,6 +3,7 @@
 {
   nixpkgs.config.allowUnfree = true;
 
+
   networking.hostName = "nixhost";
   networking.hostId = "dd499341";
 
@@ -25,16 +26,26 @@
     libvirt
     zfs
   ];
-
-  security.sudo.wheelNeedsPassword = false;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   services.avahi.enable = true;
+  services.avahi.publish.enable = true;
+  services.avahi.publish.addresses = true;
   services.avahi.nssmdns = true;
+
   services.openssh.enable = true;
   services.thermald.enable = true;
   services.munin-node.enable = true;
+
+  hardware.pulseaudio.enable = true;
+
+  services.redshift = {
+    enable = true;
+    latitude = "51.5";
+    longitude = "-0.1";
+  };
+
   services.fail2ban.enable = true;
-  services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "ehci_pci" "ahci" "nvme" "dm_mod" "zfs" ];
 
@@ -68,14 +79,21 @@
       fsType = "btrfs";
     };
 
-  imports = [
-    <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
-    ./nixos/16_03.nix
-    ./kernels/testing.nix
+  boot.kernelParams = [
+    "i915.preliminary_hw_support=1"
+    "usbhid.mousepoll=1"
+  ];
 
-    ./hardware/efiboot.nix
+  boot.loader.gummiboot.enable = true;
+  boot.loader.gummiboot.timeout = 1;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  imports = [
+    ./i3.nix
+    ./nixos/16_03.nix
+
     ./network/wlan.nix
-    ./services/tinc/tinc.nix
+    ./services/tinc.nix
 
     ./services/fancontrol.nix
     ./services/samba.nix
@@ -84,9 +102,7 @@
     ./services/couchpotato.nix
     ./services/transmission.nix
     ./services/upnpc.nix
-
-   # ./services/virt/host.nix
-   # ./services/backup.nix
+    ./services/ethminer.nix
 
     ./users.nix
   ];
