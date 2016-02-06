@@ -21,7 +21,11 @@ Ed25519PublicKey = 8mnpkMJutf+tSnZFYGBB32YMnIwsdXzSQpoM1xB1wKN
 Subnet 10.0.0.4
 Ed25519PublicKey = BPDO5MqPCAfVroAeGNO0QJ/EJigO0HXhl6eeJqwH4hC
 '';
-    };
+     iPhone = ''
+Subnet 10.0.0.5
+Ed25519PublicKey = HgbMtGmOQB65ObsD0a2Q1S+Gm+UKzjL7ty6Dv4jlEqK
+'';
+	};
     extraConfig = ''
       ConnectTo tsar_su
     '';
