@@ -7,12 +7,12 @@
   */
 
   systemd.services.spaceheater_start = {
-    startAt = "06:00";
+    startAt = "03:00";
     requires = [ "docker.service" ];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = ''
-      /run/current-system/sw/bin/systemctl start ethminer_gpu ethminer_cpu
+      /run/current-system/sw/bin/systemctl start ethminer_gpu
       '';
       ExecStop = ''
       /run/current-system/sw/bin/echo Started
@@ -26,7 +26,7 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = ''
-      /run/current-system/sw/bin/systemctl stop ethminer_gpu ethminer_cpu
+      /run/current-system/sw/bin/systemctl stop ethminer_gpu
       '';
       ExecStop = ''
       /run/current-system/sw/bin/echo Stopped
