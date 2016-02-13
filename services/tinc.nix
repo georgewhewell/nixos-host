@@ -26,4 +26,5 @@ Ed25519PublicKey = HgbMtGmOQB65ObsD0a2Q1S+Gm+UKzjL7ty6Dv4jlEqK
     '';
   };
   networking.firewall.allowedUDPPorts = [ 655 ];
+  networking.firewall.allowedTCPPorts = [ 655 ];
 }
