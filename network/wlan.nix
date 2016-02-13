@@ -6,6 +6,7 @@
 
   # Enables wireless support via wpa_supplicant.
   networking.wireless.enable = true;
+  networking.firewall.enable = false;
 
   # wl driver
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
