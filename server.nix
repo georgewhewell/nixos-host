@@ -125,7 +125,7 @@ boot.kernel.sysctl = {
         # Ignore some paths/filesystems that cause "Permission denied" spamming
         # in the log and/or are uninteresting or duplicates.
         <Plugin "df">
-          MountPoint "/var/lib/docker/devicemapper"
+          MountPoint "/var/lib/docker/zfs"
           MountPoint "/nix/store"  # it's just a bind mount, already covered
           FSType "fuse.gvfsd-fuse"
           FSType "cgroup"
