@@ -32,7 +32,7 @@
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --name grafana \
-        -p 127.0.0.1:3001:3001 \
+        -p 127.0.0.1:3001:3000 \
         georgewhewell/docker-grafana-influx-dashboard'';
       ExecStop = ''${pkgs.docker}/bin/docker stop grafana'';
     };
