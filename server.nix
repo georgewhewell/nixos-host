@@ -72,6 +72,9 @@ boot.kernel.sysctl = {
     { domain = "redis"; item = "nofile"; type = "hard"; value = 65536; }
   ];	
 
+  services.influxdb.enable = true;
+  services.influxdb.extraConfig.collectd.enabled = true;
+
   services.fail2ban.enable = true;
   # services.fail2ban.jails.ssh-iptables = "enabled = true";
 
