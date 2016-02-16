@@ -67,10 +67,6 @@ boot.kernel.sysctl = {
   '';
   services.munin-node.enable = true;
   services.redis.enable = true;
-  security.pam.loginLimits = [
-    { domain = "redis"; item = "nofile"; type = "soft"; value = 65536; }
-    { domain = "redis"; item = "nofile"; type = "hard"; value = 65536; }
-  ];	
 
   services.influxdb.enable = true;
   services.influxdb.extraConfig.collectd.enabled = true;
