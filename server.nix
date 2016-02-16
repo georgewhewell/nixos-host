@@ -107,6 +107,7 @@ boot.kernel.sysctl = {
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
+    ./services/grafana.nix
     ./services/nginx.nix
 
     ./users.nix
