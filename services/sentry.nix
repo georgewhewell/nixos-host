@@ -64,6 +64,7 @@
         -e SENTRY_DB_USER=sentry \
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
+        -e SENTRY_SECRET_KEY=sentry \
         sentry'';
       ExecStop = ''${pkgs.docker}/bin/docker stop sentry'';
     };
