@@ -67,10 +67,9 @@ boot.kernel.sysctl = {
   '';
   services.munin-node.enable = true;
   services.redis.enable = true;
-  security.pam.loginLimits = [
-    { domain = "redis"; item = "nofile"; type = "soft"; value = 65536; }
-    { domain = "redis"; item = "nofile"; type = "hard"; value = 65536; }
-  ];
+
+  services.influxdb.enable = true;
+  services.influxdb.extraConfig.collectd.enabled = true;
 
   services.fail2ban.enable = true;
   # services.fail2ban.jails.ssh-iptables = "enabled = true";
@@ -107,6 +106,7 @@ boot.kernel.sysctl = {
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
+    ./services/collectd.nix
     ./services/grafana.nix
     ./services/nginx.nix
 
