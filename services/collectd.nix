@@ -30,6 +30,10 @@
 
         # Ignore some paths/filesystems that cause "Permission denied" spamming
         # in the log and/or are uninteresting or duplicates.
+        <Plugin "nginx">
+          URL "http://localhost:82"
+        </Plugin>
+
         <Plugin "df">
           MountPoint "/var/lib/docker/*"
           MountPoint "/var/lib/docker"

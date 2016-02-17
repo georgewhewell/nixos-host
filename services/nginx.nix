@@ -20,5 +20,12 @@
           add_header Strict-Transport-Security "max-age=31536000";
         }
     }
+    server {
+      listen 82 default;
+
+      location /basic_status {
+          stub_status;
+      }
+    }
   '';
 }
