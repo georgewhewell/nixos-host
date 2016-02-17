@@ -22,19 +22,17 @@
         LoadPlugin load
         LoadPlugin memory
         LoadPlugin network
-        LoadPlugin nfs
         LoadPlugin processes
         LoadPlugin rrdtool
         LoadPlugin sensors
         LoadPlugin tcpconns
         LoadPlugin uptime
-        <Plugin "virt">
-          Connection "qemu:///system"
-        </Plugin>
+
         # Ignore some paths/filesystems that cause "Permission denied" spamming
         # in the log and/or are uninteresting or duplicates.
         <Plugin "df">
           MountPoint "/var/lib/docker/zfs"
+          MountPoint "/var/lib/docker/containers"
           MountPoint "/nix/store"  # it's just a bind mount, already covered
           FSType "fuse.gvfsd-fuse"
           FSType "cgroup"
