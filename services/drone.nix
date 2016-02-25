@@ -1,20 +1,32 @@
 { config, lib, pkgs, ... }:
 
 {
+  security.acme.certs."drone.tsar.su" = {
+      email = "georgerw@gmail.com";
+      webroot = "/var/www/challenges/";
+  };
+  
   services.nginx.httpConfig = ''
 
     server {
        listen 80;
        server_name drone.tsar.su;
-       rewrite ^(.*) https://$host$1 permanent;
+
+       location /.well-known/acme-challenge/ {
+           alias /var/www/challenges/.well-known/acme-challenge/;
+       }
+
+       location / {
+         rewrite ^(.*) https://$host$1 permanent;
+       }
     }
 
     server {
         listen 443 ssl;
         server_name drone.tsar.su;
 
-        ssl_certificate /etc/letsencrypt/live/git.tsar.su/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/keys/0011_key-letsencrypt.pem;
+        ssl_certificate /var/lib/acme/drone.tsar.su/fullchain.pem;
+        ssl_certificate_key /var/lib/acme/drone.tsar.su/key.pem;
         ssl_session_cache shared:SSL:128m;
         ssl_session_timeout 10m;
 
