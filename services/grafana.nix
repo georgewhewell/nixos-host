@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
-  security.acme.certs.grafana = {
+  security.acme.certs."grafana.tsar.su" = {
 
      	email = "georgerw@gmail.com";
         webroot = "/var/www/challenges/";
@@ -14,8 +14,8 @@
         listen 80;
         server_name grafana.tsar.su;
 
-location .well-known/acme-challenge/ {
-    alias /var/www/challenges/;
+location /.well-known/acme-challenge/ {
+    alias /var/www/challenges/.well-known/acme-challenge/;
 }
         location / {
             proxy_pass http://127.0.0.1:3001/;
