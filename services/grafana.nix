@@ -22,6 +22,7 @@
 
     server {
         listen 443 ssl;
+        server_name grafana.tsar.su;
 
         ssl_certificate /var/lib/acme/grafana.tsar.su/fullchain.pem;
         ssl_certificate_key /var/lib/acme/grafana.tsar.su/key.pem;
