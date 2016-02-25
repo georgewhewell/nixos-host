@@ -33,6 +33,7 @@ boot.kernel.sysctl = {
 
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
+  networking.firewall.trustedInterfaces = [ "docker0" ];
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
