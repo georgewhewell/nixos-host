@@ -2,21 +2,32 @@
 
 {
   security.acme.certs."grafana.tsar.su" = {
-
      	email = "georgerw@gmail.com";
-        webroot = "/var/www/challenges/";
-
+      webroot = "/var/www/challenges/";
   };
 
   services.nginx.httpConfig = ''
-
     server {
         listen 80;
         server_name grafana.tsar.su;
 
-location /.well-known/acme-challenge/ {
-    alias /var/www/challenges/.well-known/acme-challenge/;
-}
+        location /.well-known/acme-challenge/ {
+            alias /var/www/challenges/.well-known/acme-challenge/;
+        }
+
+        location / {
+          rewrite ^(.*) https://$host$1 permanent;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+
+        ssl_certificate /var/lib/acme/grafana.tsar.su/fullchain.pem;
+        ssl_certificate_key /var/lib/acme/grafana.tsar.su/key.pem;
+        ssl_session_cache shared:SSL:128m;
+        ssl_session_timeout 10m;
+
         location / {
             proxy_pass http://127.0.0.1:3001/;
 
