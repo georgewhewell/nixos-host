@@ -1,12 +1,22 @@
 { config, lib, pkgs, ... }:
 
 {
+  security.acme.certs.grafana = {
+
+     	email = "georgerw@gmail.com";
+        webroot = "/var/www/challenges/";
+
+  };
+
   services.nginx.httpConfig = ''
 
     server {
         listen 80;
         server_name grafana.tsar.su;
 
+location .well-known/acme-challenge/ {
+    alias /var/www/challenges/;
+}
         location / {
             proxy_pass http://127.0.0.1:3001/;
 
