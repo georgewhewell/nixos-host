@@ -34,6 +34,7 @@ boot.kernel.sysctl = {
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
   networking.firewall.trustedInterfaces = [ "docker0" ];
+  networking.firewall.allowedUDPPorts = [ 25826 ];
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
