@@ -34,7 +34,6 @@
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --volume=/:/rootfs:ro \
         --volume=/sys:/sys:ro \
-        --volume=/dev:/dev \
         --volume=/var/lib/docker/:/var/lib/docker:ro \
         --volume=/var/lib/kubelet/:/var/lib/kubelet:rw \
         --volume=/var/run:/var/run:rw \
@@ -42,14 +41,16 @@
         --pid=host \
         --privileged=true \
         --name k8s_master \
-        gcr.io/google_containers/hyperkube:v1.1.3 \
+        gcr.io/google_containers/hyperkube-amd64:v1.2.0-alpha.7 \
           /hyperkube kubelet \
             --containerized \
             --hostname-override="127.0.0.1" \
             --address="0.0.0.0" \
-            --api-servers=http://localhost:8080
+            --cluster-dns=10.0.0.10 \
+            --cluster-domain=cluster.local \
             --api-servers=http://localhost:8080 \
-            --config=/etc/kubernetes/manifests'';
+            --config=/etc/kubernetes/manifests \
+            --allow-privileged=true --v=2'';
       ExecStop = ''${pkgs.docker}/bin/docker stop k8s_master'';
     };
   };
