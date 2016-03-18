@@ -24,7 +24,7 @@
     }
 
     server {
-        listen 443 ssl;
+        listen 127.0.0.1:443 ssl;
         server_name git.tsar.su;
 
         ssl_certificate /var/lib/acme/git.tsar.su/fullchain.pem;

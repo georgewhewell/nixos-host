@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
-  security.acme.certs."drone.tsar.su" = {
+  security.acme.certs."jupyter.tsar.su" = {
       email = "georgerw@gmail.com";
       webroot = "/var/www/challenges/";
   };
@@ -10,7 +10,7 @@
 
     server {
        listen 80;
-       server_name drone.tsar.su;
+       server_name jupyter.tsar.su;
 
        location /.well-known/acme-challenge/ {
            alias /var/www/challenges/.well-known/acme-challenge/;
@@ -23,15 +23,15 @@
 
     server {
         listen 127.0.0.1:443 ssl;
-        server_name drone.tsar.su;
+        server_name jupyter.tsar.su;
 
-        ssl_certificate /var/lib/acme/drone.tsar.su/fullchain.pem;
-        ssl_certificate_key /var/lib/acme/drone.tsar.su/key.pem;
+        ssl_certificate /var/lib/acme/jupyter.tsar.su/fullchain.pem;
+        ssl_certificate_key /var/lib/acme/jupyter.tsar.su/key.pem;
         ssl_session_cache shared:SSL:128m;
         ssl_session_timeout 10m;
 
         location / {
-            proxy_pass http://127.0.0.1:8005;
+            proxy_pass http://127.0.0.1:8888;
 
             proxy_set_header        Host            $host;
             proxy_set_header        X-Real-IP       $remote_addr;
@@ -40,19 +40,18 @@
             proxy_redirect     off;
 
             add_header Strict-Transport-Security "max-age=31536000";
+           proxy_set_header X-NginX-Proxy true;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
         }
     }
   '';
 
-  environment.etc.dronerc.text = ''
-DATABASE_DRIVER=postgres
-DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone?sslmode=disable
-REMOTE_DRIVER=gogs
-REMOTE_CONFIG=https://git.tsar.su?open=false
-SERVER_ADDR=0.0.0.0:8005
-'';
-
-  systemd.services.drone = {
+  systemd.services.jupyter = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -60,19 +59,15 @@ SERVER_ADDR=0.0.0.0:8005
       TimeoutStartSec = 0;
       Restart = "always";
       ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker pull drone/drone:0.4''
-        ''-${pkgs.docker}/bin/docker stop drone''
-        ''-${pkgs.docker}/bin/docker rm drone''
+        ''-${pkgs.docker}/bin/docker pull jupyter/scipy-notebook''
+        ''-${pkgs.docker}/bin/docker rm -f jupyter''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name drone \
-        --privileged \
-        --volume /var/lib/drone:/var/lib/drone \
-        --volume /var/run/docker.sock:/var/run/docker.sock \
-        --env-file /etc/dronerc \
-        --publish 127.0.0.1:8005:8005 \
-        drone/drone:0.4'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop drone'';
+        --name jupyter \
+        --publish 127.0.0.1:8888:8888 \
+        -e PASSWORD="blahg" \
+        jupyter/scipy-notebook'';
+      ExecStop = ''${pkgs.docker}/bin/docker stop jupyter'';
     };
   };
 

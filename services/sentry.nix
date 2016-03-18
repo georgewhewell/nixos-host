@@ -22,7 +22,7 @@
     }
 
     server {
-        listen 443 ssl;
+        listen 127.0.0.1:443 ssl;
         server_name sentry.tsar.su;
 
         ssl_certificate /var/lib/acme/sentry.tsar.su/fullchain.pem;
@@ -94,7 +94,6 @@
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --name sentry_workers \
-        -p 127.0.0.1:9000:9000 \
         -e SENTRY_URL_PREFIX=https://sentry.tsar.su \
         -e SENTRY_REDIS_HOST=172.17.0.1 \
         -e SENTRY_POSTGRES_HOST=172.17.0.1 \

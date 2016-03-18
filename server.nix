@@ -95,20 +95,22 @@ boot.kernel.sysctl = {
     };
 
   imports = [
-    <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
+   # <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
     ./nixos/16_03.nix
     ./kernels/latest.nix
 
     ./services/tinc.nix
     ./services/docker.nix
     ./services/openvpn.nix
+    ./services/jupyter.nix
+    ./services/sslh.nix
 
-    ./services/kinto.nix
+   # ./services/k8s.nix
     ./services/tor-relay.nix
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
-    ./services/collectd.nix
+   # ./services/collectd.nix
     ./services/grafana.nix
     ./services/nginx.nix
 
