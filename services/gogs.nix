@@ -40,6 +40,7 @@
             proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header        X-Forwarded-Proto $scheme;
             proxy_redirect          off;
+ 	    client_max_body_size 50M;
 
             add_header Strict-Transport-Security "max-age=31536000";
         }
