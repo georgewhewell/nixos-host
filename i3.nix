@@ -8,18 +8,13 @@
     i3lock    # screen lock
     i3status  # sys info
     scrot     # for screenshot
-    
-    # xorg.utilmacros
-    # xorg.xcursorgen
-    # xorg.xcursorthemes
   ];
 
   hardware.opengl.driSupport32Bit = true;
- 
+
   services.xserver = {
     enable = true;
     autorun = true;
-    videoDrivers = ["intel" "nvidia" ];
 
     windowManager = {
       i3.enable = true;
@@ -32,5 +27,5 @@
         i3status &
       '';
     };
-   };   
+   };
 }
