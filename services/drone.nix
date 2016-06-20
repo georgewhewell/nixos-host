@@ -59,20 +59,14 @@ SERVER_ADDR=0.0.0.0:8005
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
-      ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker pull drone/drone:0.4''
-        ''-${pkgs.docker}/bin/docker stop drone''
-        ''-${pkgs.docker}/bin/docker rm drone''
-      ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name drone \
+        --rm \
         --privileged \
         --volume /var/lib/drone:/var/lib/drone \
         --volume /var/run/docker.sock:/var/run/docker.sock \
         --env-file /etc/dronerc \
         --publish 127.0.0.1:8005:8005 \
-        drone/drone:0.4'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop drone'';
+        drone/drone:0.4.2'';
     };
   };
 

@@ -56,16 +56,13 @@
       Restart = "always";
       ExecStartPre = [
         ''-${pkgs.docker}/bin/docker pull gogs/gogs''
-        ''-${pkgs.docker}/bin/docker stop gogs''
-        ''-${pkgs.docker}/bin/docker rm gogs''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name gogs \
+        --rm \
         -p 127.0.0.1:3000:3000 \
         -p 0.0.0.0:2222:22 \
         -v /mnt/gogs:/data \
         gogs/gogs'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop gogs'';
     };
   };
 
