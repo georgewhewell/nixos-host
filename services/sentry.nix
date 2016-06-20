@@ -39,11 +39,11 @@
         keepalive_timeout 0;
 
         # use very aggressive timeouts
-        proxy_read_timeout 5s;
-        proxy_send_timeout 5s;
-        send_timeout 5s;
-        resolver_timeout 5s;
-        client_body_timeout 5s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+        send_timeout 15s;
+        resolver_timeout 15s;
+        client_body_timeout 15s;
 
         # buffer larger messages
         client_max_body_size 5m;
@@ -56,7 +56,7 @@
     }
   '';
 
-  systemd.services.sentry = {
+  systemd.services.sentry_web = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -65,10 +65,9 @@
       Restart = "always";
       ExecStartPre = [
         ''-${pkgs.docker}/bin/docker pull sentry''
-        ''-${pkgs.docker}/bin/docker rm -f sentry''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name sentry \
+        --rm \
         -p 127.0.0.1:9000:9000 \
         -e SENTRY_URL_PREFIX=https://sentry.tsar.su \
         -e SENTRY_REDIS_HOST=172.17.0.1 \
@@ -77,11 +76,11 @@
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
         -e SENTRY_SECRET_KEY=sentry \
-        sentry'';
-      ExecStop = ''${pkgs.docker}/bin/docker rm -f sentry'';
+        sentry run web'';
     };
   };
-  systemd.services.sentry_workers = {
+
+  systemd.services.sentry_worker = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -90,10 +89,9 @@
       Restart = "always";
       ExecStartPre = [
         ''-${pkgs.docker}/bin/docker pull sentry''
-        ''-${pkgs.docker}/bin/docker rm -f sentry_workers''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --name sentry_workers \
+        --rm \
         -e SENTRY_URL_PREFIX=https://sentry.tsar.su \
         -e SENTRY_REDIS_HOST=172.17.0.1 \
         -e SENTRY_POSTGRES_HOST=172.17.0.1 \
@@ -101,8 +99,31 @@
         -e SENTRY_DB_NAME=sentry \
         -e SENTRY_DB_PASSWORD=sentry \
         -e SENTRY_SECRET_KEY=sentry \
-        sentry sentry celery worker -B -c 4'';
-      ExecStop = ''${pkgs.docker}/bin/docker rm -f sentry_workers'';
+        sentry run worker'';
     };
   };
+
+  systemd.services.sentry_cron = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    requires = [ "docker.service" ];
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      ExecStartPre = [
+        ''-${pkgs.docker}/bin/docker pull sentry''
+      ];
+      ExecStart = ''${pkgs.docker}/bin/docker run \
+        --rm \
+        -e SENTRY_URL_PREFIX=https://sentry.tsar.su \
+        -e SENTRY_REDIS_HOST=172.17.0.1 \
+        -e SENTRY_POSTGRES_HOST=172.17.0.1 \
+        -e SENTRY_DB_USER=sentry \
+        -e SENTRY_DB_NAME=sentry \
+        -e SENTRY_DB_PASSWORD=sentry \
+        -e SENTRY_SECRET_KEY=sentry \
+        sentry run cron'';
+    };
+  };
+
 }
