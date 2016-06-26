@@ -40,12 +40,22 @@
         proxy_set_header   X-Forwarded-For      $remote_addr;
         proxy_redirect     off;
 
-        client_max_body_size 128m;
+        client_max_body_size 10g;
 
         location / {
-          proxy_pass        http://localhost:8050;
-          add_header Strict-Transport-Security "max-age=31536000";
+            if ($request_method = PUT) {
+                rewrite ^ /PUT$request_uri;
+            }
+            proxy_pass        http://localhost:8050;
+            add_header Strict-Transport-Security "max-age=31536000";
         }
+
+        location /PUT/ {
+            internal;
+            proxy_pass        http://localhost:8050;
+            add_header Strict-Transport-Security "max-age=31536000";
+        }
+      }
     }
 
     server {
