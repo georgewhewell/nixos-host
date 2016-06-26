@@ -46,7 +46,7 @@
 
   environment.etc.dronerc.text = ''
 DATABASE_DRIVER=postgres
-DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone?sslmode=disable
+DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone_04?sslmode=disable
 REMOTE_DRIVER=gogs
 REMOTE_CONFIG=https://git.tsar.su?open=false
 SERVER_ADDR=0.0.0.0:8005
