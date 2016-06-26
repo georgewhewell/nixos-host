@@ -31,32 +31,23 @@ boot.kernel.sysctl = {
     tmux
     iptables
     lm_sensors
-    libvirt
     zfs
     mosh
   ];
 
   security.sudo.wheelNeedsPassword = false;
   services.openssh.enable = true;
-  services.munin-cron.enable = true;
-  services.munin-cron.hosts = ''
-   [tsar.su]
-   address localhost
-   [nixhost]
-   address ssh://86.3.184.2/run/current-system/sw/bin/nc localhost 4949
-  '';
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
   services.postgresql.authentication = ''
     host  all  all 172.17.0.0/16 md5
   '';
-  services.munin-node.enable = true;
   services.redis.enable = true;
 
-  services.influxdb.enable = true;
-  services.influxdb.extraConfig.collectd.enabled = true;
+  #services.influxdb.enable = true;
+  #services.influxdb.extraConfig.collectd.enabled = true;
 
-  services.fail2ban.enable = true;
+  # services.fail2ban.enable = true;
   # services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
@@ -67,34 +58,38 @@ boot.kernel.sysctl = {
     { device = "zpool/boot";
       fsType = "zfs";
     };
-
   fileSystems."/" =
     { device = "zpool/root/nixos";
       fsType = "zfs";
     };
   fileSystems."/var/lib/docker" =
-    { device = "zpool/docker";
-      fsType = "zfs";
+    { device = "/dev/zpool/docker_ext4";
+      fsType = "ext4";
+    };
+  fileSystems."/var/lib/kubelet" =
+    { device = "/dev/zpool/kubelet";
+      fsType = "xfs";
     };
 
   imports = [
-   # <nixpkgs/nixos/modules/installer/scan/not-detected.nix>
     ./nixos/16_03.nix
     ./kernels/latest.nix
 
-    ./services/tinc.nix
+#    ./services/tinc.nix
     ./services/docker.nix
-    ./services/openvpn.nix
+#    ./services/openvpn.nix
+#    ./services/openvpn-native.nix
     ./services/jupyter.nix
     ./services/sslh.nix
 
-   # ./services/k8s.nix
+    #./services/k8s.nix
+    ./services/tor-client.nix
     ./services/tor-relay.nix
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
    # ./services/collectd.nix
-    ./services/grafana.nix
+#    ./services/grafana.nix
     ./services/nginx.nix
 
     ./users.nix
