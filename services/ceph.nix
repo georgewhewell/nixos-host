@@ -44,7 +44,7 @@
     }
   '';
 
-  systemd.services.ceph_mon = {
+  systemd.services.ceph = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
@@ -54,49 +54,13 @@
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --rm \
         --net=host \
-        -v /zpool/ceph/etc:/etc/ceph \
-        -v /zpool/ceph/mon:/var/lib/ceph \
-        -e MON_IP=172.17.0.1 \
-        -e CEPH_PUBLIC_NETWORK=176.9.138.4 \
-        ceph/daemon mon
+        -v /zpool/ceph/demostack/etc:/etc/ceph \
+        -v /zpool/ceph/demostack/ceph:/var/lib/ceph \
+        -e MON_IP=176.9.138.4 \
+        -e RGW_CIVETWEB_PORT=8050 \
+        -e CEPH_NETWORK=172.17.0.1/32 \
+        ceph/demo
         '';
-    };
-  };
-
-  systemd.services.ceph_osd = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    requires = [ "docker.service" ];
-    serviceConfig = {
-      TimeoutStartSec = 0;
-      Restart = "always";
-      ExecStart = ''${pkgs.docker}/bin/docker run \
-        --rm \
-        --net=host \
-        -v /zpool/ceph/etc:/etc/ceph \
-        -v /zpool/ceph/osd:/var/lib/ceph/osd \
-        -e MON_IP=172.17.0.1 \
-        -v /dev/:/dev/ \
-        ceph/daemon osd
-        '';
-    };
-  };
-
-  systemd.services.ceph_mds = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    requires = [ "docker.service" ];
-    serviceConfig = {
-      TimeoutStartSec = 0;
-      Restart = "always";
-      ExecStart = ''${pkgs.docker}/bin/docker run \
-        --rm \
-        --net=host \
-        -v /zpool/ceph/mds:/var/lib/ceph \
-        -v /zpool/ceph/etc:/etc/ceph \
-        -e CEPHFS_CREATE=1 \
-        -e DS_NAME=tsar \
-        ceph/daemon mds'';
     };
   };
 
