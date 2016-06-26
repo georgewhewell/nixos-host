@@ -38,7 +38,7 @@
         client_max_body_size 128m;
 
         location / {
-          proxy_pass        http://localhost:6008;
+          proxy_pass        http://localhost:8050;
           add_header Strict-Transport-Security "max-age=31536000";
         }
     }
