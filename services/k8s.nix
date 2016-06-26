@@ -11,47 +11,32 @@
     };
   };
 
-  services.etcd = {
-    listenPeerUrls = ["http://0.0.0.0:7001"];
-    initialAdvertisePeerUrls = ["http://localhost:7001"];
-    initialCluster = ["master=http://localhost:7001"];
-  };
-
-  services.dockerRegistry.enable = true;
-  services.dockerRegistry.host = "0.0.0.0";
-  services.dockerRegistry.port = 5000;
-
-  systemd.services.kubelet = {
+  systemd.services.hyperkube = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     requires = [ "docker.service" ];
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
-      ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker rm -f kubelet''
-      ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
+        --rm \
         --volume=/:/rootfs:ro \
-        --volume=/sys:/sys:ro \
-        --volume=/var/lib/docker/:/var/lib/docker:ro \
+        --volume=/sys:/sys:rw \
+        --volume=/var/lib/docker/:/var/lib/docker:rw \
         --volume=/var/lib/kubelet/:/var/lib/kubelet:rw \
         --volume=/var/run:/var/run:rw \
         --net=host \
         --pid=host \
-        --privileged=true \
-        --name k8s_master \
-        gcr.io/google_containers/hyperkube-amd64:v1.2.0-alpha.7 \
+        --privileged \
+        gcr.io/google_containers/hyperkube-amd64:v1.3.0-alpha.5 \
           /hyperkube kubelet \
-            --containerized \
-            --hostname-override="127.0.0.1" \
             --address="0.0.0.0" \
+            --hostname-override="127.0.0.1" \
             --cluster-dns=10.0.0.10 \
             --cluster-domain=cluster.local \
             --api-servers=http://localhost:8080 \
             --config=/etc/kubernetes/manifests \
             --allow-privileged=true --v=2'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop k8s_master'';
     };
   };
 }
