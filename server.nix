@@ -6,14 +6,6 @@
   networking.hostId = "cd499340";
   networking.hostName = "tsar.su";
 
-boot.kernel.sysctl = {
-"net.core.wmem_max"=12582912;
-"net.core.rmem_max"=12582912;
-"net.ipv4.tcp_rmem"="10240 87380 12582912";
-"net.ipv4.tcp_wmem"="10240 87380 12582912";
-"net.core.netdev_max_backlog"=5000;
-};
-
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
   networking.firewall.trustedInterfaces = [ "docker0" ];
@@ -44,11 +36,8 @@ boot.kernel.sysctl = {
   '';
   services.redis.enable = true;
 
-  #services.influxdb.enable = true;
-  #services.influxdb.extraConfig.collectd.enabled = true;
-
-  # services.fail2ban.enable = true;
-  # services.fail2ban.jails.ssh-iptables = "enabled = true";
+  services.fail2ban.enable = true;
+  services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
   boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
@@ -74,22 +63,14 @@ boot.kernel.sysctl = {
   imports = [
     ./nixos/16_03.nix
     ./kernels/latest.nix
-
-#    ./services/tinc.nix
     ./services/docker.nix
-#    ./services/openvpn.nix
-#    ./services/openvpn-native.nix
     ./services/jupyter.nix
     ./services/sslh.nix
-
-    #./services/k8s.nix
-    ./services/tor-client.nix
     ./services/tor-relay.nix
     ./services/gogs.nix
     ./services/drone.nix
     ./services/sentry.nix
-   # ./services/collectd.nix
-#    ./services/grafana.nix
+    ./services/ceph.nix
     ./services/nginx.nix
 
     ./users.nix
