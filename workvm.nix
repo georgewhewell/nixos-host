@@ -13,6 +13,7 @@
   boot.loader.grub.device = "/dev/sda";
   boot.initrd.checkJournalingFS = false;
 
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   networking.hostName = "nixos";
   networking.proxy.default = null;
 
@@ -32,20 +33,12 @@
       fsType = "ext4";
     };
 
-  virtualisation.virtualbox.guest.enable = true;
   virtualisation.docker.enable = true;
-
-  services.openssh.enable = true;
-  services.postgresql.enable = true;
-  services.postgresql.enableTCPIP = true;
-  services.postgresql.authentication = ''
-    host  all  all 172.17.0.0/16 md5
-  '';
-
+ 
   imports = [
     ./i3.nix
     ./users.nix
-    ./kernels/latest.nix
     ./nixos/16_03.nix
+    ./roles/development.nix
   ];
 }
