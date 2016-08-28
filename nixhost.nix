@@ -3,7 +3,6 @@
 {
   nixpkgs.config.allowUnfree = true;
 
-
   networking.hostName = "nixhost";
   networking.hostId = "dd499341";
 
@@ -91,19 +90,20 @@
   imports = [
     ./i3.nix
     ./nixos/16_03.nix
+    ./modules/custom-packages.nix
 
-    ./network/wlan.nix
-    ./services/tinc.nix
+#   ./network/wlan.nix
+#   ./services/tinc.nix
 
-    ./services/collectd.nix
-    ./services/fancontrol.nix
-    ./services/samba.nix
-    ./services/docker.nix
-    ./services/sonarr.nix
-    ./services/couchpotato.nix
-    ./services/transmission.nix
-    ./services/upnpc.nix
-    ./services/ethminer.nix
+#   ./services/collectd.nix
+#   ./services/fancontrol.nix
+#   ./services/samba.nix
+#   ./services/docker.nix
+#   ./services/sonarr.nix
+#   ./services/couchpotato.nix
+#   ./services/transmission.nix
+#   ./services/upnpc.nix
+#   ./services/ethminer.nix
 
     ./users.nix
   ];
