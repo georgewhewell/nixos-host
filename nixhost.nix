@@ -1,12 +1,15 @@
-{ config, lib, pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
   nixpkgs.config.allowUnfree = true;
 
   networking.hostName = "nixhost";
-  networking.hostId = "dd499341";
+  networking.hostId = "ed499341";
 
   time.timeZone = "Europe/London";
+  
+  hardware.enableAllFirmware = true;
+  hardware.firmware = [ pkgs.si2168_02 ];
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
@@ -24,44 +27,32 @@
     smartmontools
     libvirt
     zfs
+si2168_02
   ];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_4_4;
 
   services.avahi.enable = true;
   services.avahi.publish.enable = true;
   services.avahi.publish.addresses = true;
   services.avahi.nssmdns = true;
+  services.avahi.interfaces = [ "enp1s0" ];
+
+  networking.firewall.enable = false;
 
   services.openssh.enable = true;
-  services.thermald.enable = true;
-  services.munin-node.enable = true;
-
-  hardware.pulseaudio.enable = true;
-
-  services.redshift = {
-    enable = true;
-    latitude = "51.5";
-    longitude = "-0.1";
-  };
+#  services.thermald.enable = true;
+#  services.munin-node.enable = true;
 
   services.fail2ban.enable = true;
 
-  boot.initrd.availableKernelModules = [ "ehci_pci" "ahci" "nvme" "dm_mod" "zfs" ];
+  boot.initrd.availableKernelModules = [ "ehci_pci" "ahci" ];
 
-  fileSystems."/boot" =
-    { device = "/dev/nvme0n1p1";
-      fsType = "vfat";
-    };
   fileSystems."/" =
+    { device = "/dev/sda3";
+      fsType = "ext4";
+    };
+  fileSystems."/mnt/oldnix" =
     { device = "zpool/nixos";
-      fsType = "zfs";
-    };
-  fileSystems."/mnt/storage" =
-    { device = "zpool/storage";
-      fsType = "zfs";
-    };
-  fileSystems."/var/lib/docker" =
-    { device = "zpool/docker";
       fsType = "zfs";
     };
   fileSystems."/mnt/Home" =
@@ -72,23 +63,16 @@
     { device = "zpool/Media";
       fsType = "zfs";
     };
-
-  fileSystems."/config" =
-    { device = "/dev/disk/by-id/dm-name-sm951-config";
-      fsType = "btrfs";
+  fileSystems."/mnt/storage" =
+    { device = "zpool/storage";
+      fsType = "zfs";
     };
 
-  boot.kernelParams = [
-    "i915.preliminary_hw_support=1"
-    "usbhid.mousepoll=1"
-  ];
-
-  boot.loader.gummiboot.enable = true;
-  boot.loader.gummiboot.timeout = 1;
-  boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.grub.enable = true;
+  boot.loader.grub.devices = [ "/dev/sda" ];
 
   imports = [
-    ./i3.nix
+ #   ./i3.nix
     ./nixos/16_03.nix
     ./modules/custom-packages.nix
 
@@ -97,8 +81,9 @@
 
 #   ./services/collectd.nix
 #   ./services/fancontrol.nix
-#   ./services/samba.nix
-#   ./services/docker.nix
+    ./services/samba.nix
+    ./services/docker.nix
+    ./services/timemachine.nix
 #   ./services/sonarr.nix
 #   ./services/couchpotato.nix
 #   ./services/transmission.nix
