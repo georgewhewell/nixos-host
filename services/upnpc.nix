@@ -1,6 +1,9 @@
 { config, lib, pkgs, ... }:
 
 {
+environment.systemPackages = with pkgs; [
+	miniupnpc
+];
       systemd.services.upnpc_map =
       {
         description = "Run upnpc to redirect port 22";

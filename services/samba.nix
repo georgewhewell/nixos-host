@@ -9,16 +9,12 @@
     map to guest = bad user
     '';
     shares = {
-      nixos =
-        { path = "/etc/nixos";
-          "read only" = "no";
-          /*"valid_users" = "%S";*/
-        };
       Home =
         { path = "/mnt/Home";
           "read only" = "no";
           "valid users" = "grw";
           "browsable" = "yes";
+          "max connections" = "20000";
         };
       Media =
         { path = "/mnt/Media";
@@ -26,6 +22,7 @@
           "public" = "yes";
           "browsable" = "yes";
           "guest ok" = "yes";
+          "max connections" = "20000";
         };
     };
   };

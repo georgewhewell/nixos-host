@@ -43,7 +43,7 @@ nixpkgs.config.allowUnfree = true;
   ];
 
   services.xserver = {
-    enable = true;
+    enable = false;
     autorun = true;
 
     windowManager = {

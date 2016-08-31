@@ -40,7 +40,7 @@
 
     <!-- Clover Image -->
     <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
+      <driver name='qemu' type='raw' cache='host'/>
       <source dev='/var/lib/libvirt/images/clover-debug-test.dd'/>
       <target dev='sda' bus='sata'/>
       <address type='drive' controller='0' bus='0' target='0' unit='1'/>

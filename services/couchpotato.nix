@@ -10,21 +10,19 @@
       Restart = "always";
       ExecStartPre = [
         ''-${pkgs.docker}/bin/docker pull needo/couchpotato''
-        ''-${pkgs.docker}/bin/docker stop couchpotato''
-        ''-${pkgs.docker}/bin/docker rm couchpotato''
+        ''-${pkgs.docker}/bin/docker rm -f couchpotato''
       ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
-        --restart always \
-        --name couchpotato \
+        --rm \
         --net="host" \
         -e EDGE=1 \
         -p 5050:5050 \
         -v /etc/localtime:/etc/localtime:ro \
         -v /mnt/Media/Movies:/movies \
-        -v /mnt/storage/downloads:/downloads \
-        -v /config/couchpotato_config:/config \
+        -v /mnt/storage/downloads:/mnt/storage/downloads \
+        -v /mnt/oldnix/home/grw/couchpotato_config:/config \
         needo/couchpotato'';
-      ExecStop = ''${pkgs.docker}/bin/docker stop couchpotato'';
+      ExecStop = ''${pkgs.docker}/bin/docker rm -f couchpotato'';
     };
   };
 }

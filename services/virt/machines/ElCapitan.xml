@@ -47,11 +47,11 @@
   <on_crash>destroy</on_crash>
   <devices>
     <!-- Adds x-vga=on to GFX Passthu-->
-    <emulator>/usr/bin/qemu-kvm-nvidia-vga</emulator>
+    <emulator>/run/current-system/sw/bin/qemu-system-x86_64</emulator>
 
     <!-- Clover Image -->
     <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='none' io='native'/>
+      <driver name='qemu' type='raw' io='native'/>
       <source dev='/var/lib/libvirt/images/clover-debug-test.dd'/>
       <target dev='sda' bus='sata'/>
       <address type='drive' controller='0' bus='0' target='0' unit='1'/>
@@ -88,22 +88,23 @@
     <!-- Host VLAN -->
     <interface type='network'>
       <mac address='52:54:00:be:c4:10'/>
-      <source network='VLAN-Closed' bridge='virbr1'/>
+      <source network='default' bridge='virbr0'/>
+      <forward mode="route" dev="wlp4s0"/>
       <target dev='vnet0'/>
-      <model type='e1000-82545em'/>
+      <model type='vmxnet3'/>
       <alias name='net0'/>
       <address type='pci' domain='0x0000' bus='0x02' slot='0x02' function='0x0'/>
     </interface>
 
     <!-- Routed VLAN -->
-    <interface type='network'>
+    <!-- <interface type='network'>
       <mac address='52:54:00:39:d9:15'/>
       <source network='VLAN-Open' bridge='virbr2'/>
       <target dev='vnet1'/>
-      <model type='e1000-82545em'/>
+      <model type='vmxnet3'/>
       <alias name='net1'/>
       <address type='pci' domain='0x0000' bus='0x02' slot='0x09' function='0x0'/>
-    </interface>
+    </interface> -->
 
     <!-- GFX -->
     <hostdev mode='subsystem' type='pci' managed='yes'>

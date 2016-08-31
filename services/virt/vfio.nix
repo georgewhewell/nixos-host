@@ -46,24 +46,24 @@
     ];
 
     boot.blacklistedKernelModules = [
-#        "nouveau"
+        "nouveau"
+        "nvidia"
     ];
 
     boot.kernelParams = [
         # Use IOMMU
         "intel_iommu=on"
-         "i915.preliminary_hw_support=1"
+        "i915.preliminary_hw_support=1"
         "vfio_iommu_type1.allow_unsafe_interrupts=1"
 
         # Assign devices to vfio
-        "vfio-pci.ids=a123,10de:17c8,10de:0fb0,8086:a170,8086:a123,8086:15b8,8086:a12f"
+        "vfio-pci.ids=10de:17c8,10de:0fb0,8086:a170,8086:a123,8086:15b8,8086:a12f"
 
         # Needed by OS X
         "kvm.ignore_msrs=1"
 
         # Only schedule cpus 0,1
   #      "isolcpus=1-3,5-7"
-
     ];
 
 }
