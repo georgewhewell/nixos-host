@@ -27,7 +27,8 @@
     smartmontools
     libvirt
     zfs
-si2168_02
+    si2168_02
+    virtmanager
   ];
   boot.kernelPackages = pkgs.linuxPackages_4_4;
 
