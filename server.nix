@@ -8,7 +8,7 @@
 
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
-  networking.firewall.trustedInterfaces = [ "docker0" ];
+  networking.firewall.trustedInterfaces = [ "docker0" "virbr_kub_gl" "virbr_kub_pods" ];
   networking.firewall.allowedUDPPorts = [ 25826 ];
 
   i18n = {
@@ -25,19 +25,25 @@
     lm_sensors
     zfs
     mosh
+    libvirt
   ];
 
   security.sudo.wheelNeedsPassword = false;
   services.openssh.enable = true;
+  services.openssh.forwardX11 = true;
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
   services.postgresql.authentication = ''
     host  all  all 172.17.0.0/16 md5
   '';
-  services.redis.enable = true;
 
-  services.fail2ban.enable = true;
-  services.fail2ban.jails.ssh-iptables = "enabled = true";
+  virtualisation.libvirtd.enable = true;
+
+  nix.maxJobs = lib.mkDefault 8;
+  #services.redis.enable = true;
+
+  #services.fail2ban.enable = true;
+  #services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
   boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
@@ -51,26 +57,18 @@
     { device = "zpool/root/nixos";
       fsType = "zfs";
     };
-  fileSystems."/var/lib/docker" =
-    { device = "/dev/zpool/docker_ext4";
-      fsType = "ext4";
-    };
-  fileSystems."/var/lib/kubelet" =
-    { device = "/dev/zpool/kubelet";
-      fsType = "xfs";
-    };
 
   imports = [
     ./nixos/16_03.nix
     ./kernels/latest.nix
     ./services/docker.nix
-    ./services/jupyter.nix
+#    ./services/jupyter.nix
     ./services/sslh.nix
-    ./services/tor-relay.nix
+#    ./services/tor-relay.nix
     ./services/gogs.nix
-    ./services/drone.nix
-    ./services/sentry.nix
-    ./services/ceph.nix
+#    ./services/drone.nix
+#    ./services/sentry.nix
+#    ./services/ceph.nix
     ./services/nginx.nix
 
     ./users.nix
