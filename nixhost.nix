@@ -1,97 +1,48 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  nixpkgs.config.allowUnfree = true;
+  # Use the systemd-boot EFI boot loader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixhost";
-  networking.hostId = "ed499341";
+  boot.initrd.availableKernelModules = [ "xhci_pci" "ehci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
+  boot.kernelModules = [ "kvm-intel" ];
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.extraModulePackages = [ ];
 
   time.timeZone = "Europe/London";
-  
-  hardware.enableAllFirmware = true;
-  hardware.firmware = [ pkgs.si2168_02 ];
 
-  i18n = {
-    consoleFont = "Lat2-Terminus16";
-    defaultLocale = "en_GB.UTF-8";
-  };
-
-  environment.systemPackages = with pkgs; [
-    vim
-    git
-    htop
-    tmux
-    iptables
-    lm_sensors
-    sdparm
-    smartmontools
-    libvirt
-    zfs
-    si2168_02
-    virtmanager
-  ];
-  boot.kernelPackages = pkgs.linuxPackages_4_4;
-
-  services.avahi.enable = true;
-  services.avahi.publish.enable = true;
-  services.avahi.publish.addresses = true;
-  services.avahi.nssmdns = true;
-  services.avahi.interfaces = [ "enp1s0" ];
-
-  networking.firewall.enable = false;
-
-  services.openssh.enable = true;
-#  services.thermald.enable = true;
-#  services.munin-node.enable = true;
-
-  services.fail2ban.enable = true;
-
-  boot.initrd.availableKernelModules = [ "ehci_pci" "ahci" ];
+  networking.hostName = "nixhost";
+  networking.hostId = "deadbeef";
+  #networking.bridges.br0 = {
+  #  interfaces = ["eno1" "eno2" "eno3" "eno4"];
+  #};
 
   fileSystems."/" =
-    { device = "/dev/sda3";
-      fsType = "ext4";
-    };
-  fileSystems."/mnt/oldnix" =
-    { device = "zpool/nixos";
-      fsType = "zfs";
-    };
-  fileSystems."/mnt/Home" =
-      { device = "zpool/Home";
-        fsType = "zfs";
-      };
-  fileSystems."/mnt/Media" =
-    { device = "zpool/Media";
-      fsType = "zfs";
-    };
-  fileSystems."/mnt/storage" =
-    { device = "zpool/storage";
+    { device = "fpool/root/nixos";
       fsType = "zfs";
     };
 
-  boot.loader.grub.enable = true;
-  boot.loader.grub.devices = [ "/dev/sda" ];
+  fileSystems."/boot" =
+    { device = "/dev/disk/by-uuid/1A02-B98B";
+      fsType = "vfat";
+    };
 
-  imports = [
- #   ./i3.nix
-    ./nixos/16_03.nix
-    ./modules/custom-packages.nix
+  swapDevices = [ ];
 
-#   ./network/wlan.nix
-#   ./services/tinc.nix
+  nix.maxJobs = lib.mkDefault 24;
 
-#   ./services/collectd.nix
-#   ./services/fancontrol.nix
-    ./services/samba.nix
-    ./services/docker.nix
-    ./services/timemachine.nix
-#   ./services/sonarr.nix
-#   ./services/couchpotato.nix
-#   ./services/transmission.nix
-#   ./services/upnpc.nix
-#   ./services/ethminer.nix
+  # Enable the OpenSSH daemon.
+   services.openssh.enable = true;
 
-    ./users.nix
-  ];
+  # Enable the X11 windowing system.
+  services.xserver.enable = false;
 
+  # The NixOS release to be compatible with for stateful data such as databases.
+  system.stateVersion = "17.03";
+
+  imports =
+    [
+      ./users.nix
+    ];
 }
