@@ -40,7 +40,8 @@
   virtualisation.libvirtd.enable = true;
 
   nix.maxJobs = lib.mkDefault 8;
-  #services.redis.enable = true;
+  services.redis.enable = true;
+  services.redis.bind = "172.17.0.1";
 
   #services.fail2ban.enable = true;
   #services.fail2ban.jails.ssh-iptables = "enabled = true";
@@ -67,8 +68,8 @@
 #    ./services/tor-relay.nix
     ./services/gogs.nix
 #    ./services/drone.nix
-#    ./services/sentry.nix
-#    ./services/ceph.nix
+    ./services/sentry.nix
+    ./services/ceph.nix
     ./services/nginx.nix
 
     ./users.nix
