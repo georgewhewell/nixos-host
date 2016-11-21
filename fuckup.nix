@@ -53,12 +53,12 @@
   services.avahi.publish.enable = true;
   services.avahi.publish.addresses = true;
   services.avahi.nssmdns = true;
-  services.avahi.interfaces = ["enp2s0f1"];
+  services.avahi.interfaces = ["enp1s0f1"];
 
   virtualisation.libvirtd.enable = true;
 
   networking.bridges.br0 = {
-    interfaces = ["enp2s0f0" "enp2s0f1" "enp0s31f6"];
+    interfaces = ["enp1s0f0" "enp1s0f1"];
   };
 
   # The NixOS release to be compatible with for stateful data such as databases.
