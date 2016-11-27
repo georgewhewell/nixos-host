@@ -1,6 +1,14 @@
 { config, lib, pkgs, ... }:
 
 {
+
+  fileSystems."/var/lib/sonarr" =
+    { device = "fpool/root/config/sonarr";
+      fsType = "zfs";
+    };
+
+  networking.firewall.allowedTCPPorts = [ 8989 ];
+
   systemd.services.sonarr = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
@@ -8,21 +16,15 @@
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
-      ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker pull linuxserver/sonarr''
-        ''-${pkgs.docker}/bin/docker rm -f sonarr''
-      ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --rm \
         --net="host" \
-        -p 8989:8989 \
-        -e PUID=1000 -e PGID=100 \
-        -v /dev/rtc:/dev/rtc:ro \
+        -e PUID=${toString config.ids.uids.transmission} \
+        -e PGID=${toString config.ids.uids.transmission} \
         -v /mnt/Media/TV:/tv \
-        -v /mnt/storage/downloads/.sonarr:/downloads \
-        -v /mnt/oldnix/home/grw/sonarr_config:/config \
+        -v /mnt/Media/downloads:/downloads \
+        -v /var/lib/sonarr:/config \
         linuxserver/sonarr'';
-      ExecStop = ''${pkgs.docker}/bin/docker rm -f sonarr'';
     };
   };
 }
