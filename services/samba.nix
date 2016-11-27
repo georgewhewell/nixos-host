@@ -1,5 +1,21 @@
 { config, lib, pkgs, ... }:
+
 {
+
+  fileSystems."/mnt/Media" =
+    { device = "bpool/root/Media";
+      fsType = "zfs";
+    };
+
+  fileSystems."/mnt/Home" =
+    { device = "bpool/root/Home";
+      fsType = "zfs";
+    };
+
+  networking.firewall.allowPing = true;
+  networking.firewall.allowedTCPPorts = [ 445 139 ];
+  networking.firewall.allowedUDPPorts = [ 137 138 ];
+
   services.samba = {
     enable = true;
     syncPasswordsByPam = true;

@@ -1,6 +1,13 @@
 { config, lib, pkgs, ... }:
 
 {
+  networking.firewall.allowedTCPPorts = [ 5050 ];
+
+  fileSystems."/var/lib/couchpotato" =
+    { device = "fpool/root/config/couchpotato";
+      fsType = "zfs";
+    };
+
   systemd.services.couchpotato = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
@@ -8,21 +15,16 @@
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
-      ExecStartPre = [
-        ''-${pkgs.docker}/bin/docker pull needo/couchpotato''
-        ''-${pkgs.docker}/bin/docker rm -f couchpotato''
-      ];
       ExecStart = ''${pkgs.docker}/bin/docker run \
         --rm \
-        --net="host" \
-        -e EDGE=1 \
-        -p 5050:5050 \
-        -v /etc/localtime:/etc/localtime:ro \
+        --net=host \
+        -e TZ=Europe/London \
+        -e PUID=${toString config.ids.uids.transmission} \
+        -e PGID=${toString config.ids.gids.transmission} \
         -v /mnt/Media/Movies:/movies \
-        -v /mnt/storage/downloads:/mnt/storage/downloads \
-        -v /mnt/oldnix/home/grw/couchpotato_config:/config \
-        needo/couchpotato'';
-      ExecStop = ''${pkgs.docker}/bin/docker rm -f couchpotato'';
+        -v /mnt/Media/downloads:/downloads \
+        -v /var/lib/couchpotato:/config \
+        linuxserver/couchpotato'';
     };
   };
 }
