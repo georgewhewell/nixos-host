@@ -49,17 +49,24 @@
   services.avahi.publish.enable = true;
   services.avahi.publish.addresses = true;
   services.avahi.publish.userServices = true;
+  services.avahi.publish.domain = true;
   services.avahi.nssmdns = true;
   services.avahi.interfaces = ["br0"];
 
   # The NixOS release to be compatible with for stateful data such as databases.
   system.stateVersion = "17.03";
 
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = true;
+    "net.ipv6.conf.all.forwarding" = true;
+  };
+
   imports =
     [
       ./users.nix
       ./modules/custom-packages.nix
-      ./services/unifi.nix
+      ./containers/unifi.nix
+      ./containers/couchpotato.nix
       ./services/nfs.nix
       ./services/grafana.nix
       ./services/prometheus.nix
@@ -68,7 +75,6 @@
       ./services/transmission.nix
       ./services/docker.nix
       ./services/cardigann.nix
-      ./services/couchpotato.nix
       ./services/sonarr.nix
       ./services/plex.nix
     ];
