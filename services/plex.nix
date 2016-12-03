@@ -8,7 +8,7 @@
     };
 
   networking.firewall.allowedTCPPorts = [ 32400 32469 3005 ];
-  networking.firewall.allowedUDPPorts = [ 5353 32410 32412 32413 32414 ]
+  networking.firewall.allowedUDPPorts = [ 5353 32410 32412 32413 32414 ];
 
   systemd.services.plex = {
     wantedBy = [ "multi-user.target" ];
