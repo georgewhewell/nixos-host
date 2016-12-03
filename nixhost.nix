@@ -72,5 +72,6 @@
       ./services/cardigann.nix
       ./services/couchpotato.nix
       ./services/sonarr.nix
+      ./services/plex.nix
     ];
 }
