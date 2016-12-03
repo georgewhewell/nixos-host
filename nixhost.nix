@@ -67,6 +67,7 @@
       ./modules/custom-packages.nix
       ./containers/unifi.nix
       ./containers/couchpotato.nix
+      ./containers/sonarr.nix
       ./services/nfs.nix
       ./services/grafana.nix
       ./services/prometheus.nix
@@ -75,7 +76,6 @@
       ./services/transmission.nix
       ./services/docker.nix
       ./services/cardigann.nix
-      ./services/sonarr.nix
       ./services/plex.nix
     ];
 }
