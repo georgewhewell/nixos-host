@@ -1,8 +1,6 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  networking.firewall.allowedTCPPorts = [ 5050 ];
-
   fileSystems."/var/lib/sonarr" =
     { device = "fpool/root/config/sonarr";
       fsType = "zfs";
@@ -33,15 +31,13 @@
 
       networking.hostName = "sonarr";
       networking.firewall = {
-        enable = true;
-        allowedTCPPorts = [ 80 8989 ];
+        enable = false;
         extraCommands = ''
           ${pkgs.iptables}/bin/iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8989
+          ${pkgs.iptables}/bin/iptables -t nat -A OUTPUT -o lo -p tcp --dport 80 -j REDIRECT --to-port 8989
         '';
       };
-
       networking.interfaces.eth0.useDHCP = true;
-
       services.sonarr.enable = true;
     };
   };

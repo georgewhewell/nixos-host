@@ -59,6 +59,7 @@
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = true;
     "net.ipv6.conf.all.forwarding" = true;
+    "net.ipv4.conf.all.proxy_arp" = true;
   };
 
   imports =
@@ -69,14 +70,13 @@
       ./containers/couchpotato.nix
       ./containers/sonarr.nix
       ./containers/plex.nix
+      ./services/k8s.nix
       ./services/nfs.nix
+      ./services/netatalk.nix
       ./services/grafana.nix
       ./services/prometheus.nix
       ./services/dlna.nix
       ./services/samba.nix
       ./services/transmission.nix
-      ./services/docker.nix
-      ./services/cardigann.nix
-
     ];
 }
