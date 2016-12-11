@@ -8,8 +8,6 @@
 
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
-  networking.firewall.trustedInterfaces = [ "docker0" ];
-  networking.firewall.allowedUDPPorts = [ 25826 ];
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
@@ -38,11 +36,6 @@
   '';
 
   nix.maxJobs = lib.mkDefault 8;
-  services.redis.enable = true;
-  services.redis.bind = "172.17.0.1";
-
-  #services.fail2ban.enable = true;
-  #services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
   boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
@@ -60,12 +53,7 @@
   imports = [
     ./nixos/16_03.nix
     ./kernels/latest.nix
-    ./services/docker.nix
-    ./services/sslh.nix
-    ./services/gogs.nix
-    ./services/sentry.nix
-    ./services/nginx.nix
-
+    ./services/k8s.nix
     ./users.nix
   ];
 }
