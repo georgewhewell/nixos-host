@@ -5,8 +5,8 @@ stdenv.mkDerivation rec {
   version = "master";
 
   src = fetchgit {
-    sha256 = "1khx6q9pl3pl0hwfiq8f3bd711hdwrbq2r2yk5hpbdzx2i2sa6z8";
-    rev = "405779047035723bd015fdd51b19379884f53b36";
+    sha256 = "0f899j6wc7ip5m8lyhwixhpjiw6gmswc62za636f8kkiylsshrxj";
+    rev = "b538f9a08db9a0be1af2f298727834edeafa322e";
     url = "https://github.com/CouchPotato/CouchPotatoServer.git";
   };
 
