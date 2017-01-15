@@ -23,6 +23,7 @@
     extraConfig = ''
     guest account = nobody
     map to guest = bad user
+    allow insecure wide links = yes
     '';
     shares = {
       Home =
@@ -31,6 +32,8 @@
           "valid users" = "grw";
           "browsable" = "yes";
           "max connections" = "20000";
+          "follow symlinks" = "yes";
+          "wide links" = "yes";
         };
       Media =
         { path = "/mnt/Media";
