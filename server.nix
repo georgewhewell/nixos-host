@@ -8,8 +8,6 @@
 
   time.timeZone = "Europe/London";
   networking.firewall.enable = true;
-  networking.firewall.trustedInterfaces = [ "docker0" "virbr_kub_gl" "virbr_kub_pods" ];
-  networking.firewall.allowedUDPPorts = [ 25826 ];
 
   i18n = {
     consoleFont = "Lat2-Terminus16";
@@ -37,13 +35,7 @@
     host  all  all 172.17.0.0/16 md5
   '';
 
-  virtualisation.libvirtd.enable = true;
-
   nix.maxJobs = lib.mkDefault 8;
-  #services.redis.enable = true;
-
-  #services.fail2ban.enable = true;
-  #services.fail2ban.jails.ssh-iptables = "enabled = true";
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
   boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
@@ -61,16 +53,7 @@
   imports = [
     ./nixos/16_03.nix
     ./kernels/latest.nix
-    ./services/docker.nix
-#    ./services/jupyter.nix
-    ./services/sslh.nix
-#    ./services/tor-relay.nix
-    ./services/gogs.nix
-#    ./services/drone.nix
-#    ./services/sentry.nix
-#    ./services/ceph.nix
-    ./services/nginx.nix
-
+    ./services/k8s.nix
     ./users.nix
   ];
 }

@@ -14,9 +14,10 @@
 
   networking.hostName = "nixhost";
   networking.hostId = "deadbeef";
-  #networking.bridges.br0 = {
-  #  interfaces = ["eno1" "eno2" "eno3" "eno4"];
-  #};
+
+  networking.bridges.br0 = {
+    interfaces = ["eno1" "eno2" "eno3" "eno4"];
+  };
 
   fileSystems."/" =
     { device = "fpool/root/nixos";
@@ -28,21 +29,54 @@
       fsType = "vfat";
     };
 
+  fileSystems."/var/lib/docker" =
+    { device = "fpool/root/docker";
+      fsType = "zfs";
+    };
+
   swapDevices = [ ];
 
   nix.maxJobs = lib.mkDefault 24;
 
   # Enable the OpenSSH daemon.
-   services.openssh.enable = true;
+  services.openssh.enable = true;
 
   # Enable the X11 windowing system.
   services.xserver.enable = false;
 
+  # autodiscover
+  services.avahi.enable = true;
+  services.avahi.publish.enable = true;
+  services.avahi.publish.addresses = true;
+  services.avahi.publish.userServices = true;
+  services.avahi.publish.domain = true;
+  services.avahi.nssmdns = true;
+  services.avahi.interfaces = ["br0"];
+
   # The NixOS release to be compatible with for stateful data such as databases.
   system.stateVersion = "17.03";
+
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = true;
+    "net.ipv6.conf.all.forwarding" = true;
+    "net.ipv4.conf.all.proxy_arp" = true;
+  };
 
   imports =
     [
       ./users.nix
+      ./modules/custom-packages.nix
+      ./containers/unifi.nix
+      ./containers/couchpotato.nix
+      ./containers/sonarr.nix
+      ./containers/plex.nix
+      ./services/k8s.nix
+      ./services/nfs.nix
+      ./services/netatalk.nix
+      ./services/grafana.nix
+      ./services/prometheus.nix
+      ./services/dlna.nix
+      ./services/samba.nix
+      ./services/transmission.nix
     ];
 }

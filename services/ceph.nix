@@ -58,6 +58,7 @@
         -v /zpool/ceph/demostack/ceph:/var/lib/ceph \
         -e MON_IP=176.9.138.4 \
         -e CEPH_NETWORK=172.17.0.1/32 \
+        -e CEPH_PUBLIC_NETWORK=176.9.138.4 \
         -e RGW_CIVETWEB_PORT=8050 \
         ceph/demo
         '';
