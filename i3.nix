@@ -32,13 +32,18 @@ nixpkgs.config.allowUnfree = true;
     libertine
     unifont
   ];
-hardware.opengl.driSupport32Bit = true;
+
+  hardware.opengl = {
+    driSupport32Bit = true;
+    s3tcSupport = true;
+    extraPackages = [ pkgs.vaapiIntel ];
+  };
 
   services.xserver = {
     enable = true;
     autorun = true;
 
-videoDrivers = ["intel"];
+    videoDrivers = [ "intel" ];
     windowManager = {
       i3.enable = true;
       default = "i3";
