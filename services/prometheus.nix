@@ -1,66 +1,85 @@
 { config, lib, pkgs, ... }:
 
+let configFile = pkgs.writeText "prometheus.yml" ''
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+scrape_configs:
+  - job_name: 'prometheus'
+
+    # Override the global default and scrape targets from this job every 5 seconds.
+    scrape_interval: 5s
+
+    static_configs:
+      - targets: ['127.0.0.1:9090']
+      - labels:
+          instance: nixhost
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+      - labels:
+          instance: nixhost
+
+  - job_name: 'snmp'
+    static_configs:
+      - targets:
+        - 192.168.23.1  # SNMP device.
+        - 192.168.23.2
+        - 192.168.23.3
+    metrics_path: /snmp
+    params:
+      module: [default]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9116  # SNMP exporter.
+''; in
 {
+
   environment.systemPackages = with pkgs; [
+    prometheus
+    prometheus-node-exporter
+    prometheus-snmp-exporter
     lm_sensors
   ];
 
-  services.prometheus = {
-      enable = true;
-      nodeExporter = {
-        enable = true;
-        enabledCollectors = [
-          "systemd"
-        ];
-      };
-      scrapeConfigs = [
-      {
-        job_name = "prometheus";
-        static_configs = [{
-          targets = [ "127.0.0.1:9090" ];
-          labels = { instance = "nixhost"; };
-        }];
-      }
-      {
-        job_name = "nixhost-node";
-        static_configs = [{
-          targets = [ "127.0.0.1:9100" ];
-          labels = { instance = "nixhost"; };
-        }];
-      }
-      {
-        job_name = "snmp";
-        metrics_path = "/snmp";
-        relabel_configs = [
-          {source_labels = ["__address__"]; target_label = "__param_target";}
-          {source_labels = ["__param_target"]; target_label = "instance";}
-          {source_labels = []; target_label = "__address__"; replacement = "127.0.0.1:9116";}
-        ];
-        static_configs = [{
-          targets = [
-            "192.168.23.1" # firewall
-            "192.168.23.2" # switch
-            "192.168.23.3" # unifi 
-          ];
-          labels = { instance = "nixhost"; };
-        }];
-      }
-      ];
-  };
-
   networking.firewall.allowedTCPPorts = [ 9090 9100 9116 ];
 
-  systemd.services.snmp_exporter = {
+  systemd.services.prometheus = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
-    requires = [ "docker.service" ];
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
-      ExecStart = ''${pkgs.docker}/bin/docker run \
-        --rm \
-        --net="host" \
-        quay.io/prometheus/snmp-exporter'';
+      ExecStart = ''${pkgs.prometheus}/bin/prometheus \
+        -config.file "${configFile}"'';
+    };
+  };
+
+  systemd.services.prometheus-node-exporter = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      ExecStart = ''${pkgs.prometheus-node-exporter}/bin/node_exporter
+      '';
+    };
+  };
+
+  systemd.services.prometheus-snmp-exporter = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      ExecStart = ''${pkgs.prometheus-snmp-exporter}/bin/snmp_exporter \
+        -config.file ${pkgs.prometheus-snmp-exporter.src}/snmp.yml
+      '';
     };
   };
 
