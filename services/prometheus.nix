@@ -17,9 +17,17 @@ scrape_configs:
 
   - job_name: 'node'
     static_configs:
-      - targets: ['127.0.0.1:9100']
-      - labels:
-          instance: nixhost
+      - targets: ['nixhost.4a:9100', 'fuckup.4a:9100']
+    relabel_configs:
+      - source_labels: [__param_target__]
+        target_label: instance
+
+  - job_name: 'ipmi'
+    static_configs:
+      - targets: ['nixhost.4a:9289']
+    relabel_configs:
+      - source_labels: [__param_target__]
+        target_label: instance
 
   - job_name: 'snmp'
     static_configs:
@@ -44,10 +52,10 @@ scrape_configs:
     prometheus
     prometheus-node-exporter
     prometheus-snmp-exporter
+    prometheus-ipmi-exporter
+    ipmitool
     lm_sensors
   ];
-
-  networking.firewall.allowedTCPPorts = [ 9090 9100 9116 ];
 
   systemd.services.prometheus = {
     wantedBy = [ "multi-user.target" ];
@@ -82,5 +90,18 @@ scrape_configs:
       '';
     };
   };
+  
+  systemd.services.prometheus-ipmi-exporter = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      ExecStart = ''${pkgs.prometheus-ipmi-exporter}/bin/ipmi_exporter \
+        -ipmi.path "${pkgs.ipmitool}/bin/ipmitool"
+      '';
+    };
+  };
+
 
 }
