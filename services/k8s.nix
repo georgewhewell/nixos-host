@@ -1,7 +1,12 @@
 { config, lib, pkgs, ... }:
 
 {
+  imports = [
+     ../packages/kubernetes.svc.nix
+  ];
+ 
   networking = {
+    extraHosts = "10.10.0.1 nixserve";
     bridges = {
       cbr0.interfaces = [];
     };
@@ -17,15 +22,28 @@
     extraOptions = "--iptables=false --ip-masq=false -b cbr0";
   };
 
-  /*environment.variables = {
-    ETCDCTL_CERT_FILE = "${etcd_client_cert}";
-    ETCDCTL_KEY_FILE = "${etcd_client_key}";
-    ETCDCTL_CA_FILE = "${ca_pem}";
-    ETCDCTL_PEERS = "https://127.0.0.1:2379";
-  };*/
-
-  services.kubernetes = {
+  services.kubernetes_15 = {
+    package = pkgs.kubernetes_15;
     roles = ["master" "node"];
+    apiserver = {
+     port = 9090;
+     securePort = 8443;
+     tlsKeyFile = "/var/run/kubernetes/server.key";
+     tlsCertFile = "/var/run/kubernetes/server.cert";
+     clientCaFile = "/var/run/kubernetes/ca.crt";
+     kubeletClientCaFile = "/var/run/kubernetes/ca.crt";
+     kubeletClientKeyFile = "/var/run/kubernetes/server.key";
+     kubeletClientCertFile = "/var/run/kubernetes/server.cert";
+     serviceAccountKeyFile = "/var/run/kubernetes/server.key";
+    };
+    kubelet = {
+     tlsKeyFile = "/var/run/kubernetes/server.key";
+     tlsCertFile = "/var/run/kubernetes/server.cert";
+    };
+    controllerManager = {
+     serviceAccountKeyFile = "/var/run/kubernetes/server.key"; 
+     rootCaFile = "/var/run/kubernetes/ca.crt";
+    };
   };
 
 }
