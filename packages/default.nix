@@ -8,4 +8,6 @@ with pkgs;
   kubernetes_15 = callPackage ./kubernetes.nix { };
   thin-provisioning-tools = callPackage ./thin-provisioning-tools.nix { };
   cni = callPackage ./cni.nix { };
+  prometheus-snmp-exporter = callPackage ./snmp-exporter.nix { };
+  prometheus-ipmi-exporter = callPackage ./ipmi-exporter.nix { };
 }
