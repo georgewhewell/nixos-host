@@ -591,31 +591,9 @@ in {
   };
 
   ###### implementation
-
   config = mkMerge [
-    (mkIf cfg.kubelet.enable {
-      systemd.services.kube-certs = {
-   wantedBy = [ "kube-apiserver.service" "kube-controller-manager.service" ];
-   requires = [ "network-online.target" ];
-   after = [ "network-online.target" ];
-   path = [ pkgs.stdenv pkgs.bash pkgs.openssl pkgs.curl ];
-   environment = {
-     DEBUG = "true";
-     CERT_DIR = "/var/run/kubernetes";
-     CERT_GROUP = "root";
-   };
-   unitConfig = {
-     RefuseManualStop = "true";
-     ConditionPathExists = "!/var/run/kubernetes/.certs.lock";
-   };
-   serviceConfig = {
-    ExecStart = ''${pkgs.bash}/bin/bash ${cfg.package.src}/cluster/saltbase/salt/generate-cert/make-ca-cert.sh \
-        10.10.0.1 IP:10.10.0.1,DNS:nixserve,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local'';
-    Type = "oneshot";
-    RemainAfterExit = "true";
-   };
-  };
 
+    (mkIf cfg.kubelet.enable {
       systemd.services.kubelet = {
         description = "Kubernetes Kubelet Service";
         wantedBy = [ "multi-user.target" ];
@@ -674,6 +652,28 @@ in {
     })
 
     (mkIf cfg.apiserver.enable {
+
+      systemd.services.kube-certs = {
+         wantedBy = [ "kube-apiserver.service" "kube-controller-manager.service" ];
+         requires = [ "network-online.target" ];
+         after = [ "network-online.target" ];
+         path = [ pkgs.stdenv pkgs.bash pkgs.openssl pkgs.curl pkgs.easy-rsa ];
+         environment = {
+          CERT_DIR = "/var/lib/kube-certs";
+          CERT_GROUP = "kubernetes";
+         };
+         unitConfig = {
+          RefuseManualStop = "true";
+          ConditionPathExists = "!/var/lib/kube-certs/server.key";
+         };
+         serviceConfig = {
+          ExecStart = ''${pkgs.bash}/bin/bash ${cfg.package.src}/cluster/saltbase/salt/generate-cert/make-ca-cert.sh \
+              10.10.0.1 IP:10.10.0.1,DNS:nixserve,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local'';
+          Type = "oneshot";
+          RemainAfterExit = "true";
+         };
+      };
+
       systemd.services.kube-apiserver = {
         description = "Kubernetes Kubelet Service";
         wantedBy = [ "multi-user.target" ];
@@ -795,6 +795,7 @@ in {
           ExecStart = ''${cfg.package}/bin/kube-proxy \
             --kubeconfig=${kubeconfig} \
             --bind-address=${cfg.proxy.address} \
+            --cluster-cidr=${cfg.controllerManager.clusterCidr} \
             ${optionalString cfg.verbose "--v=6"} \
             ${optionalString cfg.verbose "--log-flush-frequency=1s"} \
             ${cfg.proxy.extraOpts}
