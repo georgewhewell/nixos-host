@@ -44,6 +44,11 @@
      serviceAccountKeyFile = "/var/run/kubernetes/server.key"; 
      rootCaFile = "/var/run/kubernetes/ca.crt";
     };
+    proxy = {
+     extraOpts = ''
+      --cluster-cidr=10.10.10.10/24
+     '';
+    };
   };
 
 }
