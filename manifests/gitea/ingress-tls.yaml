@@ -1,21 +1,21 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: gogs
-  namespace: gogs
+  name: gitea
+  namespace: gitea
   annotations:
     kubernetes.io/tls-acme: "true"
     kubernetes.io/ingress.class: "nginx"
 spec:
   tls:
   - hosts:
-    - git.satanic.link
-    secretName: gogs-tls
+    - git.tsar.su
+    secretName: git-tls
   rules:
-  - host: git.satanic.link
+  - host: git.tsar.su
     http:
       paths:
       - path: /
         backend:
-          serviceName: gogs
+          serviceName: gitea
           servicePort: 80

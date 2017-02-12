@@ -12,6 +12,11 @@ spec:
     targetPort: 3000
     protocol: TCP
     name: http
+  - port: 32222
+    targetPort: 22
+    nodePort: 32222
+    protocol: TCP
+    name: ssh
   selector:
     app: gitea
 ---
@@ -28,10 +33,18 @@ spec:
         app: gitea
     spec:
       containers:
-      - name: redis
-        image: redis:3-alpine
+      - name: smtp
+        image: tianon/exim4
       - name: gitea
-        image: gitea/gitea 
+        image: gitea/gitea
         imagePullPolicy: Always
         ports:
+        - containerPort: 22
         - containerPort: 3000
+        volumeMounts:
+        - name: gitea-data
+          mountPath: /data
+      volumes:
+      - name: gitea-data
+        hostPath:
+          path: /zpool/k8s/platform/git
