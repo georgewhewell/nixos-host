@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: drone
+  namespace: drone
+  labels:
+    app: drone
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: drone-server
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: drone-server
+  namespace: drone
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: drone-server
+    spec:
+      containers:
+      - name: smtp
+        image: tianon/exim4
+
+      - name: drone-server
+        image: drone/drone:0.5.0-rc
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: drone-data
+          mountPath: /var/lib/drone
+        env:
+        - name: DRONE_OPEN
+          value: "true"
+        - name: DRONE_ORGS
+          value: drone
+        - name: DRONE_GOGS
+          value: "true"
+        - name: DRONE_GOGS_PRIVATE_MODE
+          value: "true"
+        - name: DRONE_GOGS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: drone
+              key: drone.gogs-url
+        - name: DRONE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: drone
+              key: token
+      volumes:
+      - name: drone-data
+        hostPath:
+          path: /zpool/k8s/platform/drone
