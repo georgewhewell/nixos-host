@@ -41,11 +41,8 @@
 
     firewall = {
       enable = true;
-      trustedInterfaces = [
-        "docker0"
-        "virbr_kub_gl"
-        "virbr_kub_pods"
-      ];
+      checkReversePath = false;
+      trustedInterfaces = [ "cbr0" ];
     };
 
     interfaces = {
@@ -70,7 +67,9 @@
 
   imports =
     [ # Include the results of the hardware scan.
-      ./services/docker.nix
+      ./modules/custom-packages.nix
+      ./services/iodined.nix
+      ./services/k8s.nix
       ./users.nix
     ];
 }

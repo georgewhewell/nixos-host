@@ -657,7 +657,7 @@ in {
          wantedBy = [ "kube-apiserver.service" "kube-controller-manager.service" ];
          requires = [ "network-online.target" ];
          after = [ "network-online.target" ];
-         path = [ pkgs.stdenv pkgs.bash pkgs.openssl pkgs.curl pkgs.easy-rsa ];
+         path = [ pkgs.stdenv pkgs.bash pkgs.openssl pkgs.curl pkgs.easyrsa ];
          environment = {
           CERT_DIR = "/var/lib/kube-certs";
           CERT_GROUP = "kubernetes";
@@ -668,7 +668,7 @@ in {
          };
          serviceConfig = {
           ExecStart = ''${pkgs.bash}/bin/bash ${cfg.package.src}/cluster/saltbase/salt/generate-cert/make-ca-cert.sh \
-              10.10.0.1 IP:10.10.0.1,DNS:nixserve,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local'';
+              10.10.0.1 IP:10.10.10.1,DNS:nixserve,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local'';
           Type = "oneshot";
           RemainAfterExit = "true";
          };

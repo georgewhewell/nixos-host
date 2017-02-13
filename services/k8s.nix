@@ -4,22 +4,30 @@
   imports = [
      ../packages/kubernetes.svc.nix
   ];
+
+  fileSystems."/var/lib/docker" =
+    { device = "zpool/root/docker";
+      fsType = "zfs";
+    };
  
   networking = {
     extraHosts = "10.10.0.1 nixserve";
     bridges = {
       cbr0.interfaces = [];
     };
-    interfaces.cbr0 = {};
-    firewall.trustedInterfaces = [ "crb0" ];
-    firewall.checkReversePath = false;
+
+    interfaces.cbr0 = {
+      ipAddress = "10.10.0.1";
+      prefixLength = 24;
+    };
+   
     firewall.allowedTCPPorts = [ 80 443 ];
   };
 
   virtualisation.docker = {
     enable = true;
     storageDriver = "zfs";
-    extraOptions = "--iptables=false --ip-masq=false -b cbr0";
+    extraOptions = "-b cbr0";
   };
 
   services.kubernetes_15 = {
@@ -28,26 +36,22 @@
     apiserver = {
      port = 9090;
      securePort = 8443;
-     tlsKeyFile = "/var/run/kubernetes/server.key";
-     tlsCertFile = "/var/run/kubernetes/server.cert";
-     clientCaFile = "/var/run/kubernetes/ca.crt";
-     kubeletClientCaFile = "/var/run/kubernetes/ca.crt";
-     kubeletClientKeyFile = "/var/run/kubernetes/server.key";
-     kubeletClientCertFile = "/var/run/kubernetes/server.cert";
-     serviceAccountKeyFile = "/var/run/kubernetes/server.key";
+     tlsKeyFile = "/var/lib/kube-certs/server.key";
+     tlsCertFile = "/var/lib/kube-certs/server.cert";
+     clientCaFile = "/var/lib/kube-certs/ca.crt";
+     kubeletClientCaFile = "/var/lib/kube-certs/ca.crt";
+     kubeletClientKeyFile = "/var/lib/kube-certs/server.key";
+     kubeletClientCertFile = "/var/lib/kube-certs/server.cert";
+     serviceAccountKeyFile = "/var/lib/kube-certs/server.key";
     };
     kubelet = {
-     tlsKeyFile = "/var/run/kubernetes/server.key";
-     tlsCertFile = "/var/run/kubernetes/server.cert";
+     allowPrivileged = true;
+     tlsKeyFile = "/var/lib/kube-certs/server.key";
+     tlsCertFile = "/var/lib/kube-certs/server.cert";
     };
     controllerManager = {
-     serviceAccountKeyFile = "/var/run/kubernetes/server.key"; 
-     rootCaFile = "/var/run/kubernetes/ca.crt";
-    };
-    proxy = {
-     extraOpts = ''
-      --cluster-cidr=10.10.10.10/24
-     '';
+     serviceAccountKeyFile = "/var/lib/kube-certs/server.key"; 
+     rootCaFile = "/var/lib/kube-certs/ca.crt";
     };
   };
 
