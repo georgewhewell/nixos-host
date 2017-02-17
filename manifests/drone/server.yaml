@@ -44,6 +44,8 @@ spec:
           value: "true"
         - name: DRONE_ORGS
           value: drone
+        - name: DRONE_ADMIN
+          value: grw
         - name: DRONE_GOGS
           value: "true"
         - name: DRONE_GOGS_PRIVATE_MODE
