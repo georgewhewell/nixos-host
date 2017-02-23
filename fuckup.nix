@@ -86,6 +86,34 @@
   # The NixOS release to be compatible with for stateful data such as databases.
   system.stateVersion = "16.09";
 
+  systemd.services.igfx-fullrange = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "display-manager.service" ];
+    environment = {
+      DISPLAY = ":0";
+      XAUTHORITY = "/home/grw/.Xauthority";
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = ''${pkgs.xorg.xrandr}/bin/xrandr --output DP-1 --set "Broadcast RGB" "Full"
+      '';
+    };
+  };
+
+  systemd.services.igfx-75hz = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "igfx-fullrange.service" ];
+    environment = {
+      DISPLAY = ":0";
+      XAUTHORITY = "/home/grw/.Xauthority";
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = ''${pkgs.xorg.xrandr}/bin/xrandr -r 75
+      '';
+    };
+  };
+
   imports =
     [
       ./i3.nix
