@@ -17,6 +17,23 @@
       fsType = "vfat";
     };
 
+  fileSystems."/mnt/Media" =
+    { device = "//nixhost.4a/Media";
+      fsType = "cifs";
+    };
+
+  fileSystems."/mnt/Home" =
+    { device = "//nixhost.4a/Home";
+      fsType = "cifs";
+      options = [ "credentials=/home/grw/.smbcredentials" ];
+    };
+
+  fileSystems."/mnt/nixos" =
+    { device = "//nixhost.4a/nixos";
+      fsType = "cifs";
+      options = [ "credentials=/home/grw/.smbcredentials" ];
+    };
+
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
