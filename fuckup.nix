@@ -43,9 +43,14 @@
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
 
   nix.maxJobs = lib.mkDefault 8;
-  nixpkgs.config.allowUnfree = true;
 
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  nixpkgs.config = {
+    allowUnfree = true;
+    chromium = {
+     enablePepperFlash = true;
+     enablePepperPDF = true;
+    };
+  };
 
   # Select internationalisation properties.
    i18n = {
