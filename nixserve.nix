@@ -28,7 +28,15 @@
 
   boot.kernelParams = ["console=ttyS,9600n8" "console=ttyS1,9600n8"];
   boot.loader.grub.extraConfig = "serial; terminal_input serial; terminal_output serial";
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_4_8;
+
+  nixpkgs.config.packageOverrides = pkgs: {
+     stdenv = pkgs.stdenv // {
+       platform = pkgs.stdenv.platform // {
+         kernelExtraConfig = "CFS_BANDWIDTH y" ;
+       };
+     }; 
+   };
 
   # Use the GRUB 2 boot loader.
   boot.loader.grub.enable = true;
