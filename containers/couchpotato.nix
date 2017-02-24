@@ -35,12 +35,23 @@
         '';
       };
       networking.interfaces.eth0.useDHCP = true;
+      environment.systemPackages = with pkgs; [
+        python27Packages.python
+        python27Packages.sqlite3
+        python27Packages.lxml
+        unrar
+        par2cmdline
+      ];
 
       systemd.services.couchpotato = {
         wantedBy = [ "multi-user.target" ];
+        environment = {
+          PYTHONPATH = "${pkgs.python27Packages.sqlite3}/lib/python2.7/site-packages:${pkgs.python27Packages.lxml}/lib/python2.7/site-packages";
+        };
         serviceConfig = {
+          Restart = "always";
           ExecStart = ''
-            ${pkgs.python}/bin/python ${pkgs.couchpotato}/CouchPotato.py --data /var/lib/couchpotato
+            ${pkgs.python27Packages.python}/bin/python ${pkgs.couchpotato}/CouchPotato.py --data /var/lib/couchpotato
           '';
         };
       };
