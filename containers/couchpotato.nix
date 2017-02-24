@@ -17,12 +17,8 @@
         hostPath = "/var/lib/couchpotato";
         isReadOnly = false;
       };
-      "/downloads" = {
-        hostPath = "/mnt/Media/downloads";
-        isReadOnly = false;
-      };
-      "/movies" = {
-        hostPath = "/mnt/Media/Movies";
+      "/mnt/Media" = {
+        hostPath = "/mnt/Media";
         isReadOnly = false;
       };
     };

@@ -16,12 +16,8 @@
         hostPath = "/var/lib/sonarr";
         isReadOnly = false;
       };
-      "/downloads" = {
-        hostPath = "/mnt/Media/downloads";
-        isReadOnly = false;
-      };
-      "/tv" = {
-        hostPath = "/mnt/Media/TV";
+      "/mnt/Media" = {
+        hostPath = "/mnt/Media";
         isReadOnly = false;
       };
     };
