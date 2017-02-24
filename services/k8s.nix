@@ -5,11 +5,6 @@
      ../packages/kubernetes.svc.nix
   ];
 
-  fileSystems."/var/lib/docker" =
-    { device = "zpool/root/docker";
-      fsType = "zfs";
-    };
- 
   networking = {
     extraHosts = "10.10.0.1 nixserve";
     bridges = {

@@ -11,6 +11,11 @@
       fsType = "zfs";
     };
 
+  fileSystems."/var/lib/docker" =
+    { device = "zpool/root/docker";
+      fsType = "zfs";
+    };
+
   swapDevices = [ ];
 
   sound.enable = false;
