@@ -88,7 +88,8 @@
 
   systemd.services.igfx-fullrange = {
     wantedBy = [ "multi-user.target" ];
-    after = [ "display-manager.service" ];
+    after = [ "user-1000.slice" ];
+    requires = [ "user-1000.slice" ];
     environment = {
       DISPLAY = ":0";
       XAUTHORITY = "/home/grw/.Xauthority";
@@ -102,7 +103,8 @@
 
   systemd.services.igfx-75hz = {
     wantedBy = [ "multi-user.target" ];
-    after = [ "igfx-fullrange.service" ];
+    after = [ "user-1000.slice" ];
+    requires = [ "user-1000.slice" ];
     environment = {
       DISPLAY = ":0";
       XAUTHORITY = "/home/grw/.Xauthority";
