@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentry-web
+  namespace: sentry
+  labels:
+    app: sentry-web
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 9000
+    protocol: TCP
+  selector:
+    app: sentry-web
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sentry-web
+  namespace: sentry
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sentry-web
+    spec:
+      containers:
+      - name: smtp
+        image: tianon/exim4
+      - name: memcached
+        image: memcached:1.4
+      - name: redis
+        image: redis:3.2-alpine
+      - name: sentry-web
+        image: sentry:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+        env:
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_EMAIL_HOST
+          value: localhost
+        - name: SENTRY_SERVER_EMAIL
+          value: sentry@sentry.satanic.link
+        - name: SENTRY_POSTGRES_HOST
+          value: postgres
+        - name: SENTRY_SECRET_KEY
+          value: bla
+        args:
+        - run
+        - web
+      - name: sentry-worker
+        image: sentry:latest
+        imagePullPolicy: Always
+        env:
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_EMAIL_HOST
+          value: localhost
+        - name: SENTRY_SERVER_EMAIL
+          value: sentry@sentry.satanic.link
+        - name: SENTRY_POSTGRES_HOST
+          value: postgres
+        - name: SENTRY_SECRET_KEY
+          value: bla
+        args:
+        - run
+        - worker
+      - name: sentry-cron
+        image: sentry:latest
+        imagePullPolicy: Always
+        env:
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_EMAIL_HOST
+          value: localhost
+        - name: SENTRY_SERVER_EMAIL
+          value: sentry@sentry.satanic.link
+        - name: SENTRY_POSTGRES_HOST
+          value: postgres
+        - name: SENTRY_SECRET_KEY
+          value: bla
+        args:
+        - run
+        - cron
