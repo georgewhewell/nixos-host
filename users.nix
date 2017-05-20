@@ -2,7 +2,7 @@
 
 {
   users.extraUsers.grw = {
-    extraGroups = ["wheel" "libvirtd" "docker" "transmission"];
+    extraGroups = ["wheel" "libvirtd" "docker" "transmission" "audio" "dialout" "plugdev" "wireshark"];
     isNormalUser = true;
      openssh.authorizedKeys.keys = [
       "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHCp/KhshTrp+p1TQOp3PZfwvj+pAGzm7Z4tbRYImpHNS9octfJ4sSmL4X4YQSu4PbpM/9Jo5UzVPpCRpD6OOiA= grw@nixhost"
