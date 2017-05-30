@@ -26,6 +26,10 @@
         hostPath = "/mnt/Media/TV";
         isReadOnly = false;
       };
+      "/misc" = {
+       hostPath = "/mnt/Media/Serve";
+       isReadOnly = false;
+      };
     };
 
     config = {

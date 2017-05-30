@@ -1,4 +1,4 @@
-{ stdenv, fetchgit }:
+{ stdenv, pkgs, fetchgit }:
 
 stdenv.mkDerivation rec {
   name = "couchpotato";
@@ -9,8 +9,8 @@ stdenv.mkDerivation rec {
     rev = "b538f9a08db9a0be1af2f298727834edeafa322e";
     url = "https://github.com/CouchPotato/CouchPotatoServer.git";
   };
+  
   propagatedBuildInputs = with pkgs; [
-        python27Packages.sqlite3
         python27Packages.lxml
         unrar
         par2cmdline
