@@ -17,7 +17,7 @@ scrape_configs:
 
   - job_name: 'node'
     static_configs:
-      - targets: ['nixhost.4a:9100', 'fuckup.4a:9100']
+      - targets: ['pfsense.4a:9100', 'nixhost.4a:9100', 'fuckup.4a:9100']
     relabel_configs:
       - source_labels: [__param_target__]
         target_label: instance
@@ -97,6 +97,10 @@ scrape_configs:
     serviceConfig = {
       TimeoutStartSec = 0;
       Restart = "always";
+      ExecStartPre = ''
+        ${pkgs.kmod}/bin/modprobe ipmi_devintf
+        ${pkgs.kmod}/bin/modprobe ipmi_si
+      '';
       ExecStart = ''${pkgs.prometheus-ipmi-exporter}/bin/ipmi_exporter \
         -ipmi.path "${pkgs.ipmitool}/bin/ipmitool"
       '';
