@@ -87,7 +87,7 @@ in {
     etcd = {
       servers = mkOption {
         description = "List of etcd servers. By default etcd is started, except if this option is changed.";
-        default = ["http://127.0.0.1:4001"];
+        default = ["http://127.0.0.1:2379"];
         type = types.listOf types.str;
       };
 
@@ -839,7 +839,7 @@ in {
       services.kubernetes_15.apiserver.enable = mkDefault true;
       services.kubernetes_15.scheduler.enable = mkDefault true;
       services.kubernetes_15.controllerManager.enable = mkDefault true;
-      services.etcd.enable = mkDefault (cfg.etcd.servers == ["http://127.0.0.1:4001"]);
+      services.etcd.enable = mkDefault (cfg.etcd.servers == ["http://127.0.0.1:2379"]);
     })
 
     (mkIf (any (el: el == "node") cfg.roles) {
