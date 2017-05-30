@@ -7,8 +7,9 @@
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "ehci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
   boot.kernelModules = [ "kvm-intel" ];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_4_10;
   boot.extraModulePackages = [ ];
+  boot.zfs.enableUnstable = true;
 
   time.timeZone = "Europe/London";
 
@@ -56,6 +57,12 @@
   services.avahi.publish.domain = true;
   services.avahi.nssmdns = true;
   services.avahi.interfaces = ["br0"];
+  
+  services.nzbget = {
+    enable = true;
+    user = "transmission";
+    group = "transmission";
+  };
 
   networking.firewall = {
     checkReversePath = false;
@@ -92,5 +99,6 @@
       ./services/dlna.nix
       ./services/samba.nix
       ./services/transmission.nix
+      ./services/docker.nix
     ];
 }
