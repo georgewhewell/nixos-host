@@ -38,9 +38,10 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
-  boot.kernelModules = [ "kvm-intel" "wl" ];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelModules = [ "wl" "kvm-intel" ];
+  boot.kernelPackages = pkgs.linuxPackages_4_10;
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
+  boot.kernelParams = ["systemd.legacy_systemd_cgroup_controller=yes"];
 
   nix.maxJobs = lib.mkDefault 8;
 
@@ -56,7 +57,7 @@
    i18n = {
      consoleFont = "Lat2-Terminus16";
      consoleKeyMap = "uk";
-     defaultLocale = "en_US.UTF-8";
+     defaultLocale = "en_GB.UTF-8";
    };
 
   # Set your time zone.
@@ -65,6 +66,8 @@
   environment.systemPackages = with pkgs; [
     wget
     atom
+    chromium
+    wireshark
   ];
 
   # Enable the OpenSSH daemon.
@@ -75,16 +78,47 @@
   services.avahi.publish.enable = true;
   services.avahi.publish.addresses = true;
   services.avahi.nssmdns = true;
-  services.avahi.interfaces = ["enp1s0f1"];
+  services.avahi.interfaces = ["br0"];
 
-  virtualisation.libvirtd.enable = true;
+  hardware.pulseaudio = {
+    enable = true;
+    extraConfig = ''
+      unload-module module-switch-on-port-available
+    '';
+  };
+
+  virtualisation.docker.enable = true;
 
   networking.bridges.br0 = {
-    interfaces = ["enp1s0f0" "enp1s0f1"];
+    interfaces = [ "enp0s31f6" "enp1s0f0" "enp1s0f1"];
   };
 
   # The NixOS release to be compatible with for stateful data such as databases.
-  system.stateVersion = "16.09";
+  system.stateVersion = "17.03";
+
+  hardware.enableAllFirmware = true;
+  hardware.bluetooth.enable = true;
+
+  networking.wireless.enable = true;
+  networking.wireless.userControlled = true;
+  
+  services.postgresql.enable = true;
+  services.postgresql.enableTCPIP = true;
+  /*services.postgresql.authentication = ''
+    host  all  all 172.17.0.0/16 md5
+  '';*/
+
+  networking.firewall.allowedTCPPorts = [ 9100 ];
+  systemd.services.prometheus-node-exporter = {
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      ExecStart = ''${pkgs.prometheus-node-exporter}/bin/node_exporter
+      '';
+    };
+  };
 
   systemd.services.igfx-fullrange = {
     wantedBy = [ "multi-user.target" ];
@@ -116,10 +150,16 @@
     };
   };
 
+  services.printing = {
+    enable = true;
+    drivers = [ pkgs.gutenprint ];
+  };
+
   imports =
     [
       ./i3.nix
       ./users.nix
-      ./services/docker.nix
+      ./services/virt/host.nix
+      ./modules/custom-packages.nix
     ];
 }
