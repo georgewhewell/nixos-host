@@ -29,7 +29,7 @@
     package = pkgs.kubernetes_15;
     roles = ["master" "node"];
     apiserver = {
-     port = 9090;
+     port = 6060;
      securePort = 8443;
      tlsKeyFile = "/var/lib/kube-certs/server.key";
      tlsCertFile = "/var/lib/kube-certs/server.cert";
