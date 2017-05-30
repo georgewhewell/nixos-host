@@ -1,0 +1,77 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sentry
+  labels:
+    name: sentry
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: sentry
+    spec:
+      containers:
+      - name: memcached
+        image: memcached:1.4
+      - name: redis
+        image: redis:3-alpine
+      - name: postgres
+        image: postgres:9.6
+        env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+          - mountPath: "/var/lib/postgresql/data"
+            name: postgres-data
+      - name: smtp
+        image: tianon/exim4
+      - name: web
+        image: repo/mycompany_sentry:0.1.1
+        env:
+        - name: SENTRY_USE_SSL
+          value: '1'
+        - name: SENTRY_SECRET_KEY
+          value: ****
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_POSTGRES_HOST
+          value: localhost
+        - name: SENTRY_EMAIL_HOST
+          value: localhost
+        - name: SENTRY_SERVER_EMAIL
+          value: sentry@mycompany.com
+      - name: worker
+        image: repo/mycompany_sentry:0.1.1
+        env:
+        - name: SENTRY_SECRET_KEY
+          value: ****
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_POSTGRES_HOST
+          value: localhost
+        args:
+        - run
+        - worker
+      - name: cron
+        image: repo/mycompany_sentry:0.1.1
+        env:
+        - name: SENTRY_SECRET_KEY
+          value: ****
+        - name: SENTRY_REDIS_HOST
+          value: localhost
+        - name: SENTRY_MEMCACHED_HOST
+          value: localhost
+        - name: SENTRY_POSTGRES_HOST
+          value: localhost
+        args:
+        - run
+        - cron
+      volumes:
+        - name: postgres-data
+          hostPath:
+            path: /zpool/k8s/platform/sentry/postgres
