@@ -79,6 +79,7 @@
   imports =
     [
       ./users.nix
+      ./nixos/17_03.nix
       ./modules/custom-packages.nix
       ./containers/unifi.nix
       ./containers/couchpotato.nix
