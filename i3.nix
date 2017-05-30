@@ -8,7 +8,7 @@ nixpkgs.config.allowUnfree = true;
     feh       # for background image
     i3
     i3lock    # screen lock
-    i3status  # sys info
+    i3pystatus# sys info
     scrot     # for screenshot
     rxvt_unicode
   ];
@@ -22,37 +22,30 @@ nixpkgs.config.allowUnfree = true;
 
   fonts.fonts = with pkgs; [
     corefonts
-    source-han-sans-japanese
-    source-han-sans-korean
-    source-han-sans-simplified-chinese
     source-code-pro
     dejavu_fonts
     ubuntu_font_family
     inconsolata
     libertine
     unifont
+    ttf_bitstream_vera
+    hack-font
   ];
 
   hardware.opengl = {
     driSupport32Bit = true;
     s3tcSupport = true;
-    extraPackages = [ pkgs.vaapiIntel ];
   };
 
   services.xserver = {
     enable = true;
     autorun = true;
 
-    videoDrivers = [ "intel" ];
+    videoDrivers = [ "modesetting" ];
     windowManager = {
       i3.enable = true;
+      i3.package = pkgs.i3-gaps;
       default = "i3";
-    };
-
-    displayManager = {
-      sessionCommands = ''
-        i3status &
-      '';
     };
    };
 }
