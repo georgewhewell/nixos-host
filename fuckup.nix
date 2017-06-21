@@ -28,12 +28,6 @@
       options = [ "credentials=/home/grw/.smbcredentials" ];
     };
 
-  fileSystems."/mnt/nixos" =
-    { device = "//nixhost.4a/nixos";
-      fsType = "cifs";
-      options = [ "credentials=/home/grw/.smbcredentials" ];
-    };
-
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
