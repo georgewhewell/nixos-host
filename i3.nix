@@ -35,11 +35,23 @@ nixpkgs.config.allowUnfree = true;
   hardware.opengl = {
     driSupport32Bit = true;
     s3tcSupport = true;
+    extraPackages = with pkgs; [ vaapiIntel ];
   };
 
   services.xserver = {
     enable = true;
     autorun = true;
+    useGlamor = true;
+
+    xrandrHeads = [
+      { output = "HDMI-2"; monitorConfig = ''
+        Option "Rotate" "right"
+        Option "Broadcast RGB" "Full"
+        ''; }
+      { output = "DP-2"; primary = true; monitorConfig = ''
+        Option "Broadcast RGB" "Full"
+    '';}
+    ];
 
     videoDrivers = [ "modesetting" ];
     windowManager = {
