@@ -8,6 +8,7 @@ with pkgs;
   couchpotato = callPackage ./couchpotato.nix { };
   jackett = callPackage ./jackett.nix { };
   kubernetes_15 = callPackage ./kubernetes.nix { };
+  radarr = callPackages ./radarr.nix { };
   thin-provisioning-tools = callPackage ./thin-provisioning-tools.nix { };
   cni = callPackage ./cni.nix { };
   prometheus-snmp-exporter = callPackage ./snmp-exporter.nix { };

@@ -91,12 +91,13 @@
       ./containers/unifi.nix
       ./containers/couchpotato.nix
       ./containers/sonarr.nix
+      ./containers/radarr.nix
       ./containers/plex.nix
+      ./containers/emby.nix
       ./services/nfs.nix
       ./services/netatalk.nix
       ./services/grafana.nix
       ./services/prometheus.nix
-      ./services/dlna.nix
       ./services/samba.nix
       ./services/transmission.nix
       ./services/docker.nix
