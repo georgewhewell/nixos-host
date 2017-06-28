@@ -6,15 +6,11 @@
 
 {
   networking.hostName = "fuckup"; # Define your hostname.
+  networking.hostId = "deadbeef";
 
   fileSystems."/" =
-    { device = "/dev/disk/by-uuid/327583a9-72c6-4078-b89f-38350536a798";
-      fsType = "ext4";
-    };
-
-  fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/67E3-17ED";
-      fsType = "vfat";
+    { device = "zpool/root/nixos";
+      fsType = "zfs";
     };
 
   fileSystems."/mnt/Media" =
@@ -33,9 +29,11 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
   boot.kernelModules = [ "wl" "kvm-intel" ];
-  boot.kernelPackages = pkgs.linuxPackages_4_10;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
   boot.kernelParams = ["systemd.legacy_systemd_cgroup_controller=yes"];
+  boot.zfs.enableUnstable = true;
 
   networking.wireless = {
     enable = true;
