@@ -68,8 +68,17 @@
   environment.systemPackages = with pkgs; [
     wget
     atom
+    vim
+    rsync
     chromium
     wireshark
+    /*virtmanager*/
+    nox
+    unzip
+    git
+    htop
+    xz
+    steam
   ];
 
   # Enable the OpenSSH daemon.
@@ -103,11 +112,9 @@
 
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
-  /*services.postgresql.authentication = ''
-    host  all  all 172.17.0.0/16 md5
-  '';*/
 
   networking.firewall.allowedTCPPorts = [ 9100 ];
+
   systemd.services.prometheus-node-exporter = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
