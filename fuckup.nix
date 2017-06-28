@@ -37,7 +37,17 @@
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
   boot.kernelParams = ["systemd.legacy_systemd_cgroup_controller=yes"];
 
-  nix.maxJobs = lib.mkDefault 8;
+  networking.wireless = {
+    enable = true;
+    userControlled = true;
+  };
+
+  nix.maxJobs    = lib.mkDefault 8;
+  nix.buildCores = lib.mkDefault 8;
+  nix.nixPath = [
+	    "nixpkgs=/etc/nixos/nixpkgs"
+	    "nixos-config=/etc/nixos/configuration.nix"
+  ];
 
   nixpkgs.config = {
     allowUnfree = true;
@@ -93,9 +103,6 @@
   hardware.enableAllFirmware = true;
   hardware.bluetooth.enable = true;
 
-  networking.wireless.enable = true;
-  networking.wireless.userControlled = true;
-  
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
   /*services.postgresql.authentication = ''
