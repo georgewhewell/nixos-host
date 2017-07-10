@@ -15,20 +15,15 @@ nixpkgs.config.allowUnfree = true;
 
   fonts.fontconfig = {
     defaultFonts = {
-      monospace = [ "Inconsolata" "Source Code Pro" "DejaVu Sans Mono" ];
+      monospace = [ "Hack" ];
       sansSerif = [ "Ubuntu" "Liberation Sans" "DejaVu Sans" ];
     };
   };
 
   fonts.fonts = with pkgs; [
     corefonts
-    source-code-pro
     dejavu_fonts
     ubuntu_font_family
-    inconsolata
-    libertine
-    unifont
-    ttf_bitstream_vera
     hack-font
   ];
 
