@@ -13,6 +13,11 @@
       fsType = "zfs";
     };
 
+  fileSystems."/boot" =
+    { device = "/dev/disk/by-uuid/CD68-6C43";
+      fsType = "vfat";
+    };
+
   fileSystems."/mnt/Media" =
     { device = "//nixhost.4a/Media";
       fsType = "cifs";
@@ -163,6 +168,7 @@
 
   imports =
     [
+      ./nixos/17_03.nix
       ./i3.nix
       ./users.nix
       ./services/virt/host.nix
