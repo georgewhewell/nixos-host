@@ -89,7 +89,6 @@
       ./nixos/17_03.nix
       ./modules/custom-packages.nix
       ./containers/unifi.nix
-      ./containers/couchpotato.nix
       ./containers/sonarr.nix
       ./containers/radarr.nix
       ./containers/plex.nix
