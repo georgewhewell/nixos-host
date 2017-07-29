@@ -43,6 +43,14 @@
           "guest ok" = "yes";
           "max connections" = "20000";
         };
+      scratch =
+        { path = "/export/scratch";
+          "writable" = "yes";
+          "public" = "yes";
+          "browsable" = "yes";
+          "guest ok" = "yes";
+          "max connections" = "20000";
+        };
     };
   };
 }

@@ -93,6 +93,7 @@
       ./containers/radarr.nix
       ./containers/plex.nix
       ./containers/emby.nix
+      ./containers/headphones.nix
       ./services/nfs.nix
       ./services/netatalk.nix
       ./services/grafana.nix
