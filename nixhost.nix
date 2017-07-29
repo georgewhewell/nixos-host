@@ -58,7 +58,7 @@
   services.avahi.nssmdns = true;
   services.avahi.interfaces = ["br0"];
   
-  services.nzbget = {
+  services.sabnzbd = {
     enable = true;
     user = "transmission";
     group = "transmission";
@@ -67,7 +67,7 @@
   networking.firewall = {
     checkReversePath = false;
     trustedInterfaces = [ "cbr0" ];
-    allowedTCPPorts = [ 6789 ];
+    allowedTCPPorts = [ 6789 9001 8080 ];
   };
 
   boot.kernel.sysctl = {
