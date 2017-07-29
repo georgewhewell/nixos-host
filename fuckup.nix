@@ -38,7 +38,6 @@
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
-  boot.kernelParams = ["systemd.legacy_systemd_cgroup_controller=yes"];
   boot.zfs.enableUnstable = true;
 
   networking.wireless = {
@@ -47,19 +46,6 @@
   };
 
   nix.maxJobs    = lib.mkDefault 8;
-  nix.buildCores = lib.mkDefault 8;
-  nix.nixPath = [
-	    "nixpkgs=/etc/nixos/nixpkgs"
-	    "nixos-config=/etc/nixos/configuration.nix"
-  ];
-
-  nixpkgs.config = {
-    allowUnfree = true;
-    chromium = {
-     enablePepperFlash = true;
-     enablePepperPDF = true;
-    };
-  };
 
   # Select internationalisation properties.
    i18n = {
