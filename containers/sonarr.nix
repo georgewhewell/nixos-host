@@ -24,6 +24,7 @@
 
     config = {
       boot.isContainer = true;
+      time.timeZone = "Europe/London";
 
       networking.hostName = "sonarr";
       networking.firewall = {

@@ -28,6 +28,8 @@
       networking.hostName = "radarr";
       networking.interfaces.eth0.useDHCP = true;
       networking.firewall.allowedTCPPorts = [ 7878 ];
+      time.timeZone = "Europe/London";
+
 
       systemd.services.radarr = {
       description = "Radarr";
