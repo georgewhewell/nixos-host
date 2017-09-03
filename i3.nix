@@ -18,6 +18,7 @@ nixpkgs.config.allowUnfree = true;
       monospace = [ "Hack" ];
       sansSerif = [ "Ubuntu" "Liberation Sans" "DejaVu Sans" ];
     };
+    useEmbeddedBitmaps = true;
   };
 
   fonts.fonts = with pkgs; [
@@ -25,6 +26,7 @@ nixpkgs.config.allowUnfree = true;
     dejavu_fonts
     ubuntu_font_family
     hack-font
+    powerline-fonts
   ];
 
   hardware.opengl = {
@@ -33,17 +35,21 @@ nixpkgs.config.allowUnfree = true;
     extraPackages = with pkgs; [ vaapiIntel ];
   };
 
+  services.compton.enable = true;
   services.xserver = {
     enable = true;
     autorun = true;
     useGlamor = true;
+
+    desktopManager.xterm.enable = false;
+    displayManager.slim.defaultUser = "grw";
 
     xrandrHeads = [
       { output = "HDMI-2"; monitorConfig = ''
         Option "Rotate" "right"
         Option "Broadcast RGB" "Full"
         ''; }
-      { output = "DP-2"; primary = true; monitorConfig = ''
+      { output = "DP-1"; primary = true; monitorConfig = ''
         Option "Broadcast RGB" "Full"
     '';}
     ];
