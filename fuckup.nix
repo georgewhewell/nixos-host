@@ -149,10 +149,14 @@
 
   imports =
     [
+      ./profiles/g_ether.nix
       ./nixos/17_03.nix
       ./i3.nix
       ./users.nix
+      ./services/docker.nix
+      ./buildfarm.nix
       ./services/virt/host.nix
+      ./services/virt/vfio.nix
       ./modules/custom-packages.nix
     ];
 }
