@@ -2,7 +2,7 @@
 { pkgs, ... }:
 
 {
-nixpkgs.config.allowUnfree = true;
+
   environment.systemPackages = with pkgs; [
     dmenu     # for app launcher
     feh       # for background image
@@ -11,6 +11,11 @@ nixpkgs.config.allowUnfree = true;
     i3pystatus# sys info
     scrot     # for screenshot
     rxvt_unicode
+    way-cooler
+    alacritty
+    xwayland
+    sway
+    polybar
   ];
 
   fonts.fontconfig = {
