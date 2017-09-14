@@ -37,7 +37,6 @@
 
   swapDevices = [ ];
 
-  nix.maxJobs = lib.mkDefault 24;
   nixpkgs.config.allowUnfree = true;
 
   # Enable the OpenSSH daemon.
@@ -65,8 +64,11 @@
   networking.firewall = {
     checkReversePath = false;
     trustedInterfaces = [ "cbr0" ];
-    allowedTCPPorts = [ 6789 9001 8080 ];
+    allowedTCPPorts = [ 6789 9001 8080 51413 ];
   };
+
+  services.postgresql.enable = true;
+  nix.buildCores = lib.mkDefault 24;
 
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = true;
@@ -83,6 +85,7 @@
     [
       ./users.nix
       ./nixos/17_03.nix
+      ./nixos/store.nix
       ./modules/custom-packages.nix
       ./containers/unifi.nix
       ./containers/sonarr.nix
@@ -90,12 +93,17 @@
       ./containers/plex.nix
       ./containers/emby.nix
       ./containers/headphones.nix
+      ./services/hydra.nix
+      ./services/gogs.nix
+      ./services/buildfarm.nix
       ./services/nfs.nix
       ./services/netatalk.nix
-      ./services/grafana.nix
+      #./services/grafana.nix
+      ./services/nginx.nix
       ./services/prometheus.nix
       ./services/samba.nix
       ./services/transmission.nix
       ./services/docker.nix
     ];
+
 }

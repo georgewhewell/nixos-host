@@ -2,7 +2,7 @@
 
 {
   users.extraUsers.grw = {
-    extraGroups = ["wheel" "libvirtd" "docker" "transmission" "audio" "dialout" "plugdev" "wireshark"];
+    extraGroups = ["wheel" "libvirtd" "docker" "transmission" "audio" "dialout" "plugdev" "wireshark" "nixbld" ];
     isNormalUser = true;
     shell = "${pkgs.zsh}/bin/zsh";
     openssh.authorizedKeys.keys = [

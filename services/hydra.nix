@@ -15,20 +15,28 @@ in {
 
   networking.firewall.allowedTCPPorts = [ 3000 ];
 
-  require = [ ../hydra/hydra-module.nix ];
+  #require = [ ../hydra/hydra-module.nix ];
 
-  services.hydra-dev = {
+  services.hydra = {
     enable = true;
     dbi = "dbi:Pg:dbname=hydra;host=localhost;user=hydra;password=hydra";
-    hydraURL = "http://hydra.4a/";
+    hydraURL = "https://hydra.satanic.link/";
     listenHost = "0.0.0.0";
     port = 3000;
     minimumDiskFree = 5;  # in GB
     minimumDiskFreeEvaluator = 2;
-    notificationSender = "hydra@yourserver.com";
+    notificationSender = "hydra@satanic.link";
     logo = null;
     debugServer = false;
+    useSubstitutes = true;
+    extraConfig = ''
+       binary_cache_secret_key_file /etc/nix/signing-key.sec
+    '';
   };
+
+  # add dezgeg channel for armv7l
+  #nix.binaryCaches = [ "https://www.cs.helsinki.fi/u/tmtynkky/nixos-arm/channel" ];
+  #nix.binaryCachePublicKeys = [ "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%" ];
 
   nix.distributedBuilds = true;
   nix.buildMachines = [
@@ -36,12 +44,78 @@ in {
       hostName = "localhost";
       maxJobs = "12";
       system = "x86_64-linux";
+      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
     }
     { hostName = "odroid-c2.4a";
-      sshUser = "buildfarm";
+      sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
       maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
+    }
+    #{ hostName = "orangepi-prime.4a";
+    #  sshUser = "root";
+    #  sshKey = "/etc/nix/buildfarm";
+    #  system = "aarch64-linux";
+    #  maxJobs = 1;
+    #  supportedFeatures = [ "big-parallel" ];
+    #}
+    #{ hostName = "nanopi-m3.4a";
+    #  sshUser = "root";
+    #  sshKey = "/etc/nix/buildfarm";
+    #  system = "aarch64-linux";
+    #  maxJobs = 1;
+    #  supportedFeatures = [ ];
+    #}
+ #   { hostName = "orangepi-pc2.4a";
+ #     sshUser = "root";
+ #     sshKey = "/etc/nix/buildfarm";
+ #     system = "aarch64-linux";
+ #     maxJobs = 1;
+ #     supportedFeatures = [ ];
+ #   }
+    { hostName = "nanopi-neo2.4a";
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
+      maxJobs = 1;
+      supportedFeatures = [ ];
+    }
+ #   { hostName = "raspberrypi-2b.4a";
+ #     sshUser = "root";
+ #     sshKey = "/etc/nix/buildfarm";
+ ##     system = "armv7l-linux";
+ #     maxJobs = 1;
+ #   }
+ #   { hostName = "orangepi-zero.4a";
+ #     sshUser = "root";
+ #     sshKey = "/etc/nix/buildfarm";
+ #     system = "armv7l-linux";
+ #     maxJobs = 1;
+ #   }
+    { hostName = "163.172.191.174";
+      speedFactor = 2;
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "armv7l-linux";
+      maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
+    }
+   # { hostName = "x3399.4a";
+   #   speedFactor = 3;
+   #   sshUser = "root";
+   #   sshKey = "/etc/nix/buildfarm";
+   #   system = "aarch64-linux";
+   #   maxJobs = 2;
+   #   supportedFeatures = [ "big-parallel" ];
+   # }
+    { hostName = "212.47.251.39";
+      speedFactor = 2;
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
+      maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
     }
 ];
 
@@ -75,4 +149,18 @@ RemainAfterExit = true;
     domain = "4a";
   };
 
+  security.acme.certs."hydra.satanic.link" =
+    { email = "georgerw@gmail.com";
+      postRun = ''systemctl reload nginx.service'';
+    };
+
+  services.nginx.virtualHosts."hydra.satanic.link" = {
+     forceSSL = true;
+     enableACME = true;
+     locations."/" = {
+         proxyPass = "http://localhost:3000";
+     };
+
+  };
+    
 }
