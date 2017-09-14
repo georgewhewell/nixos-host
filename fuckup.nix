@@ -5,9 +5,6 @@
 { config, pkgs, lib, ... }:
 
 {
-  networking.hostName = "fuckup"; # Define your hostname.
-  networking.hostId = "deadbeef";
-
   fileSystems."/" =
     { device = "zpool/root/nixos";
       fsType = "zfs";
@@ -58,25 +55,33 @@
     vim
     rsync
     chromium
-    wireshark
+    #wireshark
     /*virtmanager*/
     nox
     unzip
-    git
+    gitAndTools.gitFull
     htop
     xz
     steam
+    psmisc
+    pwgen
+    tmux
+    esp-open-sdk
   ];
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.openssh.forwardX11 = true;
 
-  services.avahi.enable = true;
-  services.avahi.publish.enable = true;
-  services.avahi.publish.addresses = true;
-  services.avahi.nssmdns = true;
-  services.avahi.interfaces = ["br0"];
+  programs.ssh.startAgent = true;
+  programs.ssh.forwardX11 = true;
+
+  services.avahi = {
+    enable = true;
+    publish.enable = true;
+    publish.addresses = true;
+    interfaces = [ "br0" ];
+  };
 
   hardware.pulseaudio = {
     enable = true;
@@ -85,22 +90,40 @@
     '';
   };
 
-  virtualisation.docker.enable = true;
-
-  networking.bridges.br0 = {
-    interfaces = [ "enp0s31f6" "enp1s0f0" "enp1s0f1"];
-  };
-
-  # The NixOS release to be compatible with for stateful data such as databases.
-  system.stateVersion = "17.03";
-
   hardware.enableAllFirmware = true;
   hardware.bluetooth.enable = true;
 
   services.postgresql.enable = true;
   services.postgresql.enableTCPIP = true;
 
-  networking.firewall.allowedTCPPorts = [ 9100 ];
+  networking = {
+    hostName = "fuckup";
+    hostId = "deadbeef";
+    useDHCP = true;
+
+    firewall = {
+      enable = true;
+      allowedTCPPorts = [ 9100 ];
+      checkReversePath = false;
+      extraCommands = ''
+        # Not strictly firewall, but..
+        ${pkgs.nettools}/bin/ifconfig enp1s0f0 promisc
+        ${pkgs.nettools}/bin/ifconfig enp1s0f1 promisc
+        ${pkgs.nettools}/bin/ifconfig enp0s31f6 promisc
+        ${pkgs.nettools}/bin/ifconfig br0 promisc
+      '';
+    };
+
+    wireless = {
+      enable = true;
+      userControlled = true;
+    };
+
+    bridges.br0 = {
+      rstp = true;
+      interfaces = [ "enp0s31f6" "enp1s0f0" "enp1s0f1" ];
+    };
+  };
 
   systemd.services.prometheus-node-exporter = {
     wantedBy = [ "multi-user.target" ];
