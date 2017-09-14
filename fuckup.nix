@@ -33,19 +33,14 @@
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+
   boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
   boot.kernelModules = [ "wl" "kvm-intel" ];
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
   boot.extraModulePackages = [ config.boot.kernelPackages.broadcom_sta ];
-  boot.zfs.enableUnstable = true;
 
-  networking.wireless = {
-    enable = true;
-    userControlled = true;
-  };
-
-  nix.maxJobs    = lib.mkDefault 8;
+  nix.maxJobs = lib.mkDefault 8;
 
   # Select internationalisation properties.
    i18n = {
