@@ -136,35 +136,11 @@
     };
   };
 
-  systemd.services.igfx-fullrange = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "graphical-session.target" ];
-    requires = [ "graphical-session.target" ];
-    environment = {
-      DISPLAY = ":0";
-      XAUTHORITY = "/home/grw/.Xauthority";
-    };
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = ''${pkgs.xorg.xrandr}/bin/xrandr --output DP-1 --set "Broadcast RGB" "Full"
-      '';
-    };
-  };
+  services.udev.extraRules = ''
+    SUBSYSTEMS=="usb", ATTRS{idVendor}=="20a0", ATTRS{idProduct}=="41ec", MODE:="0666"
+  '';
 
-  systemd.services.igfx-75hz = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "graphical-session.target" ];
-    requires = [ "graphical-session.target" ];
-    environment = {
-      DISPLAY = ":0";
-      XAUTHORITY = "/home/grw/.Xauthority";
-    };
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = ''${pkgs.xorg.xrandr}/bin/xrandr -r 75
-      '';
-    };
-  };
+  systemd.services."dbus-org.bluez".serviceConfig.ExecStart = "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
   services.printing = {
     enable = true;
