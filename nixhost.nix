@@ -7,9 +7,7 @@
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "ehci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
   boot.kernelModules = [ "kvm-intel" ];
-  boot.kernelPackages = pkgs.linuxPackages_4_10;
-  boot.extraModulePackages = [ ];
-  boot.zfs.enableUnstable = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   time.timeZone = "Europe/London";
 
