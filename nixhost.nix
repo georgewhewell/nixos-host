@@ -79,8 +79,6 @@
   hardware.bluetooth.enable = true;
   hardware.enableAllFirmware = true;
 
-  #hardware.firmware = [ pkgs.BCM20702A1 ];
-
   imports =
     [
       ./users.nix
