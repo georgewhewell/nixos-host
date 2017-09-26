@@ -63,24 +63,6 @@
 
   nixpkgs.config = {
     allowUnfree = true;
-    packageOverrides = super: let self = super.pkgs; in {
-      super.networkmanager = super.modemmanager.overrideAttrs (old: rec {
-         version = "git-master";
-         src = pkgs.fetchgit {
-           url = "git://anongit.freedesktop.org/NetworkManager/NetworkManager";
-           rev = "eba646ec42e17aecf851d5d07144de95c5154d78";
-           sha256 = "1xi3m3mhl7cymkhabj6163jdilf7fq36nm68i24dqqq6kvqqm0gs";
-         };
-      });
-      super.modemmanager = super.modemmanager.overrideAttrs (old: rec {
-         version = "master";
-         src = pkgs.fetchgit {
-           url = "git://anongit.freedesktop.org/ModemManager/ModemManager";
-           rev = "5014cf39767a24109de945d99c6b9f4bb1b07274";
-           sha256 = "1q9sshfcsl5cj1xa6gnaq58slhd7dqy9w1k2x27mw5scdpw7gbr4";
-        };
-      });
-    };
   };
 
   environment.systemPackages = with pkgs; [
@@ -98,7 +80,7 @@
     psmisc
     psutils
     usbmuxd
-    /*steam*/
+    gnupg
   ];
 
   imports =
