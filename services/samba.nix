@@ -19,32 +19,31 @@
   services.samba = {
     enable = true;
     syncPasswordsByPam = true;
-    nsswins = true;
     extraConfig = ''
-    guest account = nobody
-    map to guest = bad user
-    allow insecure wide links = yes
+      guest account = nobody
+      map to guest = bad user
+
+      load printers = no
+      printing = bsd
+      printcap name = /dev/null
+      disable spoolss = yes
+
+      dos charset = cp866
+      unix charset = UTF8
+
+      server multi channel support = yes
+      aio read size = 1
+      aio write size = 1
     '';
     shares = {
       Home =
         { path = "/mnt/Home";
           "read only" = "no";
           "valid users" = "grw";
-          "browsable" = "yes";
           "max connections" = "20000";
-          "follow symlinks" = "yes";
-          "wide links" = "yes";
         };
       Media =
         { path = "/mnt/Media";
-          "writable" = "yes";
-          "public" = "yes";
-          "browsable" = "yes";
-          "guest ok" = "yes";
-          "max connections" = "20000";
-        };
-      scratch =
-        { path = "/export/scratch";
           "writable" = "yes";
           "public" = "yes";
           "browsable" = "yes";
