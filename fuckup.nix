@@ -18,13 +18,13 @@
   fileSystems."/mnt/Media" =
     { device = "//nixhost.4a/Media";
       fsType = "cifs";
-      options = [ "credentials=/home/grw/.smbcredentials" ];
+      options = [ "nofail" "credentials=/home/grw/.smbcredentials" ];
     };
 
   fileSystems."/mnt/Home" =
     { device = "//nixhost.4a/Home";
       fsType = "cifs";
-      options = [ "credentials=/home/grw/.smbcredentials" ];
+      options = [ "nofail" "credentials=/home/grw/.smbcredentials" ];
     };
 
   # Use the systemd-boot EFI boot loader.
