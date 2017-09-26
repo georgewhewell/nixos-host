@@ -68,12 +68,6 @@
 
   services.postgresql.enable = true;
   nix.buildCores = lib.mkDefault 24;
-
-  boot.kernel.sysctl = {
-    "net.ipv4.ip_forward" = true;
-    "net.ipv6.conf.all.forwarding" = true;
-    "net.ipv4.conf.all.proxy_arp" = true;
-  };
  
   virtualisation.libvirtd.enable = true;
 

@@ -105,13 +105,6 @@
       enable = true;
       allowedTCPPorts = [ 9100 ];
       checkReversePath = false;
-      extraCommands = ''
-        # Not strictly firewall, but..
-        ${pkgs.nettools}/bin/ifconfig enp1s0f0 promisc
-        ${pkgs.nettools}/bin/ifconfig enp1s0f1 promisc
-        ${pkgs.nettools}/bin/ifconfig enp0s31f6 promisc
-        ${pkgs.nettools}/bin/ifconfig br0 promisc
-      '';
     };
 
     wireless = {
