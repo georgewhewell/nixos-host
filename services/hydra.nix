@@ -34,10 +34,6 @@ in {
     '';
   };
 
-  # add dezgeg channel for armv7l
-  #nix.binaryCaches = [ "https://www.cs.helsinki.fi/u/tmtynkky/nixos-arm/channel" ];
-  #nix.binaryCachePublicKeys = [ "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%" ];
-
   nix.distributedBuilds = true;
   nix.buildMachines = [
      {
@@ -101,6 +97,14 @@ in {
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
     }
+    { hostName = "orangepi-plus2e.4a";
+     speedFactor = 2;
+     sshUser = "root";
+     sshKey = "/etc/nix/buildfarm";
+     system = "armv7l-linux";
+     maxJobs = 1;
+     supportedFeatures = [ "big-parallel" ];
+    }
    # { hostName = "x3399.4a";
    #   speedFactor = 3;
    #   sshUser = "root";
@@ -111,6 +115,14 @@ in {
    # }
     { hostName = "212.47.251.39";
       speedFactor = 2;
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
+      maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
+    }
+    { hostName = "jetson-tx1.4a";
+      speedFactor = 3;
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
