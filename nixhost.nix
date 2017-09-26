@@ -97,12 +97,26 @@
       ./services/buildfarm.nix
       ./services/nfs.nix
       ./services/netatalk.nix
-      #./services/grafana.nix
+      ./services/grafana.nix
       ./services/nginx.nix
       ./services/prometheus.nix
       ./services/samba.nix
       ./services/transmission.nix
       ./services/docker.nix
+      ./services/elk.nix
+      ./services/bitcoind.nix
     ];
+
+ services.elk = {
+    enable = true;
+    systemdUnits = [ "kibana" ];
+ };
+
+ services.rsyslogd = {
+   enable = true;
+ };
+
+ services.disnix.enable = true;
+ services.disnix.useWebServiceInterface = true;
 
 }
