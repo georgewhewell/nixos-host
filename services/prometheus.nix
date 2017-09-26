@@ -17,7 +17,11 @@ scrape_configs:
 
   - job_name: 'node'
     static_configs:
-      - targets: ['pfsense.4a:9100', 'nixhost.4a:9100', 'fuckup.4a:9100']
+      - targets:
+        - 'pfsense.4a:9100'
+        - 'nixhost.4a:9100'
+        - 'fuckup.4a:9100'
+        - 'orangepi-plus2e.4a'
     relabel_configs:
       - source_labels: [__param_target__]
         target_label: instance
@@ -56,28 +60,48 @@ scrape_configs:
     ipmitool
     lm_sensors
   ];
+  services.prometheus.enable = true;
+  services.prometheus.listenAddress = "127.0.0.1:9090";
+  services.prometheus.scrapeConfigs = [
+    { job_name = "prometheus";
+      scrape_interval = "5s";
+      static_configs = [
+        {
+	  targets = [ "127.0.0.1:9090" ];
+	  labels = {};
+        }
+      ];
+    }
+    { job_name = "node";
+      scrape_interval = "5s";
+      static_configs = [
+        {
+	  targets = [
+            "127.0.0.1:9100"
+            "192.168.23.1:9100"
+            "nixhost.4a:9100"
+            "fuckup.4a:9100"
+            "jetson-tx1.4a:9100"
+            "odroid-c2.4a:9100"
+            "nanopi-neo.4a:9100"
+            "nanopi-neo2.4a:9100"
+            "pine64-pine64.4a:9100"
+            "orangepi-plus2e.4a:9100"
+            "orangepi-pc2.4a:9100"
+            "orangepi-prime.4a:9100"
+            "orangepi-zero.4a:9100"
+            "rock64.4a:9100"
+            "x3399.4a:9100"
+          ];
+	  labels = {};
+        }
+      ];
+    }
+  ];
 
-  systemd.services.prometheus = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    serviceConfig = {
-      TimeoutStartSec = 0;
-      Restart = "always";
-      ExecStart = ''${pkgs.prometheus}/bin/prometheus \
-        -config.file "${configFile}"'';
-    };
-  };
-
-  systemd.services.prometheus-node-exporter = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    serviceConfig = {
-      TimeoutStartSec = 0;
-      Restart = "always";
-      ExecStart = ''${pkgs.prometheus-node-exporter}/bin/node_exporter
-      '';
-    };
-  };
+  services.prometheus.nodeExporter.enable = true;
+  services.prometheus.nodeExporter.listenAddress = "127.0.0.1";
+  services.prometheus.nodeExporter.port = 9100;
 
   systemd.services.prometheus-snmp-exporter = {
     wantedBy = [ "multi-user.target" ];
@@ -90,7 +114,8 @@ scrape_configs:
       '';
     };
   };
-  
+  networking.firewall.allowedTCPPorts = [ 9090 9100 ];
+
   systemd.services.prometheus-ipmi-exporter = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
