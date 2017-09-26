@@ -106,5 +106,6 @@
       ./i3.nix
       ./users.nix
       ./nixos/17_03.nix
+      ./services/usbmuxd.nix
     ];
 }
