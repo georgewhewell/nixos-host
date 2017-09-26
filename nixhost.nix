@@ -63,7 +63,6 @@
 
   networking.firewall = {
     checkReversePath = false;
-    trustedInterfaces = [ "cbr0" ];
     allowedTCPPorts = [ 6789 9001 8080 51413 ];
   };
 
