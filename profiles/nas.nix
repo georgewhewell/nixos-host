@@ -16,13 +16,9 @@
     options = ["bind"];
   };
 
-  fileSystems."/export/images" = {
-    device = "/mnt/Home/images";
+  fileSystems."/export/nixos-config" = {
+    device = "/etc/nixos";
     options = ["bind"];
-  };
-
-  fileSystems."/export/scratch" = {
-    fsType = "tmpfs";
   };
 
   fileSystems."/mnt/timemachine" =
@@ -45,7 +41,7 @@
   services.nfs.server.exports = ''
     /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
     /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-    /export/images         192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+    /export/nixos-config   192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
   '';
 
   networking.firewall.allowPing = true;
