@@ -122,31 +122,29 @@
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
     }
-];
+  ];
 
-systemd.services.lumi-hydra-setup = {
-wantedBy = [ "multi-user.target" ];
-requires = [ "hydra-init.service" "postgresql.service" ];
-after = [ "hydra-init.service" "postgresql.service" ];
-environment = config.systemd.services.hydra-init.environment;
-path = [ config.services.hydra.package ];
-script =
-let hydraHome = config.users.users.hydra.home;
-hydraQueueRunnerHome = config.users.users.hydra-queue-runner.home;
-in ''
-hydra-create-user grw \
---full-name 'georgewhewell' \
---email-address 'georgerw@gmail.com' \
---password 'hydra' \
---role admin
-'';
-serviceConfig = {
-Type = "oneshot";
-RemainAfterExit = true;
-};
-};
-
-  services.postgresql.enable = true;
+  systemd.services.lumi-hydra-setup = {
+    wantedBy = [ "multi-user.target" ];
+    requires = [ "hydra-init.service" "postgresql.service" ];
+    after = [ "hydra-init.service" "postgresql.service" ];
+    environment = config.systemd.services.hydra-init.environment;
+    path = [ config.services.hydra.package ];
+    script =
+    let hydraHome = config.users.users.hydra.home;
+      hydraQueueRunnerHome = config.users.users.hydra-queue-runner.home;
+    in ''
+      hydra-create-user grw \
+      --full-name 'georgewhewell' \
+      --email-address 'georgerw@gmail.com' \
+      --password 'hydra' \
+      --role admin
+      '';
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+  };
 
   networking.defaultMailServer = {
     directDelivery = true;
@@ -163,9 +161,8 @@ RemainAfterExit = true;
      forceSSL = true;
      enableACME = true;
      locations."/" = {
-         proxyPass = "http://localhost:3000";
+       proxyPass = "http://localhost:3000";
      };
-
   };
-    
+
 }

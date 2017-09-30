@@ -19,9 +19,12 @@
     "mii"
     "tpm_tis"
   ];
+
   boot.initrd.supportedFilesystems = [
     "zfs"
     "nfs"
   ];
+
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
 }

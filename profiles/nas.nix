@@ -37,16 +37,21 @@
     };
   };
 
-  services.nfs.server.enable = true;
-  services.nfs.server.exports = ''
-    /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
-    /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-    /export/nixos-config   192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-  '';
+  services.nfs.server = {
+    enable = true;
+    # statdPort = 4000;
+    # lockdPort = 4001;
+    # mountdPort = 4002;
+    exports = ''
+      /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
+      /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+      /export/nixos-config   192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+    '';
+  };
 
   networking.firewall.allowPing = true;
 
-  firewall.allowedTCPPorts = [
+  networking.firewall.allowedTCPPorts = [
     111  # nfs?
     2049 # nfs
     4000 # nfs/statd
@@ -57,7 +62,7 @@
     548  # netatalk
   ];
 
-  firewall.allowedUDPPorts = [
+  networking.firewall.allowedUDPPorts = [
     111  # nfs?
     2049 # nfs
     4000 # nfs/statd

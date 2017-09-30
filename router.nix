@@ -5,10 +5,9 @@
     [
       ./profiles/common.nix
       ./profiles/home.nix
+      ./profiles/headless.nix
       ./profiles/uefi-boot.nix
     ];
-
-  sound.enable = false;
 
   services.haveged.enable = true;
   services.vnstat.enable = true;
@@ -89,16 +88,6 @@
       log-dhcp
     '';
 
-  };
-
-  systemd.services.prometheus-node-exporter = {
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    serviceConfig = {
-      TimeoutStartSec = 0;
-      Restart = "always";
-      ExecStart = ''${pkgs.prometheus-node-exporter}/bin/node_exporter'';
-    };
   };
 
 }
