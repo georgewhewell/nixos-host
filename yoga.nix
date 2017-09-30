@@ -2,12 +2,6 @@
 
 {
 
-  boot.initrd.kernelModules = ["acpi" "thinkpad-acpi" "acpi-call"];
-  boot.extraModulePackages = [
-    config.boot.kernelPackages.acpi_call
-    config.boot.kernelPackages.tp_smapi
-  ];
-
   networking.hostName = "yoga";
   networking.hostId = "deadbeef";
 

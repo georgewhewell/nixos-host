@@ -2,6 +2,12 @@
 
 {
 
+ boot.initrd.kernelModules = ["acpi" "thinkpad-acpi" "acpi-call"];
+ boot.extraModulePackages = [
+   config.boot.kernelPackages.acpi_call
+   config.boot.kernelPackages.tp_smapi
+ ];
+
  hardware.trackpoint = {
     enable = true;
     emulateWheel = true;

@@ -38,6 +38,7 @@
     buildCores = 0;
     daemonIONiceLevel = 7;
     daemonNiceLevel = 10;
+    trustedUsers = [ "grw" ];
     nixPath = [
       "nixpkgs=/etc/nixos/nixpkgs"
       "nixos-config=/etc/nixos/configuration.nix"

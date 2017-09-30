@@ -13,6 +13,11 @@
     "usb_storage"
     "usbhid"
     "sd_mod"
+    "sdhci_acpi"
+    "r8169"
+    "tpm"
+    "mii"
+    "tpm_tis"
   ];
   boot.initrd.supportedFilesystems = [
     "zfs"
