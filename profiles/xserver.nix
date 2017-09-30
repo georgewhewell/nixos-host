@@ -1,7 +1,19 @@
-# i3 desktop config
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
+
+  hardware.pulseaudio = {
+    enable = true;
+    extraConfig = ''
+      # stop switching to HDMI output
+      unload-module module-switch-on-port-available
+    '';
+  };
+
+  services.printing = {
+    enable = true;
+    drivers = [ pkgs.gutenprint ];
+  };
 
   environment.systemPackages = with pkgs; [
     dmenu     # for app launcher
@@ -40,30 +52,17 @@
     extraPackages = with pkgs; [ vaapiIntel ];
   };
 
-  services.compton.enable = true;
   services.xserver = {
     enable = true;
     autorun = true;
-    useGlamor = true;
 
     desktopManager.xterm.enable = false;
     displayManager.slim.defaultUser = "grw";
 
-    xrandrHeads = [
-      { output = "HDMI-2"; monitorConfig = ''
-        Option "Rotate" "right"
-        Option "Broadcast RGB" "Full"
-        ''; }
-      { output = "DP-1"; primary = true; monitorConfig = ''
-        Option "Broadcast RGB" "Full"
-    '';}
-    ];
-
-    videoDrivers = [ "modesetting" ];
     windowManager = {
       i3.enable = true;
       i3.package = pkgs.i3-gaps;
       default = "i3";
     };
-   };
+  };
 }

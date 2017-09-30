@@ -38,7 +38,7 @@
   nix.maxJobs = lib.mkDefault 8;
 
   boot.initrd.availableKernelModules = [ "dm_mod" "zfs" ];
-  boot.loader.grub.devices = ["/dev/sda" "/dev/sdb" ];
+  boot.loader.grub.devices = [ "/dev/sda" "/dev/sdb" ];
   boot.loader.grub.timeout = 0;
 
   fileSystems."/boot" =

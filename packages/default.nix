@@ -14,4 +14,5 @@ with pkgs;
   cni = callPackage ./cni.nix { };
   prometheus-snmp-exporter = callPackage ./snmp-exporter.nix { };
   prometheus-ipmi-exporter = callPackage ./ipmi-exporter.nix { };
+  esp-open-sdk = callPackage ./esp-open-sdk.nix { };
 }

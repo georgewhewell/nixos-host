@@ -1,22 +1,41 @@
 { config, pkgs, lib, ... }:
 
 {
-  # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  /*
+    nixhost: xeon-d microserver
+  */
 
-  boot.initrd.availableKernelModules = [ "xhci_pci" "ehci_pci" "ahci" "nvme" "usb_storage" "usbhid" "sd_mod" ];
-  boot.kernelModules = [ "kvm-intel" ];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-
-  time.timeZone = "Europe/London";
+  imports =
+    [
+      ./profiles/common.nix
+      ./profiles/home.nix
+      ./profiles/nas.nix
+      ./profiles/uefi-boot.nix
+      ./containers/unifi.nix
+      ./containers/sonarr.nix
+      ./containers/radarr.nix
+      ./containers/plex.nix
+      ./containers/emby.nix
+      ./containers/headphones.nix
+      ./services/hydra.nix
+      ./services/gogs.nix
+      ./services/buildfarm.nix
+      ./services/grafana.nix
+      ./services/nginx.nix
+      ./services/prometheus.nix
+      ./services/transmission.nix
+      ./services/docker.nix
+      ./services/elk.nix
+      ./services/bitcoind.nix
+    ];
 
   networking = {
     hostName = "nixhost";
     hostId = "deadbeef";
     useDHCP = true;
     bridges.br0 = {
-      interfaces = ["eno1" "eno2" "eno3" "eno4"];
+      rstp = true;
+      interfaces = [ "eno1" "eno2" "eno3" "eno4" ];
     };
   };
 
@@ -35,26 +54,16 @@
       fsType = "zfs";
     };
 
-  swapDevices = [ ];
-
-  nixpkgs.config.allowUnfree = true;
-
-  # Enable the OpenSSH daemon.
-  services.openssh.enable = true;
-  services.openssh.forwardX11 = true;
-
   # Enable the X11 windowing system.
   services.xserver.enable = false;
+  services.nix-serve = {
+    enable = true;
+    secretKeyFile = "/etc/nix/signing-key.sec";
+  };
 
-  # autodiscover
-  services.avahi.enable = true;
-  services.avahi.publish.enable = true;
-  services.avahi.publish.addresses = true;
-  services.avahi.publish.userServices = true;
-  services.avahi.publish.domain = true;
-  services.avahi.nssmdns = true;
+  networking.firewall.allowedTCPPorts = [ 3000 ];
   services.avahi.interfaces = ["br0"];
-  
+
   services.sabnzbd = {
     enable = true;
     user = "transmission";
@@ -68,49 +77,19 @@
 
   services.postgresql.enable = true;
   nix.buildCores = lib.mkDefault 24;
- 
+
   virtualisation.libvirtd.enable = true;
 
-  hardware.bluetooth.enable = true;
-  hardware.enableAllFirmware = true;
-
-  imports =
-    [
-      ./users.nix
-      ./nixos/17_03.nix
-      ./nixos/store.nix
-      ./modules/custom-packages.nix
-      ./containers/unifi.nix
-      ./containers/sonarr.nix
-      ./containers/radarr.nix
-      ./containers/plex.nix
-      ./containers/emby.nix
-      ./containers/headphones.nix
-      ./services/hydra.nix
-      ./services/gogs.nix
-      ./services/buildfarm.nix
-      ./services/nfs.nix
-      ./services/netatalk.nix
-      ./services/grafana.nix
-      ./services/nginx.nix
-      ./services/prometheus.nix
-      ./services/samba.nix
-      ./services/transmission.nix
-      ./services/docker.nix
-      ./services/elk.nix
-      ./services/bitcoind.nix
-    ];
-
- services.elk = {
+  services.elk = {
     enable = true;
     systemdUnits = [ "kibana" ];
- };
+  };
 
- services.rsyslogd = {
+  services.rsyslogd = {
    enable = true;
- };
+  };
 
- services.disnix.enable = true;
- services.disnix.useWebServiceInterface = true;
+  services.disnix.enable = true;
+  services.disnix.useWebServiceInterface = true;
 
 }

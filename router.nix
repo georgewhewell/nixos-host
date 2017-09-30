@@ -2,7 +2,7 @@
 
 {
   imports =
-    [ 
+    [
       # Include the results of the hardware scan.
       ./users.nix
       ./nixos/17_03.nix
@@ -25,6 +25,9 @@
     enable = true;
   };
 
+  services.fail2ban.enable = true;
+  services.fail2ban.jails.ssh-iptables = "enabled = true";
+  
   networking = {
     hostName = "router"; # Define your hostname.
     useNetworkd = true;
