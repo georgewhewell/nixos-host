@@ -85,6 +85,7 @@
       cname=grafana.satanic.link,nixhost.4a
       cname=git.satanic.link,nixhost.4a
       cname=elk.satanic.link,nixhost.4a
+      cname=es.satanic.link,nixhost.4a
       log-dhcp
     '';
 
