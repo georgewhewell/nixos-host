@@ -37,6 +37,7 @@
     hostName = "fuckup";
     hostId = "deadbeef";
     useDHCP = true;
+    useNetworkd = true;
 
     firewall = {
       enable = true;
@@ -50,7 +51,6 @@
     };
 
     bridges.br0 = {
-      rstp = true;
       interfaces = [ "enp0s31f6" "enp1s0f0" "enp1s0f1" ];
     };
   };
