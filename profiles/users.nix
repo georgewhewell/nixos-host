@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
+
   users.extraUsers.grw = {
     extraGroups = [
       "wheel"
@@ -22,5 +23,7 @@
     ];
   };
 
-   security.sudo.wheelNeedsPassword = false;
+  programs.zsh.enable = true;
+
+  security.sudo.wheelNeedsPassword = false;
 }

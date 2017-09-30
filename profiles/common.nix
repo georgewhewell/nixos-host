@@ -5,6 +5,7 @@
     ./users.nix
     ../modules/custom-packages.nix
     ../modules/bitcoin.nix
+    ../services/usbmuxd.nix
   ];
 
   hardware.enableAllFirmware = true;
@@ -38,8 +39,8 @@
     daemonIONiceLevel = 7;
     daemonNiceLevel = 10;
     nixPath = [
-        "nixpkgs=/etc/nixos/nixpkgs"
-        "nixos-config=/etc/nixos/configuration.nix"
+      "nixpkgs=/etc/nixos/nixpkgs"
+      "nixos-config=/etc/nixos/configuration.nix"
     ];
     binaryCaches = [
       https://cache.nixos.org

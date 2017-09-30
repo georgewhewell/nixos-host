@@ -10,7 +10,6 @@
 
   networking.hostName = "yoga";
   networking.hostId = "deadbeef";
-  networking.networkmanager.enable = true;
 
   fileSystems."/" =
     { device = "zpool/root/yoga-nixos";
@@ -24,21 +23,11 @@
 
   nix.maxJobs = lib.mkDefault 4;
 
-  services.tlp.enable = true;
+  services.xserver.dpi = 142;
 
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
-  };
-
-  hardware.pulseaudio = {
-    enable = true;
-  };
-
-  hardware.enableAllFirmware = true;
-  hardware.cpu.intel.updateMicrocode = true;
-  systemd.services.ModemManager = {
-    wantedBy = [ "multi-user.target" ];
   };
 
   environment.systemPackages = with pkgs; [
@@ -62,9 +51,9 @@
   imports =
     [
       ./profiles/common.nix
-      ./profiles/home.nix
+      ./profiles/xserver.nix
       ./profiles/nas-mounts.nix
       ./profiles/uefi-boot.nix
-      ./services/usbmuxd.nix
+      ./profiles/thinkpad.nix
     ];
 }

@@ -1,21 +1,14 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
-let
-  # make sure we always have the latest module
-  /*hydra = pkgs.fetchgit {
-    url = https://github.com/NixOS/hydra;
-    rev = "refs/heads/master";
-  };*/
-in {
+{
 
   fileSystems."/var/lib/hydra" =
     { device = "bpool/root/hydra";
       fsType = "zfs";
     };
 
+  services.postgresql.enable = true;
   networking.firewall.allowedTCPPorts = [ 3000 ];
-
-  #require = [ ../hydra/hydra-module.nix ];
 
   services.hydra = {
     enable = true;
