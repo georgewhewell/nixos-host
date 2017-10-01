@@ -119,6 +119,9 @@
     }
   ];
 
+  systemd.services.hydra-init.requires = [ "hydra-init.service" "postgresql.service" ];
+  systemd.services.hydra-init.after = [ "hydra-init.service" "postgresql.service" ];
+
   systemd.services.lumi-hydra-setup = {
     wantedBy = [ "multi-user.target" ];
     requires = [ "hydra-init.service" "postgresql.service" ];
