@@ -16,7 +16,7 @@
     writableStoreUseTmpfs = false;
     memorySize = 4096;
     cores = 8;
-    diskSize = 1024;
+    diskSize = 1024 * 1024;
     qemu.networkingOptions = [
       "-device virtio-net-pci,netdev=net0"
       "-netdev tap,id=net0,script=/etc/qemu-ifup"

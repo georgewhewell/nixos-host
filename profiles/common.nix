@@ -13,6 +13,11 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.openssh.forwardX11 = true;
+  programs.ssh.extraConfig = ''
+    Host *.4a
+      # todo..
+      StrictHostKeyChecking no
+  '';
 
   # Start ssh-agent
   programs.ssh.startAgent = true;

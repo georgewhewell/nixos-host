@@ -13,13 +13,13 @@
       ./profiles/uefi-boot.nix
       ./profiles/logserver.nix
       ./profiles/headless.nix
+      ./profiles/hydra-server.nix
       ./containers/unifi.nix
       ./containers/sonarr.nix
       ./containers/radarr.nix
       ./containers/plex.nix
       ./containers/emby.nix
       ./containers/headphones.nix
-      ./services/hydra.nix
       ./services/gogs.nix
       ./services/buildfarm.nix
       ./services/grafana.nix

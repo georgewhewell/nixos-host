@@ -19,7 +19,7 @@
      forceSSL = true;
      enableACME = true;
      locations."/" = {
-       proxyPass = "http://localhost:3000";
+       proxyPass = "http://hydra.4a:3000";
      };
   };
 
