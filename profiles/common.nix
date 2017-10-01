@@ -5,7 +5,6 @@
     ./users.nix
     ../modules/custom-packages.nix
     ../modules/bitcoin.nix
-    ../services/usbmuxd.nix
   ];
 
   hardware.enableAllFirmware = true;

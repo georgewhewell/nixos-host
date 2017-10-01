@@ -1,6 +1,9 @@
 { config, pkgs, ... }:
 
 {
+  imports = [
+    ../services/usbmuxd.nix
+  ];
 
   hardware.pulseaudio = {
     enable = true;
