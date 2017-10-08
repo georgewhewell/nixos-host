@@ -37,7 +37,7 @@
         template.enabled: false
 
       queue_size: 50000
-      logging.level: debug
+      logging.level: error
       logging.to_files: false
     '';
   };
