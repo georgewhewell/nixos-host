@@ -5,7 +5,6 @@
     [
       ./profiles/common.nix
       ./profiles/home.nix
-      ./profiles/headless.nix
       ./profiles/uefi-boot.nix
     ];
 
@@ -17,6 +16,10 @@
 
   nix.maxJobs = lib.mkDefault 4;
   powerManagement.cpuFreqGovernor = "performance";
+
+  environment.systemPackages = with pkgs; [
+    mosh
+  ];
 
   fileSystems."/" =
     { device = "/dev/disk/by-uuid/dd3984c7-ebec-4e35-91dc-2e176ed8e788";
@@ -44,9 +47,9 @@
       internalInterfaces = [ "enp3s0" ];
       externalInterface = "enp1s0";
       forwardPorts = [
-        { sourcePort = 80; destination = "192.168.23.175:80"; }
-        { sourcePort = 443; destination = "192.168.23.175:443"; }
-        { sourcePort = 51413; destination = "192.168.23.175:51413"; }
+        { sourcePort = 80; destination = "192.168.23.133:80"; }
+        { sourcePort = 443; destination = "192.168.23.133:443"; }
+        { sourcePort = 51413; destination = "192.168.23.133:51413"; }
       ];
     };
 
@@ -67,6 +70,7 @@
 
   };
 
+   services.avahi.interfaces = [ "enp3s0" ];
    services.dnsmasq = {
     enable = true;
     servers = [ "8.8.8.8" "8.8.4.4" ];
