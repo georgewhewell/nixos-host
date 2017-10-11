@@ -71,4 +71,22 @@
 
   systemd.services."dbus-org.bluez".serviceConfig.ExecStart = "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
+
+  services.udev.extraRules = ''
+    # Rename and chown to plugdev
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="04e8", ATTRS{idProduct}=="1234", GROUP="users", MODE="0660" SYMLINK+="usb-loader-m3"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="1f3a", ATTRS{idProduct}=="efe8", GROUP="users", MODE="0660" SYMLINK+="sunxi-fel"
+
+    #  ACTION=="add", KERNEL=="usb*[0-9]", RUN+="${pkgs.systemd}/bin/systemctl --no-block start nanopi-m3-boot@%k.service"
+    ACTION=="add", KERNEL=="enp0s20*", DRIVERS=="rndis_host", RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
+  '';
+
+  systemd.services."bridge-rndis@" = {
+    /*bindsTo = [ "dev-%i.device"] ;*/
+    serviceConfig = {
+        Type = "simple";
+        ExecStart = "${pkgs.stdenv.shell} -c '${pkgs.bridge-utils}/bin/brctl addif br0 %I && ${pkgs.nettools}/bin/ifconfig %I promisc on inet 0.0.0.0}'";
+    };
+  };
+
 }
