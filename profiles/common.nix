@@ -48,10 +48,12 @@
       "nixos-config=/etc/nixos/configuration.nix"
     ];
     binaryCaches = [
-      https://cache.nixos.org
+        https://hydra.satanic.link/
+        https://cache.nixos.org/
     ];
     binaryCachePublicKeys = [
-      "hydra.nixos.org-1:CNHJZBh9K4tP3EKF6FkkgeVYsS3ohTl+oS0Qa8bezVs="
+      "hydra.satanic.link-1:U4ZvldOwA3GWLmFTqdXwUu9oS0Qzh4+H/HSl8O6ew5o="
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     ];
     extraOptions = ''
       auto-optimise-store = true
