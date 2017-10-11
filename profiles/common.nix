@@ -72,6 +72,7 @@
     psmisc
     pwgen
     tmux
+    nixops
   ];
 
 }
