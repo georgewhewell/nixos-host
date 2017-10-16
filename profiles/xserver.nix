@@ -31,6 +31,7 @@
     xwayland
     sway
     polybar
+    xss-lock
   ];
 
   fonts.fontconfig = {

@@ -23,6 +23,7 @@
     enable = true;
     powerOnBoot = false;
   };
+  hardware.sensor.iio.enable = true;
 
   environment.systemPackages = with pkgs; [
     acpi
@@ -40,6 +41,7 @@
     psutils
     usbmuxd
     gnupg
+    powertop
   ];
 
   imports =
