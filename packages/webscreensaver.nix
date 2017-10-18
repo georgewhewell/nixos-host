@@ -11,7 +11,7 @@ pkgs.stdenv.mkDerivation {
      sha256 = "0wq8lrial1khc0kv34g2n7wbl9bf9m3vfk29d51g6r0hg3vzp49l";
    };
 
-   buildInputs = with pkgs; with python27Packages; [ gtk3 python gst-python pygtk pygobject3 pywebkitgtk2 ];
+   buildInputs = with pkgs; with python27Packages; [ gtk3 python gst-python pygtk pygobject3 pywebkitgtk webkitgtk ];
    propogatedBuildInputs = [ pkgs.python27 ];
    installPhase = ''
      mkdir -p $out/bin
