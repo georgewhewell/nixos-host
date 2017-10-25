@@ -46,6 +46,7 @@
 
   imports =
     [
+      ./modules/custom-packages.nix
       ./profiles/common.nix
       ./profiles/xserver.nix
       ./profiles/nas-mounts.nix
