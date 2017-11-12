@@ -3,7 +3,7 @@
 let
 
   pkgs = import nixpkgs { overlays = [
-    ./modules/overlay.nix
+    (self: super: import modules/overlay.nix { inherit self super; })
   ]; };
 
   build = config:

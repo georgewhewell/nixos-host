@@ -18,8 +18,6 @@
       ./containers/sonarr.nix
       ./containers/radarr.nix
       ./containers/plex.nix
-      ./containers/emby.nix
-      ./containers/headphones.nix
       ./services/gogs.nix
       ./services/buildfarm.nix
       ./services/grafana.nix
