@@ -19,10 +19,6 @@
       StrictHostKeyChecking no
   '';
 
-  # Start ssh-agent
-  programs.ssh.startAgent = true;
-  programs.ssh.forwardX11 = true;
-
   i18n = {
     consoleFont = "Lat2-Terminus16";
     consoleKeyMap = "uk";
@@ -62,10 +58,8 @@
 
   environment.systemPackages = with pkgs; [
     wget
-    atom
     vim
     rsync
-    chromium
     nox
     unzip
     gitAndTools.gitFull
