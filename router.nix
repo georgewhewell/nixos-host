@@ -59,13 +59,17 @@
       trustedInterfaces = [ "enp3s0" ];
     };
 
-    interfaces.enp1s0 = {
-      useDHCP = true;
-    };
+    interfaces = {
+      # Use DHCP to aquire IP from modem
+      enp1s0 = {
+        useDHCP = true;
+      };
 
-    interfaces.enp3s0 = {
-      ipAddress = "192.168.23.1";
-      prefixLength = 24;
+      # Static IP on LAN
+      enp3s0 = {
+        ipAddress = "192.168.23.1";
+        prefixLength = 24;
+      };
     };
 
   };
@@ -82,8 +86,7 @@
       interface=lo
       interface=enp3s0
       dhcp-range=192.168.23.10,192.168.23.254,24h
-      dhcp-range=192.168.24.10,192.168.24.254,24h
-      dhcp-range=192.168.25.10,192.168.35.254,24h
+      address=/router.4a/192.168.23.1
       cname=hydra.satanic.link,nixhost.4a
       cname=grafana.satanic.link,nixhost.4a
       cname=git.satanic.link,nixhost.4a
