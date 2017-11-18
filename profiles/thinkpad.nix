@@ -20,11 +20,15 @@
     powerOnBoot = false;
   };
 
-  services.xserver.libinput.enable = true;
+  hardware.pulseaudio.enable = true;
+  security.rngd.enable = true;
 
   services.tlp.enable = true;
-  networking.networkmanager.enable = true;
+  services.xserver.libinput.enable = true;
+  sound.mediaKeys.enable = true;
 
+  # need networkmanager for wifi
+  networking.networkmanager.enable = true;
   systemd.services.ModemManager = {
     wantedBy = [ "multi-user.target" ];
   };
