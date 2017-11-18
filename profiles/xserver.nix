@@ -3,6 +3,7 @@
 {
   imports = [
     ../services/usbmuxd.nix
+    ./gpg-yubikey.nix
   ];
 
   hardware.pulseaudio = {
@@ -26,12 +27,10 @@
     i3pystatus# sys info
     scrot     # for screenshot
     rxvt_unicode
-    way-cooler
-    alacritty
-    xwayland
-    sway
-    polybar
     xss-lock
+
+    atom
+    chromium
   ];
 
   fonts.fontconfig = {
