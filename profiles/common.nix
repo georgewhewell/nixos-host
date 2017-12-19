@@ -8,10 +8,11 @@
   nixpkgs.overlays = [
       (import ../modules/overlay.nix)
   ];
+
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-  security.rngd.enable = mkDefault true;
+  security.rngd.enable = pkgs.lib.mkDefault true;
 
   # Enable the OpenSSH daemon.
   services.openssh = {
