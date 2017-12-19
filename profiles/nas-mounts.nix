@@ -8,7 +8,7 @@
       options = [ "nofail" ];
     };
 
-  fileSystems."/mnt/nixhost-config" =
+  fileSystems."/mnt/nixhostconfig" =
     { device = "nixhost.4a:/nixos-config";
       fsType = "nfs";
       options = [ "nofail" ];
