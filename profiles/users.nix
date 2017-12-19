@@ -15,6 +15,7 @@ in {
       "plugdev"
       "wireshark"
       "lp"
+      "scanner"
     ];
     isNormalUser = true;
     shell = "${pkgs.zsh}/bin/zsh";
