@@ -49,6 +49,7 @@
       forwardPorts = [
         { sourcePort = 80; destination = "192.168.23.133:80"; }
         { sourcePort = 443; destination = "192.168.23.133:443"; }
+        { sourcePort = 2222; destination = "192.168.23.133:2222"; }
         { sourcePort = 51413; destination = "192.168.23.133:51413"; }
       ];
     };
