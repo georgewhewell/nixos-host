@@ -9,12 +9,19 @@
 
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
-  
+
   security.rngd.enable = true;
 
   # Enable the OpenSSH daemon.
-  services.openssh.enable = true;
-  services.openssh.forwardX11 = true;
+  services.openssh = {
+    enable = true;
+    gatewayPorts = "yes"; # needed for pgp forward?
+    forwardX11 = true;
+    extraConfig = ''
+      StreamLocalBindUnlink yes
+    '';
+  };
+
   programs.ssh.extraConfig = ''
     Host *.4a
       # todo..

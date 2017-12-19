@@ -32,11 +32,6 @@
     sensitivity = 140;
   };
 
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = false;
-  };
-
   hardware.pulseaudio.enable = true;
   services.tlp.enable = true;
 
