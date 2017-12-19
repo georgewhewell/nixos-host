@@ -3,16 +3,19 @@
 {
 
   # Use gpg-agent for ssh
-  programs.ssh.startAgent = false;
+  programs.ssh = {
+    startAgent = false;
+    agentTimeout = "1h";
+    extraConfig = ''
+      #RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra
+    '';
+  };
+
   programs.gnupg.agent = {
     enable = true;
     enableSSHSupport = true;
+    enableExtraSocket = true;
   };
-
-  environment.shellInit = ''
-    gpg-connect-agent /bye
-    export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
-  '';
 
   # Enable smart card daemon
   services.pcscd.enable = true;
@@ -29,6 +32,7 @@
     pass
     gnupg
     yubikey-personalization
+    yubikey-manager
   ];
 
   # make uf2 give permission on yubikey to users
