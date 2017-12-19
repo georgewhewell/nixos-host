@@ -22,10 +22,8 @@
       ./services/buildfarm.nix
       ./services/grafana.nix
       ./services/nginx.nix
-      ./services/prometheus.nix
       ./services/transmission.nix
       ./services/docker.nix
-      ./services/bitcoind.nix
     ];
 
   networking = {

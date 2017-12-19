@@ -3,10 +3,11 @@
 {
   imports = [
     ./users.nix
-    ../modules/custom-packages.nix
-    ../modules/bitcoin.nix
   ];
 
+  nixpkgs.overlays = [
+      (import ../modules/overlay.nix)
+  ];
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
