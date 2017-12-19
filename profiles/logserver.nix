@@ -15,6 +15,12 @@
     enableACME = true;
     locations."/" = {
       proxyPass = "http://127.0.0.1:5601";
+      extraConfig = ''
+        location / {
+          allow   192.168.23.0/24;
+          deny    all;
+        }
+      '';
     };
   };
 
