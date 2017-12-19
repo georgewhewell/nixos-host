@@ -11,7 +11,7 @@
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-  security.rngd.enable = true;
+  security.rngd.enable = mkDefault true;
 
   # Enable the OpenSSH daemon.
   services.openssh = {
@@ -82,6 +82,7 @@
     pwgen
     tmux
     nixops
+    jq
 
     arp-scan
     ipmitool
