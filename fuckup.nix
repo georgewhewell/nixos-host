@@ -8,6 +8,8 @@
   imports =
     [
       ./profiles/common.nix
+      ./profiles/development.nix
+      ./profiles/bridge-interfaces.nix
       ./profiles/home.nix
       ./profiles/nas-mounts.nix
       ./profiles/uefi-boot.nix
@@ -28,7 +30,11 @@
       fsType = "vfat";
     };
 
+  boot.kernelModules = [ "wl" ];
+  boot.blacklistedKernelModules = [
+    "b44" "b43" "b43legacy" "ssb" "brcmsmac" "bcma" ];
   boot.extraModulePackages = [
+    config.boot.kernelPackages.rtlwifi_new
     config.boot.kernelPackages.broadcom_sta ];
 
   nix.maxJobs = lib.mkDefault 8;
@@ -46,13 +52,12 @@
       checkReversePath = false;
     };
 
-    wireless = {
-      enable = true;
-      userControlled = true;
-    };
-
     bridges.br0 = {
-      interfaces = [ "enp0s31f6" "enp1s0f0" "enp1s0f1" ];
+      interfaces = [
+        "enp0s31f6" # onboard ethernet
+        "enp1s0f0"  # sfp+
+        "enp1s0f1"  # sfp+
+      ];
     };
   };
 
@@ -70,29 +75,22 @@
     ];
   };
 
-  systemd.services."dbus-org.bluez".serviceConfig.ExecStart = "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
   nix.distributedBuilds = true;
   nix.buildMachines = [
-     {
-      hostName = "localhost";
-      maxJobs = "4";
-      system = "x86_64-linux";
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-    }
-    { hostName = "odroidxu4.4a";
-     speedFactor = 2;
+    {
+     hostName = "odroidxu4.4a";
      sshUser = "root";
      sshKey = "/etc/nix/buildfarm";
      system = "armv7l-linux";
-     maxJobs = 1;
+     maxJobs = 2;
      supportedFeatures = [ "big-parallel" ];
     }
-    { hostName = "rock64.4a";
-     speedFactor = 2;
+    {
+     hostName = "rock64.4a";
      sshUser = "root";
      sshKey = "/etc/nix/buildfarm";
      system = "aarch64-linux";
-     maxJobs = 1;
+     maxJobs = 2;
      supportedFeatures = [ "big-parallel" ];
     }
     ];

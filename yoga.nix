@@ -26,34 +26,14 @@
   hardware.sensor.iio.enable = true;
 
   environment.systemPackages = with pkgs; [
-    acpi
-    git
-    vim
-    nox
-    atom
-    chromium
-    sway
-    alacritty
-    xwayland
-    modemmanager
-    networkmanagerapplet
-    psmisc
-    psutils
-    usbmuxd
-    gnupg
-    powertop
-    usbutils
-    msr-tools
-    /*validity90*/
-    auto-rotate
     steam
-    rfkill
   ];
 
   imports =
     [
       ./modules/custom-packages.nix
       ./profiles/common.nix
+      ./profiles/development.nix
       ./profiles/xserver.nix
       ./profiles/nas-mounts.nix
       ./profiles/uefi-boot.nix
