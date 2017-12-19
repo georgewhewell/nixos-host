@@ -1,6 +1,8 @@
 { config, lib, pkgs, ... }:
 
-{
+let
+  gpg-pubkey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDDTCU9cXFbzEIZxeUCa/p0BosJPIwBetn0DNgfAAU8DMXQhuqtCBNZtd8jHHQC4QT4B7YKJfjAp1LFhetNZ2e7Urx5oxJWqkCsGtaFmtDik8i+AQNdoeTDdUDkU00YnI2+b9n6wTt6g3iWn76S2VjCmvh9LIIfLywEecWw9/cx+kT8asilesmGP8CHOeFmO+KUPMY9Ed9oRocQFpZn/NqlAKAFmx5c1mQhjf1l3cEZXpK3sSC/VsgyJd/DUo6uBlohinsbvcJ3h6r6OnxGvx3dCcRoGcnRW4hNyzB7KOjx9GChqyz7W205mBsoIBQWgHZfDU4ZtYd3Wg1Lfa6Po/g7TPCHderX6JAld9i1NeWBgCqzRZM0hsmEADuQ11XzEATQFwLBQzEYLasNLFYJSrAIX526ccYIJZhTOG+Hv3hPDEvrVhcWG881R5qr9Z40qdIHX1d9ht7iD7IO/vpwYqIVQe87+3fA2NhYhbMxgNp61leS+6VQ4JKE3q8uV0fa92FlSpSxQReFigV9BPXDUflN8VTq989l91y4rvUGiMvuNroIRa3ILeduDB4S8YJUNl9sW4xCufx7b1x6m24JpJp1xaIknH2gbw3/+rvkdvN7b7LQzJzc22T125+Bqfn6nMj8xJv4gG98WRA6vPsT9fQcDOaVOae27+qlpuQFAwiRRQ== cardno:000605973189";
+in {
 
   users.extraUsers.grw = {
     extraGroups = [
@@ -17,6 +19,7 @@
     isNormalUser = true;
     shell = "${pkgs.zsh}/bin/zsh";
     openssh.authorizedKeys.keys = [
+      gpg-pubkey
       "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHCp/KhshTrp+p1TQOp3PZfwvj+pAGzm7Z4tbRYImpHNS9octfJ4sSmL4X4YQSu4PbpM/9Jo5UzVPpCRpD6OOiA= grw@nixhost"
       "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBBZ7a3vc5ex0sSTz8uitNrf96k5iURfRL8e9AoM93Yw1oKk5CD4mOZLOb7Av7SwFLtvgGMTnpLsxuusj2QoGTCk= grw@h9fp4whfi.local"
       "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/yARn1J0K+z8kdhLGxZgCe0kIrCJg5o7DC0oITmbzE3YKrubFVNn7zHkwzRw0b8kjfZFIxFbo5toOFCO0VN5biujrWbutzlLjTnFP0YqoL47XD58gU+TWZb/9qoV1Yjj1OUXJ+93ZTGjXGyZ+0FDtp84lFoDgSvBXf8C742g4gm6KkXYFfGYMz8LRKSnXYpeuMu18UdZVo33m8aweTvZ+m7riD6YCJILNIPFIvVExg+UNzOh4t0Hrj+O5ir9NNCqQeu633yXKlOMShbQVmmPZfrxpg24Fv5orX/pZZM+fHB94yO5wunlzxVsF5GVjCKJL5Gj/SqCRePohDiePNdP/ grw@fuckup"
