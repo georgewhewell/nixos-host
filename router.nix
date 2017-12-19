@@ -78,6 +78,7 @@
    services.avahi.interfaces = [ "enp3s0" ];
    services.dnsmasq = {
     enable = true;
+    resolveLocalQueries = true;
     servers = [ "8.8.8.8" "8.8.4.4" ];
     extraConfig = ''
       domain-needed
