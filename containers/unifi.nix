@@ -24,6 +24,7 @@
       boot.isContainer = true;
 
       networking.hostName = "unifi";
+      networking.useNetworkd = true;
       networking.interfaces.eth0.useDHCP = true;
       networking.firewall = {
         enable = true;

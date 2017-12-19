@@ -1,7 +1,6 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  networking.firewall.allowedTCPPorts = [ 5050 ];
 
   fileSystems."/var/lib/plex" =
     { device = "fpool/root/config/plex";
@@ -36,7 +35,13 @@
       boot.isContainer = true;
 
       networking.hostName = "plex";
-      networking.firewall.enable = false;
+
+      networking.firewall.enable = true;
+      networking.firewall.allowedUDPPorts = [ 1900 5353
+        32410 32412 32413 32414];
+      networking.firewall.allowedTCPPorts = [ 32400 32469 ];
+
+      networking.useNetworkd = true;
       networking.interfaces.eth0.useDHCP = true;
 
       nixpkgs.config.allowUnfree = true;

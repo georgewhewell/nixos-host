@@ -26,15 +26,11 @@
       boot.isContainer = true;
       time.timeZone = "Europe/London";
 
+      networking.useNetworkd = true;
       networking.hostName = "sonarr";
-      networking.firewall = {
-        enable = false;
-        extraCommands = ''
-          ${pkgs.iptables}/bin/iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8989
-          ${pkgs.iptables}/bin/iptables -t nat -A OUTPUT -o lo -p tcp --dport 80 -j REDIRECT --to-port 8989
-        '';
-      };
+      networking.firewall.allowedTCPPorts = [ 8989 ];
       networking.interfaces.eth0.useDHCP = true;
+
       services.sonarr.enable = true;
     };
   };
