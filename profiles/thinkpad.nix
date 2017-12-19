@@ -24,11 +24,23 @@
   security.rngd.enable = true;
 
   services.tlp.enable = true;
-  services.xserver.libinput.enable = true;
+
+  services.xserver.libinput = {
+    enable = true;
+    accelSpeed = "0.1";
+  };
+
   sound.mediaKeys.enable = true;
 
   # need networkmanager for wifi
-  networking.networkmanager.enable = true;
+  networking.networkmanager = {
+    enable = true;
+    unmanaged = [
+      "interface-name:usb-bridge"
+      "interface-name:usb*"
+    ];
+  };
+
   systemd.services.ModemManager = {
     wantedBy = [ "multi-user.target" ];
   };
