@@ -34,7 +34,7 @@
     };
 
   virtualisation.docker.enable = true;
- 
+
   imports = [
     ./i3.nix
     ./users.nix

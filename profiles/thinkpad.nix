@@ -8,6 +8,23 @@
    config.boot.kernelPackages.tp_smapi
  ];
 
+ environment.systemPackages = with pkgs; [
+   alacritty
+   auto-rotate
+   modemmanager
+   msr-tools
+   networkmanagerapplet
+   powertop
+   rfkill
+ ];
+
+ hardware.bluetooth = {
+   enable = true;
+   powerOnBoot = false;
+ };
+
+ hardware.sensor.iio.enable = true;
+
  hardware.trackpoint = {
     enable = true;
     emulateWheel = true;
@@ -21,8 +38,6 @@
   };
 
   hardware.pulseaudio.enable = true;
-  security.rngd.enable = true;
-
   services.tlp.enable = true;
 
   services.xserver.libinput = {

@@ -48,6 +48,7 @@
     boot.blacklistedKernelModules = [
         "nouveau"
         "nvidia"
+        "b43"
     ];
 
     boot.kernelParams = [
@@ -57,7 +58,7 @@
         "vfio_iommu_type1.allow_unsafe_interrupts=1"
 
         # Assign devices to vfio
-        "vfio-pci.ids=10de:17c8,10de:0fb0,8086:a170,8086:a123,8086:15b8,8086:a12f"
+        # "vfio-pci.ids=10de:17c8,10de:0fb0,8086:a170,8086:a123,8086:15b8,8086:a12f"
 
         # Needed by OS X
         "kvm.ignore_msrs=1"

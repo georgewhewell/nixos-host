@@ -9,6 +9,8 @@
 
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
+  
+  security.rngd.enable = true;
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
@@ -57,6 +59,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    acpi
     wget
     vim
     rsync
@@ -65,10 +68,19 @@
     gitAndTools.gitFull
     htop
     xz
+    p7zip
     psmisc
+    psutils
     pwgen
     tmux
     nixops
+
+    arp-scan
+    ipmitool
+
+    usbutils
+    pciutils
+    wirelesstools
   ];
 
 }
