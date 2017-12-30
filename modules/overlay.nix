@@ -49,18 +49,25 @@ self: super:
       owner = "mrquincle";
       repo = "yoga-900-auto-rotate";
       rev = "master";
-      sha256 = "0ibg4mxkdhf19pn7h4z9xjx6gh2i9r67869yz60bwzzfzybhyqj2";
+      sha256 = "003vyxwfhm32xkfln3v0yn8d7xcscdrc90sbwr84qvb7lf51lyiq";
     };
+
     buildInputs = with super; [
       iio-sensor-proxy
       pkgconfig
+      systemd.dev
       glib
       x11
+      xorg.libXi
       xorg.libXrandr
     ];
+
     buildPhase = ''
+      substituteInPlace auto-rotate.c \
+        --replace "= reflectX" "= rotate180"
       make
     '';
+
     installPhase = ''
       mkdir -p $out/bin
       cp auto-rotate $out/bin/
