@@ -1,8 +1,11 @@
 { config, pkgs, ... }:
 
 {
+  imports  = [
+    ../modules/auto-rotate.nix
+  ];
 
- boot.initrd.kernelModules = ["acpi" "thinkpad-acpi" "acpi-call"];
+ boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
  boot.extraModulePackages = [
    config.boot.kernelPackages.acpi_call
    config.boot.kernelPackages.tp_smapi
@@ -10,7 +13,6 @@
 
  environment.systemPackages = with pkgs; [
    alacritty
-   auto-rotate
    modemmanager
    msr-tools
    networkmanagerapplet
@@ -23,7 +25,7 @@
    powerOnBoot = false;
  };
 
- hardware.sensor.iio.enable = true;
+ hardware.auto-rotate.enable = true;
 
  hardware.trackpoint = {
     enable = true;
