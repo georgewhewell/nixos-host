@@ -29,9 +29,18 @@
     steam
   ];
 
+  hardware.undervolt = {
+    enable = true;
+    core = -135;
+    cache = -135;
+    gpu = -75;
+    uncore = -75;
+    analogio = -75;
+  };
+
   imports =
     [
-      ./modules/custom-packages.nix
+      ./modules/undervolt.nix
       ./profiles/common.nix
       ./profiles/development.nix
       ./profiles/xserver.nix
