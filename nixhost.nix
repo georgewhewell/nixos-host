@@ -7,23 +7,23 @@
 
   imports =
     [
-      ./profiles/common.nix
-      ./profiles/home.nix
-      ./profiles/nas.nix
-      ./profiles/uefi-boot.nix
-      ./profiles/logserver.nix
-      ./profiles/headless.nix
-      ./profiles/hydra-server.nix
-      ./containers/unifi.nix
-      ./containers/sonarr.nix
-      ./containers/radarr.nix
       ./containers/plex.nix
-      ./services/gogs.nix
+      ./containers/radarr.nix
+      ./containers/sonarr.nix
+      ./containers/unifi.nix
+      ./profiles/common.nix
+      ./profiles/headless.nix
+      ./profiles/home.nix
+      ./profiles/uefi-boot.nix
+      ./profiles/hydra-server.nix
+      ./profiles/logserver.nix
+      ./profiles/nas.nix
       ./services/buildfarm.nix
-      ./services/grafana.nix
       ./services/nginx.nix
-      ./services/transmission.nix
       ./services/docker.nix
+      ./services/gogs.nix
+      ./services/grafana.nix
+      ./services/transmission.nix
     ];
 
   networking = {
@@ -31,7 +31,6 @@
     hostId = "deadbeef";
     useDHCP = true;
     bridges.br0 = {
-      rstp = true;
       interfaces = [ "eno1" "eno2" "eno3" "eno4" ];
     };
   };
@@ -64,9 +63,17 @@
     group = "transmission";
   };
 
+  services.postgresql = {
+    enable = true;
+    enableTCPIP = true;
+    authentication = ''
+      host all all 192.168.23.0/24 trust
+    '';
+  };
+
   networking.firewall = {
     checkReversePath = false;
-    allowedTCPPorts = [ 6789 9001 8080 51413 ];
+    allowedTCPPorts = [ 5423 6789 9001 8080 8085 51413 ];
   };
 
   nix.buildCores = lib.mkDefault 24;
