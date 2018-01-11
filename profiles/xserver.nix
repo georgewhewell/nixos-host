@@ -44,11 +44,18 @@
 
   hardware.opengl = {
     s3tcSupport = true;
-    extraPackages = with pkgs; [ vaapiIntel ];
+    driSupport = true;
+    driSupport32Bit = true;
+    extraPackages = with pkgs; [
+      vaapiVdpau
+      vaapiIntel
+      libvdpau-va-gl
+    ];
   };
 
   hardware.pulseaudio = {
     enable = true;
+    support32Bit = true;
     extraConfig = ''
       # stop switching to HDMI output
       unload-module module-switch-on-port-available
