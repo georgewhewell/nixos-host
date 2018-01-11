@@ -11,6 +11,12 @@ in {
       inherit options;
     };
 
+  fileSystems."/mnt/Media" =
+    { device = "nixhost.4a:/media";
+      fsType = "nfs";
+      inherit options;
+    };
+
   fileSystems."/mnt/nixhostconfig" =
     { device = "nixhost.4a:/nixos-config";
       fsType = "nfs";
