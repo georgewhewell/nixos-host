@@ -11,8 +11,8 @@ in rec {
       fsType = "zfs";
     };
 
-  environment.etc.qemu-ifup = rec {
-    target = "ifup";
+  environment.etc."qemu-ifup" = rec {
+    target = "qemu-ifup";
     text = ''
       #!${pkgs.stdenv.shell}
       echo "Executing ${target}"
@@ -22,7 +22,7 @@ in rec {
       ${pkgs.bridge-utils}/bin/brctl addif br0 $1
       sleep 2
     '';
-    mode = "0740";
+    mode = "0744";
     uid = config.ids.uids.root;
   };
 
