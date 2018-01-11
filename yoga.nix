@@ -19,23 +19,17 @@
 
   services.xserver.dpi = 142;
 
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = false;
-  };
-  hardware.sensor.iio.enable = true;
-
   environment.systemPackages = with pkgs; [
     steam
   ];
 
   hardware.undervolt = {
     enable = true;
-    core = -135;
-    cache = -135;
-    gpu = -75;
-    uncore = -75;
-    analogio = -75;
+    core = -125;
+    cache = -125;
+    gpu = -55;
+    uncore = -70;
+    analogio = -70;
   };
 
   imports =
@@ -48,6 +42,7 @@
       ./profiles/uefi-boot.nix
       ./profiles/thinkpad.nix
       ./profiles/g_ether.nix
+      ./services/docker.nix
     ];
 
 }
