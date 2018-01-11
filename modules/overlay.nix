@@ -49,7 +49,7 @@ self: super:
       owner = "mrquincle";
       repo = "yoga-900-auto-rotate";
       rev = "master";
-      sha256 = "003vyxwfhm32xkfln3v0yn8d7xcscdrc90sbwr84qvb7lf51lyiq";
+      sha256 = "0qcbixclw8863gjjlildwwydpa1n9hw5260v1kfb0x1jx0p8axl2";
     };
 
     buildInputs = with super; [
