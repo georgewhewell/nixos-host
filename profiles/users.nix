@@ -16,6 +16,7 @@ in {
       "wireshark"
       "lp"
       "scanner"
+      "networkmanager"
     ];
     isNormalUser = true;
     shell = "${pkgs.zsh}/bin/zsh";

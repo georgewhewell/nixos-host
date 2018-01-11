@@ -5,33 +5,33 @@
     ../modules/auto-rotate.nix
   ];
 
- boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
- boot.extraModulePackages = [
-   config.boot.kernelPackages.acpi_call
-   config.boot.kernelPackages.tp_smapi
- ];
+  boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
+  boot.extraModulePackages = [
+    config.boot.kernelPackages.acpi_call
+    config.boot.kernelPackages.tp_smapi
+  ];
 
- environment.systemPackages = with pkgs; [
-   alacritty
-   modemmanager
-   msr-tools
-   networkmanagerapplet
-   powertop
-   rfkill
- ];
+  environment.systemPackages = with pkgs; [
+    alacritty
+    modemmanager
+    msr-tools
+    networkmanagerapplet
+    powertop
+    rfkill
+  ];
 
- hardware.bluetooth = {
+  hardware.bluetooth = {
    enable = true;
    powerOnBoot = false;
- };
+  };
 
- hardware.auto-rotate.enable = true;
+  hardware.auto-rotate.enable = true;
 
- hardware.trackpoint = {
+  hardware.trackpoint = {
     enable = true;
     emulateWheel = true;
     speed = 250;
-    sensitivity = 140;
+    sensitivity = 100;
   };
 
   hardware.pulseaudio.enable = true;
@@ -52,6 +52,11 @@
       "interface-name:usb*"
     ];
   };
+
+  # start nm applet too
+  services.xserver.windowManager.i3.extraSessionCommands = ''
+    ${pkgs.networkmanagerapplet}/bin/nm-applet &
+  '';
 
   systemd.services.ModemManager = {
     wantedBy = [ "multi-user.target" ];
