@@ -73,7 +73,7 @@
 
   networking.firewall = {
     checkReversePath = false;
-    allowedTCPPorts = [ 5423 6789 9001 8080 8085 51413 ];
+    allowedTCPPorts = [ 5432 6789 9001 8080 8085 51413 ];
   };
 
   nix.buildCores = lib.mkDefault 24;
