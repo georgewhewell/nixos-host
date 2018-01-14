@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs ? import <nixpkgs> { }, ... }:
 
 with pkgs;
 
@@ -11,8 +11,10 @@ with pkgs;
   radarr = callPackage ./radarr.nix { };
   headphones = callPackage ./headphones.nix { };
   thin-provisioning-tools = callPackage ./thin-provisioning-tools.nix { };
+  clover = callPackage ./clover { };
   cni = callPackage ./cni.nix { };
   prometheus-snmp-exporter = callPackage ./snmp-exporter.nix { };
   prometheus-ipmi-exporter = callPackage ./ipmi-exporter.nix { };
   esp-open-sdk = callPackage ./esp-open-sdk.nix { };
+  gonbdserver = callPackage ./gonbdserver { };
 }
