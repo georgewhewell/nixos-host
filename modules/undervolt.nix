@@ -5,13 +5,13 @@ with lib;
 let
   package = pkgs.pythonPackages.buildPythonApplication rec {
     pname = "undervolt";
-    version = "0.1.2";
+    version = "0.1.3";
     name = "${pname}-${version}";
     doCheck = pkgs.pythonPackages.isPy3k;
 
     src = pkgs.pythonPackages.fetchPypi {
       inherit pname version;
-      sha256 = "0236bxjg7c7ypj05j6v1r2f8m66wfhn4p4fdhrps6zi7q4li2cad";
+      sha256 = "1wj0kd2vzfq8ypdpxwa1m9zwkllrmp60aqmj6sdy5dsby8lgbdgp";
     };
   };
   cfg = config.hardware.undervolt;
