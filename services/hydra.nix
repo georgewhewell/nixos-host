@@ -25,8 +25,16 @@
   nix.buildMachines = [
      {
       hostName = "localhost";
-      maxJobs = "12";
-      system = "x86_64-linux";
+      maxJobs = "4";
+      systems = ["x86_64-linux" "i686-linux"];
+      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+    }
+    {
+      hostName = "fuckup.4a";
+      maxJobs = "4";
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      systems = ["x86_64-linux" "i686-linux"];
       supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
     }
     { hostName = "odroid-c2.4a";
@@ -36,53 +44,17 @@
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
     }
-    #{ hostName = "orangepi-prime.4a";
-    #  sshUser = "root";
-    #  sshKey = "/etc/nix/buildfarm";
-    #  system = "aarch64-linux";
-    #  maxJobs = 1;
-    #  supportedFeatures = [ "big-parallel" ];
-    #}
-    #{ hostName = "nanopi-m3.4a";
-    #  sshUser = "root";
-    #  sshKey = "/etc/nix/buildfarm";
-    #  system = "aarch64-linux";
-    #  maxJobs = 1;
-    #  supportedFeatures = [ ];
-    #}
- #   { hostName = "orangepi-pc2.4a";
- #     sshUser = "root";
- #     sshKey = "/etc/nix/buildfarm";
- #     system = "aarch64-linux";
- #     maxJobs = 1;
- #     supportedFeatures = [ ];
- #   }
-    { hostName = "nanopi-neo2.4a";
-      sshUser = "root";
-      sshKey = "/etc/nix/buildfarm";
-      system = "aarch64-linux";
-      maxJobs = 1;
-      supportedFeatures = [ ];
-    }
- #   { hostName = "raspberrypi-2b.4a";
- #     sshUser = "root";
- #     sshKey = "/etc/nix/buildfarm";
- ##     system = "armv7l-linux";
- #     maxJobs = 1;
- #   }
- #   { hostName = "orangepi-zero.4a";
- #     sshUser = "root";
- #     sshKey = "/etc/nix/buildfarm";
- #     system = "armv7l-linux";
- #     maxJobs = 1;
- #   }
-    { hostName = "163.172.191.174";
-      speedFactor = 2;
+    { hostName = "raspberrypi-2b.4a";
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "armv7l-linux";
       maxJobs = 1;
-      supportedFeatures = [ "big-parallel" ];
+    }
+    { hostName = "orangepi-zero.4a";
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "armv7l-linux";
+      maxJobs = 1;
     }
     { hostName = "orangepi-plus2e.4a";
      speedFactor = 2;
@@ -90,21 +62,29 @@
      sshKey = "/etc/nix/buildfarm";
      system = "armv7l-linux";
      maxJobs = 1;
-     supportedFeatures = [ "big-parallel" ];
     }
-   # { hostName = "x3399.4a";
-   #   speedFactor = 3;
-   #   sshUser = "root";
-   #   sshKey = "/etc/nix/buildfarm";
-   #   system = "aarch64-linux";
-   #   maxJobs = 2;
-   #   supportedFeatures = [ "big-parallel" ];
-   # }
-    { hostName = "212.47.251.39";
+    { hostName = "51.15.195.104";
+     speedFactor = 4;
+     sshUser = "root";
+     sshKey = "/etc/nix/buildfarm";
+     system = "armv7l-linux";
+     maxJobs = 1;
+     supportedFeatures = [ "big-parallel" ];
+   }
+   { hostName = "212.47.251.39";
       speedFactor = 2;
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
+      maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
+    }
+   {
+      hostName = "odroidxu4.4a";
+      speedFactor = 6;
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "armv7l-linux";
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
     }

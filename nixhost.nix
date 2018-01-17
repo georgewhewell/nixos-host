@@ -50,11 +50,6 @@
       fsType = "zfs";
     };
 
-  services.nix-serve = {
-    enable = true;
-    secretKeyFile = "/etc/nix/signing-key.sec";
-  };
-
   services.avahi.interfaces = [ "br0" ];
 
   services.sabnzbd = {
