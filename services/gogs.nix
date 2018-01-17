@@ -7,6 +7,8 @@
      postRun = ''systemctl reload nginx.service'';
   };
 
+  networking.firewall.allowedTCPPorts = [ 2222 ];
+
   services.gogs = {
     enable = true;
     database = {
@@ -20,7 +22,14 @@
     httpPort = 3001;
     cookieSecure = true;
     extraConfig = ''
+      [server]
+      START_SSH_SERVER = true
       SSH_PORT = 2222
+      SSH_LISTEN_PORT = 2222
+      
+      OFFLINE_MODE = true
+      DISABLE_REGISTRATION = true
+      REQUIRE_SIGNIN_VIEW = true
     '';
   };
 

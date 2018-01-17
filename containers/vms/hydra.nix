@@ -47,11 +47,10 @@
 
   nix.gc = {
     automatic = true;
-    # 100GB free space
-    options = ''--max-freed "$((100 * 1024**3 - 1024 * $(df -P -k /nix/store | tail -n 1 | ${pkgs.gawk}/bin/awk '{ print $4 }')))"'';
-    dates = "05:15";
+    options = "--delete-older-than 2w";
+    dates = "02:00";
   };
 
-  nix.maxJobs = lib.mkDefault 8;
+  nix.maxJobs = lib.mkDefault 4;
 
 }
