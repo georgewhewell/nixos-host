@@ -75,7 +75,4 @@
 
   virtualisation.libvirtd.enable = true;
 
-  services.disnix.enable = true;
-  services.disnix.useWebServiceInterface = true;
-
 }
