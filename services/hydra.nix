@@ -17,10 +17,13 @@
     debugServer = false;
     useSubstitutes = true;
     extraConfig = ''
-       binary_cache_secret_key_file /etc/nix/signing-key.sec
+      max_output_size = 4294967296
+      binary_cache_secret_key_file /etc/nix/signing-key.sec
     '';
   };
-
+  nix.binaryCaches = lib.mkForce [
+      https://cache.nixos.org/
+  ];
   nix.distributedBuilds = true;
   nix.buildMachines = [
      {
@@ -37,12 +40,18 @@
       systems = ["x86_64-linux" "i686-linux"];
       supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
     }
-    { hostName = "odroid-c2.4a";
+    { hostName = "rock64.4a";
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
+    }
+    { hostName = "odroid-c2.4a";
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
+      maxJobs = 1;
     }
     { hostName = "raspberrypi-2b.4a";
       sshUser = "root";
