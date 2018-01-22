@@ -35,7 +35,7 @@ let
     floating_modifier $mod
 
     # start a terminal
-    bindsym $mod+Return exec alacritty
+    bindsym $mod+Return exec alacritty || urxvt
 
     # kill focused window
     bindsym $mod+Shift+q kill
