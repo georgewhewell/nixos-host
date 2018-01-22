@@ -17,6 +17,7 @@ in {
       "lp"
       "scanner"
       "networkmanager"
+      "vboxsf"
     ];
     isNormalUser = true;
     shell = "${pkgs.zsh}/bin/zsh";
