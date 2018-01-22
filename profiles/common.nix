@@ -101,6 +101,7 @@
     usbutils
     pciutils
     wirelesstools
+    rxvt_unicode
   ];
 
 }
