@@ -12,24 +12,25 @@
       fsType = "zfs";
     };
 
-  networking.hostName = "nixos";
-  networking.hostId = "deadbeef";
-
-  networking.firewall = {
-    enable = true;
-    allowPing = false;
+  networking = {
+    hostName = "nixos";
+    hostId = "deadbeef";
+    useNetworkd = true;
+    useDHCP = true;
+    enableIPv6 = false;
+    firewall = {
+      enable = true;
+      allowPing = false;
+    };
   };
 
   time.timeZone = "Europe/London";
 
-  boot.initrd.supportedFilesystems = [ "zfs" ];
-  # List packages installed in system profile. To search by name, run:
   environment.systemPackages = with pkgs; [
     libreoffice
     firefox
   ];
 
-  nix.maxJobs = lib.mkDefault 2;
   virtualisation.virtualbox.guest.enable = true;
 
   imports = [
@@ -38,5 +39,6 @@
     ./profiles/gpg-yubikey.nix
     ./profiles/uefi-boot.nix
     ./profiles/xserver.nix
+    ./profiles/g_ether.nix
   ];
 }
