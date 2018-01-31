@@ -18,6 +18,13 @@
     wireshark
   ];
 
+  services.postgresql = {
+    enable = true;
+    authentication = "local all all trust";
+  };
+
+  virtualisation.docker.enable = true;
+
   programs.wireshark.enable = true;
 
   services.udev = {
