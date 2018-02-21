@@ -1,6 +1,10 @@
 self: super:
 
 {
+
+  arduino-custom = super.arduinoWithPackages (apkgs: with apkgs; [
+    esp32 esp8266 BLE spiflash ]);
+
   bitcoin = super.bitcoin.overrideAttrs (old: {
     buildInputs = old.buildInputs ++ [ super.zmq ];
     configureFlags = old.configureFlags ++ [ "--with-zmq" ];
