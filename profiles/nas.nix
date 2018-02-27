@@ -31,6 +31,24 @@
       fsType = "zfs";
     };
 
+  fileSystems."/mnt/cache-cache" =
+    { device = "bpool/root/nix-cache";
+      fsType = "zfs";
+  };
+
+  security.acme.certs."cache.satanic.link" = {
+     email = "georgerw@gmail.com";
+     postRun = ''systemctl reload nginx.service'';
+  };
+
+  services.nixBinaryCacheCache =
+    {
+      virtualHost = "cache.satanic.link";
+      cacheDir = "/mnt/cache-cache";
+      maxSize = "100g";
+      resolver = "192.168.23.1";
+    };
+
   services.netatalk = {
     enable = true;
     volumes = {

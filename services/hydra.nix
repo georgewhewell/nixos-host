@@ -22,7 +22,7 @@
     '';
   };
   nix.binaryCaches = lib.mkForce [
-      https://cache.nixos.org/
+      https://cache.satanic.link/
   ];
   nix.distributedBuilds = true;
   nix.buildMachines = [
