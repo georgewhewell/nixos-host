@@ -158,6 +158,9 @@ let
 
     # i3lock
     exec_always --no-startup-id ${pkgs.xss-lock}/bin/xss-lock -- ${pkgs.i3lock-fancy}/bin/i3lock-fancy -t "" -- ${pkgs.scrot}/bin/scrot
+
+    # i3-gaps
+    gaps gaps outer 1
     '';
 in {
   imports = [
@@ -203,6 +206,7 @@ in {
     "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
   hardware.opengl = {
+    enable = true;
     s3tcSupport = true;
     driSupport = true;
     driSupport32Bit = true;
@@ -236,6 +240,10 @@ in {
     enable = true;
     autorun = true;
 
+    desktopManager = {
+      xterm.enable = false;
+    };
+
     displayManager.slim = {
       defaultUser = "grw";
       theme = pkgs.fetchurl {
@@ -249,6 +257,7 @@ in {
       i3 = {
         enable = true;
         configFile = i3config;
+        package = pkgs.i3-gaps;
       };
     };
   };
