@@ -41,8 +41,17 @@
       systems = ["x86_64-linux" "i686-linux"];
       supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
     }
+    { hostName = "pine64-pine64.4a";
+      sshUser = "root";
+      speedFactor = 2;
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
+      maxJobs = 1;
+      supportedFeatures = [ ];
+    }
     { hostName = "rock64.4a";
       sshUser = "root";
+      speedFactor = 4;
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
       maxJobs = 1;
@@ -52,6 +61,7 @@
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
+      speedFactor = 2;
       maxJobs = 1;
     }
     { hostName = "raspberrypi-2b.4a";
@@ -79,10 +89,10 @@
      sshKey = "/etc/nix/buildfarm";
      system = "armv7l-linux";
      maxJobs = 1;
-     supportedFeatures = [ "big-parallel" ];
+     supportedFeatures = [ "big-parallel" "highmem" ];
    }
    { hostName = "212.47.251.39";
-      speedFactor = 2;
+      speedFactor = 6;
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "aarch64-linux";
@@ -95,6 +105,14 @@
       sshUser = "root";
       sshKey = "/etc/nix/buildfarm";
       system = "armv7l-linux";
+      maxJobs = 1;
+      supportedFeatures = [ "big-parallel" ];
+    }
+    { hostName = "nanopi-m3.4a";
+      speedFactor = 3;
+      sshUser = "root";
+      sshKey = "/etc/nix/buildfarm";
+      system = "aarch64-linux";
       maxJobs = 1;
       supportedFeatures = [ "big-parallel" ];
     }
