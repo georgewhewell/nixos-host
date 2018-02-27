@@ -2,7 +2,7 @@
 
 with pkgs;
 
-{
+rec {
   si2168_02 = callPackage ./si2168-02.nix { };
   BCM20702A1 = callPackage ./BCM20702A1.nix { };
   couchpotato = callPackage ./couchpotato.nix { };
@@ -17,4 +17,8 @@ with pkgs;
   prometheus-ipmi-exporter = callPackage ./ipmi-exporter.nix { };
   esp-open-sdk = callPackage ./esp-open-sdk.nix { };
   gonbdserver = callPackage ./gonbdserver { };
+  xtensa-esp32-elf = callPackage ./xtensa-esp32-elf { };
+  micro-ecc = callPackage ./micro-ecc { };
+  esp-idf = callPackage ./esp-idf { inherit micro-ecc; };
+
 }
