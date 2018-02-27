@@ -45,6 +45,11 @@
     "noatime"
   ];
 
+  fileSystems."/mnt/Home" =
+    { device = "nixhost.4a:/home";
+      fsType = "nfs";
+    };
+
   nix.gc = {
     automatic = true;
     options = "--delete-older-than 2w";
