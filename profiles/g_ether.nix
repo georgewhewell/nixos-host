@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  bridgeName = "usb-bridge";
+  bridgeName = "br0";
 in {
 
   /*# Create an empty bridge
@@ -37,46 +37,15 @@ in {
   '';
 
   # Add new interface to bridge
-  /*systemd.services."bridge-rndis@" = {
+  systemd.services."bridge-rndis@" = {
     bindsTo = [ "sys-subsystem-net-devices-%i.device"];
     serviceConfig = {
       Type = "simple";
+      ExecStartPre = "${pkgs.bridge-utils}/bin/brctl setfd ${bridgeName} 0";
       ExecStart = "${pkgs.stdenv.shell} -c '${pkgs.bridge-utils}/bin/brctl addif ${bridgeName} %I && ${pkgs.iproute}/bin/ip addr add 0.0.0.0 dev %I'";
     };
   };
 
-  # Serve our own store (since we have all paths required)
-  fileSystems."/export/store" = {
-    device = "/nix/store";
-    options = [ "bind" ];
-  };*/
-/*
-  # Export NFS on bridge
-  services.nfs.server = {
-    enable = true;
-    statdPort = 4000;
-    lockdPort = 4001;
-    mountdPort = 4002;
-    exports = ''
-      /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
-      /export/store          192.168.23.0/24(ro,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-    '';
-  };*/
-/*
-  networking.firewall.allowPing = true;
-  networking.firewall.allowedTCPPorts = [
-    111  # nfs?
-    2049 # nfs
-    4000 # nfs/statd
-    4001 # nfs/lockd
-    4002 # nfs/mountd
-  ];
+  networking.firewall.allowedTCPPortRanges = [ {from = 50000; to = 51000; } ];
 
-  networking.firewall.allowedUDPPorts = [
-    111  # nfs?
-    2049 # nfs
-    4000 # nfs/statd
-    4001 # nfs/lockd
-    4002 # nfs/mountd
-  ];*/
 }
