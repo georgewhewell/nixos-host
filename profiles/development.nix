@@ -16,6 +16,14 @@
     screen
     usbutils
     wireshark
+    iperf
+
+    (eclipses.eclipseWithPlugins {
+      eclipse = eclipses.eclipse-cpp;
+      jvmArgs = [ "-Xmx2048m" ];
+      plugins = with eclipses.plugins;
+        [ cdt gnuarmeclipse ];
+    })
   ];
 
   services.postgresql = {
