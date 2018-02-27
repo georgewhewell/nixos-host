@@ -84,9 +84,6 @@
 
   services.nfs.server = {
     enable = true;
-    # statdPort = 4000;
-    # lockdPort = 4001;
-    # mountdPort = 4002;
     exports = ''
       /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
       /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
@@ -100,21 +97,15 @@
   networking.firewall.allowedTCPPorts = [
     111  # nfs?
     2049 # nfs
-    4000 # nfs/statd
-    4001 # nfs/lockd
-    4002 # nfs/mountd
+    4000 4001 4002 4003
     138  # smb
     445  # smb
     548  # netatalk
-    10809 # nbd
   ];
 
   networking.firewall.allowedUDPPorts = [
     111  # nfs?
     2049 # nfs
-    4000 # nfs/statd
-    4001 # nfs/lockd
-    4002 # nfs/mountd
     138  # smb
     445  # smb
   ];
