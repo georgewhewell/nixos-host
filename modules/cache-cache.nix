@@ -78,7 +78,7 @@ in
     };
   };
 
-  config = {
+  config = mkIf cfg.enable {
     systemd.services.nginx.preStart = ''
       mkdir -p ${cfg.cacheDir} /srv/www/nix-cache-cache
       chmod 700 ${cfg.cacheDir} /srv/www/nix-cache-cache
