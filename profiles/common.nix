@@ -80,6 +80,7 @@
     htop
     xz
     p7zip
+    unrar
     psmisc
     psutils
     pwgen
