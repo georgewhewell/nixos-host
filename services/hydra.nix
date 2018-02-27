@@ -3,10 +3,11 @@
 {
 
   networking.firewall.allowedTCPPorts = [ 3000 ];
+  systemd.services."hydra-init".after = [ "network-online.target" ];
 
   services.hydra = {
     enable = true;
-    dbi = "dbi:Pg:dbname=hydra;host=nixhost.4a;user=hydra;password=hydra";
+    dbi = "dbi:Pg:dbname=hydra;host=192.168.23.5;user=hydra;password=hydra";
     hydraURL = "https://hydra.satanic.link/";
     listenHost = "0.0.0.0";
     port = 3000;
