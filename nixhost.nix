@@ -13,6 +13,7 @@
       ./containers/unifi.nix
       ./profiles/common.nix
       ./profiles/headless.nix
+      ./profiles/g_ether.nix
       ./profiles/home.nix
       ./profiles/uefi-boot.nix
       ./profiles/hydra-server.nix
@@ -30,6 +31,9 @@
     hostName = "nixhost";
     hostId = "deadbeef";
     useDHCP = true;
+    useNetworkd = true;
+    enableIPv6 = false;
+
     bridges.br0 = {
       interfaces = [ "eno1" "eno2" "eno3" "eno4" ];
     };
