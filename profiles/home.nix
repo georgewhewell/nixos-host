@@ -14,7 +14,7 @@
 
   # Log to ELK
   services.journalbeat = {
-    enable = true;
+    enable = false;
     extraConfig = ''
       journalbeat:
         seek_position: cursor
