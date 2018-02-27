@@ -28,6 +28,7 @@
 
   services.postgresql = {
     enable = true;
+    enableTCPIP = true;
     authentication = "local all all trust";
   };
 
