@@ -47,15 +47,6 @@ in
         '';
       };
 
-      # webRoot = mkOption {
-      #   type = types.str;
-      #   default = "/";
-      #   description = ''
-      #     Directory on virtual host that serves the cache. Must end in
-      #     <literal>/</literal>.
-      #   '';
-      # };
-
       resolver = mkOption {
         type = types.str;
         default = "8.8.8.8";
