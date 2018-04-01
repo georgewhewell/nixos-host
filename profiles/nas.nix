@@ -36,13 +36,9 @@
       fsType = "zfs";
   };
 
-  security.acme.certs."cache.satanic.link" = {
-     email = "georgerw@gmail.com";
-     postRun = ''systemctl reload nginx.service'';
-  };
-
   services.nixBinaryCacheCache =
     {
+      enable = true;
       virtualHost = "cache.satanic.link";
       cacheDir = "/mnt/cache-cache";
       maxSize = "100g";
@@ -57,28 +53,6 @@
         "time machine" = "yes";
         "hosts allow" = "192.168.23.0/24";
       };
-    };
-  };
-
-  systemd.services.nbd-scratch = {
-    wantedBy = [ "multi-user.target" ];
-
-    serviceConfig = let
-      gonbdConfig = pkgs.writeText "gonbd-config.yml" ''
-    servers:
-    - protocol: tcp                  # A first server, using TCP
-      address: 0.0.0.0:10809        # on port 6666
-      exports:                       # It has two exports
-      - name: scratch                    # The first is named 'foo' and
-        driver: file                 # Uses the 'file' driver
-        path: /tmp/nbd       # This uses /tmp/test as the file
-        workers: 4
-    ''; in {
-      ExecStart = ''
-        ${pkgs.gonbdserver}/bin/gonbdserver -f \
-          -c ${gonbdConfig} \
-          -p string /var/run/gonbdserver.pid
-      '';
     };
   };
 

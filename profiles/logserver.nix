@@ -4,59 +4,49 @@
   # Config for machines on home network
   environment.systemPackages = [ pkgs.jq ];
 
-  security.acme.certs."elk.satanic.link" = {
-     email = "georgerw@gmail.com";
-     extraDomains = { "es.satanic.link" = null; };
-     postRun = ''systemctl reload nginx.service'';
-  };
-
-  services.nginx.virtualHosts."elk.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:5601";
-      extraConfig = ''
-        location / {
-          allow   192.168.23.0/24;
-          deny    all;
-        }
-      '';
-    };
-  };
-
-  services.nginx.virtualHosts."es.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:9200";
-      extraConfig = ''
-        location / {
-          allow   192.168.23.0/24;
-          deny    all;
-        }
-      '';
-    };
-  };
-
-  services.kibana = {
-    enable = true;
-    listenAddress = "127.0.0.1";
-  };
-
   fileSystems."/var/lib/elasticsearch" =
     { device = "bpool/root/elk";
       fsType = "zfs";
     };
 
-  services.elasticsearch = {
-    enable = true;
-    listenAddress = "127.0.0.1";
-  };
-
   services.prometheus = {
     enable = true;
     listenAddress = "127.0.0.1:9090";
-    scrapeConfigs = [{
+    exporters = {
+      unifi = {
+        enable = true;
+        unifiAddress = "https://unifi.4a:8443";
+        unifiInsecure = true;
+        unifiUsername = "ReadOnlyUser";
+        unifiPassword = "ReadOnlyUser";
+      };
+    };
+    scrapeConfigs = [
+    {
+      job_name = "bot";
+      scrape_interval = "1s";
+      static_configs = [{
+        targets = [ "fuckup.4a:50010" ];
+        labels = {};
+      }];
+    }
+    {
+      job_name = "nginx";
+      scrape_interval = "5s";
+      static_configs = [{
+        targets = [ "127.0.0.1:9113" ];
+        labels = {};
+      }];
+    }
+    {
+      job_name = "unifi";
+      scrape_interval = "5s";
+      static_configs = [{
+        targets = [ "127.0.0.1:9130" ];
+        labels = {};
+      }];
+    }
+    {
       job_name = "prometheus";
       scrape_interval = "5s";
       static_configs = [{
@@ -72,11 +62,11 @@
           "nixhost.4a:9100"
           "fuckup.4a:9100"
           "hydra.4a:9100"
+          "airport.4a:9100"
           "jetson-tx1.4a:9100"
           "odroid-c2.4a:9100"
           "nanopi-m3.4a:9100"
           "nanopi-duo.4a:9100"
-          "nanopi-neo.4a:9100"
           "nanopi-neo2.4a:9100"
           "pine64-pine64.4a:9100"
           "pine64-h64:9100"

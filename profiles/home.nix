@@ -43,8 +43,8 @@
   };
 
   # Collect metrics for prometheus
-  services.prometheus = {
-    nodeExporter = {
+  services.prometheus.exporters = {
+    node = {
       enable = true;
       openFirewall = true;
       enabledCollectors = [ "systemd" ];
