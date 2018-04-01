@@ -1,6 +1,8 @@
 { config, lib, pkgs, ... }:
 
-{
+let
+  stateDir = "/var/lib/gogs";
+in {
 
   security.acme.certs."git.satanic.link" = {
      email = "georgerw@gmail.com";
@@ -9,8 +11,14 @@
 
   networking.firewall.allowedTCPPorts = [ 2222 ];
 
+  fileSystems.${stateDir} = {
+    device = "fpool/root/config/gogs";
+    fsType = "zfs";
+  };
+
   services.gogs = {
     enable = true;
+    inherit stateDir;
     database = {
       type = "postgres";
       host = "127.0.0.1";
@@ -26,10 +34,13 @@
       START_SSH_SERVER = true
       SSH_PORT = 2222
       SSH_LISTEN_PORT = 2222
-      
+
       OFFLINE_MODE = true
       DISABLE_REGISTRATION = true
       REQUIRE_SIGNIN_VIEW = true
+
+      [log]
+      ROOT_PATH = ${stateDir}/log
     '';
   };
 
@@ -40,4 +51,5 @@
       proxyPass = "http://127.0.0.1:3001";
     };
   };
+
 }
