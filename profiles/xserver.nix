@@ -154,14 +154,14 @@ let
     bindsym XF86MonBrightnessUp exec "${oledBrightness}/bin/oled-brightness up"
 
     # lock screen
-    exec_always ${pkgs.xorg.xset}/bin/xset s 180 60
+    # exec_always ${pkgs.xorg.xset}/bin/xset s 180 60
 
     # i3lock
     exec_always --no-startup-id ${pkgs.xss-lock}/bin/xss-lock -- ${pkgs.i3lock-fancy}/bin/i3lock-fancy -t "" -- ${pkgs.scrot}/bin/scrot
 
     # i3-gaps
-    gaps gaps outer 1
-    '';
+    gaps inner 2
+  '';
 in {
   imports = [
     ../services/usbmuxd.nix
@@ -179,8 +179,7 @@ in {
   ];
 
   environment.systemPackages = with pkgs; [
-    dmenu     # for app launcher
-    feh       # for background image
+    dmenu
     chromium
   ];
 
@@ -188,8 +187,9 @@ in {
     fontconfig = {
       useEmbeddedBitmaps = true;
       defaultFonts = {
-        monospace = [ "Hack" ];
-        sansSerif = [ "Ubuntu" "Liberation Sans" "DejaVu Sans" ];
+        monospace = [ "Source Code Pro" ];
+        sansSerif = [ "Source Sans Pro" ];
+        serif     = [ "Source Serif Pro" ];
       };
     };
     fonts = with pkgs; [
@@ -198,6 +198,9 @@ in {
       ubuntu_font_family
       hack-font
       powerline-fonts
+      source-code-pro
+      source-sans-pro
+      source-serif-pro
     ];
   };
 
