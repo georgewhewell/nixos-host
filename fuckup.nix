@@ -79,10 +79,13 @@
     videoDrivers = [ "modesetting" ];
     xrandrHeads = [
       { output = "HDMI-2"; monitorConfig = ''
-        Option "Rotate" "right"
+        Option "Rotate" "left"
         Option "Broadcast RGB" "Full"
         ''; }
       { output = "DP-1"; primary = true; monitorConfig = ''
+        # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
+        Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
+        Option "PreferredMode" "3440x1440_75.00" 
         Option "Broadcast RGB" "Full"
     '';}
     ];
