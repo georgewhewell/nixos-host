@@ -204,7 +204,14 @@ in {
     ];
   };
 
-  hardware.bluetooth.enable = true;
+  hardware.bluetooth = {
+    enable = true;
+    extraConfig = "
+      [General]
+      Enable=Source,Sink,Media,Socket
+    ";
+  };
+
   systemd.services."dbus-org.bluez".serviceConfig.ExecStart =
     "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
@@ -222,6 +229,7 @@ in {
 
   hardware.pulseaudio = {
     enable = true;
+    package = pkgs.pulseaudioFull;
     support32Bit = true;
     extraConfig = ''
       # stop switching to HDMI output
