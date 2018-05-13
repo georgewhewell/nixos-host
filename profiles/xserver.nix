@@ -251,15 +251,22 @@ in {
     enable = true;
     autorun = true;
 
+
+
     desktopManager = {
       xterm.enable = false;
     };
 
-    displayManager.slim = {
-      defaultUser = "grw";
-      theme = pkgs.fetchurl {
-        url = "https://github.com/edwtjo/nixos-black-theme/archive/v1.0.tar.gz";
-        sha256 = "13bm7k3p6k7yq47nba08bn48cfv536k4ipnwwp1q1l2ydlp85r9d";
+    displayManager = {
+      sessionCommands = ''
+        ${pkgs.xlibs.xset}/bin/xset r rate 200 40
+      '';
+      slim = {
+        defaultUser = "grw";
+        theme = pkgs.fetchurl {
+          url = "https://github.com/edwtjo/nixos-black-theme/archive/v1.0.tar.gz";
+          sha256 = "13bm7k3p6k7yq47nba08bn48cfv536k4ipnwwp1q1l2ydlp85r9d";
+        };
       };
     };
 
