@@ -31,7 +31,6 @@
     hostName = "nixhost";
     hostId = "deadbeef";
     useDHCP = true;
-    useNetworkd = true;
     enableIPv6 = false;
 
     bridges.br0 = {

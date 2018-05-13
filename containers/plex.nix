@@ -37,7 +37,6 @@
         32410 32412 32413 32414];
       networking.firewall.allowedTCPPorts = [ 32400 32469 ];
 
-      networking.useNetworkd = true;
       networking.interfaces.eth0.useDHCP = true;
 
       nixpkgs.config.allowUnfree = true;
