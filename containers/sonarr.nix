@@ -26,7 +26,6 @@
       boot.isContainer = true;
       time.timeZone = "Europe/London";
 
-      networking.useNetworkd = true;
       networking.hostName = "sonarr";
       networking.firewall.allowedTCPPorts = [ 8989 ];
       networking.interfaces.eth0.useDHCP = true;

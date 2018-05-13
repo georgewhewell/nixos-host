@@ -15,7 +15,6 @@
   networking = {
     hostName = "nixos";
     hostId = "deadbeef";
-    useNetworkd = true;
     useDHCP = true;
     enableIPv6 = false;
     firewall = {

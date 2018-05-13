@@ -57,7 +57,6 @@
     hostName = "fuckup";
     hostId = "deadbeef";
     useDHCP = true;
-    useNetworkd = true;
 
     firewall = {
       enable = true;

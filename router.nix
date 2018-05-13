@@ -35,7 +35,6 @@
   networking = {
     hostName = "router"; # Define your hostname.
     hostId = "deadbeef";
-    useNetworkd = true;
     enableIPv6 = false;
 
     nameservers = [ "127.0.0.1" ];
