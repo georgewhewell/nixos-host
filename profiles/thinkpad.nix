@@ -42,6 +42,7 @@
     accelSpeed = "0.1";
     naturalScrolling = true;
   };
+  services.xserver.videoDrivers = [ "modesetting" "displaylink" ];
 
   sound.mediaKeys.enable = true;
 
