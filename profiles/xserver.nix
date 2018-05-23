@@ -19,9 +19,9 @@ let
         VAL=$MAX
     else
         if [ "$1" == "up" ]; then
-            for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP1 --brightness `echo "scale=2; $I/100+$CURR" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
+            for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP-1 --brightness `echo "scale=2; $I/100+$CURR" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
         else
-            for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP1 --brightness `echo "scale=2; $CURR-$I/100" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
+            for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP-1 --brightness `echo "scale=2; $CURR-$I/100" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
         fi
     fi
   '';
