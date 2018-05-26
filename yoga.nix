@@ -18,10 +18,11 @@
   nix.maxJobs = lib.mkDefault 4;
 
   services.xserver.dpi = 142;
+  services.fwupd.enable = true;
+  system.nixos.stateVersion = "18.03";
 
-  environment.systemPackages = with pkgs; [
-    steam
-  ];
+  boot.blacklistedKernelModules = [ "mei_wdt" ];
+  boot.loader.timeout = 1;
 
   hardware.undervolt = {
     enable = true;
