@@ -38,33 +38,27 @@
       ?         00:1f.6 Ethernet controller [0200]: Intel Corporation Ethernet Connection (2) I219-V [8086:15b8] (rev 31)
     */
     boot.kernelModules = [
-        "vfio"
-        "vfio_pci"
-        "vfio_iommu_type1"
-        "nct6775"
-        "coretemp"
+      "vfio"
+      "vfio_pci"
+      "vfio_iommu_type1"
+      "nct6775"
+      "coretemp"
     ];
 
     boot.blacklistedKernelModules = [
-        "nouveau"
-        "nvidia"
-        "b43"
+      "nouveau"
+      "nvidia"
+      "b43"
     ];
 
     boot.kernelParams = [
-        # Use IOMMU
-        "intel_iommu=on"
-        "i915.preliminary_hw_support=1"
-        "vfio_iommu_type1.allow_unsafe_interrupts=1"
+      # Use IOMMU
+      "intel_iommu=on"
 
-        # Assign devices to vfio
-        # "vfio-pci.ids=10de:17c8,10de:0fb0,8086:a170,8086:a123,8086:15b8,8086:a12f"
+      # Needed by OS X
+      "kvm.ignore_msrs=1"
+      "vfio_iommu_type1.allow_unsafe_interrupts=1"
 
-        # Needed by OS X
-        "kvm.ignore_msrs=1"
-
-        # Only schedule cpus 0,1
-  #      "isolcpus=1-3,5-7"
     ];
 
 }
