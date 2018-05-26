@@ -251,16 +251,14 @@ in {
     enable = true;
     autorun = true;
 
-
+    autoRepeatDelay = 200;
+    autoRepeatInterval = 40;
 
     desktopManager = {
       xterm.enable = false;
     };
 
     displayManager = {
-      sessionCommands = ''
-        ${pkgs.xlibs.xset}/bin/xset r rate 200 40
-      '';
       slim = {
         defaultUser = "grw";
         theme = pkgs.fetchurl {
