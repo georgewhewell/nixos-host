@@ -20,5 +20,6 @@ rec {
   xtensa-esp32-elf = callPackage ./xtensa-esp32-elf { };
   micro-ecc = callPackage ./micro-ecc { };
   esp-idf = callPackage ./esp-idf { inherit micro-ecc; };
-
+  als-yoga = callPackage ./als-yoga { inherit (python.pkgs) buildPythonApplication; };
+  
 }
