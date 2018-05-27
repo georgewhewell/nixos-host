@@ -33,6 +33,15 @@
     analogio = -70;
   };
 
+  systemd.user.services.als = {
+    description = "ALS daemon";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.als-yoga}/bin/als-yoga";
+    };
+  };
+
   imports =
     [
       ./modules/undervolt.nix
