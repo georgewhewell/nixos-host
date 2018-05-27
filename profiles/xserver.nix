@@ -176,6 +176,7 @@ in {
     "i915.enable_fbc=1"
     "i915.enable_psr=1"
     "i915.disable_power_well=0"
+    "i915.lvds_downclock=1"
   ];
 
   environment.systemPackages = with pkgs; [
