@@ -15,14 +15,28 @@
       fsType = "vfat";
     };
 
+  swapDevices = [{ device = "/dev/nvme0n1p2"; }];
+
+  zramSwap = {
+    enable = true;
+    numDevices = 4;
+  };
+
   nix.maxJobs = lib.mkDefault 4;
 
   services.xserver.dpi = 142;
   services.fwupd.enable = true;
-  system.nixos.stateVersion = "18.03";
+  services.upower.enable = true;
 
-  boot.blacklistedKernelModules = [ "mei_wdt" ];
   boot.loader.timeout = 1;
+  boot.blacklistedKernelModules = [
+    "mei"
+    "mei_me"
+    "mei_wdt"
+    "acer_wmi"
+    "applesmc"
+    "intel_backlight"
+  ];
 
   hardware.undervolt = {
     enable = true;
