@@ -98,16 +98,37 @@
       # Specifies the vim binary name.
       # E.g. set this to "my-vim" and you need to type "my-vim" to open this vim
       # This allows to have multiple vim packages installed (e.g. with a different set of plugins)
-      name = "vim";
+      name = "myvim";
       vimrcConfig.customRC = ''
-        # Here you can specify what usually goes into `~/.vimrc` 
         syntax enable
+        set number
+        set bg=dark
+        let g:solarized_termtrans = 1
+        colorscheme solarized
+
+        " tabs to spaces
+        set smartindent
+        set tabstop=2
+        set shiftwidth=2
+        set expandtab
+
+        " syntastic
+        set statusline+=%#warningmsg#
+        set statusline+=%{SyntasticStatuslineFlag()}
+        set statusline+=%*
+
+        let g:syntastic_always_populate_loc_list = 1
+        let g:syntastic_auto_loc_list = 1
+        let g:syntastic_check_on_open = 1
+        let g:syntastic_check_on_wq = 0
       '';
       vimrcConfig.vam.pluginDictionaries = [ 
         { names = [
           "commentary"
           "vim-elixir"
           "youcompleteme"
+          "syntastic"
+          "colors-solarized"
         ]; } ];
     })
   ];
