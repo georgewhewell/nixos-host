@@ -10,6 +10,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 MIN_LIGHT=.1
 MAX_LIGHT=1.05
+BOOST_LIGHT=.3
 KB_BACKLIGHT_FULL = 400
 KB_BACKLIGHT_OFF = 1000
 
@@ -33,7 +34,7 @@ def set_kb_brightness(amb):
 
 
 def get_display_brightness(amb):
-    return max(MIN_LIGHT, min(MAX_LIGHT, math.log(amb) / 10))
+    return max(MIN_LIGHT, min(MAX_LIGHT, BOOST_LIGHT + math.log(amb) / 10))
 
 
 def set_display_brightness(amb):
