@@ -40,8 +40,8 @@
 
   hardware.undervolt = {
     enable = true;
-    core = -125;
-    cache = -125;
+    core = -120;
+    cache = -120;
     gpu = -55;
     uncore = -70;
     analogio = -70;
