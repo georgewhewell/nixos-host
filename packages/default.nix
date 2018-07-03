@@ -21,5 +21,8 @@ rec {
   micro-ecc = callPackage ./micro-ecc { };
   esp-idf = callPackage ./esp-idf { inherit micro-ecc; };
   als-yoga = callPackage ./als-yoga { inherit (python.pkgs) buildPythonApplication; };
-  
+  sentry = python36Packages.callPackage ./sentry { };
+  gemini-flashtool = callPackage ./gemini-flashtool { };
+  kmmscube = callPackage ./kmscube { };
+
 }
