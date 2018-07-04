@@ -1,17 +1,17 @@
-{ pkgs }:
+{ stdenv, fetchFromGitHub, glib, libusb, qmake4Hook }: #, makeWrapper, qtwebkit, qtxmlpatterns, qttranslations, lsb-release }:
 
-with pkgs.pkgsi686Linux; stdenv.mkDerivation rec {
-  name = "rkbin";
+stdenv.mkDerivation rec {
+  name = "gemini-flashtool";
 
-  src = fetchurl {
-    url = "http://support.planetcom.co.uk/download/FlashToolLinux.tgz";
-    sha256 = "010ysrdzf1nww0ia264nb89f76m8q2rh7n07x9vps506zgx346sn";
+  src = fetchFromGitHub {
+    owner = "dguidipc";
+    repo  = "SP-Flash-Tool-src";
+    rev   = "a12e2b1b1ee7b46fc25d0fc7de56e4d519213227";
+    sha256 = "067bqv4703znrdy5in6ni16hr4rvsmbwx1bxk02xc0chjpfbzkbi";
   };
 
-  installPhase = ''
-    cp -r . $out
-  '';
-
+  nativeBuildInputs = [ qmake4Hook ];
+ /*
   fixupPhase = let
       libPath = stdenv.lib.makeLibraryPath [ glib libusb ];
     in ''
@@ -21,11 +21,18 @@ with pkgs.pkgsi686Linux; stdenv.mkDerivation rec {
         patchelf --set-rpath ${libPath} "$f" || true
       done
   '';
+*/
+  installPhase = ''
+    mkdir -p $out/{bin,lib}
+    cp flash_tool $out/bin/
+    cp -rv Lib/*.so $out/lib/
+    cp -rv Lib/QtLinux/lib/*.so.* $out/lib/
+  '';
 
   meta = {
     description = "rockchip firmware and binaries";
     maintainers = [ stdenv.lib.maintainers.georgewhewell ];
-    platforms = [ "i686-linux" ];
+    #platforms = [ "i686-linux" ];
   };
 
 }
