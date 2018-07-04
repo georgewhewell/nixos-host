@@ -17,10 +17,7 @@
 
   swapDevices = [{ device = "/dev/nvme0n1p2"; }];
 
-  zramSwap = {
-    enable = true;
-    numDevices = 4;
-  };
+  zramSwap.enable = true;
 
   nix.maxJobs = lib.mkDefault 4;
 
@@ -61,6 +58,7 @@
     [
       ./modules/undervolt.nix
       ./profiles/common.nix
+      ./profiles/home.nix
       ./profiles/development.nix
       ./profiles/xserver.nix
       ./profiles/nas-mounts.nix
@@ -68,6 +66,8 @@
       ./profiles/thinkpad.nix
       ./profiles/g_ether.nix
       ./services/docker.nix
+      ./services/virt/host.nix
+      ./services/virt/vfio.nix
     ];
 
 }
