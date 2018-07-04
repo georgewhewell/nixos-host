@@ -5,13 +5,13 @@ with lib;
 let
   package = pkgs.pythonPackages.buildPythonApplication rec {
     pname = "undervolt";
-    version = "0.1.3";
+    version = "0.2.5";
     name = "${pname}-${version}";
     doCheck = pkgs.pythonPackages.isPy3k;
 
     src = pkgs.pythonPackages.fetchPypi {
       inherit pname version;
-      sha256 = "1wj0kd2vzfq8ypdpxwa1m9zwkllrmp60aqmj6sdy5dsby8lgbdgp";
+      sha256 = "1dj83yl68nb5mjkndw07c004l2n34l39cfx2a1dyqk7s64n842is";
     };
   };
   cfg = config.hardware.undervolt;
@@ -23,6 +23,14 @@ in {
         default = false;
         description = ''
           When enabled, automatically apply undervolts on boot and after resume
+        '';
+      };
+
+      temp = mkOption {
+        type = types.int;
+        default = null;
+        description = ''
+          Temperature
         '';
       };
 
@@ -80,10 +88,11 @@ in {
       boot.kernelModules = [ "msr" ];
       systemd.services.undervolt = {
         description = "Apply undervolts";
-        wantedBy = [ "multi-user.target" "suspend.target" ];
-        after = [ "sleep.target" ];
+        wantedBy = [ "multi-user.target" "sleep.target" ];
+        after = [ "suspend.target" "systemd-suspend.service" ];
         script = ''
             ${package}/bin/undervolt -v \
+              ${optionalString (cfg.temp != null) "--temp ${toString cfg.temp}"} \
               ${optionalString (cfg.core != null) "--core ${toString cfg.core}"} \
               ${optionalString (cfg.gpu != null) "--gpu ${toString cfg.gpu}"} \
               ${optionalString (cfg.cache != null) "--cache ${toString cfg.cache}"} \
