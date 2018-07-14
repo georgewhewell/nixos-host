@@ -11,5 +11,6 @@
 
   environment.systemPackages = with pkgs; [
     virtmanager
+    spice-gtk # fix usb redirect
   ];
 }

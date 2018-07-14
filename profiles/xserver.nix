@@ -153,6 +153,8 @@ let
     bindsym XF86MonBrightnessDown exec "${oledBrightness}/bin/oled-brightness"
     bindsym XF86MonBrightnessUp exec "${oledBrightness}/bin/oled-brightness up"
 
+    exec_always ${pkgs.pasystray}/bin/pasystray
+
     # lock screen
     # exec_always ${pkgs.xorg.xset}/bin/xset s 180 60
 
@@ -180,8 +182,14 @@ in {
   ];
 
   environment.systemPackages = with pkgs; [
-    dmenu
+    # Apps
     chromium
+    thunderbird
+
+    # PA Systray
+    pasystray
+    pavucontrol
+    pamixer
   ];
 
   fonts = {
