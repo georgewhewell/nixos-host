@@ -5,13 +5,13 @@ with lib;
 let
   package = pkgs.pythonPackages.buildPythonApplication rec {
     pname = "undervolt";
-    version = "0.2.5";
+    version = "0.2.7";
     name = "${pname}-${version}";
     doCheck = pkgs.pythonPackages.isPy3k;
 
     src = pkgs.pythonPackages.fetchPypi {
       inherit pname version;
-      sha256 = "1dj83yl68nb5mjkndw07c004l2n34l39cfx2a1dyqk7s64n842is";
+      sha256 = "16ggp2jhzm0nw9g5pgncyphpszv5rqcxlnhb90chdg60pcpdjgwc";
     };
   };
   cfg = config.hardware.undervolt;
@@ -26,11 +26,35 @@ in {
         '';
       };
 
-      temp = mkOption {
+      bootDelay = mkOption {
+        type = types.str;
+        default = "1m";
+        description = ''
+          Timeout before start
+        '';
+      };
+
+      interval = mkOption {
+        type = types.int;
+        default = 30;
+        description = ''
+          Interval between re-apply
+        '';
+      };
+
+      temp-ac = mkOption {
         type = types.int;
         default = null;
         description = ''
-          Temperature
+          Temperature when on AC
+        '';
+      };
+
+      temp-bat = mkOption {
+        type = types.int;
+        default = null;
+        description = ''
+          Temperature when on battery
         '';
       };
 
@@ -88,11 +112,10 @@ in {
       boot.kernelModules = [ "msr" ];
       systemd.services.undervolt = {
         description = "Apply undervolts";
-        wantedBy = [ "multi-user.target" "sleep.target" ];
-        after = [ "suspend.target" "systemd-suspend.service" ];
         script = ''
             ${package}/bin/undervolt -v \
-              ${optionalString (cfg.temp != null) "--temp ${toString cfg.temp}"} \
+              ${optionalString (cfg.temp-ac != null) "--temp-ac ${toString cfg.temp-ac}"} \
+              ${optionalString (cfg.temp-bat != null) "--temp-bat ${toString cfg.temp-bat}"} \
               ${optionalString (cfg.core != null) "--core ${toString cfg.core}"} \
               ${optionalString (cfg.gpu != null) "--gpu ${toString cfg.gpu}"} \
               ${optionalString (cfg.cache != null) "--cache ${toString cfg.cache}"} \
@@ -101,6 +124,17 @@ in {
           '';
         serviceConfig.Type = "oneshot";
       };
+
+      systemd.timers.undervolt = {
+        description = "Run undervolt script";
+        wantedBy = [ "multi-user.target" ];
+        timerConfig = {
+          Unit = "undervolt";
+          OnBootSec = cfg.bootDelay;
+          OnUnitActiveSec = cfg.interval;
+        };
+      };
+
     };
     meta = {};
   }
