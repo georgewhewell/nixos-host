@@ -37,7 +37,8 @@
 
   hardware.undervolt = {
     enable = true;
-    temp = 97;
+    temp-ac = 97;
+    temp-bat = 75;
     core = -120;
     cache = -120;
     gpu = -55;
