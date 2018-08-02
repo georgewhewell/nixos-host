@@ -166,7 +166,6 @@ let
   '';
 in {
   imports = [
-    ../services/usbmuxd.nix
     ./gpg-yubikey.nix
   ];
 
@@ -182,9 +181,15 @@ in {
   ];
 
   environment.systemPackages = with pkgs; [
+    # save settings
+    gnome3.dconf
+
     # Apps
     chromium
     thunderbird
+    shotwell
+    ifuse
+    libimobiledevice
 
     # PA Systray
     pasystray
@@ -256,19 +261,19 @@ in {
     drivers = [ pkgs.gutenprint pkgs.hplip ];
   };
 
+  services.usbmuxd = {
+    enable = true;
+  };
+
   services.xserver = {
     enable = true;
     autorun = true;
-
-    autoRepeatDelay = 200;
-    autoRepeatInterval = 40;
-
-    desktopManager = {
-      xterm.enable = false;
-    };
+    autoRepeatDelay = 150;
+    autoRepeatInterval = 35;
 
     displayManager = {
       slim = {
+        enable = true;
         defaultUser = "grw";
         theme = pkgs.fetchurl {
           url = "https://github.com/edwtjo/nixos-black-theme/archive/v1.0.tar.gz";
