@@ -111,6 +111,7 @@ in {
       environment.systemPackages = [package];
       boot.kernelModules = [ "msr" ];
       systemd.services.undervolt = {
+        after = [ "suspend.target" "systemd-suspend.service" ];
         description = "Apply undervolts";
         script = ''
             ${package}/bin/undervolt -v \
