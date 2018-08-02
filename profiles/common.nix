@@ -95,12 +95,12 @@
     pciutils
     wirelesstools
     rxvt_unicode
-    
+
     (vim_configurable.customize {
       # Specifies the vim binary name.
       # E.g. set this to "my-vim" and you need to type "my-vim" to open this vim
       # This allows to have multiple vim packages installed (e.g. with a different set of plugins)
-      name = "myvim";
+      name = "vim";
       vimrcConfig.customRC = ''
         syntax enable
         set number
@@ -124,13 +124,14 @@
         let g:syntastic_check_on_open = 1
         let g:syntastic_check_on_wq = 0
       '';
-      vimrcConfig.vam.pluginDictionaries = [ 
+      vimrcConfig.vam.pluginDictionaries = [
         { names = [
           "commentary"
           "vim-elixir"
           "youcompleteme"
           "syntastic"
           "colors-solarized"
+          "surround"
         ]; } ];
     })
   ];
