@@ -13,6 +13,8 @@
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
+  boot.kernelParams = [ "elevator=noop" ];
+
   security.rngd.enable = pkgs.lib.mkDefault true;
 
   # Enable the OpenSSH daemon.
