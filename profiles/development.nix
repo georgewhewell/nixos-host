@@ -5,31 +5,42 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
-    kicad
+    /* kicad */
     libpcap
     lshw
     nix-prefetch-git
     openocd
     pciutils
     pgadmin
-    saleae-logic
+    /* saleae-logic */
     screen
     usbutils
     wireshark
     iperf
-
-    (eclipses.eclipseWithPlugins {
+    /* arduino-custom */
+    /* (eclipses.eclipseWithPlugins {
       eclipse = eclipses.eclipse-cpp;
       jvmArgs = [ "-Xmx2048m" ];
       plugins = with eclipses.plugins;
         [ cdt gnuarmeclipse ];
-    })
+    }) */
   ];
 
   services.postgresql = {
     enable = true;
     enableTCPIP = true;
-    authentication = "local all all trust";
+    package = pkgs.postgresql100;
+    authentication = ''
+      local all all trust
+    '';
+    extraPlugins = with pkgs; [
+      /* (postage.override { postgresql = pkgs.postgresql100; }) */
+      (timescaledb.override { postgresql = pkgs.postgresql100; })
+    ];
+  };
+
+  services.redis = {
+    enable = true;
   };
 
   virtualisation.docker.enable = true;
