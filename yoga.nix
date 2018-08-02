@@ -35,6 +35,11 @@
     "intel_backlight"
   ];
 
+  zramSwap = {
+    enable = true;
+    numDevices = 4;
+  };
+
   hardware.undervolt = {
     enable = true;
     temp-ac = 97;
