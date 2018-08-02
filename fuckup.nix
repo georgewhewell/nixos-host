@@ -42,6 +42,8 @@
     config.boot.kernelPackages.rtlwifi_new
     config.boot.kernelPackages.broadcom_sta ];
 
+  system.stateVersion = "18.03";
+
   nix.maxJobs = lib.mkDefault 8;
   powerManagement.cpuFreqGovernor = "performance";
 
@@ -60,7 +62,7 @@
 
     firewall = {
       enable = true;
-      allowedTCPPorts = [ 9100 10809 ];
+      allowedTCPPorts = [ 9100 10809 8880 ];
       checkReversePath = false;
     };
 
@@ -84,38 +86,118 @@
       { output = "DP-1"; primary = true; monitorConfig = ''
         # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
         Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
-        Option "PreferredMode" "3440x1440_75.00" 
+        Option "PreferredMode" "3440x1440_75.00"
         Option "Broadcast RGB" "Full"
     '';}
     ];
   };
 
+  services.redshift = {
+    enable = true;
+    latitude = "51.5";
+    longitude = "0";
+
+    brightness = {
+      day = "1.0";
+      night = "0.6";
+    };
+  };
+
+  services.fwupd.enable = true;
+
   nix.distributedBuilds = true;
   nix.buildMachines = [
-    {
-     hostName = "odroidxu4.4a";
+  /* { hostName = "nanopi-m3.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ ];
+    speedFactor = 2;
+    maxJobs = 1;
+  }
+  { hostName = "amlogic.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ "big-parallel" ];
+    speedFactor = 2;
+    maxJobs = 1;
+  } */
+  {
+    hostName = "nixhost.4a";
+    maxJobs = "4";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    systems = ["x86_64-linux" "i686-linux" ];
+    supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+  }
+  { hostName = "rock64.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ ];
+    speedFactor = 4;
+    maxJobs = 1;
+  }
+  { hostName = "odroid-c2.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ ];
+    speedFactor = 4;
+    maxJobs = 1;
+  }
+  { hostName = "jetson-tx1.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ "big-parallel" ];
+    speedFactor = 2;
+    maxJobs = 1;
+  }
+  { hostName = "nanopi-m3.4a";
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "aarch64-linux";
+    supportedFeatures = [ "big-parallel" ];
+    speedFactor = 3;
+    maxJobs = 1;
+  }
+  {
+    hostName = "odroidxu4.4a";
+    speedFactor = 6;
+    sshUser = "root";
+    sshKey = "/etc/nix/buildfarm";
+    system = "armv7l-linux";
+    maxJobs = 1;
+    supportedFeatures = [ "big-parallel" ];
+  }
+  { hostName = "51.15.195.104";
+   speedFactor = 4;
+   sshUser = "root";
+   sshKey = "/etc/nix/buildfarm";
+   system = "armv7l-linux";
+   maxJobs = 1;
+   supportedFeatures = [ "big-parallel" "highmem" ];
+  }
+  { hostName = "orangepi-plus2e.4a";
+     speedFactor = 1;
      sshUser = "root";
      sshKey = "/etc/nix/buildfarm";
      system = "armv7l-linux";
-     maxJobs = 2;
-     supportedFeatures = [ "big-parallel" ];
-    }
-    {
-     hostName = "nanopi-m3.4a";
-     sshUser = "root";
-     sshKey = "/etc/nix/buildfarm";
-     system = "aarch64-linux";
-     speedFactor = 2;
-     maxJobs = 2;
-     supportedFeatures = [ "big-parallel" ];
-    }
-    {
-     hostName = "jetson-tx1.4a";
-     sshUser = "root";
-     sshKey = "/etc/nix/buildfarm";
-     system = "aarch64-linux";
      maxJobs = 1;
-     supportedFeatures = [ "big-parallel" ];
+     supportedFeatures = [];
     }
-    ];
+  ];
+
+  system.autoUpgrade = {
+    enable = true;
+    channel = https://nixos.org/channels/nixos-unstable;
+    dates = "05:00";
+  };
+
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+  };
 }
