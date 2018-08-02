@@ -15,16 +15,18 @@ in {
 
   # Auto-chmod pre-boot devices and trigger bridge job for new interfaces
   services.udev.extraRules = ''
-    # Rename and chown to plugdev
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="04e8", ATTRS{idProduct}=="1234", GROUP="users", MODE="0660" SYMLINK+="usb-loader-m3"
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="1f3a", ATTRS{idProduct}=="efe8", GROUP="users", MODE="0660" SYMLINK+="sunxi-fel"
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="2207", ATTRS{idProduct}=="330c", GROUP="users", MODE="0660" SYMLINK+="rockchip-rk3399"
+    # Rename and chown to users
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="04e8", ATTRS{idProduct}=="1234", GROUP="users", MODE="0660", SYMLINK+="usb-loader-m3"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="1f3a", ATTRS{idProduct}=="efe8", GROUP="users", MODE="0660", SYMLINK+="sunxi-fel"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="2207", ATTRS{idProduct}=="330c", GROUP="users", MODE="0660", SYMLINK+="rockchip-rk3399"
 
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="0483", GROUP="users", MODE="0660" SYMLINK+="stm32"
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", GROUP="users", MODE="0660" SYMLINK+="stm32-dfu"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="0e8d", ATTRS{idProduct}=="2000", ENV{ID_MM_DEVICE_IGNORE}="1", GROUP="users", MODE="0660", SYMLINK+="mtk-preloader"
+
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="0483", GROUP="users", MODE="0660", SYMLINK+="stm32"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", GROUP="users", MODE="0660", SYMLINK+="stm32-dfu"
 
     # VIA Labs, Inc. USB3.0 Hub
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="2109", ATTRS{idProduct}=="2811", GROUP="users", MODE="0660" SYMLINK+="smart-hub"
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="2109", ATTRS{idProduct}=="2811", GROUP="users", MODE="0660", SYMLINK+="smart-hub"
 
     # platform usb
     SUBSYSTEM=="net" KERNEL=="enp0s2*u[0-9]", DRIVERS=="rndis_host", \
