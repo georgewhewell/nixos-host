@@ -6,7 +6,14 @@
   ];
 
   boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
-  boot.kernelParams = [ "nopti" ];
+  boot.kernelParams = [
+    "nopti"
+    "nospectre_v2"
+    "l1tf=off"
+    "nospec_store_bypass_disable"
+    "no_stf_barrier"
+  ];
+
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
     config.boot.kernelPackages.tp_smapi
