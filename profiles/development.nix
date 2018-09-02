@@ -37,6 +37,9 @@
       /* (postage.override { postgresql = pkgs.postgresql100; }) */
       (timescaledb.override { postgresql = pkgs.postgresql100; })
     ];
+    extraConfig = ''
+      shared_preload_libraries = 'timescaledb'
+    '';
   };
 
   services.redis = {
