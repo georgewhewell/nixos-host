@@ -58,7 +58,6 @@
       "nixos-config=/etc/nixos/configuration.nix"
     ];
     binaryCaches = [
-      https://cache.satanic.link/
       https://cache.nixos.org/
     ];
     binaryCachePublicKeys = [
@@ -85,7 +84,6 @@
     psutils
     pwgen
     tmux
-    nixops
     jq
 
     arp-scan
