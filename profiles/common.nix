@@ -2,6 +2,7 @@
 
 {
   imports = [
+    "${builtins.fetchTarball https://github.com/rycee/home-manager/archive/master.tar.gz}/nixos"
     ../modules/cache-cache.nix
     ./users.nix
   ];
@@ -87,11 +88,13 @@
 
     arp-scan
     ipmitool
+    vnstat
 
     usbutils
     pciutils
     wirelesstools
     rxvt_unicode
+    (aspellWithDicts (ps: with ps; [ en ]))
 
     (vim_configurable.customize {
       # Specifies the vim binary name.

@@ -43,32 +43,37 @@
   };
 
   hardware.pulseaudio.enable = true;
-  services.tlp.enable = true;
+
+  services.tlp = {
+    enable = true;
+    # https://github.com/NixOS/nixpkgs/issues/46048
+    extraConfig = ''
+      CPU_SCALING_GOVERNOR_ON_AC=ondemand
+      CPU_SCALING_GOVERNOR_ON_BAT=powersave
+    '';
+  };
 
   services.xserver.libinput = {
     enable = true;
     accelSpeed = "0.1";
     naturalScrolling = true;
   };
+
   services.xserver.videoDrivers = [ "modesetting" ];
   # services.xserver.videoDrivers = [ "modesetting" "displaylink" ];
 
   sound.mediaKeys.enable = true;
 
-  # need networkmanager for wifi
+  # need networkmanager for wwan
   networking.networkmanager = {
     enable = true;
     unmanaged = [
-      "interface-name:usb-bridge"
-      "interface-name:usb*"
+      "docker0"
+      "rndis0"
     ];
   };
 
-  # start nm applet too
-  services.xserver.windowManager.i3.extraSessionCommands = ''
-    ${pkgs.networkmanagerapplet}/bin/nm-applet &
-  '';
-
+  systemd.services.modem-manager.enable = true;
   systemd.services.ModemManager = {
     wantedBy = [ "multi-user.target" ];
   };
