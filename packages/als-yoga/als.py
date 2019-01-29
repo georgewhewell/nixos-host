@@ -9,7 +9,7 @@ from gi.repository import GLib
 from dbus.mainloop.glib import DBusGMainLoop
 
 MIN_LIGHT=.1
-MAX_LIGHT=1.05
+MAX_LIGHT=1.00
 BOOST_LIGHT=.3
 KB_BACKLIGHT_FULL = 400
 KB_BACKLIGHT_OFF = 1000
