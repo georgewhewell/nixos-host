@@ -16,15 +16,17 @@ edk2 = stdenv.mkDerivation {
   src = fetchFromGitHub {
     owner = "gsomlo";
     repo = "edk2";
-    rev = "macboot";
-    sha256 = "0fp153rr7zs47smwdyd0w33ccgrnyq1x4jp7b43xs9s45zii8fyx";
+    rev = "gls-macboot";
+    sha256 = "1sab5f2r2q3c9snyw95zfh9gipyf5j44ac4p73hn2z3ksqhn37wm";
   };
 
   buildInputs = [ libuuid pythonEnv];
 
   makeFlags = "-C BaseTools";
 
-  hardeningDisable = [ "format" "fortify" ];
+  dontStrip = true;
+  hardeningDisable = [ "all" ];
+  enableParallelBuilding = true;
 
   installPhase = ''
     mkdir -vp $out
