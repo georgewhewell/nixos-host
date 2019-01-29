@@ -35,34 +35,18 @@
     "intel_backlight"
   ];
 
-  zramSwap = {
+  services.undervolt = {
     enable = true;
-    numDevices = 4;
-  };
-
-  hardware.undervolt = {
-    enable = true;
-    temp-ac = 97;
-    temp-bat = 75;
-    core = -120;
-    cache = -120;
-    gpu = -55;
-    uncore = -70;
-    analogio = -70;
-  };
-
-  systemd.user.services.als = {
-    description = "ALS daemon";
-    wantedBy = [ "graphical-session.target" ];
-    partOf = [ "graphical-session.target" ];
-    serviceConfig = {
-      ExecStart = "${pkgs.als-yoga}/bin/als-yoga";
-    };
+    tempAc = "97";
+    tempBat = "75";
+    coreOffset = "-110";
+    gpuOffset = "-50";
+    uncoreOffset = "-60";
+    analogioOffset = "-60";
   };
 
   imports =
     [
-      ./modules/undervolt.nix
       ./profiles/common.nix
       ./profiles/home.nix
       ./profiles/development.nix
