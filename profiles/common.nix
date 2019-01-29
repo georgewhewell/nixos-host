@@ -54,7 +54,6 @@
     daemonNiceLevel = 10;
     trustedUsers = [ "grw" ];
     nixPath = [
-      "nixpkgs=/etc/nixos/nixpkgs"
       "nixos-config=/etc/nixos/configuration.nix"
     ];
     binaryCaches = [
