@@ -4,6 +4,16 @@
   # Config for machines on home network
   time.timeZone = "Europe/London";
 
+  nix.binaryCaches = [
+      https://cache.satanic.link
+      https://cache.nixos.org
+  ];
+  nix.binaryCachePublicKeys = [
+    "hydra.satanic.link-1:U4ZvldOwA3GWLmFTqdXwUu9oS0Qzh4+H/HSl8O6ew5o="
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
+  ];
+
   # Allow resolving by .local
   services.avahi = {
     enable = true;
