@@ -10,7 +10,6 @@
       ./containers/plex.nix
       ./containers/radarr.nix
       ./containers/sonarr.nix
-      ./containers/unifi.nix
       ./profiles/common.nix
       ./profiles/headless.nix
       ./profiles/g_ether.nix

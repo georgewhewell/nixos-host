@@ -2,16 +2,10 @@
 
 {
 
-  fileSystems."/var/lib/unifi" =
-    { device = "fpool/root/config/unifi";
-      fsType = "zfs";
-    };
-
   containers.unifi = {
-
     autoStart = true;
     privateNetwork = true;
-    hostBridge = "br0";
+    hostBridge = "br.lan";
 
     bindMounts = {
       "/var/lib/unifi/data" = {
@@ -23,7 +17,7 @@
     config = {
       boot.isContainer = true;
 
-      networking.hostName = "unifi";
+      networking.hostName = "unifi.lan";
       networking.interfaces.eth0.useDHCP = true;
       networking.firewall = {
         enable = true;
@@ -36,17 +30,6 @@
 
       nixpkgs.config.allowUnfree = true;
       services.unifi.enable = true;
-
-      systemd.services.unfuck_unifi = {
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          TimeoutStartSec = "5s";
-          ExecStart = ''
-            ${pkgs.systemd}/bin/systemctl restart unifi
-          '';
-        };
-      };
-
     };
   };
 }
