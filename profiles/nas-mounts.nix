@@ -6,19 +6,19 @@ let
 in {
 
   fileSystems."/mnt/Home" =
-    { device = "nixhost.4a:/home";
+    { device = "nixhost.lan:/home";
       fsType = "nfs";
       inherit options;
     };
 
   fileSystems."/mnt/Media" =
-    { device = "nixhost.4a:/media";
+    { device = "nixhost.lan:/media";
       fsType = "nfs";
       inherit options;
     };
 
   fileSystems."/mnt/nixhostconfig" =
-    { device = "nixhost.4a:/nixos-config";
+    { device = "nixhost.lan:/nixos-config";
       fsType = "nfs";
       inherit options;
     };

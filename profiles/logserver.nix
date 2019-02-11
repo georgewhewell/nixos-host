@@ -15,7 +15,7 @@
     exporters = {
       unifi = {
         enable = true;
-        unifiAddress = "https://unifi.4a:8443";
+        unifiAddress = "https://unifi.lan:8443";
         unifiInsecure = true;
         unifiUsername = "ReadOnlyUser";
         unifiPassword = "ReadOnlyUser";

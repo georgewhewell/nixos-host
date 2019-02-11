@@ -8,13 +8,20 @@
   ];
 
   nixpkgs.overlays = [
-      (import ../modules/overlay.nix)
+    (import ../modules/overlay.nix)
   ];
 
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-  boot.kernelParams = [ "elevator=noop" ];
+  boot.kernelParams = [
+    "nopti"
+    "nospectre_v2"
+    "l1tf=off"
+    "nospec_store_bypass_disable"
+    "no_stf_barrier"
+    "elevator=noop"
+  ];
 
   security.rngd.enable = pkgs.lib.mkDefault true;
 
@@ -29,7 +36,7 @@
   };
 
   programs.ssh.extraConfig = ''
-    Host *.4a
+    Host *.lan
       # todo..
       StrictHostKeyChecking no
   '';
@@ -54,9 +61,6 @@
     daemonIONiceLevel = 7;
     daemonNiceLevel = 10;
     trustedUsers = [ "grw" ];
-    nixPath = [
-      "nixos-config=/etc/nixos/configuration.nix"
-    ];
     binaryCaches = [
       https://cache.nixos.org/
     ];
@@ -77,6 +81,7 @@
     unzip
     gitAndTools.gitFull
     htop
+    iotop
     xz
     p7zip
     unrar
@@ -85,6 +90,8 @@
     pwgen
     tmux
     jq
+
+    nixopsUnstable
 
     arp-scan
     ipmitool

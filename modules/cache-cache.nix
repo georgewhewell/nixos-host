@@ -49,7 +49,7 @@ in
 
       resolver = mkOption {
         type = types.str;
-        default = "8.8.8.8";
+        default = "1.1.1.1";
         description = "Address of DNS resolver.";
       };
 
@@ -113,7 +113,7 @@ in
           # nginx is started.
           access_log stderr;
           error_log stderr;
-          resolver ${cfg.resolver} valid=10s;
+          resolver ${cfg.resolver} valid=10s ipv6=off;
           set $upstream_endpoint https://cache.nixos.org;
         '';
         locations."/" =
