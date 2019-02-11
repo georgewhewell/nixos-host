@@ -1,13 +1,13 @@
 { config, lib, pkgs, ... }:
 
 {
-  imports =
-    [
-      ./profiles/common.nix
-      ./profiles/home.nix
-      ./profiles/uefi-boot.nix
-      ./modules/traffic-shaping.nix
-    ];
+  imports = [
+    ./containers/unifi.nix
+    ./profiles/common.nix
+    ./profiles/home.nix
+    ./profiles/uefi-boot.nix
+    ./modules/traffic-shaping.nix
+  ];
 
   services.haveged.enable = true;
   services.vnstat.enable = true;
@@ -16,26 +16,32 @@
   services.thermald.enable = true;
 
   nix.maxJobs = lib.mkDefault 4;
-  powerManagement.cpuFreqGovernor = "performance";
+  powerManagement.cpuFreqGovernor = "ondemand";
 
   environment.systemPackages = with pkgs; [
     mosh
   ];
 
-  fileSystems."/" =
-    { device = "/dev/disk/by-uuid/dd3984c7-ebec-4e35-91dc-2e176ed8e788";
-      fsType = "btrfs";
-    };
-
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/DBE8-FF96";
+    { device = "/dev/sda1";
       fsType = "vfat";
     };
 
+  fileSystems."/" =
+    { device = "/dev/sda2";
+      fsType = "f2fs";
+    };
+
   networking = {
-    hostName = "router"; # Define your hostname.
+    hostName = "router.lan";
     hostId = "deadbeef";
     enableIPv6 = false;
+
+    bridges."br.lan" = {
+      interfaces = [
+        "enp3s0"  # port 2
+      ];
+    };
 
     nameservers = [ "127.0.0.1" ];
     nat = {
@@ -45,8 +51,8 @@
         "192.168.24.0/24"
         "192.168.25.0/24"
       ];
-      internalInterfaces = [ "enp3s0" "tun0" ];
-      externalInterface = "enp1s0";
+      internalInterfaces = [ "br.lan" "tun0" ];
+      externalInterface = "enp1s0";  # port 1
       forwardPorts = [
         { sourcePort = 80; destination = "192.168.23.5:80"; }
         { sourcePort = 443; destination = "192.168.23.5:443"; }
@@ -58,18 +64,18 @@
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ "enp3s0" ];
+      trustedInterfaces = [ "br.lan" ];
       allowedUDPPorts = [ 1194 ];
     };
 
     interfaces = {
-      # Use DHCP to aquire IP from modem
+      # Use DHCP to acquire IP from modem
       enp1s0 = {
         useDHCP = true;
       };
 
       # Static IP on LAN
-      enp3s0.ipv4.addresses = [{
+      "br.lan".ipv4.addresses = [{
         address = "192.168.23.1";
         prefixLength = 24;
       }];
@@ -78,10 +84,10 @@
     trafficShaping = {
       enable = true;
       wanInterface = "enp1s0";
-      lanInterface = "enp3s0";
+      lanInterface = "br.lan";
       lanNetwork = "192.168.23.0/24";
-      maxDown = "200mbit";
-      maxUp = "20mbit";
+      maxDown = "50mbit";
+      maxUp = "3mbit";
     };
   };
 
@@ -91,7 +97,7 @@
      "net.core.default_qdisc" = "fq_codel";
    };
 
-   services.avahi.interfaces = [ "enp3s0" ];
+   services.avahi.interfaces = [ "br.lan" ];
    services.dnsmasq = {
     enable = true;
     resolveLocalQueries = true;
@@ -101,48 +107,26 @@
       bogus-priv
       no-resolv
       log-dhcp
-      domain=4a
+      domain=lan
       interface=lo
-      interface=enp3s0
+      interface=br.lan
       dhcp-range=192.168.23.10,192.168.23.254,1h
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2  # switch
       dhcp-host=80:2a:a8:80:96:ef,192.168.23.3  # ap
       dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4  # ipmi
-      dhcp-host=7a:66:a0:7e:9b:45,192.168.23.5  # nixhost
+      dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5  # nixhost
 
       # hosted names
-      address=/router.4a/192.168.23.1
-      address=/nixhost.4a/192.168.23.5
-      cname=hydra.satanic.link,nixhost.4a
-      cname=grafana.satanic.link,nixhost.4a
-      cname=git.satanic.link,nixhost.4a
-      cname=elk.satanic.link,nixhost.4a
-      cname=es.satanic.link,nixhost.4a
-      cname=cache.satanic.link,nixhost.4a
+      address=/router.lan/192.168.23.1
+      address=/nixhost.lan/192.168.23.5
+      cname=hydra.satanic.link,nixhost.lan
+      cname=grafana.satanic.link,nixhost.lan
+      cname=git.satanic.link,nixhost.lan
+      cname=elk.satanic.link,nixhost.lan
+      cname=es.satanic.link,nixhost.lan
+      cname=cache.satanic.link,nixhost.lan
     '';
 
-  };
-
- services.openvpn.servers.satanic-link = {
-   config = let
-     dirName = "/etc/nix/openvpn/pki";
-   in ''
-     dev tun0
-     proto udp
-     port 1194
-     server 192.168.24.0 255.255.255.0
-
-     ca ${dirName}/ca.crt
-     cert ${dirName}/issued/satanic-link.crt
-     key ${dirName}/private/satanic-link.key
-     dh ${dirName}/dh.pem
-   '';
- };
-
-  system.autoUpgrade = {
-    enable = true;
-    channel = https://nixos.org/channels/nixos-18.03-small;
-    dates = "04:40";
   };
 
   nix.gc = {
