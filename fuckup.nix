@@ -102,11 +102,6 @@
   };
 
   services.fwupd.enable = true;
-  system.autoUpgrade = {
-    enable = true;
-    channel = https://nixos.org/channels/nixos-unstable;
-    dates = "05:00";
-  };
 
   nix.gc = {
     automatic = true;
