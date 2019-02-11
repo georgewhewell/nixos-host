@@ -30,6 +30,7 @@
     shotwell
     ifuse
     libimobiledevice
+
     discord
     plex-media-player
 
@@ -69,9 +70,6 @@
       Enable=Source,Sink,Media,Socket
     ";
   };
-
-  systemd.services."dbus-org.bluez".serviceConfig.ExecStart =
-    "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
   hardware.opengl = {
     enable = true;

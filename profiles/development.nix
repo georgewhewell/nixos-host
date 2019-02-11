@@ -5,7 +5,7 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
-    /* kicad */
+    kicad-unstable
     libpcap
     lshw
     nix-prefetch-git
@@ -29,13 +29,12 @@
   services.postgresql = {
     enable = true;
     enableTCPIP = true;
-    package = pkgs.postgresql100;
+    package = pkgs.postgresql96;
     authentication = ''
       local all all trust
     '';
     extraPlugins = with pkgs; [
-      /* (postage.override { postgresql = pkgs.postgresql100; }) */
-      (timescaledb.override { postgresql = pkgs.postgresql100; })
+      (timescaledb.override { postgresql = pkgs.postgresql96; })
     ];
     extraConfig = ''
       shared_preload_libraries = 'timescaledb'

@@ -49,6 +49,7 @@
 
   environment.systemPackages = with pkgs; [
     steam
+    nixopsUnstable
   ];
 
   users.extraUsers.root.openssh.authorizedKeys.keys = [
@@ -59,6 +60,7 @@
     hostName = "fuckup";
     hostId = "deadbeef";
     useDHCP = true;
+    wireless.enable = true;
 
     firewall = {
       enable = true;
@@ -79,10 +81,6 @@
     useGlamor = true;
     videoDrivers = [ "modesetting" ];
     xrandrHeads = [
-      { output = "HDMI-2"; monitorConfig = ''
-        Option "Rotate" "left"
-        Option "Broadcast RGB" "Full"
-        ''; }
       { output = "DP-1"; primary = true; monitorConfig = ''
         # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
         Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
@@ -104,97 +102,6 @@
   };
 
   services.fwupd.enable = true;
-
-  nix.distributedBuilds = true;
-  nix.buildMachines = [
-  /* { hostName = "nanopi-m3.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ ];
-    speedFactor = 2;
-    maxJobs = 1;
-  }
-  { hostName = "amlogic.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ "big-parallel" ];
-    speedFactor = 2;
-    maxJobs = 1;
-  } */
-  {
-    hostName = "nixhost.4a";
-    maxJobs = "4";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    systems = ["x86_64-linux" "i686-linux" ];
-    supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-  }
-  { hostName = "rock64.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ ];
-    speedFactor = 4;
-    maxJobs = 1;
-  }
-  { hostName = "odroid-c2.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ ];
-    speedFactor = 4;
-    maxJobs = 1;
-  }
-  { hostName = "jetson-tx1.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ "big-parallel" ];
-    speedFactor = 2;
-    maxJobs = 1;
-  }
-  { hostName = "nanopi-m3.4a";
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "aarch64-linux";
-    supportedFeatures = [ "big-parallel" ];
-    speedFactor = 3;
-    maxJobs = 1;
-  }
-  {
-    hostName = "odroidxu4.4a";
-    speedFactor = 6;
-    sshUser = "root";
-    sshKey = "/etc/nix/buildfarm";
-    system = "armv7l-linux";
-    maxJobs = 1;
-    supportedFeatures = [ "big-parallel" ];
-  }
-  { hostName = "51.15.195.104";
-   speedFactor = 4;
-   sshUser = "root";
-   sshKey = "/etc/nix/buildfarm";
-   system = "armv7l-linux";
-   maxJobs = 1;
-   supportedFeatures = [ "big-parallel" "highmem" ];
-  }
-  { hostName = "orangepi-plus2e.4a";
-     speedFactor = 1;
-     sshUser = "root";
-     sshKey = "/etc/nix/buildfarm";
-     system = "armv7l-linux";
-     maxJobs = 1;
-     supportedFeatures = [];
-    }
-  ];
-
-  system.autoUpgrade = {
-    enable = true;
-    channel = https://nixos.org/channels/nixos-unstable;
-    dates = "05:00";
-  };
 
   nix.gc = {
     automatic = true;

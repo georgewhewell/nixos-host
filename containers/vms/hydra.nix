@@ -1,4 +1,5 @@
 { config, pkgs, lib, ... }:
+
 {
   /*
     hydra: virtualized kvm machine
@@ -37,18 +38,12 @@
   networking = {
     hostName = "hydra";
     hostId = "deadbeef";
-    useNetworkd = true;
     useDHCP = true;
   };
 
   fileSystems."/".options = [
     "noatime"
   ];
-
-  fileSystems."/mnt/Home" =
-    { device = "nixhost.4a:/home";
-      fsType = "nfs";
-    };
 
   nix.gc = {
     automatic = true;

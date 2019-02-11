@@ -23,12 +23,10 @@
     };
 
     config = {
-      boot.isContainer = true;
-      time.timeZone = "Europe/London";
+      imports = [ ../profiles/container.nix ];
 
       networking.hostName = "sonarr";
       networking.firewall.allowedTCPPorts = [ 8989 ];
-      networking.interfaces.eth0.useDHCP = true;
 
       services.sonarr.enable = true;
     };
