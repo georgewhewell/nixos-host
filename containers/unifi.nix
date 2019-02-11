@@ -15,12 +15,10 @@
     };
 
     config = {
-      boot.isContainer = true;
+      imports = [ ../profiles/container.nix ];
 
       networking.hostName = "unifi.lan";
-      networking.interfaces.eth0.useDHCP = true;
       networking.firewall = {
-        enable = true;
         allowedTCPPorts = [ 443 8443 ];
         extraCommands = ''
           ${pkgs.iptables}/bin/iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8443

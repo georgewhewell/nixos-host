@@ -28,16 +28,15 @@
     };
 
     config = {
-      boot.isContainer = true;
+      imports = [ ../profiles/container.nix ];
 
       networking.hostName = "plex";
-
-      networking.firewall.enable = true;
-      networking.firewall.allowedUDPPorts = [ 1900 5353
-        32410 32412 32413 32414];
-      networking.firewall.allowedTCPPorts = [ 32400 32469 ];
-
-      networking.interfaces.eth0.useDHCP = true;
+      networking.firewall = {
+        enable = true;
+        checkReversePath = false;
+        allowedUDPPorts = [ 1900 5353 32410 32412 32413 32414];
+        allowedTCPPorts = [ 32400 32469 ];
+      };
 
       nixpkgs.config.allowUnfree = true;
 
