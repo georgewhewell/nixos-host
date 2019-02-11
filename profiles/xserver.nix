@@ -190,6 +190,7 @@ in {
     shotwell
     ifuse
     libimobiledevice
+    plex-media-player
 
     # PA Systray
     pasystray
@@ -225,9 +226,6 @@ in {
       Enable=Source,Sink,Media,Socket
     ";
   };
-
-  systemd.services."dbus-org.bluez".serviceConfig.ExecStart =
-    "${pkgs.bluez}/sbin/bluetoothd -n -d --compat";
 
   hardware.opengl = {
     enable = true;
