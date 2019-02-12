@@ -4,8 +4,6 @@
   boot.isContainer = true;
   system.stateVersion = "18.03";
   time.timeZone = "Europe/London";
-
-  services.avahi.enable = true;
   environment.noXlibs = true;
 
   i18n.supportedLocales = [ (config.i18n.defaultLocale + "/UTF-8") ];

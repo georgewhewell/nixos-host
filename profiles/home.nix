@@ -14,12 +14,6 @@
     "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
   ];
 
-  # Allow resolving by .local
-  services.avahi = {
-    enable = true;
-    nssmdns = true;
-  };
-
   nix.distributedBuilds = true;
   nix.buildMachines = [
      {
