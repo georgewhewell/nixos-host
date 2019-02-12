@@ -11,8 +11,6 @@
 
   services.haveged.enable = true;
   services.vnstat.enable = true;
-  services.fail2ban.enable = true;
-  services.fail2ban.jails.ssh-iptables = "enabled = true";
   services.thermald.enable = true;
 
   nix.maxJobs = lib.mkDefault 4;
