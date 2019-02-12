@@ -14,8 +14,8 @@ in {
     download-dir = "/mnt/Media/downloads";
     incomplete-dir = incompleteDir;
     incomplete-dir-enabled = true;
-    rpc-host-whitelist = "nixhost.4a";
-    rpc-whitelist = "127.0.0.1,192.168.23.*,192.168.24.*";
+    rpc-whitelist-enabled = false;
+    rpc-whitelist = "127.0.0.1,192.168.0.*,192.168.23.*,192.168.24.*";
     cache-size-mb = 1024;
     scrape-paused-torrents-enabled = false;
     seed-queue-enabled = true;

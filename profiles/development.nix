@@ -34,7 +34,7 @@
       local all all trust
     '';
     extraPlugins = with pkgs; [
-      (timescaledb.override { postgresql = pkgs.postgresql96; })
+      timescaledb
     ];
     extraConfig = ''
       shared_preload_libraries = 'timescaledb'

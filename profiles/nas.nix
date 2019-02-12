@@ -75,6 +75,7 @@
     138  # smb
     445  # smb
     548  # netatalk
+    10809 # nbd
   ];
 
   networking.firewall.allowedUDPPorts = [
