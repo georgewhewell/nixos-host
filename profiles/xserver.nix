@@ -19,6 +19,7 @@
   environment.systemPackages = with pkgs; [
     # save settings
     gnome3.dconf
+    xorg.xbacklight
 
     # Apps
     kitty
@@ -65,7 +66,6 @@
 
   hardware.bluetooth = {
     enable = true;
-    extraModules = [ pkgs.pulseaudio-modules-bt ];
     extraConfig = "
       [General]
       Enable=Source,Sink,Media,Socket
@@ -87,6 +87,7 @@
   hardware.pulseaudio = {
     enable = true;
     package = pkgs.pulseaudioFull;
+    extraModules = [ pkgs.pulseaudio-modules-bt ];
     support32Bit = true;
     extraConfig = ''
       # stop switching to HDMI output
@@ -110,9 +111,11 @@
 
   services.xserver = {
     enable = true;
-
     autoRepeatDelay = 200;
     autoRepeatInterval = 35;
+    autorun = true;
+
+    desktopManager.xterm.enable = false;
 
     xkbOptions = "caps:escape";
 

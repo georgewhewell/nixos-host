@@ -18,9 +18,28 @@
   services.avahi = {
     enable = true;
     nssmdns = true;
-    publish.enable = true;
-    publish.addresses = true;
   };
+
+  nix.distributedBuilds = true;
+  nix.buildMachines = [
+     {
+      hostName = "localhost";
+      maxJobs = "4";
+      systems = [ "x86_64-linux" "i686-linux" ];
+      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+    }
+    {
+      hostName = "nixhost.lan";
+      maxJobs = "12";
+      systems = ["x86_64-linux" "i686-linux"];
+      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+    }
+    {
+      hostName = "gemini.lan";
+      maxJobs = "4";
+      systems = [ "aarch64-linux" ];
+   }
+  ];
 
   # Log to ELK
   services.journalbeat = {
