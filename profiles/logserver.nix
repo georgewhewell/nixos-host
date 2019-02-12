@@ -4,11 +4,6 @@
   # Config for machines on home network
   environment.systemPackages = [ pkgs.jq ];
 
-  fileSystems."/var/lib/elasticsearch" =
-    { device = "bpool/root/elk";
-      fsType = "zfs";
-    };
-
   services.prometheus = {
     enable = true;
     listenAddress = "127.0.0.1:9090";
@@ -58,23 +53,9 @@
       scrape_interval = "5s";
       static_configs = [{
         targets = [
-          "router.4a:9100"
-          "nixhost.4a:9100"
-          "fuckup.4a:9100"
-          "hydra.4a:9100"
-          "airport.4a:9100"
-          "jetson-tx1.4a:9100"
-          "odroid-c2.4a:9100"
-          "nanopi-m3.4a:9100"
-          "nanopi-duo.4a:9100"
-          "nanopi-neo2.4a:9100"
-          "pine64-pine64.4a:9100"
-          "pine64-h64:9100"
-          "orangepi-plus2e.4a:9100"
-          "orangepi-pc2.4a:9100"
-          "orangepi-prime.4a:9100"
-          "orangepi-zero.4a:9100"
-          "rock64.4a:9100"
+          "router.lan:9100"
+          "nixhost.lan:9100"
+          "fuckup.lan:9100"
         ];
         labels = {};
       }];

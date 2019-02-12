@@ -17,17 +17,9 @@
     logo = null;
     debugServer = false;
     useSubstitutes = true;
-    /* package = pkgs.hydra.overrideAttrs(old: rec {
-        name = "hydra-${version}";
-        version = "master";
-        src = pkgs.fetchFromGitHub {
-          owner = "NixOS";
-          repo = "hydra";
-          rev = "df27358e11ad09fe3516a4e41d9fe1fd49f911a7";
-          sha256 = "0wmd6b8m4ck96ngi768ap5d506xlry68di18rz8das1cns1gyrdi";
-        };
-    }); */
     extraConfig = ''
+      using_frontend_proxy 1
+      base_uri https://hydra.satanic.link
       max_output_size = 4294967296
       binary_cache_secret_key_file /etc/nix/signing-key.sec
     '';
@@ -46,8 +38,8 @@
      {
       hostName = "localhost";
       maxJobs = "4";
-      systems = [ "x86_64-linux" "i686-linux" ];
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+      systems = [ "builtin" "x86_64-linux" "i686-linux" ];
+      supportedFeatures = [ "local" "kvm" "nixos-test" "big-parallel" ];
     }
     {
       hostName = "fuckup.4a";
