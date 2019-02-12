@@ -45,6 +45,12 @@
     analogioOffset = "-60";
   };
 
+  home-manager.users.grw = { ... }: {
+    imports = [
+      ../home/common.nix
+    ];
+  };
+
   imports =
     [
       ./profiles/common.nix

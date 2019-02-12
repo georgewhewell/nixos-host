@@ -39,9 +39,4 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  home-manager.users.grw = { ... }: {
-    imports = [
-      ../home/common.nix
-    ] ;
-  };
 }
