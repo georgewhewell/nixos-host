@@ -12,7 +12,7 @@
     ];
 
   programs.ssh.extraConfig = ''
-    Host *.4a
+    Host *
       # todo..
       StrictHostKeyChecking no
   '';
