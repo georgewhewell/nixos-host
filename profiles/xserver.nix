@@ -65,6 +65,7 @@
 
   hardware.bluetooth = {
     enable = true;
+    extraModules = [ pkgs.pulseaudio-modules-bt ];
     extraConfig = "
       [General]
       Enable=Source,Sink,Media,Socket
