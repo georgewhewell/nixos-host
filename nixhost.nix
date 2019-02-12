@@ -70,8 +70,6 @@
       fsType = "zfs";
     };
 
-  services.avahi.interfaces = [ "br0" ];
-
   services.sabnzbd = {
     enable = true;
     user = "transmission";
