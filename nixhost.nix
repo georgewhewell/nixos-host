@@ -7,7 +7,6 @@
 
   imports =
     [
-      ./containers/plex.nix
       ./containers/radarr.nix
       ./containers/sonarr.nix
       ./profiles/common.nix
