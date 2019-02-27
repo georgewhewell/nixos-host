@@ -20,6 +20,7 @@
     # save settings
     gnome3.dconf
     xorg.xbacklight
+    libva-utils
 
     # Apps
     kitty
@@ -79,8 +80,9 @@
     driSupport32Bit = true;
     extraPackages = with pkgs; [
       vaapiVdpau
-      vaapiIntel
+      (vaapiIntel.override { enableHybridCodec = true; })
       libvdpau-va-gl
+      intel-media-driver
     ];
   };
 

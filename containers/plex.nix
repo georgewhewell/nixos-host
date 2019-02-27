@@ -1,18 +1,24 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-
-  fileSystems."/var/lib/plex" =
-    { device = "fpool/root/config/plex";
-      fsType = "zfs";
-    };
-
   containers.plex = {
     autoStart = true;
     privateNetwork = true;
     hostBridge = "br0";
+    allowedDevices = [
+      { modifier = "rw"; node = "/dev/dri/card0"; }
+      { modifier = "rw"; node = "/dev/dri/renderD128"; }
+    ];
 
     bindMounts = {
+      "/dev/dri/card0" = {
+        hostPath = "/dev/dri/card0";
+        isReadOnly = false;
+      };
+      "/dev/dri/renderD128" = {
+        hostPath = "/dev/dri/renderD128";
+        isReadOnly = false;
+      };
       "/var/lib/plex" = {
         hostPath = "/var/lib/plex";
         isReadOnly = false;
@@ -29,19 +35,28 @@
 
     config = {
       imports = [ ../profiles/container.nix ];
+      networking.hostName = "plex.lan";
 
-      networking.hostName = "plex";
-      networking.firewall = {
+      hardware.opengl = {
         enable = true;
-        checkReversePath = false;
-        allowedUDPPorts = [ 1900 5353 32410 32412 32413 32414];
-        allowedTCPPorts = [ 32400 32469 ];
+        s3tcSupport = true;
+        driSupport = true;
+        driSupport32Bit = true;
+        extraPackages = with pkgs; [
+          vaapiVdpau
+          (vaapiIntel.override { enableHybridCodec = true; })
+          libvdpau-va-gl
+          intel-media-driver
+        ];
       };
 
       nixpkgs.config.allowUnfree = true;
+      users.extraUsers.plex.extraGroups = [ "video" "render" ];
+      environment.systemPackages = [ pkgs.libva-utils ];
 
       services.plex = {
         enable = true;
+        openFirewall = true;
         dataDir = "/var/lib/plex";
       };
     };

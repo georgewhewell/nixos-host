@@ -7,6 +7,7 @@
 
   imports =
     [
+      ./containers/plex.nix
       ./profiles/common.nix
       ./profiles/development.nix
       ./profiles/bridge-interfaces.nix
@@ -57,7 +58,7 @@
   ];
 
   networking = {
-    hostName = "fuckup";
+    hostName = "fuckup.lan";
     hostId = "deadbeef";
     useDHCP = true;
     wireless.enable = true;
