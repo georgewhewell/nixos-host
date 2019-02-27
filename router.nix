@@ -63,7 +63,8 @@
       enable = true;
       checkReversePath = false;
       trustedInterfaces = [ "br.lan" ];
-      allowedUDPPorts = [ 1194 ];
+      allowedUDPPorts = [ 1194 1900 5351 ];
+      allowedTCPPorts = [ 1901 ];
     };
 
     interfaces = {
@@ -88,6 +89,15 @@
       maxUp = "3mbit";
     };
   };
+
+    services.miniupnpd = {
+      enable = true;
+      externalInterface = "enp1s0";
+      internalIPs = [ "br.lan" ];
+      natpmp = true;
+      upnp = true;
+    };
+
 
    boot.kernelModules = [ "tcp_bbr" ];
    boot.kernel.sysctl = {
