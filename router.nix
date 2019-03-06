@@ -56,6 +56,7 @@
         { sourcePort = 443; destination = "192.168.23.5:443"; }
         { sourcePort = 2222; destination = "192.168.23.5:2222"; }
         { sourcePort = 51413; destination = "192.168.23.5:51413"; }
+        { sourcePort = 32400; destination = "192.168.23.200:32400"; }
       ];
     };
 
@@ -123,6 +124,7 @@
       dhcp-host=80:2a:a8:80:96:ef,192.168.23.3  # ap
       dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4  # ipmi
       dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5  # nixhost
+      dhcp-host=de:18:46:58:73:da,192.168.23.200 # plex
 
       # hosted names
       address=/router.lan/192.168.23.1
