@@ -29,16 +29,12 @@
   services.postgresql = {
     enable = true;
     enableTCPIP = true;
-    package = pkgs.postgresql96;
     authentication = ''
-      local all all trust
+      host all all 0.0.0.0/0 trust
     '';
     extraPlugins = with pkgs; [
       timescaledb
     ];
-    extraConfig = ''
-      shared_preload_libraries = 'timescaledb'
-    '';
   };
 
   services.redis = {
