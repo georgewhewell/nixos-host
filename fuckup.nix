@@ -16,6 +16,7 @@
       ./profiles/uefi-boot.nix
       ./profiles/g_ether.nix
       ./profiles/xserver.nix
+      ./profiles/intel-gfx.nix
       ./services/docker.nix
       ./services/virt/host.nix
       ./services/virt/vfio.nix
