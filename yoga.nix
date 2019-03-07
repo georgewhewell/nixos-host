@@ -52,7 +52,7 @@
 
   home-manager.users.grw = { ... }: {
     imports = [
-      ../home/common.nix
+      ./home/common.nix
     ];
   };
 
