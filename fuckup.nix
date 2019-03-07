@@ -89,7 +89,7 @@
     };
 
   services.xserver = {
-    useGlamor = true;
+    useGlamor = false; # off is tearing; on is lag
     videoDrivers = [ "modesetting" ];
     xrandrHeads = [
       { output = "DP-1"; primary = true; monitorConfig = ''
