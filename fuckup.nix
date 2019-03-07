@@ -51,7 +51,7 @@
 
   environment.systemPackages = with pkgs; [
     steam
-    nixopsUnstable
+    nixops
   ];
 
   users.extraUsers.root.openssh.authorizedKeys.keys = [
