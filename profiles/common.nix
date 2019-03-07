@@ -90,8 +90,6 @@
     tmux
     jq
 
-    nixopsUnstable
-
     arp-scan
     ipmitool
     vnstat
