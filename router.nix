@@ -30,6 +30,13 @@
       fsType = "f2fs";
     };
 
+  services.consul.extraConfig = { server = true; bootstrap = true; };
+  services.consul.interface =
+    let interface = "br.lan"; in {
+      advertise = interface;
+      bind = interface;
+    };
+
   networking = {
     hostName = "router.lan";
     hostId = "deadbeef";
