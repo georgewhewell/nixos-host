@@ -101,6 +101,15 @@
     ];
   };
 
+  virtualisation.kvmgt = {
+    enable = true;
+    vgpus = {
+      "i915-GVTg_V5_4" = {
+        uuid = "a297db4a-f4c2-11e6-90f6-d3b88d6c9525";
+      };
+    };
+  };
+
   services.redshift = {
     enable = true;
     latitude = "51.5";
