@@ -14,6 +14,18 @@
     "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
   ];
 
+  services.consul = {
+    enable = true;
+    leaveOnStop = true;
+    forceIpv4 = true;
+    extraConfig = {
+      retry_join = [ "nixhost.lan" "router.lan" ];
+    };
+  };
+
+  networking.firewall.allowedTCPPorts = [ 8500 8301 8302 8300 ];
+  networking.firewall.allowedUDPPorts = [ 8500 8301 ];
+
   nix.distributedBuilds = true;
   nix.buildMachines = [
      {

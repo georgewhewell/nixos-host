@@ -79,6 +79,15 @@
     };
   };
 
+  services.consul.extraConfig = {
+    server = true;
+  };
+  services.consul.interface =
+    let interface = "br0"; in {
+      advertise = interface;
+      bind = interface;
+    };
+
   services.xserver = {
     useGlamor = true;
     videoDrivers = [ "modesetting" ];

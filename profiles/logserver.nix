@@ -17,14 +17,18 @@
       };
     };
     scrapeConfigs = [
-    {
-      job_name = "bot";
-      scrape_interval = "1s";
-      static_configs = [{
-        targets = [ "fuckup.4a:50010" ];
-        labels = {};
-      }];
-    }
+      {
+        job_name = "consul_discovery";
+        consul_sd_configs = [{
+          server = "localhost:8500";
+          datacenter = "dc1";
+          token = null;
+          username = null;
+          password = null;
+          scheme = "http";
+          services = [ "node_exporter" ];
+        }];
+      }
     {
       job_name = "nginx";
       scrape_interval = "5s";

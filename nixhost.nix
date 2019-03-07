@@ -54,6 +54,13 @@
     };
   };
 
+  services.consul.extraConfig = { server = true; };
+  services.consul.interface =
+    let interface = "br0"; in {
+      advertise = interface;
+      bind = interface;
+    };
+
   fileSystems."/" =
     { device = "fpool/root/nixos";
       fsType = "zfs";
