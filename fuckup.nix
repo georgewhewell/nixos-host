@@ -41,8 +41,8 @@
   boot.blacklistedKernelModules = [
     "b44" "b43" "b43legacy" "ssb" "brcmsmac" "bcma" ];
   boot.extraModulePackages = [
-    config.boot.kernelPackages.rtlwifi_new
-    config.boot.kernelPackages.broadcom_sta ];
+    config.boot.kernelPackages.broadcom_sta
+  ];
 
   system.stateVersion = "18.03";
 
