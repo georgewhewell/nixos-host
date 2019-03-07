@@ -20,10 +20,15 @@
   zramSwap.enable = true;
 
   nix.maxJobs = lib.mkDefault 4;
+  environment.systemPackages = with pkgs; [
+    steam
+  ];
 
   services.xserver.dpi = 142;
   services.fwupd.enable = true;
   services.upower.enable = true;
+
+  services.avahi.interfaces = [ "enp0s31f6" "wlp4s0" ];
 
   boot.loader.timeout = 1;
   boot.blacklistedKernelModules = [
