@@ -123,6 +123,13 @@
 
   services.fwupd.enable = true;
 
+  home-manager.users.grw = { ... }: {
+    imports = [
+      ./home/common.nix
+    ];
+  };
+
+
   nix.gc = {
     automatic = true;
     dates = "weekly";
