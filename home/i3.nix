@@ -11,13 +11,6 @@ in {
     backgroundColor = "rgba(0, 0, 0, 0.8)";
   };
 
-  services.compton = {
-    enable = true;
-    opacityRule = [
-      "95:class_i ?= 'termite'"
-    ];
-  };
-
   xsession = {
     enable = true;
     windowManager.i3 = rec {
