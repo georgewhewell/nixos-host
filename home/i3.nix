@@ -5,14 +5,33 @@ let
 in {
 
   programs.feh.enable = true;
+  programs.firefox.enable = true;
 
-  programs.termite = {
-    enable = true;
-    backgroundColor = "rgba(0, 0, 0, 0.8)";
-  };
+  home.packages = with pkgs; [
+    corefonts
+    dejavu_fonts
+    ubuntu_font_family
+    hack-font
+    roboto
+    powerline-fonts
+    font-awesome-ttf
+    source-code-pro
+    source-sans-pro
+    source-serif-pro
+    font-awesome_5
+  ];
+
+  fonts.fontconfig.enable = pkgs.lib.mkForce true;
 
   xsession = {
     enable = true;
+
+    pointerCursor = {
+      package = pkgs.vanilla-dmz;
+      name = "Vanilla-DMZ";
+      size = 64;
+    };
+
     windowManager.i3 = rec {
       enable = true;
       config = {
@@ -20,32 +39,8 @@ in {
         bars = [];
         keybindings = let
           mod = config.modifier;
-          oledBrightness = pkgs.writeScriptBin "oled-brightness" ''
-            OLED_BR=`${pkgs.xorg.xrandr}/bin/xrandr --verbose | grep -i brightness | cut -f2 -d ' '`
-            CURR=`LC_ALL=C printf "%.*f" 1 $OLED_BR`
-            MIN=0
-            MAX=1.2
-
-            if [ "$1" == "up" ]; then
-                VAL=`echo "scale=1; $CURR+0.1" | bc`
-            else
-                VAL=`echo "scale=1; $CURR-0.1" | bc`
-            fi
-
-            if (( `echo "$VAL < $MIN" | bc -l` )); then
-                VAL=$MIN
-            elif (( `echo "$VAL > $MAX" | bc -l` )); then
-                VAL=$MAX
-            else
-                if [ "$1" == "up" ]; then
-                    for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP-1 --brightness `echo "scale=2; $I/100+$CURR" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
-                else
-                    for I in {1..10..1}; do ${pkgs.xorg.xrandr}/bin/xrandr --output eDP-1 --brightness `echo "scale=2; $CURR-$I/100" | ${pkgs.bc}/bin/bc` 2>&1 >/dev/null | logger -t oled-brightness; done
-                fi
-            fi
-          '';
         in {
-          "${mod}+Return" = "exec termite";
+          "${mod}+Return" = "exec alacritty";
           "${mod}+d" = "exec rofi -show run";
           "${mod}+Shift+q" = "kill";
 
