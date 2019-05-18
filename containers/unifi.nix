@@ -17,7 +17,7 @@
     config = {
       imports = [ ../profiles/container.nix ];
 
-      networking.hostName = "unifi.lan";
+      networking.hostName = "unifi";
       networking.firewall = {
         allowedTCPPorts = [ 443 8443 ];
         extraCommands = ''

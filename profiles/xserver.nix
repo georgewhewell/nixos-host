@@ -75,14 +75,19 @@
     ];
   };
 
+  users.users.pulse.extraGroups = [ "lp" ];
   hardware.pulseaudio = {
     enable = true;
-    package = pkgs.pulseaudioFull;
     extraModules = [ pkgs.pulseaudio-modules-bt ];
     support32Bit = true;
+    systemWide = true;
     extraConfig = ''
-      # stop switching to HDMI output
+      # stop switching to HDMI output after resume
       unload-module module-switch-on-port-available
+
+      # make bluetooth work?
+      load-module module-bluetooth-policy
+      load-module module-bluetooth-discover
     '';
   };
 
