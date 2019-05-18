@@ -85,8 +85,7 @@ in
           levels=1:2
           keys_zone=nix_cache_cache:100m
           max_size=${cfg.maxSize}
-          inactive=365d
-          use_temp_path=off;
+          inactive=365d;
 
         # Cache only success status codes; in particular we don't want
         # to cache 404s. See https://serverfault.com/a/690258/128321.
@@ -101,20 +100,10 @@ in
         forceSSL = true;
         enableACME = true;
         extraConfig = ''
-          # Using a variable for the upstream endpoint to ensure that it is
-          # resolved at runtime as opposed to once when the config file is loaded
-          # and then cached forever (we don't want that):
-          # see https://tenzer.dk/nginx-with-dynamic-upstreams/
-          # This fixes errors like
-          #
-          #   nginx: [emerg] host not found in upstream "upstream.example.com"
-          #
-          # when the upstream host is not reachable for a short time when
-          # nginx is started.
           access_log stderr;
           error_log stderr;
           resolver ${cfg.resolver} valid=10s ipv6=off;
-          set $upstream_endpoint https://cache.nixos.org;
+          set $upstream_endpoint http://cache.nixos.org;
         '';
         locations."/" =
         {
