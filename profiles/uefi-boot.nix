@@ -2,32 +2,39 @@
 
 {
 
-  # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.initrd.availableKernelModules = [
-    "xhci_pci"
-    "ehci_pci"
-    "ahci"
-    "nvme"
-    "usb_storage"
-    "usbhid"
-    "sd_mod"
-    "sdhci_acpi"
-    "r8169"
-    "tpm"
-    "mii"
-    "tpm_tis"
-  ];
+  boot = {
+    tmpOnTmpfs = true;
 
-  boot.initrd.supportedFilesystems = [
-    "zfs"
-    "nfs"
-  ];
+    zfs.enableUnstable = true;
+    kernelPackages = pkgs.linuxPackages_latest;
 
-  boot.tmpOnTmpfs = true;
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+    };
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.zfs.enableUnstable = true;
+    initrd = {
+      supportedFilesystems = [
+        "zfs"
+        "nfs"
+      ];
 
+      availableKernelModules = [
+        "xhci_pci"
+        "ehci_pci"
+        "ahci"
+        "nvme"
+        "usb_storage"
+        "usbhid"
+        "sd_mod"
+        "sdhci_acpi"
+        "r8169"
+        "tpm"
+        "mii"
+        "tpm_tis"
+      ];
+    };
+  };
+
+  services.fwupd.enable = true;
 }
