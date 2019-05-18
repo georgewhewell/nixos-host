@@ -35,7 +35,7 @@
 
     config = {
       imports = [ ../profiles/container.nix ];
-      networking.hostName = "plex.lan";
+      networking.hostName = "plex";
 
       hardware.opengl = {
         enable = true;
