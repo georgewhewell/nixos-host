@@ -53,7 +53,7 @@
         # Just sticking them together in the center for now
         modules-left = "i3";
         modules-center = "date";
-        modules-right = "cpu memory pulseaudio network battery";
+        modules-right = "temperature cpu memory pulseaudio network battery";
       };
       "module/battery" = {
         type = "internal/battery";
@@ -83,12 +83,31 @@
       };
       "module/network" = {
         type = "internal/network";
-        interface = "wlp4s0";
-        format-connected = "<label-connected>";
+        interface = "wlp3s0";
+        #format-connected = "<label-connected>";
         format-connected-prefix = " ";
-        label-connected = "%essid% %{F#66}%local_ip% ";
-        label-disconnected = "%{F#666}%{F#ccfafafa} not connected";
+        #label-connected = "%essid% %{F#66}%local_ip% ";
+        #label-disconnected = "%{F#666}%{F#ccfafafa} not connected";
+        #label-disconnected-foreground = "#66";
+
+        interval = "1.0";
+        ping-interval = "10";
+
+        format-connected = "<ramp-signal> <label-connected>";
+        label-connected = "%essid% %local_ip%    %downspeed%    %upspeed%";
+        label-disconnected = "   not connected";
         label-disconnected-foreground = "#66";
+
+        ramp-signal-0 = "";
+        ramp-signal-1 = "";
+        ramp-signal-2 = "";
+        ramp-signal-3 = "";
+        ramp-signal-4 = "";
+
+        animation-packetloss-0 = "";
+        animation-packetloss-0-foreground = "#ffa64c";
+        animation-packetloss-1 = "";
+        animation-packetloss-framerate = 500;
       };
       "module/i3" = {
         type = "internal/i3";
@@ -102,7 +121,7 @@
 
         format = "<label-state> <label-mode>";
 
-        label-font = 2;
+        label-font = 0;
         label-mode = "%mode%";
         label-mode-padding = 1;
         label-mode-background = "#e60053";
@@ -157,11 +176,12 @@
       };
       "module/cpu" = {
         type = "internal/cpu";
-        format = "<bar-load>";
+        interval = "0.5";
+        format = "<ramp-load>";
       };
       "module/memory" = {
         type = "internal/memory";
-        format = "<label> <bar-used>";
+        format = "<label> <ramp-used>";
 
         format-prefix = " ";
 
@@ -173,6 +193,12 @@
         ramp-used-5 = "▆";
         ramp-used-6 = "▇";
         ramp-used-7 = "█";
+      };
+      "module/temperature" = {
+        type = "internal/temperature";
+        interval = "0.5";
+        thermal-zone = "1";
+        warn-temperature = "80";
       };
     };
   };

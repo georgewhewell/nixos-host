@@ -18,6 +18,7 @@
       set mouse=a
       set laststatus=2
       set noshowmode
+      set number
 
       let g:rustfmt_autosave = 1
       let g:racer_cmd = "/run/current-system/sw/bin/racer"
