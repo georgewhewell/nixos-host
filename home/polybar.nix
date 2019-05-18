@@ -36,17 +36,19 @@
       };
       "bar/bottom" = {
         width = "100%";
-        height = "28";
-        dpi = 192;
+        height = "32";
+        dpi = 180;
         radius = 0;
         bottom = true;
 
-        font-0 = "Roboto:weight=regular:pixelsize=9;5";
+        font-0 = "SourceSansPro:weight=regular:pixelsize=9;5";
         font-1 = "Font Awesome:style=Regular:antialias=true:size=9;5";
-        /* font-2 = "Font Awesome:style=Light:antialias=true:size=9;4"; */
-        /* font-3 = "Font Awesome:antialias=true:size=9;4"; */
 
-        module-margin = 1;
+        font-2 = "Font Awesome 5 Free:style=Regular:pixelsize=9;5";
+        font-3 = "Font Awesome 5 Free:style=Solid:pixelsize=9;5";
+        font-4 = "Font Awesome 5 Brands:style=Regular:pixelsize=9;5";
+
+        module-margin = 2;
 
         # Just sticking them together in the center for now
         modules-left = "i3";
@@ -159,10 +161,10 @@
       };
       "module/memory" = {
         type = "internal/memory";
-        /* format = "<label> <bar-used>"; */
+        format = "<label> <bar-used>";
 
         format-prefix = " ";
-        /*
+
         ramp-used-0 = "▁";
         ramp-used-1 = "▂";
         ramp-used-2 = "▃";
@@ -170,7 +172,7 @@
         ramp-used-4 = "▅";
         ramp-used-5 = "▆";
         ramp-used-6 = "▇";
-        ramp-used-7 = "█"; */
+        ramp-used-7 = "█";
       };
     };
   };
