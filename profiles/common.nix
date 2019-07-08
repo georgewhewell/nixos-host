@@ -11,9 +11,6 @@
     (import ../modules/overlay.nix)
   ];
 
-  hardware.enableAllFirmware = true;
-  hardware.cpu.intel.updateMicrocode = true;
-
   boot.kernelParams = [
     "nopti"
     "nospectre_v2"
@@ -23,13 +20,10 @@
     "elevator=noop"
   ];
 
-  security.rngd.enable = pkgs.lib.mkDefault true;
-
   # Enable the OpenSSH daemon.
   services.openssh = {
     enable = true;
     gatewayPorts = "yes"; # needed for pgp forward?
-    forwardX11 = true;
     extraConfig = ''
       StreamLocalBindUnlink yes
     '';
@@ -56,11 +50,11 @@
   };
 
   nix = {
-    buildCores = 0;
     daemonIONiceLevel = 7;
     daemonNiceLevel = 10;
     trustedUsers = [ "grw" ];
     binaryCaches = [
+      https://cache.satanic.link/
       https://cache.nixos.org/
     ];
     binaryCachePublicKeys = [
