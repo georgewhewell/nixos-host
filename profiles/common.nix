@@ -2,7 +2,7 @@
 
 {
   imports = [
-    "${builtins.fetchTarball https://github.com/rycee/home-manager/archive/master.tar.gz}/nixos"
+    <home-manager/nixos>
     ../modules/cache-cache.nix
     ./users.nix
   ];
