@@ -16,7 +16,6 @@
 
   nix.maxJobs = lib.mkDefault 4;
   powerManagement.cpuFreqGovernor = "ondemand";
-  deployment.hasFastConnection = true;
 
   environment.systemPackages = with pkgs; [
     mosh
