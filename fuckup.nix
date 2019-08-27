@@ -115,11 +115,13 @@
     };
   };
 
+  location = {
+    latitude = 51.5;
+    longitude = 0.0;
+  };
+
   services.redshift = {
     enable = true;
-    latitude = "51.5";
-    longitude = "0";
-
     brightness = {
       day = "1.0";
       night = "0.6";
