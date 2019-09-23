@@ -3,15 +3,15 @@
 {
   programs.vim = {
     enable = true;
-    plugins = [ 
-      "vim-airline"
-      "editorconfig-vim"
-      "vim-nix"
-      "rust-vim"
+    plugins = with pkgs.vimPlugins; [
+      vim-airline
+      editorconfig-vim
+      vim-nix
+      rust-vim
       # "LanguageClient"
-      "fzf-vim"
-      "gitgutter"
-      "ale"
+      fzf-vim
+      gitgutter
+      ale
     ];
     settings = { ignorecase = true; };
     extraConfig = ''
