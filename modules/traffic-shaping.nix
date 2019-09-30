@@ -21,7 +21,7 @@ in {
       };
 
       wanInterface = mkOption {
-        type = types.string;
+        type = types.str;
         default = null;
         description = ''
           WAN
@@ -29,7 +29,7 @@ in {
       };
 
       lanInterface = mkOption {
-        type = types.string;
+        type = types.str;
         default = null;
         description = ''
           LAN
@@ -37,7 +37,7 @@ in {
       };
 
       lanNetwork = mkOption {
-        type = types.string;
+        type = types.str;
         default = null;
         description = ''
           LAN Network
@@ -45,12 +45,12 @@ in {
       };
 
       maxDown = mkOption {
-        type = types.string;
+        type = types.str;
         default = null;
       };
 
       maxUp = mkOption {
-        type = types.string;
+        type = types.str;
         default = null;
       };
 
@@ -69,7 +69,7 @@ in {
             --replace "LAN_NETWORK=192.168.1.0/24" "LAN_NETWORK=${cfg.lanNetwork}" \
             --replace "MAX_DOWNRATE=6144kbit" "MAX_DOWNRATE=${cfg.maxDown}" \
             --replace "MAX_UPRATE=384kbit" "MAX_UPRATE=${cfg.maxUp}"
-        ''; in { 
+        ''; in {
         wantedBy = [ "networking.service" ];
         serviceConfig.Type = "oneshot";
         script = "${pkgs.bash}/bin/bash ${customScript}";
