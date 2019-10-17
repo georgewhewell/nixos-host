@@ -6,7 +6,12 @@
   networking.hostId = "deadbeef";
 
   fileSystems."/" =
-    { device = "zpool/root/yoga-nixos";
+    { device = "zpool/enc/nixos";
+      fsType = "zfs";
+    };
+
+  fileSystems."/home/grw" =
+    { device = "zpool/enc/home";
       fsType = "zfs";
     };
 
@@ -17,18 +22,13 @@
 
   swapDevices = [{ device = "/dev/nvme0n1p2"; }];
 
-  zramSwap.enable = true;
-
   nix.maxJobs = lib.mkDefault 4;
   environment.systemPackages = with pkgs; [
-    steam
+    # steam
   ];
 
   services.xserver.dpi = 142;
-  services.fwupd.enable = true;
   services.upower.enable = true;
-
-  services.avahi.interfaces = [ "enp0s31f6" "wlp4s0" ];
 
   boot.loader.timeout = 1;
   boot.blacklistedKernelModules = [
@@ -51,15 +51,14 @@
   };
 
   home-manager.users.grw = { ... }: {
-    imports = [
-      ./home/common.nix
-    ];
-  };
-
+    imports = [ ./home/common.nix ];
+  }; 
+  
   imports =
     [
       ./profiles/common.nix
       ./profiles/home.nix
+      ./profiles/nas-mounts.nix
       ./profiles/development.nix
       ./profiles/xserver.nix
       ./profiles/intel-gfx.nix
