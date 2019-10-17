@@ -16,6 +16,17 @@
 
   networking.hostName = "nixos-installer";
   networking.wireless.enable = true;
+
+  hardware.bluetooth.enable = true;
+  services.usbmuxd.enable = true;
+
+  boot.kernelModules = [ "wl" ];
+  boot.blacklistedKernelModules = [
+    "b44" "b43" "b43legacy" "ssb" "brcmsmac" "bcma" ];
+  boot.extraModulePackages = [
+    config.boot.kernelPackages.broadcom_sta
+  ];
+
   users.extraUsers.grw.initialHashedPassword =
     "$6$1PuMimFFMB6qB$BoI9OhQTOAfbn5Om9Q36KuIoG5xWyWoA7NoLecnvFUQ36uBYufPN9LIkkhgIZD7RiWpP88SDM1FuJ0l44bMvP1";
 
