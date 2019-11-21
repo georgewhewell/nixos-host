@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   imports  = [
@@ -62,6 +62,10 @@
   # need networkmanager for wwan
   networking.networkmanager = {
     enable = true;
+    wifi = {
+      backend = "iwd";
+      powersave = true;
+    };
     unmanaged = [
       "docker0"
       "rndis0"
@@ -72,5 +76,12 @@
   systemd.services.ModemManager = {
     wantedBy = [ "multi-user.target" ];
   };
+
+
+  services.logind.extraConfig = ''
+    HandleLidSwitch=suspend-then-hibernate
+  '';
+
+  nix.binaryCaches = lib.mkForce [ "https://cache.nixos.org" ];
 
 }
