@@ -14,8 +14,22 @@
     "f2fs"
   ];
 
-  networking.hostName = "nixos-installer";
-  networking.wireless.enable = true;
+  environment.systemPackages = with pkgs; [
+    nfsUtils
+  ];
+
+  hardware.enableAllFirmware = true;
+  networking.wireless.enable = false;
+
+  networking = {
+    hostName = "nixos-installer";
+    networkmanager = {
+      enable = true;
+      wifi = {
+        backend = "iwd";
+      };
+    };
+  };
 
   hardware.bluetooth.enable = true;
   services.usbmuxd.enable = true;
