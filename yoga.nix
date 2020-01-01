@@ -6,13 +6,8 @@
   networking.hostId = "deadbeef";
 
   fileSystems."/" =
-    { device = "zpool/root/nixos";
-      fsType = "zfs";
-    };
-
-  fileSystems."/home/grw" =
-    { device = "zpool/root/home";
-      fsType = "zfs";
+    { device = "/dev/nvme0n1p3";
+      fsType = "ext4";
     };
 
   fileSystems."/boot" =
