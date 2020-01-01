@@ -22,6 +22,8 @@ in {
     source-sans-pro
     source-serif-pro
     font-awesome_5
+
+    spotify
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;

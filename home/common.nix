@@ -17,12 +17,7 @@
   home.packages = with pkgs; [
     exa
     ripgrep
-
-    unzip
-
     docker-compose
-    /* spotify */
-    /* calibre */
   ];
 
   programs.ssh = {
