@@ -5,7 +5,10 @@ let
 in {
 
   programs.feh.enable = true;
-  programs.firefox.enable = true;
+  programs.firefox = {
+    enable = true;
+    enableGoogleTalk = true;
+  };
 
   home.packages = with pkgs; [
     corefonts

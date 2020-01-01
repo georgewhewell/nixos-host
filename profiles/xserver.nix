@@ -12,18 +12,19 @@
     libva-utils
 
     # Apps
-    kitty
-    cool-retro-term
+    /* kitty */
+    /* cool-retro-term */
     mpv
     mpg123
-    chromium
-    thunderbird
-    shotwell
+    /* chromium
+    thunderbird */
+    /* shotwell */
     ifuse
     libimobiledevice
 
-    discord
-    plex-media-player
+#    discord
+    /* plex-media-player */
+    spotify
 
     # PA Systray
     pasystray
@@ -31,48 +32,12 @@
     pamixer
   ];
 
-  fonts = {
-    fontconfig = {
-      useEmbeddedBitmaps = true;
-      defaultFonts = {
-        monospace = [ "Source Code Pro" ];
-        sansSerif = [ "Source Sans Pro" ];
-        serif     = [ "Source Serif Pro" ];
-      };
-    };
-    fonts = with pkgs; [
-      corefonts
-      dejavu_fonts
-      ubuntu_font_family
-      hack-font
-      roboto
-      powerline-fonts
-      font-awesome-ttf
-      source-code-pro
-      source-sans-pro
-      source-serif-pro
-    ];
-  };
-
   hardware.bluetooth = {
     enable = true;
     extraConfig = "
       [General]
       Enable=Source,Sink,Media,Socket
     ";
-  };
-
-  hardware.opengl = {
-    enable = true;
-    s3tcSupport = true;
-    driSupport = true;
-    driSupport32Bit = true;
-    extraPackages = with pkgs; [
-      vaapiVdpau
-      (vaapiIntel.override { enableHybridCodec = true; })
-      libvdpau-va-gl
-      intel-media-driver
-    ];
   };
 
   users.users.pulse.extraGroups = [ "lp" ];
@@ -105,6 +70,40 @@
     enable = true;
   };
 
+  services.openssh.forwardX11 = true;
+
+  fonts = {
+    fontconfig = {
+      useEmbeddedBitmaps = true;
+      defaultFonts = {
+        monospace = [ "Source Code Pro" ];
+        sansSerif = [ "Source Sans Pro" ];
+        serif     = [ "Source Serif Pro" ];
+      };
+    };
+    fonts = with pkgs; [
+      source-code-pro
+      source-sans-pro
+      source-serif-pro
+    ];
+  };
+
+  services.redshift = {
+    enable = true;
+    brightness = {
+      day = "1.0";
+      night = "0.6";
+    };
+  };
+
+  hardware.opengl = {
+    enable = true;
+    s3tcSupport = true;
+    driSupport = true;
+    driSupport32Bit = true;
+    extraPackages = with pkgs; [ libva rocm-opencl-icd ];
+  };
+
   services.xserver = {
     enable = true;
     autoRepeatDelay = 200;
@@ -116,15 +115,10 @@
     xkbOptions = "caps:escape";
 
     displayManager = {
-      slim = {
-        enable = true;
-        defaultUser = "grw";
-        theme = pkgs.fetchurl {
-          url = "https://github.com/edwtjo/nixos-black-theme/archive/v1.0.tar.gz";
-          sha256 = "13bm7k3p6k7yq47nba08bn48cfv536k4ipnwwp1q1l2ydlp85r9d";
-        };
-      };
+       lightdm.enable = true;
     };
+
+    windowManager.i3.enable = true;
 
   };
 }

@@ -1,13 +1,18 @@
 self: super:
 
 {
+  steam = null;
 
-  arduino-custom = super.arduinoWithPackages (apkgs: with apkgs; [
-    esp32 esp8266 BLE spiflash ]);
-
-  bitcoin = super.bitcoin.overrideAttrs (old: {
-    buildInputs = old.buildInputs ++ [ super.zmq ];
-    configureFlags = old.configureFlags ++ [ "--with-zmq" ];
+  radarr = super.radarr.overrideAttrs(old: rec {
+    version = "0.2.0.1450";
+    src = super.fetchurl {
+      url = "https://github.com/Radarr/Radarr/releases/download/v${version}/Radarr.develop.${version}.linux.tar.gz";
+      sha256 = "1sknq6fifpmgzryr07dnriaw2x425v2zxdcqzm65viw5p5j9xh00";
+    };
+  });
+  
+  tvheadend = super.tvheadend.overrideAttrs (old: {
+    propagatedBuildInputs = [ self.dtv-scan-tables ];
   });
 
   libfprint = super.libfprint.overrideAttrs (old: {
@@ -77,6 +82,17 @@ self: super:
       cp auto-rotate $out/bin/
     '';
   };
+
+  sunxi-tools = super.sunxi-tools.overrideAttrs(old: {
+    version = "2019-06-20";
+    src = super.fetchFromGitHub {
+      owner = "linux-sunxi";
+      repo = "sunxi-tools";
+      rev  = "42ffc5f76a30ecd10c89989a7fe100feb15ce16e";
+      sha256 = "005cma0nm5mwdb4wn8n4351n93d0b1p4y2bssrfj9fjvba7fl5q1";
+    };
+    nativeBuildInputs = old.nativeBuildInputs ++ [ super.git ];
+  });
 
   # Append local packages
 } // (import ../packages { pkgs = super; })

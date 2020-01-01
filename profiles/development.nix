@@ -5,19 +5,46 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
-    kicad-unstable
-    libpcap
-    lshw
-    nix-prefetch-git
-    openocd
-    pciutils
     pgadmin
-    /* saleae-logic */
+
     screen
-    usbutils
-    wireshark
+    wget
+    rsync
+    gitAndTools.gitFull
+
+    xz
+    p7zip
+    unzip
+    unrar
+
     iperf
-    /* arduino-custom */
+    vnstat
+    iotop
+    nethogs
+    ncdu
+    dstat
+    arp-scan
+    libpcap
+    wireshark
+
+    lshw
+    usbutils
+    pciutils
+    wirelesstools
+    psmisc
+    psutils
+    pwgen
+    jq
+
+    morph
+    nix-prefetch-git
+
+    /* screen */
+    /* openocd */
+    /* saleae-logic */
+    /* kicad-unstable */
+    #arduinoWithPackages (apkgs: with apkgs; [
+    #  esp32 esp8266 BLE spiflash ])
     /* (eclipses.eclipseWithPlugins {
       eclipse = eclipses.eclipse-cpp;
       jvmArgs = [ "-Xmx2048m" ];
@@ -25,6 +52,10 @@
         [ cdt gnuarmeclipse ];
     }) */
   ];
+
+  users.extraUsers.grw = {
+    shell = pkgs.zsh;
+  };
 
   services.postgresql = {
     enable = true;

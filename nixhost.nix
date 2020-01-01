@@ -9,6 +9,9 @@
     [
       ./containers/radarr.nix
       ./containers/sonarr.nix
+      ./containers/unifi.nix
+
+      ./profiles/automation.nix
       ./profiles/common.nix
       ./profiles/bridge-interfaces.nix
       ./profiles/headless.nix
@@ -16,10 +19,13 @@
       ./profiles/uefi-boot.nix
       ./profiles/logserver.nix
       ./profiles/nas.nix
-      ./services/nginx.nix
+
+      ./services/buildfarm.nix
       ./services/docker.nix
       ./services/gogs.nix
+      ./services/hydra.nix
       ./services/grafana.nix
+      ./services/nginx.nix
       ./services/transmission.nix
       ./services/virt/host.nix
       ./services/virt/vfio.nix
@@ -41,13 +47,19 @@
     "zfs.l2arc_noprefetch=1"
     "zfs.l2arc_write_boost=${toString (2 * 1024 * 1024 * 1024)}"
     "zfs.l2arc_write_max=${toString (2 * 1024 * 1024 * 1024)}"
+    "zfs.zfs_arc_max=12884901888"
   ];
 
   networking = {
-    hostName = "nixhost.lan";
+    hostName = "nixhost";
     hostId = "deadbeef";
-    useDHCP = true;
+
+    useDHCP = false;
     enableIPv6 = false;
+
+    interfaces.br0 = {
+      useDHCP = true;
+    };
 
     bridges.br0 = {
       interfaces = [ "eno1" "eno2" "eno3" "eno4" ];
@@ -76,12 +88,6 @@
       fsType = "zfs";
     };
 
-  services.sabnzbd = {
-    enable = true;
-    user = "transmission";
-    group = "transmission";
-  };
-
   services.postgresql = {
     enable = true;
     enableTCPIP = true;
@@ -94,24 +100,6 @@
     extraConfig = ''
       shared_preload_libraries = 'timescaledb'
     '';
-  };
-
-  systemd.services.fix-media-permissions = {
-    serviceConfig = {
-      Type = "oneshot";
-      Restart = "no";
-      ExecStart = ''
-        chmod -R 777 /mnt/Media
-      '';
-    };
-  };
-  systemd.timers.fix-media-permissions = {
-      partOf = [ "fix-media-permissions.service" ];
-      wantedBy = [ "multi-user.target" ];
-      timerConfig = {
-        OnBootSec = "5min";
-        OnUnitActiveSec = "3600";
-      };
   };
 
   networking.firewall = {

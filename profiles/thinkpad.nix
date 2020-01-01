@@ -6,9 +6,6 @@
   ];
 
   boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
-  boot.kernelParams = [
-    "mitigations=off"
-  ];
 
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
@@ -16,7 +13,6 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    alacritty
     modemmanager
     msr-tools
     networkmanagerapplet
@@ -25,8 +21,8 @@
   ];
 
   hardware.bluetooth = {
-   enable = true;
-   powerOnBoot = false;
+    enable = true;
+    powerOnBoot = false;
   };
 
   hardware.auto-rotate.enable = true;
@@ -56,7 +52,6 @@
   };
 
   services.xserver.videoDrivers = [ "modesetting" ];
-
   sound.mediaKeys.enable = true;
 
   # need networkmanager for wwan
@@ -77,11 +72,11 @@
     wantedBy = [ "multi-user.target" ];
   };
 
-
   services.logind.extraConfig = ''
     HandleLidSwitch=suspend-then-hibernate
   '';
 
   nix.binaryCaches = lib.mkForce [ "https://cache.nixos.org" ];
+  services.upower.enable = true;
 
 }

@@ -1,8 +1,0 @@
-apiVersion: v1
-metadata:
-  name: drone
-  namespace: drone
-data:
-  drone.gogs-url: "https://git.tsar.su"
-
-kind: ConfigMap

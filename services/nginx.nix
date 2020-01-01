@@ -9,9 +9,9 @@
     recommendedTlsSettings = true;
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
-    
+
     # breaks cache-cache
-    # recommendedProxySettings = true;
+    /* recommendedProxySettings = true; */
   };
 
   services.prometheus.exporters = {

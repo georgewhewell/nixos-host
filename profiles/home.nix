@@ -3,9 +3,14 @@
 {
   # Config for machines on home network
   time.timeZone = "Europe/London";
+  location = {
+    latitude = 51.5;
+    longitude = 0.0;
+  };
 
   nix.binaryCaches = [
-      https://cache.satanic.link
+#      https://cache.satanic.link
+#      https://www.cs.helsinki.fi/u/tmtynkky/nixos-arm/channel/
       https://cache.nixos.org
   ];
   nix.binaryCachePublicKeys = [
@@ -13,7 +18,7 @@
     "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
   ];
-
+/*
   services.consul = {
     enable = true;
     leaveOnStop = true;
@@ -23,29 +28,21 @@
     };
   };
 
+  systemd.services.register-consul-node-exporter = {
+    wantedBy = [ "multi-user.target" ];
+    wants = [ "consul.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = "true";
+      ExecStartPre="${pkgs.bash}/bin/bash -c 'sleep 1'";
+      ExecStart = ''
+        ${pkgs.consul}/bin/consul services register -name node_exporter -port 9100
+      '';
+    };
+  }; */
+
   networking.firewall.allowedTCPPorts = [ 8500 8301 8302 8300 ];
   networking.firewall.allowedUDPPorts = [ 8500 8301 ];
-
-  nix.distributedBuilds = true;
-  nix.buildMachines = [
-     {
-      hostName = "localhost";
-      maxJobs = "4";
-      systems = [ "x86_64-linux" "i686-linux" ];
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-    }
-    {
-      hostName = "nixhost.lan";
-      maxJobs = "12";
-      systems = ["x86_64-linux" "i686-linux"];
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-    }
-    {
-      hostName = "gemini.lan";
-      maxJobs = "4";
-      systems = [ "aarch64-linux" ];
-   }
-  ];
 
   # Log to ELK
   services.journalbeat = {

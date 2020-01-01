@@ -33,6 +33,7 @@
 
   hardware.bluetooth.enable = true;
   services.usbmuxd.enable = true;
+  services.fwupd.enable = true;
 
   boot.kernelModules = [ "wl" ];
   boot.blacklistedKernelModules = [

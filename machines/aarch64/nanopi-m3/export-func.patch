@@ -1,0 +1,21 @@
+diff --git a/kernel/power/qos.c b/kernel/power/qos.c
+index cc443932..d01b9df7 100644
+--- a/kernel/power/qos.c
++++ b/kernel/power/qos.c
+@@ -51,6 +51,7 @@
+ /*
+  * locking rule: all changes to constraints or notifiers lists
+  * or pm_qos_object list and pm_qos_objects need to happen with pm_qos_lock
++   
+  * held, taken with _irqsave.  One lock to rule them all
+  */
+ struct pm_qos_object {
+@@ -585,7 +586,7 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
+ 
+ 	schedule_delayed_work(&req->work, usecs_to_jiffies(timeout_us));
+ }
+-
++EXPORT_SYMBOL_GPL(pm_qos_update_request_timeout);
+ /**
+  * pm_qos_remove_request - modifies an existing qos request
+  * @req: handle to request list element
