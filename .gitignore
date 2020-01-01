@@ -2,3 +2,4 @@ configuration.nix
 /ssl
 *.DS_Store
 *.swp
+.nfs*
