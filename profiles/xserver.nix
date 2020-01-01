@@ -101,7 +101,7 @@
     s3tcSupport = true;
     driSupport = true;
     driSupport32Bit = true;
-    extraPackages = with pkgs; [ libva rocm-opencl-icd ];
+    extraPackages = with pkgs; [ libva ];
   };
 
   services.xserver = {

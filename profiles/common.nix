@@ -18,7 +18,6 @@
 
   nixpkgs.overlays = [
     (import ../modules/overlay.nix)
-    (import ../packages/nixos-rocm)
   ];
 
   # Enable the OpenSSH daemon.
