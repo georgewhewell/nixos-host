@@ -147,6 +147,12 @@
       systems = [ "aarch64-linux" ];
     }
     {
+      hostName = "yoga.lan";
+      supportedFeatures = [  ];
+      maxJobs = 1;
+      systems = [ "x86_64-linux" "i686-linux" ];
+    }
+    {
       hostName = "rock64.lan";
       supportedFeatures = [];
       systems = [ "aarch64-linux" ];
