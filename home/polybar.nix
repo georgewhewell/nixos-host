@@ -36,21 +36,20 @@
       };
       "bar/bottom" = {
         width = "100%";
-        height = "32";
-        dpi = 180;
+        height = 24;
+        dpi = 72;
         radius = 0;
         bottom = true;
 
-        font-0 = "SourceSansPro:weight=regular:pixelsize=9;5";
-        font-1 = "Font Awesome:style=Regular:antialias=true:size=9;5";
+        font-0 = "SourceSansPro:weight=regular:pixelsize=14;3";
+        font-1 = "Font Awesome:style=Regular:antialias=true:size=14;3";
+        font-2 = "Font Awesome 5 Free:style=Regular:pixelsize=14;3";
+        font-3 = "Font Awesome 5 Free:style=Solid:pixelsize=14;3";
+        font-4 = "Font Awesome 5 Brands:style=Regular:pixelsize=14;3";
 
-        font-2 = "Font Awesome 5 Free:style=Regular:pixelsize=9;5";
-        font-3 = "Font Awesome 5 Free:style=Solid:pixelsize=9;5";
-        font-4 = "Font Awesome 5 Brands:style=Regular:pixelsize=9;5";
-
+        seperator = "|";
         module-margin = 2;
 
-        # Just sticking them together in the center for now
         modules-left = "i3";
         modules-center = "date";
         modules-right = "temperature cpu memory pulseaudio network battery";
@@ -103,6 +102,28 @@
         ramp-signal-2 = "";
         ramp-signal-3 = "";
         ramp-signal-4 = "";
+
+        animation-packetloss-0 = "";
+        animation-packetloss-0-foreground = "#ffa64c";
+        animation-packetloss-1 = "";
+        animation-packetloss-framerate = 500;
+      };
+      "module/network-bridge" = {
+        type = "internal/network";
+        interface = "wlp3s0";
+        #format-connected = "<label-connected>";
+        /* format-connected-prefix = " "; */
+        #label-connected = "%essid% %{F#66}%local_ip% ";
+        #label-disconnected = "%{F#666}%{F#ccfafafa} not connected";
+        #label-disconnected-foreground = "#66";
+
+        interval = "1.0";
+        ping-interval = "10";
+
+        format-connected = "<label-connected>";
+        label-connected = "%local_ip%    %downspeed%    %upspeed%";
+        label-disconnected = "   not connected";
+        label-disconnected-foreground = "#66";
 
         animation-packetloss-0 = "";
         animation-packetloss-0-foreground = "#ffa64c";

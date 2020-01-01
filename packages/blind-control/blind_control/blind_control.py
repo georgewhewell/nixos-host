@@ -25,7 +25,7 @@ def main():
         city = a['London']
         now = datetime.now(pytz.utc)
         sun = city.sun(date=now, local=True)
-        if sun['dawn'] <= now <= sun['dusk']:
+        if sun['sunrise'] <= now <= sun['sunset']:
             blind.writeCharacteristic(0x000e, OPEN)
         else:
             blind.writeCharacteristic(0x000e, CLOSE)

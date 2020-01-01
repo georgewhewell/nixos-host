@@ -1,6 +1,7 @@
 { config, pkgs, ... }:
 
 {
+
   fileSystems."/mnt/Media" =
     { device = "bpool/root/Media";
       fsType = "zfs";
@@ -36,6 +37,24 @@
       fsType = "zfs";
   };
 
+  services.zfs.autoScrub = {
+    enable = true;
+    interval = "monthly";
+    pools = [ "fpool" "bpool" ];
+  };
+
+  services.zfs.autoSnapshot = {
+    enable = true;
+    daily = 7;
+    weekly = 4;
+    monthly = 6;
+  };
+
+  services.zfs.trim = {
+    enable = true;
+    interval = "weekly";
+  };
+
   services.nixBinaryCacheCache =
     {
       enable = true;
@@ -44,7 +63,7 @@
       maxSize = "100g";
       resolver = "192.168.23.1";
     };
-
+/*
   services.netatalk = {
     enable = true;
     volumes = {
@@ -54,7 +73,7 @@
         "hosts allow" = "192.168.23.0/24";
       };
     };
-  };
+  }; */
 
   services.nfs.server = {
     enable = true;
@@ -138,7 +157,8 @@
         };
       Media =
         { path = "/mnt/Media";
-          "writable" = "yes";
+          "read only" = "yes";
+          "writable" = "no";
           "public" = "yes";
           "browsable" = "yes";
           "guest ok" = "yes";
@@ -146,4 +166,31 @@
         };
     };
   };
+
+  # todo: downloader user
+  systemd.services.fix-media-permissions = {
+    serviceConfig = {
+      Type = "oneshot";
+      Restart = "no";
+      ExecStart = ''
+        ${pkgs.bash}/bin/bash -c "chmod -R 777 /mnt/Media"
+      '';
+    };
+  };
+
+  systemd.timers.fix-media-permissions = {
+      partOf = [ "fix-media-permissions.service" ];
+      wantedBy = [ "multi-user.target" ];
+      timerConfig = {
+        OnBootSec = "5min";
+        OnUnitActiveSec = "3600";
+      };
+  };
+
+  services.sabnzbd = {
+    enable = true;
+    user = "transmission";
+    group = "transmission";
+  };
+
 }

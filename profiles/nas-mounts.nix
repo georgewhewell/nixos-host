@@ -2,7 +2,7 @@
 
 
 let
-  options = [ "nofail" "rsize=32768" "wsize=32768" ];
+  options = [ "nofail" "rsize=32768" "wsize=32768" "nconnect=4" ];
 in {
 
   fileSystems."/mnt/Home" =

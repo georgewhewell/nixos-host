@@ -17,9 +17,21 @@
   home.packages = with pkgs; [
     exa
     ripgrep
+
+    unzip
+
     docker-compose
-    spotify
+    /* spotify */
+    /* calibre */
   ];
+
+  programs.ssh = {
+    enable = true;
+    controlMaster = "auto";
+    controlPersist = "60m";
+    hashKnownHosts = true;
+    forwardAgent = true;
+  };
 
   programs.htop = {
     enable = true;

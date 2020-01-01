@@ -31,8 +31,8 @@
   environment.systemPackages = with pkgs; [
     pass
     gnupg
-    yubikey-personalization
-    yubikey-manager
+#    yubikey-personalization
+#    yubikey-manager
   ];
 
   # make uf2 give permission on yubikey to users

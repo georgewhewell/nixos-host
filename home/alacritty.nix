@@ -21,8 +21,8 @@
       };
 
       font = {
-        size = 6;
-        use_thin_strokes = true;
+        size = 10;
+        use_thin_strokes = false;
       };
 
       mouse_bindings = [

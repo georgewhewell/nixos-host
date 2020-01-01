@@ -36,7 +36,7 @@ in {
         ${blind_control}/bin/blind_control 02:be:75:37:b6:0a --astral
         ${blind_control}/bin/blind_control 02:c4:da:36:73:79 --astral
       '';
-      startAt = "*:0/5";
+      startAt = "*:0/15";
     };
 
     systemd.services.open-blinds = {

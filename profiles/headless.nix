@@ -1,8 +1,8 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
-  
-  sound.enable = false;
+
+  sound.enable = lib.mkDefault false;
   services.xserver.enable = false;
 
 }

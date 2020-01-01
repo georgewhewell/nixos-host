@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
+
   programs.vim = {
     enable = true;
     plugins = with pkgs.vimPlugins; [
@@ -8,10 +9,12 @@
       editorconfig-vim
       vim-nix
       rust-vim
-      # "LanguageClient"
       fzf-vim
       gitgutter
       ale
+
+      denite
+      denite-extra
     ];
     settings = { ignorecase = true; };
     extraConfig = ''

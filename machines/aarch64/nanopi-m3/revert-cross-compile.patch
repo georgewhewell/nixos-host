@@ -1,0 +1,29 @@
+diff --git a/Makefile b/Makefile
+index 25585e8d..67b4a178 100644
+--- a/Makefile
++++ b/Makefile
+@@ -255,9 +255,9 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
+ # Default value for CROSS_COMPILE is not to prefix executables
+ # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
+ ARCH		?= $(SUBARCH)
+-ARCH		= arm64
++#ARCH		= arm64
+ CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+-CROSS_COMPILE	= aarch64-linux-gnu-
++#CROSS_COMPILE	= aarch64-linux-gnu-
+ 
+ # Architecture as present in compile.h
+ UTS_MACHINE 	:= $(ARCH)
+diff --git a/arch/arm64/configs/nanopim3_defconfig b/arch/arm64/configs/nanopim3_defconfig
+index 1d282964..c0b507c0 100644
+--- a/arch/arm64/configs/nanopim3_defconfig
++++ b/arch/arm64/configs/nanopim3_defconfig
+@@ -44,7 +44,6 @@ CONFIG_THREAD_INFO_IN_TASK=y
+ # General setup
+ #
+ CONFIG_INIT_ENV_ARG_LIMIT=32
+-CONFIG_CROSS_COMPILE="aarch64-linux-gnu-"
+ # CONFIG_COMPILE_TEST is not set
+ CONFIG_LOCALVERSION=""
+ # CONFIG_LOCALVERSION_AUTO is not set
+

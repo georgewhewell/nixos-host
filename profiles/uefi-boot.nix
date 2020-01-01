@@ -4,18 +4,33 @@
 
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
+
   security.rngd.enable = pkgs.lib.mkDefault true;
   services.fwupd.enable = true;
 
+  zramSwap.enable = true;
+  programs.mosh.enable = true;
+
+  nix.extraOptions = ''
+    auto-optimise-store = true
+  '';
+
   boot = {
     tmpOnTmpfs = true;
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
+
+    kernelParams = [
+      "mitigations=off"
+      "panic=30"
+    ];
 
     loader = {
+
+      # efi.canTouchEfiVariables = true;
       systemd-boot.enable = true;
-      efi.canTouchEfiVariables = true;
     };
 
+    supportedFilesystems = [ "vfat" "zfs" ];
     initrd = {
       supportedFilesystems = [
         "zfs"
