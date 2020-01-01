@@ -72,10 +72,14 @@
     wantedBy = [ "multi-user.target" ];
   };
 
-  services.logind.extraConfig = ''
-    HandleLidSwitch=suspend-then-hibernate
-    HandleLidSwitchExternalPower=lock
-  '';
+  services.logind = {
+    lidSwitch = "suspend-then-hibernate";
+    lidSwitchExternalPower = "lock";
+    extraConfig = ''
+      # transition from suspend to hibernate after 1h
+      HibernateDelaySec=3600
+    '';
+  };
 
   nix.binaryCaches = lib.mkForce [ "https://cache.nixos.org" ];
   services.upower.enable = true;
