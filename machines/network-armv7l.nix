@@ -2,6 +2,7 @@ let
   pkgs = (import <nixpkgs> {
     system = "armv7l-linux";
   });
+  machines = (import ./armv7l { inherit (pkgs) lib; });
 in {
 
   network =  {
@@ -9,7 +10,4 @@ in {
     description = "armv7l native machines";
   };
 
-  odroid-hc1 = (import ./armv7l/odroid-hc1.nix);
-  bananapi-m3 = (import ./armv7l/bananapi-m3.nix);
-
-}
+} // machines
