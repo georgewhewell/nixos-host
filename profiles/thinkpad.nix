@@ -74,6 +74,7 @@
 
   services.logind.extraConfig = ''
     HandleLidSwitch=suspend-then-hibernate
+    HandleLidSwitchExternalPower=lock
   '';
 
   nix.binaryCaches = lib.mkForce [ "https://cache.nixos.org" ];
