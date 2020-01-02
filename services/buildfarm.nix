@@ -1,15 +1,9 @@
 { config, lib, pkgs, ... }:
 
 {
-  users.extraUsers.buildfarm = {
-    shell = "${pkgs.bash}/bin/bash";
-    isNormalUser = true;
-    extraGroups = [ "nixbld" ];
-    openssh.authorizedKeys.keys = [
-      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCoqpsUUtxaO0QzI9MxCs5tRjsbORDwpjFjuUFdGHJwZqm7A2MzrRV7EKfqfolgxnyaAFs7IM9AZ7o9Lus2MWX89c4OAW0upeoj2qsXMiFZH7z50Cdmg/YMw5DtVMZwPBTl0S1COWfhw959QntlTjhcYh3usIq9b3XeTELGtJSk5RmTjPIA2LJ4cemx3Ru11SySvk0LsI3uCv0Vhy9n17g1sg5eekRs5Nvg1AJtOQcH4Du/0rUwwEDd9Zjn0YiF/uPVMVh22JzWVE5dbe81g8dw+mR6GRnN3vlYbU+JgGvMKgs2DeGvPHSJWl9rwKUVO6wuruzZH+1q2HxAr58ndz81 root@nixhost"
-    ];
-  };
-
-  nix.trustedUsers = [ "buildfarm" ];
+  users.extraUsers.root.openssh.authorizedKeys.keys = [
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCyo9ZxvNb/4GJ78r5vi+rWehxjdMUNY4yA/7ze7EXRi1AvUzfAJx04OGaq9oj1FDSnac3BeeIuYTqmE13ZS9amiVf2HasBWUqEQC1FHOBiqqzacijzheWC0E7CXa1xGaYETZzBhjxgVYWTKWRm6GSGQMzVvjt/LZ0dqXWyqArC3t7gbmsFVCT1q3O2oSaE7G61xrqZjxWZqtE3EOu8+nnEHhBomqav1Ap+RDoWXuooNBdX9KkKofqA2aM9+UF5TMKi8CrrmBzYjHTkTH+5yRhj5kq/xnegY1/qYd6FFuQuZ/TvtDqpB/CGNZtiVXXLGhw+WZQ8iUu8qA1uSKL8md1d root@fuckup"
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCoqpsUUtxaO0QzI9MxCs5tRjsbORDwpjFjuUFdGHJwZqm7A2MzrRV7EKfqfolgxnyaAFs7IM9AZ7o9Lus2MWX89c4OAW0upeoj2qsXMiFZH7z50Cdmg/YMw5DtVMZwPBTl0S1COWfhw959QntlTjhcYh3usIq9b3XeTELGtJSk5RmTjPIA2LJ4cemx3Ru11SySvk0LsI3uCv0Vhy9n17g1sg5eekRs5Nvg1AJtOQcH4Du/0rUwwEDd9Zjn0YiF/uPVMVh22JzWVE5dbe81g8dw+mR6GRnN3vlYbU+JgGvMKgs2DeGvPHSJWl9rwKUVO6wuruzZH+1q2HxAr58ndz81 root@nixhost"
+  ];
 
 }

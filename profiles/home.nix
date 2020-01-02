@@ -3,10 +3,6 @@
 {
   # Config for machines on home network
   time.timeZone = "Europe/London";
-  location = {
-    latitude = 51.5;
-    longitude = 0.0;
-  };
 
   nix.binaryCaches = [
 #      https://cache.satanic.link
