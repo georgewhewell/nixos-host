@@ -20,18 +20,16 @@ let
     in (import <nixpkgs/nixos/lib/eval-config.nix> {
       modules = [ config crossBit crossFixes ];
     }).config.system.build;
+  x86Machines = (import ./machines/x86 { inherit lib; });
   armMachines = (import ./machines/armv7l { inherit lib; });
   aarch64Machines = (import ./machines/aarch64 { inherit lib; });
 in {
 
   inherit pkgs;
 
-  fuckup = (build "x86_64-linux" ./fuckup.nix).toplevel;
-  router = (build "x86_64-linux" ./router.nix).toplevel;
-  nixhost = (build "x86_64-linux" ./nixhost.nix);
-  yoga = (build "x86_64-linux" ./yoga.nix).toplevel;
-
-  installer = (build "x86_64-linux"  ./installer-x86.nix).isoImage;
+  x86 = pkgs.lib.mapAttrs (name: configuration:
+    (build "x86_64-linux" configuration)
+  ) x86Machines;
 
   armv7l = pkgs.lib.mapAttrs (name: configuration:
     (build "armv7l-linux" configuration).sdImage

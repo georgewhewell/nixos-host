@@ -28,12 +28,9 @@ let
     ];
   };
 
-  users.extraUsers.root.openssh.authorizedKeys.keys = [
-    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCyo9ZxvNb/4GJ78r5vi+rWehxjdMUNY4yA/7ze7EXRi1AvUzfAJx04OGaq9oj1FDSnac3BeeIuYTqmE13ZS9amiVf2HasBWUqEQC1FHOBiqqzacijzheWC0E7CXa1xGaYETZzBhjxgVYWTKWRm6GSGQMzVvjt/LZ0dqXWyqArC3t7gbmsFVCT1q3O2oSaE7G61xrqZjxWZqtE3EOu8+nnEHhBomqav1Ap+RDoWXuooNBdX9KkKofqA2aM9+UF5TMKi8CrrmBzYjHTkTH+5yRhj5kq/xnegY1/qYd6FFuQuZ/TvtDqpB/CGNZtiVXXLGhw+WZQ8iUu8qA1uSKL8md1d root@fuckup"
-    gpg-pubkey
-  ];
-
-
-  security.sudo.wheelNeedsPassword = false;
+  security.sudo = {
+    enable = true;
+    wheelNeedsPassword = false;
+  };
 
 }

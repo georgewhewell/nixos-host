@@ -3,7 +3,6 @@
 {
 
   imports = [
-    <home-manager/nixos>
     ../modules/blinds.nix
     ../modules/cache-cache.nix
     ../modules/usb-gadget.nix
@@ -13,6 +12,11 @@
     ../modules/traffic-shaping.nix
     ./users.nix
   ];
+
+  location = {
+    latitude = 51.5;
+    longitude = 0.0;
+  };
 
   environment.pathsToLink = [ "/share/zsh" ];
 

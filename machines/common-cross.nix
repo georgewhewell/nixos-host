@@ -8,6 +8,8 @@
       alsa-firmware = pkgs.runCommandNoCC "neutered-firmware" {} "mkdir -p $out";
     })];
 
+    environment.systemPackages = lib.mkForce [];
+
     # (Failing build in a dep to be investigated)
     security.polkit.enable = lib.mkForce false;
     services.udisks2.enable = lib.mkForce false;
