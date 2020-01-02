@@ -34,10 +34,11 @@
 
   hardware.bluetooth = {
     enable = true;
-    extraConfig = "
-      [General]
-      Enable=Source,Sink,Media,Socket
-    ";
+    config = {
+      General = {
+        Enable = "Source,Sink,Media,Socket";
+      };
+    };
   };
 
   users.users.pulse.extraGroups = [ "lp" ];
