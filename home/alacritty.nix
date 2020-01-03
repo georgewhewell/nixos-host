@@ -21,7 +21,7 @@
       };
 
       font = {
-        size = if config.hostId == "yoga" then 18 else 10;
+        size = if config.hostId == "yoga" then 18 else 12;
         use_thin_strokes = false;
       };
 
