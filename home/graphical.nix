@@ -28,4 +28,14 @@
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;
 
+  services.redshift = {
+    enable = true;
+    package = pkgs.redshift-wlr;
+    latitude = "51.5";
+    longitude = "0";
+    brightness = {
+      day = "1";
+      night = "0.6";
+    };
+  };
 }
