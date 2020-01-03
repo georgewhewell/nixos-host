@@ -129,37 +129,11 @@
     ];
   };
 
-  services.redshift = {
-    enable = true;
-    brightness = {
-      day = "1.0";
-      night = "0.6";
-    };
-  };
-
   hardware.opengl = {
     enable = true;
     s3tcSupport = true;
     driSupport = true;
     driSupport32Bit = true;
     extraPackages = with pkgs; [ libva ];
-  };
-
-  services.xserver = {
-    enable = false;
-    autoRepeatDelay = 200;
-    autoRepeatInterval = 35;
-    autorun = true;
-
-    xkbOptions = "caps:escape";
-
-    /*
-    displayManager = {
-       lightdm.enable = true;
-    };
-
-    windowManager.i3.enable = true;
-
-    */
   };
 }
