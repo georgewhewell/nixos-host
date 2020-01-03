@@ -3,6 +3,8 @@ self: super:
 {
   steam = null;
 
+  waybar = super.waybar.override { pulseSupport = true; };
+
   radarr = super.radarr.overrideAttrs(old: rec {
     version = "0.2.0.1450";
     src = super.fetchurl {

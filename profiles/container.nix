@@ -9,7 +9,6 @@
 
   i18n.supportedLocales = [ (config.i18n.defaultLocale + "/UTF-8") ];
 
-  services.xserver.enable = false;
   sound.enable = false;
 
   networking = {

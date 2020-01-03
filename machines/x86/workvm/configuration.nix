@@ -5,9 +5,8 @@
   imports = [
     ../../../profiles/common.nix
     ../../../profiles/development.nix
-    ../../../profiles/gpg-yubikey.nix
     ../../../profiles/uefi-boot.nix
-    ../../../profiles/xserver.nix
+    ../../../profiles/graphical.nix
     ../../../profiles/g_ether.nix
   ];
 
@@ -36,7 +35,6 @@
 
   environment.systemPackages = with pkgs; [
     libreoffice
-    firefox
   ];
 
   virtualisation.virtualbox.guest.enable = true;

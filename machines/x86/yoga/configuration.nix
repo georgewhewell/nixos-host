@@ -8,7 +8,7 @@
     ../../../profiles/home-manager.nix
     ../../../profiles/nas-mounts.nix
     ../../../profiles/development.nix
-    ../../../profiles/xserver.nix
+    ../../../profiles/graphical.nix
     ../../../profiles/intel-gfx.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/thinkpad.nix
@@ -17,6 +17,8 @@
 
   networking.hostName = "yoga";
   networking.hostId = "deadbeef";
+
+  virtualisation.docker.storageDriver = lib.mkForce null;
 
   fileSystems."/" =
     { device = "/dev/nvme0n1p3";
@@ -31,6 +33,8 @@
   swapDevices = [{ device = "/dev/nvme0n1p2"; }];
 
   nix.maxJobs = lib.mkDefault 4;
+
+  console.font = lib.mkForce "${pkgs.terminus_font}/share/consolefonts/ter-u28n.psf.gz";
 
   boot.loader.timeout = 1;
   boot.blacklistedKernelModules = [

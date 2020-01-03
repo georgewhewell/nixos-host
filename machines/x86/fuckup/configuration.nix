@@ -16,7 +16,7 @@
       ../../../profiles/nas-mounts.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/g_ether.nix
-      ../../../profiles/xserver.nix
+      ../../../profiles/graphical.nix
       ../../../services/buildfarm.nix
       ../../../services/docker.nix
       ../../../services/virt/host.nix

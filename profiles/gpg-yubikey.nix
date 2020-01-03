@@ -2,6 +2,7 @@
 
 {
 
+  /*
   # Use gpg-agent for ssh
   programs.ssh = {
     startAgent = false;
@@ -34,13 +35,13 @@
 #    yubikey-personalization
 #    yubikey-manager
   ];
-
   # make uf2 give permission on yubikey to users
   services.udev.packages = with pkgs; [
     libu2f-host
     yubikey-personalization
   ];
 
+  */
   services.udev.extraRules = ''
     # Copyright (C) 2013-2015 Yubico AB
     #

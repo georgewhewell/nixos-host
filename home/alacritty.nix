@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
 
@@ -21,7 +21,7 @@
       };
 
       font = {
-        size = 10;
+        size = if config.hostId == "yoga" then 18 else 10;
         use_thin_strokes = false;
       };
 
