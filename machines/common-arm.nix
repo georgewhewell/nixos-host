@@ -13,7 +13,7 @@
     kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
     kernelParams = [ "boot.shell_on_fail" "panic=20"];
     supportedFilesystems = lib.mkForce [ "vfat" "nfs" ];
-    initrd.supportedFilesystems = lib.mkForce [ "vfat" "nfs" ];
+    initrd.supportedFilesystems = lib.mkForce [ "vfat" "ext4" ];
   };
 
   # installation-device.nix disables this stuff- re-enable
@@ -29,11 +29,7 @@
   };
 
   services.nixosManual.showManual = lib.mkForce false;
-
-  # `xterm` is being included even though this is GUI-less.
-  # → https://github.com/NixOS/nixpkgs/pull/62852
   services.xserver.enable = lib.mkDefault false;
-  services.xserver.desktopManager.xterm.enable = lib.mkForce false;
 
   zramSwap.enable = true;
 
