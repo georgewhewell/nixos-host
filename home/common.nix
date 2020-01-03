@@ -3,10 +3,8 @@
 {
 
   imports = [
-    ./i3.nix
-    ./alacritty.nix
-    ./polybar.nix
-    ./rofi.nix
+    ./hostid.nix
+    ./graphical.nix
     ./vim.nix
     ./git.nix
     ./zsh.nix
@@ -26,6 +24,29 @@
     controlPersist = "60m";
     hashKnownHosts = true;
     forwardAgent = true;
+  };
+
+  programs.gpg = {
+    enable = true;
+  };
+
+  services.gpg-agent = {
+    enable = true;
+    enableSshSupport = true;
+    enableExtraSocket = true;
+    pinentryFlavor = "curses";
+  };
+
+  services.keybase.enable = true;
+  services.kbfs.enable = true;
+
+  programs.password-store = {
+    enable = true;
+  };
+
+  services.password-store-sync = {
+    enable = true;
+    frequency = "*:0";
   };
 
   programs.htop = {

@@ -7,6 +7,7 @@
   ];
 
   home-manager.users.grw = { ... }: {
+    hostId = config.networking.hostName;
     imports = [
       ../home/common.nix
     ];

@@ -5,7 +5,6 @@
     <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix>
     <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>
     ../../../profiles/common.nix
-    ../../../profiles/gpg-yubikey.nix
   ];
 
   boot.initrd.supportedFilesystems = [

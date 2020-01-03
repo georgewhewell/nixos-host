@@ -51,7 +51,6 @@
     naturalScrolling = true;
   };
 
-  services.xserver.videoDrivers = [ "modesetting" ];
   sound.mediaKeys.enable = true;
 
   # need networkmanager for wwan
