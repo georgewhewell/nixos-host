@@ -38,7 +38,7 @@ in {
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge ];
+      trustedInterfaces = [ lanBridge vpnInterface ];
       logRefusedConnections = true;
       logRefusedPackets = true;
       logReversePathDrops = true;
@@ -126,8 +126,9 @@ in {
       log-dhcp
       domain=lan
       interface=lo
+      interface=${vpnInterface}
       interface=${lanBridge}
-      dhcp-range=192.168.23.10,192.168.23.254,6h
+      dhcp-range=${lanBridge},192.168.23.10,192.168.23.254,6h
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
       dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
       dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
