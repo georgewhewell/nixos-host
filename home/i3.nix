@@ -7,7 +7,7 @@ in {
   programs.feh.enable = true;
   programs.firefox = {
     enable = true;
-    enableGoogleTalk = true;
+    enableGoogleTalk = false; # hangs firefox tabs
   };
 
   home.packages = with pkgs; [
