@@ -27,9 +27,10 @@ in {
       internalInterfaces = [ lanBridge vpnInterface ];
       externalInterface = wanInterface;  # port 1
       forwardPorts = [
-        { sourcePort = 80; destination = "192.168.23.5:80"; }
-        { sourcePort = 443; destination = "192.168.23.5:443"; }
-        { sourcePort = 51413; destination = "192.168.23.5:51413"; }
+        { sourcePort = 80; destination = "192.168.23.5:80"; loopbackIPs = [ "82.12.183.66" ]; }
+        { sourcePort = 443; destination = "192.168.23.5:443"; loopbackIPs = [ "82.12.183.66" ]; }
+        { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; }
+        { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "tcp"; }
         { sourcePort = 32400; destination = "192.168.23.200:32400"; }
       ];
     };
