@@ -48,6 +48,9 @@ exec swayidle -w \
          lock 'swaylock -f -c 000000'
 bindsym --release $mod+Shift+s exec "loginctl lock-session $XDG_SESSION_ID"
 
+# Idle inhibitors
+for_window [app_id="firefox"] inhibit_idle fullscreen
+
 ### Input configuration
 # input "1:1AT_Translated_set_2_keyboard" {
 input * {
