@@ -7,6 +7,11 @@
     ./waybar.nix
   ];
 
+  programs.firefox = {
+    enable = true;
+    package = pkgs.firefox-wayland;
+  };
+
   xdg.configFile."sway/config".text = (import ./sway.nix { inherit pkgs; });
 
   home.packages = with pkgs; [
