@@ -1,4 +1,4 @@
-{ pkgs }:
+{ config, pkgs }:
 
 ''
 # Default config for sway
@@ -40,12 +40,14 @@ output * bg #000000 solid_color
 # You can get the names of your outputs by running: swaymsg -t get_outputs
 
 ### Idle configuration
+${if (config.hostId == "yoga") then ''
 exec swayidle -w \
-         timeout 60 'swaylock -f -c 000000' \
-         timeout 90 'swaymsg "output * dpms off"' \
+         timeout 300 'swaylock -f -c 000000' \
+         timeout 360 'swaymsg "output * dpms off"' \
               resume 'swaymsg "output * dpms on"' \
          before-sleep 'swaylock -f -c 000000' \
          lock 'swaylock -f -c 000000'
+'' else ""}
 bindsym --release $mod+Shift+s exec "loginctl lock-session $XDG_SESSION_ID"
 
 # Idle inhibitors
