@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
 
@@ -12,7 +12,7 @@
     package = pkgs.firefox-wayland;
   };
 
-  xdg.configFile."sway/config".text = (import ./sway.nix { inherit pkgs; });
+  xdg.configFile."sway/config".text = (import ./sway.nix { inherit config pkgs; });
 
   home.packages = with pkgs; [
     corefonts
