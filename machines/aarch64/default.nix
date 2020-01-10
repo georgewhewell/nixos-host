@@ -3,6 +3,7 @@
 let
   machines = [
     "odroid-c2"
+    "orangepi-pc2"
     "rock64"
     "tvheadend"
     "router"
