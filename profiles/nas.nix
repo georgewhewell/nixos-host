@@ -81,7 +81,6 @@
       /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
       /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
       /export/home           192.168.23.0/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-      /export/nixos-config   192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
     '';
   };
 
@@ -95,6 +94,11 @@
     445  # smb
     548  # netatalk
     10809 # nbd
+
+    # nfs
+    20048
+    40531
+    46675
   ];
 
   networking.firewall.allowedUDPPorts = [
@@ -102,6 +106,11 @@
     2049 # nfs
     138  # smb
     445  # smb
+
+    # nfs
+    20048
+    37914
+    42074
   ];
 
   systemd.services.nbd-scratch = {
