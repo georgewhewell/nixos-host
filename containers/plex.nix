@@ -1,6 +1,8 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
+  systemd.services."container@plex".requires = [ "mnt-Media.mount" ];
+
   containers.plex = {
     autoStart = true;
     privateNetwork = true;
@@ -54,6 +56,7 @@
         driSupport = true;
         driSupport32Bit = true;
         extraPackages = with pkgs; [
+          libva-full
           vaapiVdpau
           (vaapiIntel.override { enableHybridCodec = true; })
           libvdpau-va-gl
