@@ -11,6 +11,9 @@
     "console=ttySAC0,115200"
   ];
 
+  # stop kernel build OOM
+  nix.buildCores = 7;
+
   boot.kernelPackages = 
     with pkgs; recurseIntoAttrs (linuxPackagesFor (
       buildLinux ({
