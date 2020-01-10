@@ -17,10 +17,4 @@ in {
       inherit options;
     };
 
-  fileSystems."/mnt/nixhostconfig" =
-    { device = "nixhost.lan:/nixos-config";
-      fsType = "nfs";
-      inherit options;
-    };
-
 }
