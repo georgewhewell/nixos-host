@@ -137,17 +137,6 @@
       systems = [ "aarch64-linux" ];
     }
     {
-      hostName = "yoga.lan";
-      supportedFeatures = [  ];
-      maxJobs = 1;
-      systems = [ "x86_64-linux" "i686-linux" ];
-    }
-    {
-      hostName = "rock64.lan";
-      supportedFeatures = [];
-      systems = [ "aarch64-linux" ];
-    }
-    {
       hostName = "nanopi-m3.lan";
       supportedFeatures = [ "big-parallel" ];
       systems = [ "aarch64-linux" ];
@@ -155,12 +144,6 @@
     {
       hostName = "odroid-hc1.lan";
       speedFactor = 2;
-      supportedFeatures = [ "big-parallel" ];
-      systems = [ "armv7l-linux" ];
-    }
-    {
-      hostName = "bananapi-m3.lan";
-      speedFactor = 1;
       supportedFeatures = [ "big-parallel" ];
       systems = [ "armv7l-linux" ];
     }
