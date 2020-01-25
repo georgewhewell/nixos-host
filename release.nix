@@ -25,8 +25,6 @@ let
   aarch64Machines = (import ./machines/aarch64 { inherit lib; });
 in {
 
-  inherit pkgs;
-
   x86 = pkgs.lib.mapAttrs (name: configuration:
     (build "x86_64-linux" configuration)
   ) x86Machines;
