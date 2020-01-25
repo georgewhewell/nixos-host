@@ -31,7 +31,10 @@
   services.nixosManual.showManual = lib.mkForce false;
   services.xserver.enable = lib.mkDefault false;
 
-  zramSwap.enable = true;
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+  };
 
   fileSystems."/".options = [
     "relatime"
