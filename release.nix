@@ -39,7 +39,7 @@ in {
       '';
   };
 
-  pkgs = pkgs.dontRecurseIntoAttrs pkgs;
+  # pkgs = pkgs.dontRecurseIntoAttrs pkgs;
 
   x86 = pkgs.lib.mapAttrs (name: configuration:
     (build "x86_64-linux" configuration).toplevel
