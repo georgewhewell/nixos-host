@@ -140,7 +140,7 @@ in {
       address=/router.lan/192.168.23.1
       address=/nixhost.lan/192.168.23.5
       address=/cache.satanic.link/192.168.23.5
-      cname=hydra.satanic.link,nixhost.lan
+      address=/hydra.satanic.link/192.168.23.5
       cname=grafana.satanic.link,nixhost.lan
       cname=git.satanic.link,nixhost.lan
       cname=home.satanic.link,nixhost.lan
