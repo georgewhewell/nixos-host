@@ -5,7 +5,7 @@
   containers.unifi = {
     autoStart = true;
     privateNetwork = true;
-    hostBridge = "br.lan";
+    hostBridge = "br0";
 
     bindMounts = {
       "/var/lib/unifi" = {
