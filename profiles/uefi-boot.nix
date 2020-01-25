@@ -8,7 +8,11 @@
   security.rngd.enable = pkgs.lib.mkDefault true;
   services.fwupd.enable = true;
 
-  zramSwap.enable = true;
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+  };
+
   programs.mosh.enable = true;
 
   nix.extraOptions = ''
