@@ -12,29 +12,40 @@
   boot.initrd.availableKernelModules = [ "panfrost" ];
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
-  boot.kernelPackages = 
+  boot.kernelPackages = pkgs.linuxPackages_testing;
+  boot.kernelPatches = [
+      {
+        name = "fix dts makefile";
+        patch = null;
+        extraConfig = ''
+          STAGING_MEDIA y
+        '';
+      }
+  ];
+  /*
     with pkgs; recurseIntoAttrs (linuxPackagesFor (
     buildLinux {
-    version = "5.5-rc3";
-    modDirVersion = "5.5.0-rc3";
+    version = "5.5-rc5";
+    modDirVersion = "5.5.0-rc5";
     src = pkgs.fetchFromGitHub {
-      owner = "chewitt";
+      owner = "superna9999";
       repo = "linux";
-      rev = "amlogic-5.5-integ";
-      sha256 = "0d6w7d0mv8lziyxm58wfx90rfp91kn8qg611mpqjmmwjhq2q2884";
+      rev = "amlogic/v5.6/vdec-g12a";
+      sha256 = "0fd5g3lmfdh1igv74z0ch678mhyn0gmf1jpzwi82np8x4nmcp3qh";
     };
 
     inherit (pkgs) buildPackages stdenv;
     kernelPatches = pkgs.linux_testing.kernelPatches ++ [
       {
         name = "fix dts makefile";
-        patch = ./dts.patch;
+        patch = null;
         extraConfig = ''
           STAGING_MEDIA y
         '';
       }
     ];
   }));
+  */
 
   users.users.grw.extraGroups = [ "input" "pulse" ];
 
@@ -46,6 +57,7 @@
 
   boot.plymouth.enable = false;
 
+  /*
   services.xserver = {
     enable = true;
     videoDrivers = [ "modesetting" ];
@@ -67,7 +79,9 @@
 	Option "PrimaryGPU" "true"
       EndSection
     '';
-  };
+    };
+  */
+  
   /*
   systemd.services.kodi-gbm = {
     environment = {
