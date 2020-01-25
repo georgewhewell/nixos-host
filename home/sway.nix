@@ -32,6 +32,10 @@ set $menu swaymsg exec -- $wofi_path -S drun
 # output * bg @datadir@/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 output * bg #000000 solid_color
 
+${if (config.hostId == "fuckup") then ''
+output DP-5 mode 3440x1440@75.050003Hz
+'' else ""}
+
 #
 # Example configuration:
 #
