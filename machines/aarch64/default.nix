@@ -8,7 +8,7 @@ let
     "tvheadend"
     "router"
     "nanopi-m3"
-    "amlogic-s912"
+#    "amlogic-s912"
   ];
 in
   lib.genAttrs machines (name:
