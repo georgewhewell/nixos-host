@@ -25,8 +25,24 @@ let
   aarch64Machines = (import ./machines/aarch64 { inherit lib; });
 in {
 
+  tarball =
+    pkgs.releaseTools.sourceTarball {
+      name = "nixos-configuration";
+      src = ./.;
+      distPhase = ''
+        relname=nixos-configuration
+        mkdir ../$relname
+        cp -prd . ../$relname
+        rm -rf ../$relname/.git ../$relname/svn-revision
+        mkdir $out/tarballs
+        tar cvfJ $out/tarballs/$relname.tar.xz -C .. $relname
+      '';
+  };
+
+  pkgs = pkgs.dontRecurseIntoAttrs pkgs;
+
   x86 = pkgs.lib.mapAttrs (name: configuration:
-    (build "x86_64-linux" configuration)
+    (build "x86_64-linux" configuration).toplevel
   ) x86Machines;
 
   armv7l = pkgs.lib.mapAttrs (name: configuration:
@@ -34,7 +50,7 @@ in {
   ) armMachines;
 
   armv7lCross = pkgs.lib.mapAttrs(name: configuration:
-    (buildCross "armv7l-unknown-linux-gnueabihf" configuration)
+    (buildCross "armv7l-unknown-linux-gnueabihf" configuration).sdImage
   ) armMachines;
 
   aarch64 = pkgs.lib.mapAttrs (name: configuration:
@@ -42,7 +58,7 @@ in {
   ) aarch64Machines;
 
   aarch64Cross = pkgs.lib.mapAttrs(name: configuration:
-    (buildCross "aarch64-unknown-linux-gnu" configuration)
+    (buildCross "aarch64-unknown-linux-gnu" configuration).sdImage
   ) aarch64Machines;
 
 }
