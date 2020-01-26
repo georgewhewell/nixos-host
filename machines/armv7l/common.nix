@@ -1,6 +1,10 @@
 { config, ... }:
 
 {
+
+  # libp11 fails to compile
+  security.rngd.enable = false;
+
   imports = [
     ../common-arm.nix
     ../../services/buildfarm.nix
