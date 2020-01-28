@@ -1,9 +1,10 @@
-{ config, ... }:
+{ config, lib, ... }:
 
 {
 
   # libp11 fails to compile
-  security.rngd.enable = false;
+  security.rngd.enable = lib.mkForce false;
+  security.polkit.enable = lib.mkForce false;
 
   imports = [
     ../common-arm.nix
