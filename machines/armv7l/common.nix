@@ -5,6 +5,7 @@
   # libp11 fails to compile
   security.rngd.enable = lib.mkForce false;
   security.polkit.enable = lib.mkForce false;
+  services.udisks2.enable = lib.mkForce false;
 
   imports = [
     ../common-arm.nix
