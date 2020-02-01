@@ -6,6 +6,9 @@
 
       # Does not cross-compile...
       alsa-firmware = pkgs.runCommandNoCC "neutered-firmware" {} "mkdir -p $out";
+
+      # needs a bunch of python stuff which does not CC
+      crda = pkgs.runCommandNoCC "crda" {} "mkdir -p $out";
     })];
 
     environment.systemPackages = lib.mkForce [];
