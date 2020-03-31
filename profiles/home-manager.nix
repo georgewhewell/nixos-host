@@ -10,6 +10,8 @@
     hostId = config.networking.hostName;
     imports = [
       ../home/common.nix
+      ../home/linux.nix
+      ../home/graphical.nix
     ];
   };
 
