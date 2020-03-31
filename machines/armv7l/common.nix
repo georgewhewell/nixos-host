@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 {
 
@@ -6,7 +6,8 @@
   security.rngd.enable = lib.mkForce false;
   security.polkit.enable = lib.mkForce false;
 
-  environment.systemPackages = lib.mkForce [];
+  environment.systemPackages = with pkgs; lib.mkForce [ bash ];
+
   # faster kernel builds
   boot.kernelPatches = [
   {
