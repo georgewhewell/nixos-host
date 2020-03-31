@@ -4,15 +4,13 @@
 
   imports = [
     ./alacritty.nix
-    ./waybar.nix
+    ./sway.nix
   ];
 
   programs.firefox = {
     enable = true;
     package = pkgs.firefox-wayland;
   };
-
-  xdg.configFile."sway/config".text = (import ./sway.nix { inherit config pkgs; });
 
   home.packages = with pkgs; [
     corefonts
@@ -28,7 +26,6 @@
     font-awesome_5
 
     spotify
-    qutebrowser
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;
