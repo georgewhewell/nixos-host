@@ -39,9 +39,9 @@ in {
       enable = true;
       checkReversePath = false;
       trustedInterfaces = [ lanBridge vpnInterface ];
-      logRefusedConnections = true;
-      logRefusedPackets = true;
-      logReversePathDrops = true;
+      logRefusedConnections = false;
+      logRefusedPackets = false;
+      logReversePathDrops = false;
       interfaces = {
         "${wanInterface}" = {
           allowedTCPPorts = [

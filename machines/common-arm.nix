@@ -18,7 +18,6 @@
 
   # installation-device.nix disables this stuff- re-enable
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
-  systemd.services.sshd.serviceConfig.restartSec = 3;
 
   sdImage.compressImage = false;
 
@@ -84,10 +83,5 @@
         ExecStart = "${pkgs.bash}/bin/bash ${io-is-busy}/bin/io-is-busy";
       };
   };
-
-  services.journald.extraConfig = ''
-    SystemMaxUse=5M
-    MaxLevelStore=err
-  '';
 
 }
