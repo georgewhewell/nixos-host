@@ -3,6 +3,11 @@
 {
   networking.firewall.allowedTCPPorts = [ 80 443 ];
 
+  security.acme = {
+    acceptTerms = true;
+    email = "georgerw@gmail.com";
+  };
+  
   services.nginx = {
     enable = true;
     statusPage = true;
