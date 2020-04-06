@@ -4,6 +4,7 @@ let
   });
   mkCross = name: conf: { ... }: {
     imports = [ conf ./common-cross.nix ];
+    nixpkgs.crossSystem = pkgs.lib.systems.elaborate "armv7l-linux";
   };
   machines = with pkgs; (import ./armv7l { inherit lib; });
 in {

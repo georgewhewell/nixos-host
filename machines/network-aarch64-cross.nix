@@ -4,6 +4,7 @@ let
   });
   mkCross = name: conf: { ... }: {
     imports = [ conf ./common-cross.nix ];
+    nixpkgs.crossSystem = pkgs.lib.systems.elaborate "aarch64-linux";
   };
   machines = with pkgs; (import ./aarch64 { inherit lib; });
 in {

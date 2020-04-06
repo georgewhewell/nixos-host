@@ -5,8 +5,8 @@
   time.timeZone = "Europe/London";
 
   nix.binaryCaches = [
-#      https://cache.satanic.link
-#      https://www.cs.helsinki.fi/u/tmtynkky/nixos-arm/channel/
+      https://hydra.satanic.link
+      https://cache.satanic.link
       https://cache.nixos.org
   ];
   nix.binaryCachePublicKeys = [

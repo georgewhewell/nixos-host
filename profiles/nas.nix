@@ -84,8 +84,6 @@
     '';
   };
 
-  networking.firewall.allowPing = true;
-
   networking.firewall.allowedTCPPorts = [
     111  # nfs?
     2049 # nfs
