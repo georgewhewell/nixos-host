@@ -1,12 +1,12 @@
 { config, lib, pkgs, ... }:
 
 {
-
-  # libp11 fails to compile
-  security.rngd.enable = lib.mkForce false;
+  # takes ages
   security.polkit.enable = lib.mkForce false;
+  services.udisks2.enable = lib.mkForce false;
 
-  environment.systemPackages = with pkgs; lib.mkForce [ bash ];
+  # sd card image must be <2gb
+  # environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd zsh ];
 
   # faster kernel builds
   boot.kernelPatches = [

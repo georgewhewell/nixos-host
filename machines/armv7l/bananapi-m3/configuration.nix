@@ -2,7 +2,7 @@
 
 {
   networking.hostName = "bananapi-m3";
-  boot.initrd.availableKernelModules = [ "sunxi" "wire" ];
+  boot.initrd.availableKernelModules = [ "dwmac-sun8i" ];
 
   imports = [
     ../common.nix
