@@ -80,9 +80,7 @@
       EndSection
     '';
     };
-  */
-  
-  /*
+*/  
   systemd.services.kodi-gbm = {
     environment = {
       WINDOWING = "gbm";
@@ -99,7 +97,6 @@
       User = "grw";
     };
     };
-  */
 
   hardware.opengl = {
     enable = true;

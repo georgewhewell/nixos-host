@@ -24,6 +24,9 @@
     pavucontrol
     pamixer
 
+    torbrowser
+    monero-gui
+
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
       
