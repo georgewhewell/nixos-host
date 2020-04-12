@@ -3,10 +3,8 @@
 {
 
   environment.systemPackages = with pkgs; [
-    atom
     idea.pycharm-community
-    pgadmin
-
+    
     screen
     wget
     rsync
@@ -25,7 +23,6 @@
     dstat
     arp-scan
     libpcap
-    wireshark
 
     lshw
     usbutils
@@ -38,8 +35,7 @@
 
     morph
     nix-prefetch-git
-
-    /* screen */
+    screen
     /* openocd */
     /* saleae-logic */
     /* kicad-unstable */
@@ -75,5 +71,5 @@
   virtualisation.docker.enable = true;
 
   programs.wireshark.enable = true;
-  */
+
 }
