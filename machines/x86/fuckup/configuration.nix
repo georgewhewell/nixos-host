@@ -38,15 +38,8 @@
       fsType = "vfat";
     };
 
-  boot.kernelModules = [ "wl" ];
   boot.kernelParams = [
     "amdgpu.ppfeaturemask=0xfffd7fff"
-  ];
-
-  boot.blacklistedKernelModules = [
-    "b44" "b43" "b43legacy" "ssb" "brcmsmac" "bcma" ];
-  boot.extraModulePackages = [
-    config.boot.kernelPackages.broadcom_sta
   ];
 
   nix.maxJobs = lib.mkDefault 8;

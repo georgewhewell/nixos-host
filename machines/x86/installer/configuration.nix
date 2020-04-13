@@ -34,13 +34,6 @@
   services.usbmuxd.enable = true;
   services.fwupd.enable = true;
 
-  boot.kernelModules = [ "wl" ];
-  boot.blacklistedKernelModules = [
-    "b44" "b43" "b43legacy" "ssb" "brcmsmac" "bcma" ];
-  boot.extraModulePackages = [
-    config.boot.kernelPackages.broadcom_sta
-  ];
-
   documentation.enable = lib.mkDefault false;
   systemd.services.sshd.wantedBy = lib.mkForce [ "multi-user.target" ];
 
