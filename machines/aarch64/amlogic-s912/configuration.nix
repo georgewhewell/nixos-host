@@ -12,7 +12,7 @@
   boot.initrd.availableKernelModules = [ "panfrost" ];
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_head;
   boot.kernelPatches = [
       {
         name = "enable staging";

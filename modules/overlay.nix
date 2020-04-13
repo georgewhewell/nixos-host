@@ -2,6 +2,17 @@ self: super:
 
 {
 
+  linuxPackages_head = super.linuxPackagesFor (super.linux_testing.override {
+    argsOverride = rec {
+      src = super.fetchurl {
+	  url = "https://git.kernel.org/torvalds/t/linux-${version}.tar.gz";
+	  sha256 = "1xkdvx6msf0wsqxbxjiimcjlzk51ra05ac3n1mi23y27hbxpndmj";
+      };
+      version = "5.7-rc1";
+      modDirVersion = "5.7.0-rc1";
+      };
+  });
+
   # broken; stops hydra build
   darcs = null;
 
