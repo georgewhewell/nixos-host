@@ -12,40 +12,16 @@
   boot.initrd.availableKernelModules = [ "panfrost" ];
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
-  boot.kernelPackages = pkgs.linuxPackages_testing;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelPatches = [
       {
-        name = "fix dts makefile";
+        name = "enable staging";
         patch = null;
         extraConfig = ''
           STAGING_MEDIA y
         '';
       }
   ];
-  /*
-    with pkgs; recurseIntoAttrs (linuxPackagesFor (
-    buildLinux {
-    version = "5.5-rc5";
-    modDirVersion = "5.5.0-rc5";
-    src = pkgs.fetchFromGitHub {
-      owner = "superna9999";
-      repo = "linux";
-      rev = "amlogic/v5.6/vdec-g12a";
-      sha256 = "0fd5g3lmfdh1igv74z0ch678mhyn0gmf1jpzwi82np8x4nmcp3qh";
-    };
-
-    inherit (pkgs) buildPackages stdenv;
-    kernelPatches = pkgs.linux_testing.kernelPatches ++ [
-      {
-        name = "fix dts makefile";
-        patch = null;
-        extraConfig = ''
-          STAGING_MEDIA y
-        '';
-      }
-    ];
-  }));
-  */
 
   users.users.grw.extraGroups = [ "input" "pulse" ];
 
@@ -57,30 +33,6 @@
 
   boot.plymouth.enable = false;
 
-  /*
-  services.xserver = {
-    enable = true;
-    videoDrivers = [ "modesetting" ];
-    displayManager.sddm = {
-      enable = true;
-      autoLogin = {
-        enable = true;
-        user = "grw";
-      };
-    };
-    desktopManager.kodi = {
-      enable = true;
-    };
-    extraConfig = ''
-      Section "OutputClass"
-	Identifier "Meson"
-	MatchDriver "meson"
-	Driver "modesetting"
-	Option "PrimaryGPU" "true"
-      EndSection
-    '';
-    };
-*/  
   systemd.services.kodi-gbm = {
     environment = {
       WINDOWING = "gbm";
