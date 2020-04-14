@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Config for machines on home network
@@ -14,13 +14,14 @@
     "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
   ];
-/*
+
   services.consul = {
     enable = true;
     leaveOnStop = true;
     forceIpv4 = true;
+    interface.bind = lib.mkDefault "eth0";
     extraConfig = {
-      retry_join = [ "nixhost.lan" "router.lan" ];
+      retry_join = [ "nixhost" ];
     };
   };
 
@@ -28,47 +29,17 @@
     wantedBy = [ "multi-user.target" ];
     wants = [ "consul.service" ];
     serviceConfig = {
-      Type = "oneshot";
       RemainAfterExit = "true";
-      ExecStartPre="${pkgs.bash}/bin/bash -c 'sleep 1'";
+      Restart = "on-failure";
+      RestartSec = "5s";
       ExecStart = ''
-        ${pkgs.consul}/bin/consul services register -name node_exporter -port 9100
+        ${pkgs.consul}/bin/consul services register -name node -port 9100
       '';
     };
-  }; */
-
-  networking.firewall.allowedTCPPorts = [ 8500 8301 8302 8300 ];
-  networking.firewall.allowedUDPPorts = [ 8500 8301 ];
-
-  # Log to ELK
-  services.journalbeat = {
-    enable = false;
-    extraConfig = ''
-      journalbeat:
-        seek_position: cursor
-        cursor_seek_fallback: tail
-        write_cursor_state: true
-        cursor_flush_period: 5s
-        clean_field_names: true
-        convert_to_numbers: false
-        move_metadata_to_field: journal
-        default_type: journal
-
-      setup.kibana:
-        host: "localhost:5601"
-
-      output.elasticsearch:
-        enabled: true
-        protocol: "https"
-        hosts: [ "es.satanic.link:443" ]
-        index: "controllers"
-        template.enabled: false
-
-      queue_size: 50000
-      logging.level: error
-      logging.to_files: false
-    '';
   };
+
+  networking.firewall.allowedTCPPorts = [ 8500 8301 8302 8300 8602 8600 ];
+  networking.firewall.allowedUDPPorts = [ 8500 8301 8302 8300 8602 8600 ];
 
   # Collect metrics for prometheus
   services.prometheus.exporters = {

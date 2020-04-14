@@ -2,6 +2,8 @@
 
 {
 
+  imports = [ ./buildfarm-executor.nix ];
+
   systemd.services."hydra-init".after = [ "network-online.target" ];
 
   services.nginx.virtualHosts."hydra.satanic.link" = {
@@ -43,30 +45,9 @@
       using_frontend_proxy 1
       base_uri https://hydra.satanic.link
       max_output_size = 4294967296
+      evaluator_initial_heap_size = 4294967296
       binary_cache_secret_key_file /etc/nix/signing-key.sec
     '';
   };
-
-  nix.distributedBuilds = true;
-  nix.buildMachines = [
-    {
-      hostName = "fuckup.lan";
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-      sshUser = "root";
-      sshKey = "/etc/nix/buildfarm";
-      maxJobs = 4;
-      speedFactor = 2;
-      systems = [ "x86_64-linux" "i686-linux" ];
-    }
-    {
-      hostName = "nixhost.lan";
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-      sshUser = "root";
-      sshKey = "/etc/nix/buildfarm";
-      maxJobs = 8;
-      speedFactor = 1;
-      systems = ["x86_64-linux" "i686-linux"];
-    }
-  ];
 
 }

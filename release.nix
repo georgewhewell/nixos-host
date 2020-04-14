@@ -6,23 +6,65 @@ let
     (import modules/overlay.nix)
   ]; });
   lib = pkgs.lib;
-  build = system: config:
+  build = system: config: extra:
     (import <nixpkgs/nixos/lib/eval-config.nix> {
       inherit system;
-      modules = [ config ];
-    }).config.system.build;
-  buildCross = crossSystem: config:
+      modules = [ config ] ++ extra;
+    });
+  buildCross = crossSystem: config: extra:
     let crossBit = { config, lib, ...}: {
       nixpkgs.crossSystem = lib.systems.elaborate {
         config = crossSystem;
       };
     };
     in (import <nixpkgs/nixos/lib/eval-config.nix> {
-      modules = [ config crossBit crossFixes ];
-    }).config.system.build;
+      modules = [ config crossBit crossFixes ] ++ extra;
+    });
   x86Machines = (import ./machines/x86 { inherit lib; });
   armMachines = (import ./machines/armv7l { inherit lib; });
   aarch64Machines = (import ./machines/aarch64 { inherit lib; });
+  felboot = { pkgs, config, ... }: {
+    netboot = {
+      enable = true;
+    };
+  };
+  sunxiBoot = config:
+    let
+      version = "2020.04";
+      src = pkgs.fetchurl {
+        url = "ftp://ftp.denx.de/pub/u-boot/u-boot-${version}.tar.bz2";
+        sha256 = "0wjkasnz87q86hx93inspdjfjsinmxi87bcvj30c773x0fpjlwzy";
+      };
+      buildAllwinnerUboot = (defconfig:
+        pkgs.pkgsCross.armv7l-hf-multiplatform.buildUBoot {
+          inherit src version defconfig;
+            extraMeta.platforms = [ "armv7l-linux" ];
+            filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
+      });
+      uboot = buildAllwinnerUboot config.system.build.ubootDefconfig;
+      uinitrd = pkgs.runCommandNoCC "uInitrd" {} ''
+        ${pkgs.ubootTools}/bin/mkimage -A arm -T ramdisk -C none -d ${config.system.build.initialRamdisk}/initrd $out
+      '';
+      bootEnv = pkgs.writeText "bootenv.txt" ''
+        #=uEnv
+        bootargs=init=${config.system.build.toplevel}/init ${toString config.boot.kernelParams}
+        bootcmd=bootz 0x40000000 0x43300000 0x42000000
+      '';
+    in
+        pkgs.writeScriptBin "boot.sh" ''
+          set -e
+
+          echo "Checking ver"
+          ${pkgs.sunxi-tools}/bin/sunxi-fel ver
+
+          # include stuff
+          ${pkgs.sunxi-tools}/bin/sunxi-fel -p \
+            uboot ${uboot}/u-boot-sunxi-with-spl.bin \
+            write-with-progress 0x40000000 ${config.system.build.kernel}/zImage \
+            write-with-progress 0x42000000 ${config.system.build.kernel}/dtbs/${config.system.build.dtbName} \
+            write-with-progress 0x43300000 ${uinitrd} \
+            write-with-progress 0x43100000 ${bootEnv}
+      '';
 in {
 
   tarball =
@@ -42,23 +84,41 @@ in {
   # pkgs = pkgs.dontRecurseIntoAttrs pkgs;
 
   x86 = pkgs.lib.mapAttrs (name: configuration:
-    (build "x86_64-linux" configuration).toplevel
+    (build "x86_64-linux" configuration []).config.system.build.toplevel
   ) x86Machines;
 
-  armv7l = pkgs.lib.mapAttrs (name: configuration:
-    (build "armv7l-linux" configuration).sdImage
-  ) armMachines;
+  armv7l = {
+    images = pkgs.dontRecurseIntoAttrs pkgs.lib.mapAttrs(name: configuration:
+    (build "armv7l-linux" configuration [
+      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+    ]).config.system.build.sdImage
+    ) armMachines;
+    felboot = pkgs.lib.mapAttrs(name: configuration:
+      sunxiBoot (build "armv7l-linux" configuration [ felboot ]).config
+    ) armMachines;
+  };
 
-  armv7lCross = pkgs.lib.mapAttrs(name: configuration:
-    (buildCross "armv7l-unknown-linux-gnueabihf" configuration).sdImage
-  ) armMachines;
+  armv7lCross = {
+    images = pkgs.lib.mapAttrs(name: configuration:
+    (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
+      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+    ]).config.system.build.sdImage
+    ) armMachines;
+    felboot = pkgs.lib.mapAttrs(name: configuration:
+      sunxiBoot (buildCross "armv7l-unknown-linux-gnueabihf" configuration [ felboot ]).config
+    ) armMachines;
+  };
 
   aarch64 = pkgs.lib.mapAttrs (name: configuration:
-    (build "aarch64-linux" configuration).sdImage
+  (build "aarch64-linux" configuration [
+    <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+  ]).config.system.build.sdImage
   ) aarch64Machines;
 
   aarch64Cross = pkgs.lib.mapAttrs(name: configuration:
-    (buildCross "aarch64-unknown-linux-gnu" configuration).sdImage
+  (buildCross "aarch64-unknown-linux-gnu" configuration [
+    <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+  ]).config.system.build.sdImage
   ) aarch64Machines;
 
 }

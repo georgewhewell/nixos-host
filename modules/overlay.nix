@@ -5,12 +5,12 @@ self: super:
   linuxPackages_head = super.linuxPackagesFor (super.linux_testing.override {
     argsOverride = rec {
       src = super.fetchurl {
-	  url = "https://git.kernel.org/torvalds/t/linux-${version}.tar.gz";
-	  sha256 = "1xkdvx6msf0wsqxbxjiimcjlzk51ra05ac3n1mi23y27hbxpndmj";
+    	  url = "https://git.kernel.org/torvalds/t/linux-${version}.tar.gz";
+    	  sha256 = "1xkdvx6msf0wsqxbxjiimcjlzk51ra05ac3n1mi23y27hbxpndmj";
       };
       version = "5.7-rc1";
       modDirVersion = "5.7.0-rc1";
-      };
+    };
   });
 
   # broken; stops hydra build
@@ -21,9 +21,9 @@ self: super:
         substituteInPlace src/input/mpegts/scanfile.c \
             --replace 'path = "/usr/share/dvb"' 'path = "${self.dtv-scan-tables}/share/dvb"'
 
-        ${old.preConfigure} 
+        ${old.preConfigure}
       '';
-    
+
   });
 
   steam = null;
@@ -37,7 +37,7 @@ self: super:
       sha256 = "1sknq6fifpmgzryr07dnriaw2x425v2zxdcqzm65viw5p5j9xh00";
     };
   });
-  
+
   auto-rotate = super.stdenv.mkDerivation {
     name = "auto-rotate";
     version = "auto-rotate";

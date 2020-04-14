@@ -3,8 +3,6 @@
 {
   networking.hostName = "amlogic-s912";
 
-  security.polkit.enable = true;
-  services.upower.enable = true;
 
   hardware.firmware = with pkgs; [ meson-firmware armbian-firmware ];
 
@@ -21,6 +19,14 @@
           STAGING_MEDIA y
         '';
       }
+      {
+        name = "integ patches";
+        patch = pkgs.fetchurl {
+          name = "thepatch";
+          url = ''https://github.com/torvalds/linux/compare/v5.7-rc1...chewitt:amlogic-5.7-integ.patch'';
+          sha256 = "17ghb4ii055iyfag7ka6zclh5g9gnbgnrahakbpas5zdviy65s8w";
+        };
+      }
   ];
 
   users.users.grw.extraGroups = [ "input" "pulse" ];
@@ -30,6 +36,9 @@
   # dont need this- interferes with kodi
   systemd.services."getty@tty1".enable = false;
   systemd.services."autovt@tty1".enable = false;
+  
+  security.polkit.enable = true;
+  services.upower.enable = true;
 
   boot.plymouth.enable = false;
 
@@ -48,7 +57,7 @@
       PAMName = "login";
       User = "grw";
     };
-    };
+  };
 
   hardware.opengl = {
     enable = true;

@@ -7,7 +7,7 @@
     acceptTerms = true;
     email = "georgerw@gmail.com";
   };
-  
+
   services.nginx = {
     enable = true;
     statusPage = true;

@@ -3,6 +3,7 @@
 {
 
   environment.systemPackages = with pkgs; [
+    atom
     idea.pycharm-community
     
     screen

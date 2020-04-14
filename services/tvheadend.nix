@@ -32,7 +32,7 @@
 
   hardware.firmware = [ pkgs.libreelec-dvb-firmware ];
 
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_4_19;
+  boot.kernelPackages = lib.mkOverride 1 pkgs.linuxPackages_4_19;
   boot.extraModulePackages = [
     (config.boot.kernelPackages.tbs.overrideAttrs(old: let
       media = pkgs.fetchFromGitHub rec {

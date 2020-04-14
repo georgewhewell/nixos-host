@@ -73,6 +73,7 @@ in {
       }];
     };
 
+    /*
     wireguard = {
       interfaces = {
         "${vpnInterface}" = {
@@ -85,18 +86,25 @@ in {
 	  privateKey = "i/noVqodxmQ3x4Qw2OZIp3Es8wilR5op4BYN2JUKXL0=";
         };
       };
-
     };
+   */
 
-    /* trafficShaping = {
+    /*
+    trafficShaping = {
       enable = true;
       wanInterface = wanInterface;
       lanInterface = "br.lan";
       lanNetwork = "192.168.23.0/24";
       maxDown = "50mbit";
       maxUp = "3mbit";
-    }; */
+      };
+    */
   };
+
+  services.consul.interface = {
+      advertise = lanBridge;
+      bind = lanBridge;
+    };
 
   services.miniupnpd = {
     enable = true;
@@ -113,7 +121,6 @@ in {
   };
 
   services.avahi.interfaces = [ lanBridge ];
-
   services.dnsmasq = {
     enable = true;
     resolveLocalQueries = true;

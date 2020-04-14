@@ -12,6 +12,7 @@
   nixpkgs.config.allowUnfree = true;
 
   home.packages = with pkgs; [
+    pv
     exa
     ripgrep
     docker-compose

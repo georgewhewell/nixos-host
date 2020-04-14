@@ -4,7 +4,46 @@ let
   bridgeName = "br0";
 in {
 
-  /*# Create an empty bridge
+  fileSystems."/export/store" = {
+    device = "/nix/store";
+    options = [ "bind" "ro" ];
+  };
+
+  services.nfs.server = {
+    enable = true;
+    exports = ''
+      /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
+      /export/store          192.168.23.0/24(ro,no_root_squash,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+    '';
+  };
+
+  networking.firewall.allowedTCPPorts = [
+    111  # nfs?
+    2049 # nfs
+    4000 4001 4002 4003
+    138  # smb
+    445  # smb
+    548  # netatalk
+    10809 # nbd
+
+    # nfs
+    20048
+    40531
+    46675
+  ];
+
+  networking.firewall.allowedUDPPorts = [
+    111  # nfs?
+    2049 # nfs
+    138  # smb
+    445  # smb
+
+    # nfs
+    20048
+    37914
+    42074
+  ];
+    /*# Create an empty bridge
   networking.bridges.${bridgeName} = {
     interfaces = [];
   };
@@ -29,11 +68,7 @@ in {
     SUBSYSTEM=="usb", ATTRS{idVendor}=="2109", ATTRS{idProduct}=="2811", GROUP="users", MODE="0660", SYMLINK+="smart-hub"
 
     # platform usb
-    SUBSYSTEM=="net" KERNEL=="enp0s2*u[0-9]", DRIVERS=="rndis_host", \
-      RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
-
-    # 3p usb
-    SUBSYSTEM=="net" KERNEL=="enp3s0*u[0-9]", DRIVERS=="rndis_host", \
+    SUBSYSTEM=="net" KERNEL=="enp5s0*u[0-9]", DRIVERS=="rndis_host", \
       RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
 
   '';

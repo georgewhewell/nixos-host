@@ -4,13 +4,15 @@
 
   imports = [
     ../profiles/common.nix
-    ../services/buildfarm.nix
+    ../profiles/home.nix
+    /* ../profiles/home-manager.nix */
+    ../services/buildfarm-slave.nix
     <nixpkgs/nixos/modules/profiles/minimal.nix>
   ];
 
   boot = {
     cleanTmpDir = true;
-    kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+    kernelPackages = lib.mkOverride 50 pkgs.linuxPackages_head;
     kernelParams = [ "boot.shell_on_fail" "panic=20"];
     supportedFilesystems = lib.mkForce [ "vfat" "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "vfat" "ext4" ];
@@ -18,8 +20,6 @@
 
   # installation-device.nix disables this stuff- re-enable
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
-
-  sdImage.compressImage = false;
 
   # no documentation :X
   documentation = {

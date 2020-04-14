@@ -25,6 +25,7 @@ let
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
       gpg-pubkey
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDQQct7I3QWRe1pXp/cQU8YeY2U8jJI3H6xDhDoc6nEnOH7ZqA9zr8HymTO+vEERXuvBEII/RRlzevvfB3/9Lq1e6CRe6yBdJqd4snt4Eja8nu3pMnPp+S8oyN6B+K8cZppo1O5im1PIM/XBhJaqEECPs2RbytMvA87gveOCj9XD4EDl2JXRHfdwKngDaeqnE7CGgPcCQaj3Q4w6AtOGU6d4bOtqM/3cDpm0vIRCvW1jHpyPkYwTAqafUXICHm9xdSatXoA8ft2XCqlpPTjBxDNYEiD/+jwhbTd1WfTBeOll9aTqFpvcjRor44kwIl+YnuxpjviZuz3Kswj9J2HT6Rj georgewhewell@SysAdmins-MacBook-Pro.local"
     ];
   };
 
