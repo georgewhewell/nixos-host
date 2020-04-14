@@ -17,7 +17,8 @@
       ../../../profiles/uefi-boot.nix
       ../../../profiles/g_ether.nix
       ../../../profiles/graphical.nix
-      ../../../services/buildfarm.nix
+      ../../../services/buildfarm-slave.nix
+      ../../../services/buildfarm-executor.nix
       ../../../services/docker.nix
       ../../../services/virt/host.nix
       ../../../services/virt/vfio.nix
@@ -49,6 +50,12 @@
     enable = true;
     arguments = "-o pa -a Airplay";
   };
+
+  services.consul.interface =
+    let interface = "br0"; in {
+      advertise = interface;
+      bind = interface;
+    };
 
   networking = {
     hostName = "fuckup";
@@ -108,38 +115,5 @@
       };
     };
   };
-
-
-  nix.distributedBuilds = true;
-  nix.buildMachines = [
-    {
-      hostName = "/nix/store";
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-      maxJobs = 4;
-      systems = [ "builtin" "x86_64-linux" "i686-linux" ];
-    }
-    {
-      hostName = "nixhost.lan";
-      supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-      maxJobs = 8;
-      systems = [ "x86_64-linux" "i686-linux" ];
-    }
-    {
-      hostName = "odroid-c2.lan";
-      supportedFeatures = [];
-      systems = [ "aarch64-linux" ];
-    }
-    {
-      hostName = "nanopi-m3.lan";
-      supportedFeatures = [ "big-parallel" ];
-      systems = [ "aarch64-linux" ];
-    }
-    {
-      hostName = "odroid-hc1.lan";
-      speedFactor = 2;
-      supportedFeatures = [ "big-parallel" ];
-      systems = [ "armv7l-linux" ];
-    }
-  ];
 
 }

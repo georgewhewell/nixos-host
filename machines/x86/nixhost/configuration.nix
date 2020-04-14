@@ -19,8 +19,9 @@
       ../../../profiles/uefi-boot.nix
       ../../../profiles/logserver.nix
       ../../../profiles/nas.nix
+      ../../../profiles/logserver.nix
 
-      ../../../services/buildfarm.nix
+      ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
       ../../../services/gogs.nix
       ../../../services/hydra.nix

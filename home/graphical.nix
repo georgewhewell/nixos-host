@@ -13,6 +13,8 @@
   };
 
   home.packages = with pkgs; [
+    wl-clipboard
+
     corefonts
     dejavu_fonts
     ubuntu_font_family

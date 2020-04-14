@@ -43,7 +43,7 @@
     };
     scrapeConfigs = [
       {
-        job_name = "consul_discovery";
+        job_name = "node";
         consul_sd_configs = [{
           server = "localhost:8500";
           datacenter = "dc1";
@@ -55,16 +55,16 @@
         }];
         relabel_configs = [
           {
-            source_labels = ["__meta_consul_service"];
+            source_labels = [];
             regex = "(.*)";
-            target_label = "job";
-            replacement = "$1";
+            target_label = "port";
+            replacement = "9100";
           }
           {
             source_labels = ["__meta_consul_node"];
             regex = "(.*)";
             target_label = "instance";
-            replacement = "$1";
+            replacement = "$1:9100";
           }
         ];
       }

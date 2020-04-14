@@ -1,10 +1,12 @@
-{ lib }: 
+{ lib }:
 
 let
   machines = [
-    "odroid-hc1"
     "bananapi-m3"
+    "nanopi-air"
+    "odroid-hc1"
+    "orangepi-zero"
   ];
 in
-  lib.genAttrs machines 
+  lib.genAttrs machines
     (name: import (./. + "/${name}/configuration.nix"))

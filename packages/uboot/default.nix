@@ -9,4 +9,5 @@
   nanopi-m3-uboot = callPackage ./nanopi-m3/uboot.nix { };
   nanopi-m3 = callPackage ./nanopi-m3 { };
 
+  odroid-hc1 = callPackage ./odroid-hc1 { };
 }
