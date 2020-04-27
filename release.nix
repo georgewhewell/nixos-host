@@ -87,6 +87,8 @@ in {
     (build "x86_64-linux" configuration []).config.system.build.toplevel
   ) x86Machines;
 
+  x86-bootdisk = (build "x86_64-linux" x86Machines.installer []).config.system.build.isoImage;
+
   armv7l = {
     images = pkgs.dontRecurseIntoAttrs pkgs.lib.mapAttrs(name: configuration:
     (build "armv7l-linux" configuration [
