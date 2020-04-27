@@ -84,4 +84,21 @@
       };
   };
 
+  boot.kernelPatches = [
+    {
+      name = "include-symbols";
+      patch = pkgs.writeText "the_patch" ''
+        diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+        index 97547108ee7f..436e60b97264 100644
+        --- a/scripts/Makefile.lib
+        +++ b/scripts/Makefile.lib
+        @@ -264,7 +264,7 @@ DTC_FLAGS += -Wnode_name_chars_strict \
+                -Wproperty_name_chars_strict
+         endif
+
+        -DTC_FLAGS += $(DTC_FLAGS_$(basetarget))
+        +DTC_FLAGS += $(DTC_FLAGS_$(basetarget)) -@
+      '';
+    }
+  ];
 }
