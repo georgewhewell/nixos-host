@@ -12,6 +12,7 @@
   nixpkgs.config.allowUnfree = true;
 
   home.packages = with pkgs; [
+    bat
     pv
     exa
     ripgrep
