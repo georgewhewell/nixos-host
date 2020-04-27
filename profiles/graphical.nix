@@ -138,7 +138,6 @@
 
   hardware.opengl = {
     enable = true;
-    s3tcSupport = true;
     driSupport = true;
     driSupport32Bit = true;
     extraPackages = with pkgs; [ libva ];
