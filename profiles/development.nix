@@ -34,6 +34,7 @@
     pwgen
     jq
 
+    niv
     morph
     nix-prefetch-git
     screen
