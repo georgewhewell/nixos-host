@@ -90,10 +90,10 @@ in {
   x86-bootdisk = (build "x86_64-linux" x86Machines.installer []).config.system.build.isoImage;
 
   armv7l = {
-    images = pkgs.dontRecurseIntoAttrs pkgs.lib.mapAttrs(name: configuration:
-    (build "armv7l-linux" configuration [
-      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
-    ]).config.system.build.sdImage
+    images = pkgs.lib.mapAttrs(name: configuration:
+      (build "armv7l-linux" configuration [
+        <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+      ]).config.system.build.sdImage
     ) armMachines;
     felboot = pkgs.lib.mapAttrs(name: configuration:
       sunxiBoot (build "armv7l-linux" configuration [ felboot ]).config
@@ -102,9 +102,9 @@ in {
 
   armv7lCross = {
     images = pkgs.lib.mapAttrs(name: configuration:
-    (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
-      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
-    ]).config.system.build.sdImage
+      (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
+        <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+      ]).config.system.build.sdImage
     ) armMachines;
     felboot = pkgs.lib.mapAttrs(name: configuration:
       sunxiBoot (buildCross "armv7l-unknown-linux-gnueabihf" configuration [ felboot ]).config

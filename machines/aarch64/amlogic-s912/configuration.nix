@@ -23,8 +23,8 @@
         name = "integ patches";
         patch = pkgs.fetchurl {
           name = "thepatch";
-          url = ''https://github.com/torvalds/linux/compare/v5.7-rc1...chewitt:amlogic-5.7-integ.patch'';
-          sha256 = "17ghb4ii055iyfag7ka6zclh5g9gnbgnrahakbpas5zdviy65s8w";
+          url = ''https://github.com/torvalds/linux/compare/v5.7-rc2...chewitt:amlogic-5.7-integ.patch'';
+          sha256 = "1ssi6n9p3pw9q7d4i9ywq1p5g5cx8f8hd9837dw1hkfcswajys2s";
         };
       }
   ];
@@ -61,7 +61,6 @@
 
   hardware.opengl = {
     enable = true;
-    s3tcSupport = true;
     extraPackages = with pkgs; [ libva libvdpau-va-gl ];
   };
 
