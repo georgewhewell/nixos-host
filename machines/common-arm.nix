@@ -5,18 +5,20 @@
   imports = [
     ../profiles/common.nix
     ../profiles/home.nix
-    /* ../profiles/home-manager.nix */
     ../services/buildfarm-slave.nix
     <nixpkgs/nixos/modules/profiles/minimal.nix>
   ];
 
   boot = {
     cleanTmpDir = true;
-    kernelPackages = lib.mkOverride 50 pkgs.linuxPackages_head;
+    kernelPackages = lib.mkOverride 50 pkgs.linuxPackages_megous;
     kernelParams = [ "boot.shell_on_fail" "panic=20"];
     supportedFilesystems = lib.mkForce [ "vfat" "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "vfat" "ext4" ];
   };
+
+  # sometimes fails to build, dont need
+  programs.bash.enableCompletion = false;
 
   # installation-device.nix disables this stuff- re-enable
   systemd.services.sshd.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
@@ -44,7 +46,7 @@
 
   nix.gc = {
     automatic = true;
-    dates = "weekly";
+    dates = "daily";
   };
 
   systemd.services."lights-off" = let
