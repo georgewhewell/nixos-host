@@ -9,17 +9,10 @@
 
   system.build.dtbName = "sun50i-h5-nanopi-neo2.dtb";
   system.build.ubootDefconfig = "sun50i-h5-ddr3-spl_defconfig";
+
   environment.systemPackages = [
     pkgs.i2c-tools
   ];
-
-  systemd.services.entking = {
-    description = "run entking";
-    script = ''
-      ${pkgs.entking}/bin/entking
-    '';
-    wantedBy = [ "multi-user.target" ];
-  };
 
   networking.firewall.allowedTCPPorts = [ 8000 ];
   hardware.deviceTree = {

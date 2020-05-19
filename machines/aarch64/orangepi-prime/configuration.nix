@@ -15,16 +15,10 @@ in {
     ];
   };
 
-  environment.systemPackages = with pkgs; [
-    gattool
-    miflora-mqtt-daemon
-    (python3.withPackages (ps: [ ps.miflora ps.btlewrap ]))
-  ];
-
   systemd.services.miflora = {
     description = "run miflora";
     script = ''
-      ${miflora-mqtt-daemon}/bin/miflora-mqtt-daemon --config_dir ${miflora_config} 
+      ${miflora-mqtt-daemon}/bin/miflora-mqtt-daemon --config_dir ${miflora_config}
     '';
     wantedBy = [ "multi-user.target" ];
   };

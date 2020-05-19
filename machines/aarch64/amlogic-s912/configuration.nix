@@ -10,7 +10,6 @@
   boot.initrd.availableKernelModules = [ "panfrost" ];
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
-  boot.kernelPackages = pkgs.linuxPackages_head;
   boot.kernelPatches = [
       {
         name = "enable staging";
@@ -36,7 +35,7 @@
   # dont need this- interferes with kodi
   systemd.services."getty@tty1".enable = false;
   systemd.services."autovt@tty1".enable = false;
-  
+
   security.polkit.enable = true;
   services.upower.enable = true;
 

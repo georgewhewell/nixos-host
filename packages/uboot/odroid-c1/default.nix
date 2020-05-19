@@ -12,4 +12,6 @@ rec {
     dd conv=notrunc if=${uboot}/u-boot.bin of=$1 bs=512 seek=64
   '';
 
+  /* sudo mkimage -A arm -O linux -T kernel -C none -a 0x00208000 -e 0x00208000 -n "Linux kernel" -d mnt2/boot/nixos/w2qdinywxa8s3xldlr8yz81ynwr8yv2w-linux-5.7-rc5-zImage uImage */
+  /* sudo mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n uInitrd -d initrd uInitrd*/
 }

@@ -141,9 +141,11 @@ in {
         <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
       ]).config.system.build.sdImage
     ) armMachines;
+    /*
     felboot = pkgs.lib.mapAttrs(name: configuration:
       sunxiBoot (build "armv7l-linux" configuration [ felboot ]).config
-    ) armMachines;
+      ) armMachines;
+      */
   };
 
   armv7lCross = {
@@ -169,9 +171,11 @@ in {
         <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
       ]).config.system.build.sdImage
     ) aarch64Machines;
+    /*
     felboot = pkgs.lib.mapAttrs(name: configuration:
       sunxiBoot64 (buildCross "aarch64-linux" configuration [ felboot ]).config
-    ) aarch64Machines;
+      ) aarch64Machines;
+    */
   };
 
 }
