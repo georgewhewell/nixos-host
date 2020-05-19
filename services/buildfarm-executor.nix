@@ -5,12 +5,6 @@
     distributedBuilds = true;
     buildMachines = [
     {
-        hostName = "/nix/store";
-        supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-        maxJobs = 4;
-        systems = [ "builtin" "x86_64-linux" "i686-linux" ];
-    }
-    {
         hostName = "nixhost.lan";
         sshUser = "root";
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
