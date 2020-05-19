@@ -1,8 +1,9 @@
 { config, lib, pkgs, ... }:
 
 let
-  wanInterface = "eth1";
-  lanInterface = "eth0";
+  wanInterface = "enp1s0";
+  lanInterface = "enp3s0";
+  wlanInterface = "wlan-private";
   vpnInterface = "wg0";
   lanBridge = "br0.lan";
 in {
@@ -24,7 +25,7 @@ in {
         "192.168.23.0/24"
         "192.168.24.0/24"
       ];
-      internalInterfaces = [ lanBridge vpnInterface ];
+      internalInterfaces = [ lanBridge vpnInterface wlanInterface ];
       externalInterface = wanInterface;  # port 1
       forwardPorts = [
         { sourcePort = 80; destination = "192.168.23.5:80"; loopbackIPs = [ "82.12.183.66" ]; }
@@ -38,7 +39,7 @@ in {
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge vpnInterface ];
+      trustedInterfaces = [ lanBridge vpnInterface wlanInterface ];
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = false;
@@ -102,9 +103,9 @@ in {
   };
 
   services.consul.interface = {
-      advertise = lanBridge;
-      bind = lanBridge;
-    };
+    advertise = lanBridge;
+    bind = lanBridge;
+  };
 
   services.miniupnpd = {
     enable = true;
@@ -121,6 +122,17 @@ in {
   };
 
   services.avahi.interfaces = [ lanBridge ];
+
+  services.hostapd = {
+    enable        = false;
+    interface     = wlanInterface;
+    ssid          = "nix";
+    wpa           = false;
+    extraConfig = ''
+      bridge=${lanBridge}
+    '';
+  };
+
   services.dnsmasq = {
     enable = true;
     resolveLocalQueries = true;

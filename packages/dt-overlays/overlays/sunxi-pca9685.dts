@@ -1,0 +1,23 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+  compatible = "allwinner,sun8i-h3";
+
+  fragment@0 {
+    target = <&i2c0>;
+
+    __overlay__ {
+        status = "okay";
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        pca9685-0@40 {
+            compatible = "nxp,pca9685-pwm";
+            reg = <0x40>;
+            status = "okay";
+        };
+    };
+  };
+};

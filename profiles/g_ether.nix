@@ -54,6 +54,8 @@ in {
 
   # Auto-chmod pre-boot devices and trigger bridge job for new interfaces
   services.udev.extraRules = ''
+    SUBSYSTEM=="usb", ATTRS{idVendor}=="13d3", ATTRS{idProduct}=="3404", ATTR{authorized}="0"
+
     # Rename and chown to users
     SUBSYSTEM=="usb", ATTRS{idVendor}=="04e8", ATTRS{idProduct}=="1234", GROUP="users", MODE="0660", SYMLINK+="usb-loader-m3"
     SUBSYSTEM=="usb", ATTRS{idVendor}=="1f3a", ATTRS{idProduct}=="efe8", GROUP="users", MODE="0660", SYMLINK+="sunxi-fel"
@@ -68,8 +70,8 @@ in {
     SUBSYSTEM=="usb", ATTRS{idVendor}=="2109", ATTRS{idProduct}=="2811", GROUP="users", MODE="0660", SYMLINK+="smart-hub"
 
     # platform usb
-    SUBSYSTEM=="net" KERNEL=="enp5s0*u[0-9]", DRIVERS=="rndis_host", \
-      RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
+    SUBSYSTEM=="net" KERNEL=="enp*u[0-9]", DRIVERS=="rndis_host", RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
+    SUBSYSTEM=="net" KERNEL=="enp*u[0-9]", DRIVERS=="cdc_eem", RUN+="${pkgs.systemd}/bin/systemctl --no-block start bridge-rndis@%k.service"
 
   '';
 
@@ -80,6 +82,7 @@ in {
       Type = "simple";
       ExecStartPre = "${pkgs.bridge-utils}/bin/brctl setfd ${bridgeName} 0";
       ExecStart = "${pkgs.stdenv.shell} -c '${pkgs.bridge-utils}/bin/brctl addif ${bridgeName} %I && ${pkgs.iproute}/bin/ip addr add 0.0.0.0 dev %I'";
+      ExecStartPost = "${pkgs.stdenv.shell} -c '${pkgs.inetutils}/bin/ifconfig %I up'";
     };
   };
 

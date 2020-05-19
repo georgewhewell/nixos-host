@@ -58,7 +58,7 @@ let
             pinctrl-0 = <&oled_pins>;
             spi-max-frequency = <10000000>;
             buswidth = <8>;
-            dc-gpios = <&pio 2 7 0>;
+            dc-gpios = <&gpio >;
             #debug = <4>;
             rotate = <0>;
           };
@@ -73,6 +73,33 @@ let
       };
     };
   '';
+  sunxi-nanopi-air-bt = ''
+    /dts-v1/;
+    /plugin/;
+
+    / {
+      compatible = "allwinner,sun8i-h3";
+
+      fragment@0 {
+        target = <&uart3>;
+
+        __overlay__ {
+            pinctrl-names = "default";
+            pinctrl-0 = <&uart3_pins>;
+
+            bluetooth@1 {
+                reg = <1>;
+                compatible = "brcm,bcm43438-bt";
+                max-speed = <1500000>;
+            };
+        };
+      };
+    };
+  '';
+  custom = [
+    ssd1130Overlay
+    sunxi-nanopi-air-bt
+  ];
 in stdenv.mkDerivation {
   name = "sunxi-dt-overlays-${pinnedVersion.rev}";
   src = fetchgit {
@@ -80,15 +107,12 @@ in stdenv.mkDerivation {
   };
 
   nativeBuildInputs = [ dtc ];
-  # Rename DTBs so u-boot finds them, like linux-rpi.nix
 
   buildPhase = ''
     for dts in $(find . -iname '*.dts'); do
       echo -n "Converting $dts";
       dtc -@ $dts -O dtb -o $dts.dtbo && echo ' [Done]';
     done
-    # dtc -@ ${spi-enabled} -O dtb -o spi-enabled.dtbo
-    dtc -@ ${ssd1130Overlay} -O dtb -o ssd1351-spi.dtbo
   '';
 
   installPhase = ''

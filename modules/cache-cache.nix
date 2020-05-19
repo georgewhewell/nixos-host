@@ -100,8 +100,6 @@ in
         forceSSL = true;
         enableACME = true;
         extraConfig = ''
-          access_log stderr;
-          error_log stderr;
           resolver ${cfg.resolver} valid=10s ipv6=off;
           set $upstream_endpoint http://cache.nixos.org;
         '';

@@ -10,4 +10,5 @@
   nanopi-m3 = callPackage ./nanopi-m3 { };
 
   odroid-hc1 = callPackage ./odroid-hc1 { };
+  odroid-c1 = callPackage ./odroid-c1 { };
 }

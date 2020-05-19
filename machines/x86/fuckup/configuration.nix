@@ -23,6 +23,7 @@
       ../../../services/virt/host.nix
       ../../../services/virt/vfio.nix
     ];
+    services.home-assistant.enable = true;
 
   fileSystems."/" =
     { device = "zpool/root/nixos-fuckup";

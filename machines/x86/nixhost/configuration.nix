@@ -9,7 +9,7 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-      ../../../containers/unifi.nix
+       /* ../../../containers/unifi.nix */
 
       ../../../profiles/automation.nix
       ../../../profiles/common.nix

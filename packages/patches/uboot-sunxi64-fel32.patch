@@ -1,0 +1,333 @@
+diff --git a/Makefile b/Makefile
+index 7c2067f35e..7c73509c8a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1290,15 +1290,21 @@ $(U_BOOT_ITS): $(U_BOOT_ITS_DEPS) FORCE
+ endif
+ endif
+ 
++ifeq ($(CPU),armv8)
++IH_ARCH := arm64
++else
++IH_ARCH := $(ARCH)
++endif
++
+ ifdef CONFIG_SPL_LOAD_FIT
+-MKIMAGEFLAGS_u-boot.img = -f auto -A $(ARCH) -T firmware -C none -O u-boot \
++MKIMAGEFLAGS_u-boot.img = -f auto -A $(IH_ARCH) -T firmware -C none -O u-boot \
+ 	-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_UBOOT_START) \
+ 	-p $(CONFIG_FIT_EXTERNAL_OFFSET) \
+ 	-n "U-Boot $(UBOOTRELEASE) for $(BOARD) board" -E \
+ 	$(patsubst %,-b arch/$(ARCH)/dts/%.dtb,$(subst ",,$(CONFIG_OF_LIST))) \
+ 	$(patsubst %,-b arch/$(ARCH)/dts/%.dtbo,$(subst ",,$(CONFIG_OF_OVERLAY_LIST)))
+ else
+-MKIMAGEFLAGS_u-boot.img = -A $(ARCH) -T firmware -C none -O u-boot \
++MKIMAGEFLAGS_u-boot.img = -A $(IH_ARCH) -T firmware -C none -O u-boot \
+ 	-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_UBOOT_START) \
+ 	-n "U-Boot $(UBOOTRELEASE) for $(BOARD) board"
+ MKIMAGEFLAGS_u-boot-ivt.img = -A $(ARCH) -T firmware_ivt -C none -O u-boot \
+@@ -1554,7 +1560,7 @@ u-boot-x86-reset16.bin: u-boot FORCE
+ endif
+ 
+ ifneq ($(CONFIG_ARCH_SUNXI),)
+-ifeq ($(CONFIG_ARM64),)
++ifeq ($(CONFIG_SPL_FIT_SOURCE)$(CONFIG_SPL_FIT_GENERATOR),)
+ u-boot-sunxi-with-spl.bin: spl/sunxi-spl.bin u-boot.img u-boot.dtb FORCE
+ 	$(call if_changed,binman)
+ else
+diff --git a/arch/arm/lib/spl.c b/arch/arm/lib/spl.c
+index 33cc76ba3d..4d9370d232 100644
+--- a/arch/arm/lib/spl.c
++++ b/arch/arm/lib/spl.c
+@@ -73,3 +73,17 @@ void __noreturn jump_to_image_linux(struct spl_image_info *spl_image)
+ }
+ #endif	/* CONFIG_ARM64 */
+ #endif
++
++u8 spl_genimg_get_arch_id(const char *arch_str)
++{
++	if (!arch_str)
++		return IH_ARCH_DEFAULT;
++
++	if (!strcmp(arch_str, "arm"))
++		return IH_ARCH_ARM;
++
++	if (!strcmp(arch_str, "arm64"))
++		return IH_ARCH_ARM64;
++
++	return IH_ARCH_DEFAULT;
++}
+diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+index be0822bfb7..616849de60 100644
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -146,6 +146,10 @@ config SUNXI_DRAM_MAX_SIZE
+ 	default 0xC0000000 if MACH_SUN50I || MACH_SUN50I_H5 || MACH_SUN50I_H6
+ 	default 0x80000000
+ 
++config SUNXI_ARMV8_32BIT_BUILD
++	bool "Build 32-bit binaries for ARMv8 SoCs"
++	default n
++
+ choice
+ 	prompt "Sunxi SoC Variant"
+ 	optional
+@@ -275,8 +279,9 @@ config MACH_SUN9I
+ 
+ config MACH_SUN50I
+ 	bool "sun50i (Allwinner A64)"
+-	select ARM64
+ 	select SPI
++	select ARM64 if !SUNXI_ARMV8_32BIT_BUILD
++	select CPU_V7A if SUNXI_ARMV8_32BIT_BUILD
+ 	select DM_I2C
+ 	select DM_SPI if SPI
+ 	select DM_SPI_FLASH
+@@ -294,14 +299,16 @@ config MACH_SUN50I
+ 
+ config MACH_SUN50I_H5
+ 	bool "sun50i (Allwinner H5)"
+-	select ARM64
++	select ARM64 if !SUNXI_ARMV8_32BIT_BUILD
++	select CPU_V7A if SUNXI_ARMV8_32BIT_BUILD
+ 	select MACH_SUNXI_H3_H5
+ 	select FIT
+ 	select SPL_LOAD_FIT
+ 
+ config MACH_SUN50I_H6
+ 	bool "sun50i (Allwinner H6)"
+-	select ARM64
++	select ARM64 if !SUNXI_ARMV8_32BIT_BUILD
++	select CPU_V7A if SUNXI_ARMV8_32BIT_BUILD
+ 	select SUPPORT_SPL
+ 	select FIT
+ 	select PHY_SUN4I_USB
+diff --git a/arch/arm/mach-sunxi/Makefile b/arch/arm/mach-sunxi/Makefile
+index d129f33479..21ee7e3c15 100644
+--- a/arch/arm/mach-sunxi/Makefile
++++ b/arch/arm/mach-sunxi/Makefile
+@@ -40,4 +40,7 @@ obj-$(CONFIG_SUNXI_DRAM_DW)	+= dram_sunxi_dw.o
+ obj-$(CONFIG_SUNXI_DRAM_DW)	+= dram_timings/
+ obj-$(CONFIG_DRAM_SUN50I_H6)	+= dram_sun50i_h6.o
+ obj-$(CONFIG_DRAM_SUN50I_H6)	+= dram_timings/
++obj-$(CONFIG_MACH_SUN50I)	+= spl_switch.o
++obj-$(CONFIG_MACH_SUN50I_H5)	+= spl_switch.o
++obj-$(CONFIG_MACH_SUN50I_H6)	+= spl_switch.o
+ endif
+diff --git a/arch/arm/mach-sunxi/spl_switch.c b/arch/arm/mach-sunxi/spl_switch.c
+new file mode 100644
+index 0000000000..1de43c2396
+--- /dev/null
++++ b/arch/arm/mach-sunxi/spl_switch.c
+@@ -0,0 +1,64 @@
++/*
++ * (C) Copyright 2016 ARM Ltd.
++ *
++ * SPDX-License-Identifier:     GPL-2.0+
++ */
++
++#include <common.h>
++#include <spl.h>
++
++#include <asm/io.h>
++#include <asm/barriers.h>
++
++static void __noreturn jump_to_image_native(struct spl_image_info *spl_image)
++{
++	typedef void __noreturn (*image_entry_noargs_t)(void);
++
++	image_entry_noargs_t image_entry =
++				(image_entry_noargs_t)spl_image->entry_point;
++
++	image_entry();
++}
++
++static void __noreturn reset_rmr_switch(void)
++{
++#ifdef CONFIG_ARM64
++	__asm__ volatile ( "mrs	 x0, RMR_EL3\n\t"
++			   "bic  x0, x0, #1\n\t"   /* Clear enter-in-64 bit */
++			   "orr  x0, x0, #2\n\t"   /* set reset request bit */
++			   "msr  RMR_EL3, x0\n\t"
++			   "isb  sy\n\t"
++			   "nop\n\t"
++			   "wfi\n\t"
++			   "b    .\n"
++			   ::: "x0");
++#else
++	__asm__ volatile ( "mrc  15, 0, r0, cr12, cr0, 2\n\t"
++			   "orr  r0, r0, #3\n\t"   /* request reset in 64 bit */
++			   "mcr  15, 0, r0, cr12, cr0, 2\n\t"
++			   "isb\n\t"
++			   "nop\n\t"
++			   "wfi\n\t"
++			   "b    .\n"
++			   ::: "r0");
++#endif
++	while (1);	/* to avoid a compiler warning about __noreturn */
++}
++
++void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
++{
++	if (spl_image->arch == IH_ARCH_DEFAULT) {
++		debug("entering by branch\n");
++		jump_to_image_native(spl_image);
++	} else {
++		debug("entering by RMR switch\n");
++#ifdef CONFIG_MACH_SUN50I_H6
++		writel(spl_image->entry_point, 0x09010040);
++#else
++		writel(spl_image->entry_point, 0x017000a0);
++#endif
++		DSB;
++		ISB;
++		reset_rmr_switch();
++	}
++}
+diff --git a/common/spl/spl.c b/common/spl/spl.c
+index 932e6ab98a..e0ad0d48b6 100644
+--- a/common/spl/spl.c
++++ b/common/spl/spl.c
+@@ -300,6 +300,7 @@ int spl_parse_image_header(struct spl_image_info *spl_image,
+ #endif
+ 
+ 		spl_image->os = image_get_os(header);
++		spl_image->arch = image_get_arch(header);
+ 		spl_image->name = image_get_name(header);
+ 		debug(SPL_TPL_PROMPT
+ 		      "payload image: %32s load addr: 0x%lx size: %d\n",
+diff --git a/common/spl/spl_fit.c b/common/spl/spl_fit.c
+index 69dabd27f6..d6fcd2e29c 100644
+--- a/common/spl/spl_fit.c
++++ b/common/spl/spl_fit.c
+@@ -480,6 +480,10 @@ __weak bool spl_load_simple_fit_skip_processing(void)
+ {
+ 	return false;
+ }
++__weak u8 spl_genimg_get_arch_id(const char *arch_str)
++{
++	return IH_ARCH_DEFAULT;
++}
+ 
+ int spl_load_simple_fit(struct spl_image_info *spl_image,
+ 			struct spl_load_info *info, ulong sector, void *fit)
+@@ -493,6 +497,7 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
+ 	int base_offset, hsize, align_len = ARCH_DMA_MINALIGN - 1;
+ 	int index = 0;
+ 	int firmware_node;
++	const char *arch_str;
+ 
+ 	/*
+ 	 * For FIT with external data, figure out where the external images
+@@ -613,6 +618,8 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
+ 	else
+ 		spl_image->os = IH_OS_U_BOOT;
+ #endif
++	arch_str = fdt_getprop(fit, node, "arch", NULL);
++	spl_image->arch = spl_genimg_get_arch_id(arch_str);
+ 
+ 	/*
+ 	 * Booting a next-stage U-Boot may require us to append the FDT.
+diff --git a/configs/sun50i-a64-ddr3-spl_defconfig b/configs/sun50i-a64-ddr3-spl_defconfig
+new file mode 100644
+index 0000000000..fda15e2491
+--- /dev/null
++++ b/configs/sun50i-a64-ddr3-spl_defconfig
+@@ -0,0 +1,13 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN50I=y
++CONFIG_SUNXI_ARMV8_32BIT_BUILD=y
++CONFIG_NR_DRAM_BANKS=1
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++# CONFIG_CMD_FLASH is not set
++# CONFIG_SPL_DOS_PARTITION is not set
++# CONFIG_SPL_EFI_PARTITION is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun50i-a64-pine64-plus"
++CONFIG_SPL_SPI_SUNXI=y
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
+diff --git a/configs/sun50i-a64-lpddr3-spl_defconfig b/configs/sun50i-a64-lpddr3-spl_defconfig
+new file mode 100644
+index 0000000000..20bc376cbd
+--- /dev/null
++++ b/configs/sun50i-a64-lpddr3-spl_defconfig
+@@ -0,0 +1,17 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN50I=y
++CONFIG_SUNXI_ARMV8_32BIT_BUILD=y
++CONFIG_SUNXI_DRAM_LPDDR3_STOCK=y
++CONFIG_DRAM_CLK=552
++CONFIG_DRAM_ZQ=3881949
++CONFIG_NR_DRAM_BANKS=1
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++# CONFIG_CMD_FLASH is not set
++# CONFIG_SPL_DOS_PARTITION is not set
++# CONFIG_SPL_EFI_PARTITION is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun50i-a64-pine64-lts"
++CONFIG_MMC0_CD_PIN=""
++CONFIG_SPL_SPI_SUNXI=y
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
+diff --git a/configs/sun50i-h5-ddr3-spl_defconfig b/configs/sun50i-h5-ddr3-spl_defconfig
+new file mode 100644
+index 0000000000..7b720e2fc5
+--- /dev/null
++++ b/configs/sun50i-h5-ddr3-spl_defconfig
+@@ -0,0 +1,16 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN50I_H5=y
++CONFIG_SUNXI_ARMV8_32BIT_BUILD=y
++CONFIG_DRAM_CLK=672
++CONFIG_DRAM_ZQ=3881977
++CONFIG_SPL_SPI_SUNXI=y
++CONFIG_NR_DRAM_BANKS=1
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++# CONFIG_CMD_FLASH is not set
++# CONFIG_SPL_DOS_PARTITION is not set
++# CONFIG_SPL_EFI_PARTITION is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun50i-h5-orangepi-pc2"
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
+diff --git a/configs/sun50i-h6-lpddr3-spl_defconfig b/configs/sun50i-h6-lpddr3-spl_defconfig
+new file mode 100644
+index 0000000000..8480d027a5
+--- /dev/null
++++ b/configs/sun50i-h6-lpddr3-spl_defconfig
+@@ -0,0 +1,12 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SUNXI=y
++CONFIG_SPL=y
++CONFIG_MACH_SUN50I_H6=y
++CONFIG_SUNXI_ARMV8_32BIT_BUILD=y
++CONFIG_MMC_SUNXI_SLOT_EXTRA=2
++CONFIG_NR_DRAM_BANKS=1
++# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
++# CONFIG_CMD_FLASH is not set
++# CONFIG_SPL_DOS_PARTITION is not set
++# CONFIG_SPL_EFI_PARTITION is not set
++CONFIG_DEFAULT_DEVICE_TREE="sun50i-h6-pine-h64"
+diff --git a/include/spl.h b/include/spl.h
+index 6087cd793c..df4ebe8923 100644
+--- a/include/spl.h
++++ b/include/spl.h
+@@ -130,7 +130,6 @@ static inline enum u_boot_phase spl_phase(void)
+ 
+ struct spl_image_info {
+ 	const char *name;
+-	u8 os;
+ 	uintptr_t load_addr;
+ 	uintptr_t entry_point;
+ #if CONFIG_IS_ENABLED(LOAD_FIT) || CONFIG_IS_ENABLED(LOAD_FIT_FULL)
+@@ -145,6 +144,8 @@ struct spl_image_info {
+ 	ulong dcrc_length;
+ 	ulong dcrc;
+ #endif
++	u8 os;
++	u8 arch;
+ };
+ 
+ /*

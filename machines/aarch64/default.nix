@@ -1,9 +1,10 @@
-{ lib }: 
+{ lib }:
 
 let
   machines = [
     "odroid-c2"
-    "orangepi-pc2"
+    "nanopi-neo2"
+    "orangepi-prime"
     "rock64"
     "tvheadend"
     "router"

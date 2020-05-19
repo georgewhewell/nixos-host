@@ -11,6 +11,10 @@
 
   systemd.user.services.waybar.unitConfig.wants = [ "sway.service" ];
 
+  services.ofono = {
+    enable = true;
+  };
+
   environment.systemPackages = with pkgs; [
     # save settings
     gnome3.dconf
@@ -24,12 +28,15 @@
     pavucontrol
     pamixer
 
-    torbrowser
-    monero-gui
+    #torbrowser
+    #monero-gui
+
+    steam
+    discord
 
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
-      
+
       # kill weird less vars
       unset LESS_TERMCAP_so
       unset LESS_TERMCAP_se
@@ -81,26 +88,25 @@
 
   hardware.bluetooth = {
     enable = true;
+    #package = pkgs.pulseaudioFull;
     config = {
       General = {
+        ControllerMode = "bredr";
         Enable = "Source,Sink,Media,Socket";
       };
     };
   };
 
   users.users.pulse.extraGroups = [ "lp" ];
+  services.blueman.enable = true;
   hardware.pulseaudio = {
     enable = true;
+    package = pkgs.pulseaudioFull;
     extraModules = [ pkgs.pulseaudio-modules-bt ];
     support32Bit = true;
-    systemWide = true;
     extraConfig = ''
-      # stop switching to HDMI output after resume
-      unload-module module-switch-on-port-available
-
       # make bluetooth work?
-      load-module module-bluetooth-policy
-      load-module module-bluetooth-discover
+      load-module module-bluetooth-policy auto_switch=2
     '';
   };
 
