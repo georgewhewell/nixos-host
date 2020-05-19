@@ -37,7 +37,7 @@
     })
   ];
 
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_megous;
 
   # takes ages
   security.polkit.enable = lib.mkForce false;
