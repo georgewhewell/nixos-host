@@ -64,22 +64,51 @@ index 385faed097..fc87233691 100644
  {
  	uint32_t *buf = (uint32_t *)data;
  	while(longlen--)
-diff --git a/include/configs/hardkernel/odroidc.h b/include/configs/hardkernel/odroidc.h
-index 93851f06d3..ae46e02e7b 100644
---- a/include/configs/hardkernel/odroidc.h
-+++ b/include/configs/hardkernel/odroidc.h
-@@ -117,6 +117,11 @@
- #define XMK_STR(x)      #x
- #define MK_STR(x)       XMK_STR(x)
+diff --git a/board/amlogic/configs/m8b_m201_v1.h b/board/amlogic/configs/m8b_m201_v1.h
+index d0aae1cfe3..b76810b840 100644
+--- a/board/amlogic/configs/m8b_m201_v1.h
++++ b/board/amlogic/configs/m8b_m201_v1.h
+@@ -71,6 +71,7 @@
+ #define CONFIG_IR_REMOTE 1
+ #define CONFIG_L2_OFF	 1
  
-+#include <config_distro_defaults.h>
-+#define BOOT_TARGET_DEVICES(func) \
-+	func(MMC, mmc, 1)
-+#include <config_distro_bootcmd.h>
-+
- #ifdef CONFIG_ODROIDC_REV2
- #define CONFIG_EXTRA_ENV_SETTINGS \
-         "boardname=ODROIDC\0" \
++#define CONFIG_SUPPORT_RAW_INITRD 1
+ #define CONFIG_CMD_NET   1
+ #if defined(CONFIG_CMD_NET)
+ 	#define CONFIG_AML_ETHERNET 1
+diff --git a/common/image.c b/common/image.c
+index 488d7525c3..74ca5f5ad3 100644
+--- a/common/image.c
++++ b/common/image.c
+@@ -785,6 +785,7 @@ int boot_get_ramdisk (int argc, char * const argv[], bootm_headers_t *images,
+ 	ulong rd_addr, rd_load;
+ 	ulong rd_data, rd_len;
+ 	const image_header_t *rd_hdr;
++	char *end;
+ #if defined(CONFIG_FIT)
+ 	void		*fit_hdr;
+ 	const char	*fit_uname_config = NULL;
+@@ -969,9 +970,17 @@ int boot_get_ramdisk (int argc, char * const argv[], bootm_headers_t *images,
+ 			break;
+ #endif
+ 		default:
+-			puts ("Wrong Ramdisk Image Format\n");
+-			rd_data = rd_len = rd_load = 0;
+-			return 1;
++#ifdef CONFIG_SUPPORT_RAW_INITRD
++			if (argc >= 3 && (end = strchr(argv[2], ':'))) {
++				rd_len = simple_strtoul(++end, NULL, 16);
++				rd_data = rd_addr;
++			} else
++#endif
++			{
++				puts ("Wrong Ramdisk Image Format\n");
++				rd_data = rd_len = rd_load = 0;
++				return 1;
++			}
+ 		}
+ 
+ #if defined(CONFIG_B2) || defined(CONFIG_EVB4510) || defined(CONFIG_ARMADILLO)
 diff --git a/include/linux/compiler-gcc.h b/include/linux/compiler-gcc.h
 index 73dcf804bc..ad6627787c 100644
 --- a/include/linux/compiler-gcc.h
