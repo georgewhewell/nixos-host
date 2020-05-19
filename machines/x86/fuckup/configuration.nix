@@ -117,4 +117,13 @@
     };
   };
 
+  nix = {
+    # hydra doesnt like /nix/store in buildfarm-executor so add it here
+    buildMachines = [{
+        hostName = "/nix/store";
+        supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+        maxJobs = 4;
+        systems = [ "builtin" "x86_64-linux" "i686-linux" ];
+    }];
+  };
 }
