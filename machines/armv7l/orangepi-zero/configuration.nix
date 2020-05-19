@@ -4,7 +4,7 @@
 
   networking.hostName = "orangepi-zero";
 
-  hardware.firmware = with pkgs; [ armbian-firmware ];
+  hardware.firmware = with pkgs; lib.mkForce [ armbian-firmware ];
 
   boot.initrd.availableKernelModules = [ "sunxi" "wire" "nfs" ];
 

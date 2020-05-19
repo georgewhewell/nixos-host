@@ -6,8 +6,8 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "armbian";
     repo = "firmware";
-    rev = "1a4a517070a784dac0f9a42ce192fc92cd082c47";
-    sha256 = "172g29sb61q80nf1b75wmpp490fyrzx87i5la5mkl7xq0bmp2s87";
+    rev = "9258bc72597ee6a72a4001bf35c34299cea15af3";
+    sha256 = "1f7hyp7bxp82q23nb8pdnd5fsyski96xsmhyq2d8vyy5n9ns0s4v";
   };
 
   phases = [ "unpackPhase" "installPhase" ];
@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = {
-    description = "friendlyarm firmware files for AP6212 ";
+    description = "armbian firmware files";
     maintainers = [ stdenv.lib.maintainers.georgewhewell ];
     /*platforms = [ stdenv.lib.platforms.all ];*/
   };

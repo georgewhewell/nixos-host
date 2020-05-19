@@ -3,3 +3,6 @@
 *.DS_Store
 *.swp
 .nfs*
+*.pyc
+*.pyo
+.mypy_cache

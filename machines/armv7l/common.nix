@@ -1,12 +1,51 @@
 { config, lib, pkgs, ... }:
 
 {
+  imports = [
+    ../common-arm.nix
+  ];
+
+  nixpkgs.overlays = [
+    (self: super: {
+        bluez = (let
+          python3_ = super.python3.override {
+            packageOverrides = python-self: python-super: {
+              pygobject3 = python-super.pygobject3.overrideAttrs (oldAttrs: {
+                propagatedBuildInputs = [];
+                PYGOBJECT_WITHOUT_PYCAIRO = 1;
+                mesonFlags = oldAttrs.mesonFlags ++ [
+                  "-Dpycairo=false"
+                ];
+              });
+            };
+          };
+        in
+          (super.bluez.override({
+            python3 = python3_;
+            libical = super.libical.overrideAttrs(o: {
+              doInstallCheck = false;
+            });
+          })).overrideAttrs(o: {
+            patches = [
+              (super.fetchurl {
+                url = "https://raw.githubusercontent.com/OpenELEC/OpenELEC.tv/6b9e7aaba7b3f1e7b69c8deb1558ef652dd5b82d/packages/network/bluez/patches/bluez-07-broadcom-dont-set-speed-before-loading.patch";
+                sha256 = "1qgihk1vbwn5msk9rj7xwybcn0kwd0pzq7sh2vljgkng5ixxxff3";
+              })
+            ];
+          })
+        );
+    })
+  ];
+
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
+
   # takes ages
   security.polkit.enable = lib.mkForce false;
   services.udisks2.enable = lib.mkForce false;
 
+  services.mingetty.autologinUser = lib.mkForce "grw";
   # sd card image must be <2gb
-  # environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd zsh ];
+#  environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd ];
 
   boot.kernelPatches = [
     {

@@ -5,14 +5,14 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
-    
+
     screen
     wget
     rsync
     gitAndTools.gitFull
 
     xz
-    p7zip
+    unar 
     unzip
     unrar
 

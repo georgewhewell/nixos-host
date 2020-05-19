@@ -13,6 +13,51 @@ self: super:
     };
   });
 
+  linuxPackages_megous = super.linuxPackagesFor (super.linux_testing.override {
+    argsOverride = rec {
+      src = super.fetchFromGitHub {
+        owner = "megous";
+        repo = "linux";
+        rev = "orange-pi-5.7";
+        sha256 = "0a4hfz5j6djyp99k68afafhrdy6v049v472iz02qx8gjjhj04mvm";
+      };
+      version = "5.7-rc5";
+      modDirVersion = "5.7.0-rc5";
+    };
+  });
+  
+  _pulseaudio = super.pulseaudio.overrideAttrs(old: {
+    patches = [
+      ./pulseaudio.patch
+    ];
+  });
+
+  gattool = super.bluez.overrideAttrs (
+    old: {
+      name = "gattool";
+      configureFlags = (old.configureFlags or []) ++ [ "--enable-deprecated" ];
+      makeFlags = [ "attrib/gatttool" ];
+      doCheck = false;
+      outputs = [ "out" ];
+      installPhase = ''
+        install -D attrib/gatttool $out/bin/gatttool
+      '';
+    }
+  );
+
+  linuxPackages_megous_5_6 = super.linuxPackagesFor (super.linux_testing.override {
+    argsOverride = rec {
+      src = super.fetchFromGitHub {
+        owner = "megous";
+        repo = "linux";
+        rev = "orange-pi-5.6";
+    	  sha256 = "0hvcndbrkmaqdydyvlxvwkxb28vl0js98zhd52r0d397lzck5fp1";
+      };
+      version = "5.6.5";
+      modDirVersion = "5.6.5";
+    };
+  });
+
   # broken; stops hydra build
   darcs = null;
 
@@ -25,8 +70,6 @@ self: super:
       '';
 
   });
-
-  steam = null;
 
   waybar = super.waybar.override { pulseSupport = true; };
 
@@ -80,7 +123,10 @@ self: super:
       sha256 = "005cma0nm5mwdb4wn8n4351n93d0b1p4y2bssrfj9fjvba7fl5q1";
     };
     nativeBuildInputs = old.nativeBuildInputs ++ [ super.git ];
+    patches = [
+      ../packages/patches/sunxi-fel-disablecrc.patch
+    ];
   });
 
   # Append local packages
-} // (import ../packages { pkgs = super; })
+} // (import ../packages { inherit super; })

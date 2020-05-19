@@ -1,7 +1,7 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  systemd.services."container@plex".requires = [ "mnt-Media.mount" ];
+  systemd.services."container@plex".unitConfig.RequiresMountsFor = [ "/mnt/Media" ];
 
   containers.plex = {
     autoStart = true;

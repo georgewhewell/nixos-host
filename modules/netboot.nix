@@ -49,11 +49,15 @@ in
             neededForBoot = true;
           };
 
-        boot.initrd.availableKernelModules = [ "nfs" ];
+        boot.initrd.availableKernelModules = [ "nfsv4" ];
 
-        boot.initrd.network = {
+        usb-gadget = {
+          enable = true;
+          initrdDHCP = true;
+        };
+        /* boot.initrd.network = {
           enable = true;
           flushBeforeStage2 = false;
-        };
+        }; */
       };
 }

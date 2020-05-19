@@ -31,12 +31,14 @@
     '';
   };
 
-  blind-engine.enable = true;
-
-  # deCONZ
-  environment.systemPackages = with pkgs; [
-    deCONZ.deCONZ
-  ];
+  systemd.services.am43-ctrl = {
+    description = "blind controller";
+    after = [ "network.target" ];
+    wantedBy = ["multi-user.target"];
+    serviceConfig.ExecStart = ''
+      ${pkgs.am43-ctrl}/bin/am43ctrl --mqtt-url mqtt://rw:thepassword@nixhost.lan 02:c4:da:36:73:79 02:be:75:37:b6:0a
+    '';
+  };
 
   services.udev.extraRules = ''
     SUBSYSTEM==“tty”, ATTRS{idVendor}==“0658”, ATTRS{idProduct}==“0200”, SYMLINK+=“zwave”
@@ -56,7 +58,7 @@
     wantedBy = [ "multi-user.target" ];
     stopIfChanged = false;
     serviceConfig = {
-      ExecStart = "${pkgs.deCONZ.deCONZ}/bin/deCONZ -platform minimal";
+      ExecStart = "${pkgs.deCONZ.deCONZ}/bin/deCONZ -platform minimal --ws-port=8081";
       ExecReload = "${pkgs.coreutils}/bin/kill -HUP $MAINPID";
       Restart = "always";
       RestartSec = "10s";
@@ -65,21 +67,40 @@
     };
   };
 
-  users.extraUsers."hass".extraGroups = [ "dialout" ];
+  services.mosquitto = {
+    enable = true;
+    host = "0.0.0.0";
+    users = {
+      "rw" = {
+        acl = [ "topic readwrite #" ];
+        password = "thepassword";
+      };
+    };
+  };
 
+  networking.firewall.allowedTCPPorts = [ 1883 8081 ];
+  networking.firewall.allowedUDPPorts = [ 1883 ];
+
+  services.influxdb = {
+    enable = true;
+  };
+
+  users.extraUsers."hass".extraGroups = [ "dialout" ];
   services.home-assistant = {
     enable = true;
     openFirewall = true;
     # configWritable = true;
-    
+    package = pkgs.home-assistant.override {
+      extraPackages = ps: with ps; [ cryptography hass-nabucasa ];
+    };
     config = {
       homeassistant = {
         name = "Home";
-	latitude = "2.87336";
-	longitude = "117.22743";
-	elevation = "100";
-	unit_system = "metric";
-	time_zone = "America/Los_Angeles";
+      	latitude = "51.5074";
+      	longitude = "0.1278";
+      	elevation = "20";
+      	unit_system = "metric";
+      	time_zone = "Europe/London";
       };
       http = {
         server_host = "0.0.0.0";
@@ -88,6 +109,7 @@
         use_x_forwarded_for = true;
         trusted_proxies = [ "127.0.0.1" ];
       };
+      mobile_app = {};
       frontend = {};
       history = {};
       config = {};
@@ -95,17 +117,32 @@
         host = "127.0.0.1";
         port = "8080";
       };
-      media_player = [
-        {
-          platform = "spotify";
-          client_id = "5b3bb394c98643ff87d7bf60652b7dd2";
-          client_secret = "6bf4008fadc34c50aefb5c179e9593c6";
-          aliases = {
-
-          };
-        }
-      ];
+      influxdb = {};
+      mqtt = {
+        broker = "nixhost.lan";
+        username = "rw";
+        password = "thepassword";
+        discovery = true;
       };
+      cover = [];
+      esphome = {};
+      media_player = [];
+      plant =
+          let mkPlant = name: {
+           sensors = {
+             moisture = "sensor.${name}_moisture";
+             battery = "sensor.${name}_battery";
+             temperature = "sensor.${name}_temperature";
+             conductivity = "sensor.${name}_conductivity";
+             brightness = "sensor.${name}_light";
+           };
+      }; in {
+        poppies = mkPlant "poppies";
+        strawberries = mkPlant "strawberries";
+        nectarine = mkPlant "nectarine";
+        lettuce = mkPlant "lettuce";
+      };
+    };
   };
 
   services.nginx.virtualHosts."home.satanic.link" = {

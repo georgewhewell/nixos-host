@@ -50,7 +50,7 @@
     conflicts = [ "getty@tty1.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.kodi-gbm}/bin/kodi-standalone";
+      ExecStart = "${pkgs.hello}/bin/kodi-standalone";
       StandardInput = "tty";
       StandardOutput = "tty";
       TTYPath = "/dev/tty1";

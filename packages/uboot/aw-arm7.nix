@@ -16,6 +16,14 @@ let
     pkgs.pkgsCross.armv7l-hf-multiplatform.buildUBoot {
       inherit src version defconfig;
       extraPatches = [
+        (pkgs.fetchurl {
+          url = "https://raw.githubusercontent.com/armbian/build/master/patch/u-boot/u-boot-sunxi/h3-Fix-PLL1-setup-to-never-use-dividers.patch";
+          sha256 = "11spjq29d7hqxkpni8db72jblxvpa6jc8aw4hkf0aykf97f14bjd";
+        })
+        (pkgs.fetchurl {
+          url = "https://raw.githubusercontent.com/armbian/build/master/patch/u-boot/u-boot-sunxi/add-nanopi-duo.patch";
+          sha256 = "19wiri7hxv6r3g3z3a55hywz63d4p7n9kj3hw7yhlgqjhxnprd3d";
+        })
         (pkgs.writeText "patch"''
           --- a/arch/arm/dts/sun8i-h3-nanopi-neo-air.dts
           +++ b/arch/arm/dts/sun8i-h3-nanopi-neo-air.dts

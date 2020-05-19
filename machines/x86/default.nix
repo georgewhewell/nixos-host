@@ -1,4 +1,4 @@
-{ lib }: 
+{ lib }:
 
 let
   machines = [
@@ -7,6 +7,7 @@ let
     "nixhost"
     "installer"
     "workvm"
+    "router"
   ];
 in
   lib.genAttrs machines (name:

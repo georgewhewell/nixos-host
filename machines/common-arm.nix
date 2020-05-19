@@ -11,10 +11,9 @@
 
   boot = {
     cleanTmpDir = true;
-    kernelPackages = lib.mkOverride 50 pkgs.linuxPackages_megous;
     kernelParams = [ "boot.shell_on_fail" "panic=20"];
-    supportedFilesystems = lib.mkForce [ "vfat" "nfs" ];
-    initrd.supportedFilesystems = lib.mkForce [ "vfat" "ext4" ];
+    supportedFilesystems = lib.mkForce [ ];
+    initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
 
   # sometimes fails to build, dont need
