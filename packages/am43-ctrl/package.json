@@ -1,0 +1,45 @@
+{
+  "name": "am43-ctrl",
+  "version": "0.2.0",
+  "description": "Control an AM43 Blinds Engine by HTTP or MQTT",
+  "main": "index.js",
+  "bin": {
+    "am43ctrl": "index.js"
+  },
+  "scripts": {
+    "test": "echo \"No tests currently\"",
+    "lint": "./node_modules/.bin/eslint index.js src/*.js"
+  },
+  "author": "binsentsu",
+  "license": "MIT",
+  "keywords": [
+    "am43",
+    "A-OK",
+    "btle",
+    "bluetooth",
+    "mqtt",
+    "homeassistant"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/binsentsu/am43-ctrl"
+  },
+  "bugs": {
+    "url": "https://github.com/binsentsu/am43-ctrl"
+  },
+  "homepage": "https://github.com/binsentsu/am43-ctrl#readme",
+  "engines": {
+    "node": ">=10.16.0 <13.0"
+  },
+  "dependencies": {
+    "debug": "^4.0.1",
+    "express": "^4.16.3",
+    "mqtt": "^2.18.2",
+    "@abandonware/noble": "^1.9.2-5",
+    "readline-sync": "^1.4.9",
+    "yargs": "^13.2.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.1.0"
+  }
+}
