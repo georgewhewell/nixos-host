@@ -2,6 +2,7 @@
 
 {
   networking.hostName = "odroid-hc1";
+  nix.buildCores = 7;
 
   boot.kernelPatches = [
     {

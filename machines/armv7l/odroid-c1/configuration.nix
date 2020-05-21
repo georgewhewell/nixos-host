@@ -8,6 +8,8 @@
     ../common.nix
   ];
 
+  boot.kernelParams = [ "boot.shell_on_fail" "console=ttyAML0,115200" "earlyprintk=serial,ttyAML0,115200" ];
+
   boot.kernelPackages = lib.mkForce (pkgs.linuxPackagesFor (pkgs.linux_testing.override {
     argsOverride = rec {
       src = pkgs.fetchFromGitHub {
@@ -30,13 +32,6 @@
     '';
   }]; 
 
-  /*
-  system.build.installBootLoader = ''
-    ${pkgs.ubootTools}/bin/mkimage -A arm -O linux -T kernel -C none -a 0x00208000 -e 0x00208000 -n "Linux kernel" -d ${config.system.build.kernel}/zImage boot/uImage
-    ${pkgs.ubootTools}/bin/mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n uInitrd -d ${config.system.build.initialRamdisk}/initrd boot/uInitrd
-    '';
-  */
-
   sdImage.populateFirmwareCommands = let
     bootini = pkgs.writeText "boot.ini" ''
       ODROIDC-UBOOT-CONFIG
@@ -53,7 +48,7 @@
       bootm 0x21000000 0x22000000 0x21800000
     '';
   in ''
-    ls -la firmware
+    # delete rpi crap
     rm -rf firmware/*
     ${pkgs.buildPackages.ubootTools}/bin/mkimage -A arm -O linux -T kernel -C none -a 0x00208000 -e 0x00208000 -n "Linux kernel" -d ${config.system.build.kernel}/zImage firmware/uImage
     ${pkgs.buildPackages.ubootTools}/bin/mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n uInitrd -d ${config.system.build.initialRamdisk}/initrd firmware/uInitrd

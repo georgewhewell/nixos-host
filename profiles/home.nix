@@ -34,7 +34,7 @@
       Restart = "on-failure";
       RestartSec = "5s";
       ExecStart = ''
-        ${pkgs.consul}/bin/consul services register -name node -port 9100
+        ${pkgs.consul}/bin/consul services register -name node_exporter -port 9100
       '';
     };
   };
