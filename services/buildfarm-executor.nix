@@ -33,6 +33,13 @@
         supportedFeatures = [ "big-parallel" ];
         systems = [ "armv7l-linux" ];
       }
+      {
+        hostName = "bananapi-m3.lan";
+        sshUser = "root";
+        speedFactor = 1;
+        supportedFeatures = [ ];
+        systems = [ "armv7l-linux" ];
+      }
     ];
   };
 }
