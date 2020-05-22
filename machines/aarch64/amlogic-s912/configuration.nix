@@ -3,12 +3,24 @@
 {
   networking.hostName = "amlogic-s912";
 
-
   hardware.firmware = with pkgs; [ meson-firmware armbian-firmware ];
 
   # make /dev/dri0 be panfrost?
   boot.initrd.availableKernelModules = [ "panfrost" ];
   networking.firewall.allowedTCPPorts = [ 8080 ];
+
+  boot.kernelPackages = lib.mkForce (pkgs.linuxPackagesFor (pkgs.linux_testing.override {
+    argsOverride = rec {
+      src = pkgs.fetchFromGitHub {
+        owner = "150balbes";
+        repo = "Amlogic_s905-kernel";
+        rev = "5dc4b922d617a74d0ee3acc6c1649c5e4a1ea956";
+        sha256 = "0m08v5b36f541546604nyxvi8rq7n98hbbg9iz7zcz8284c2j7vi";
+      };
+      version = "5.7-rc6";
+      modDirVersion = "5.7.0-rc6";
+    };
+  }));
 
   boot.kernelPatches = [
       {
@@ -17,14 +29,6 @@
         extraConfig = ''
           STAGING_MEDIA y
         '';
-      }
-      {
-        name = "integ patches";
-        patch = pkgs.fetchurl {
-          name = "thepatch";
-          url = ''https://github.com/torvalds/linux/compare/v5.7-rc2...chewitt:amlogic-5.7-integ.patch'';
-          sha256 = "1ssi6n9p3pw9q7d4i9ywq1p5g5cx8f8hd9837dw1hkfcswajys2s";
-        };
       }
   ];
 

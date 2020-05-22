@@ -25,7 +25,7 @@ self: super:
       modDirVersion = "5.7.0-rc5";
     };
   });
-  
+
   _pulseaudio = super.pulseaudio.overrideAttrs(old: {
     patches = [
       ./pulseaudio.patch
@@ -62,6 +62,7 @@ self: super:
   darcs = null;
 
   tvheadend = super.tvheadend.overrideAttrs(old: {
+      patches = [ ./tvheadend.patch ];
       preConfigure = ''
         substituteInPlace src/input/mpegts/scanfile.c \
             --replace 'path = "/usr/share/dvb"' 'path = "${self.dtv-scan-tables}/share/dvb"'
