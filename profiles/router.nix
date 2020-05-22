@@ -8,6 +8,10 @@ let
   lanBridge = "br0.lan";
 in {
 
+  environment.systemPackages = with pkgs; [
+    wirelesstools
+  ];
+
   networking = {
     hostId = "deadbeef";
     enableIPv6 = false;
@@ -123,8 +127,10 @@ in {
   services.avahi.interfaces = [ lanBridge ];
 
   services.hostapd = {
-    enable        = false;
+    enable        = true;
     interface     = wlanInterface;
+    hwMode        = "a";
+    channel       = 165;
     ssid          = "nix";
     wpa           = false;
     extraConfig = ''
