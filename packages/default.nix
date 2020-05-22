@@ -30,6 +30,7 @@ rec {
       pydeconz = python-super.callPackage ./pydeconz { };
     };
   }; */
+  libdvbcsa = callPackage ./libdvbcsa { };
   deCONZ = callPackage ./deCONZ { };
   prometheus-ipmi-exporter = callPackage ./ipmi-exporter.nix { };
   xradio = callPackage ./xradio { };

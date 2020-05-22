@@ -90,16 +90,15 @@ in {
     };
    */
 
-    /*
+    
     trafficShaping = {
       enable = true;
       wanInterface = wanInterface;
       lanInterface = "br.lan";
       lanNetwork = "192.168.23.0/24";
-      maxDown = "50mbit";
-      maxUp = "3mbit";
-      };
-    */
+      maxDown = "95mbit";
+      maxUp = "5mbit";
+    };
   };
 
   services.consul.interface = {
