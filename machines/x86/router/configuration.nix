@@ -23,14 +23,13 @@
   };
 
   boot.supportedFilesystems = lib.mkForce [ "ext4" ];
-  boot.blacklistedKernelModules = [ "iwlwifi" ];
   boot.initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
 
   networking = {
     hostName = "router";
     wlanInterfaces = {
       wlan-private = {
-        device = "wlp0s20u1";
+        device = "wlp2s0";
       };
     };
   };

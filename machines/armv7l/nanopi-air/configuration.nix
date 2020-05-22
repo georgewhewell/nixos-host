@@ -63,6 +63,9 @@ in {
     broadcom-bluetooth
     fswebcam
     xawtv
+    ffmpeg
+    libva-utils
+    v4l-utils
     #(python3.withPackages (ps: [ ps.luma-oled ]))
     #ffmpeg
     #v4l-utils
