@@ -77,6 +77,34 @@ in {
       ${entking}/bin/entking
     '';
     wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Restart = "on-failure";
+      RestartSec = "5";
+      StartLimitIntervalSec = "0";
+      StartLimitBurst = "0";
+    };
+  };
+
+  systemd.services.enable-bluetooth = {
+    description = "run entking";
+    script = ''
+      ${pkgs.devmem2}/bin/devmem2 0x1f00060 b 1
+      echo 205 > /sys/class/gpio/export
+      echo out > /sys/class/gpio/gpio205/direction
+      echo 0 > /sys/class/gpio/gpio205/value
+      echo 1 > /sys/class/gpio/gpio205/value
+      sleep 0.1
+      ${pkgs.bluez}/bin/btattach -B /dev/ttyS1 -S 1500000 -P bcm
+    '';
+    wantedBy = [ "multi-user.target" ];
+  };
+
+  systemd.services.disable-powersaving = {
+    description = "disable powersave";
+    script = ''
+      ${pkgs.wirelesstools}/bin/iwconfig wlan0 power off
+    '';
+    wantedBy = [ "multi-user.target" ];
   };
 
   hardware.bluetooth = {
@@ -86,5 +114,7 @@ in {
   imports = [
     ../common.nix
     ../../../profiles/wireless.nix
+    ../../../services/miflora
+
   ];
 }

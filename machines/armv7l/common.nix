@@ -37,7 +37,7 @@
     })
   ];
 
-  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_megous;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
 
   # takes ages
   security.polkit.enable = lib.mkForce false;
@@ -57,10 +57,7 @@
     }
     {
       name = "nanopi-air";
-      patch = pkgs.fetchurl {
-        url = "https://raw.githubusercontent.com/armbian/build/master/patch/kernel/sunxi-dev/board-nanopiair-h3-camera-wifi-bluetooth-otg.patch";
-        sha256 = "1sm02p8n5j0jqisvf9lbwp6z52q35j5r4b9kxwqdw1dslh7j5xg0";
-      };
+      patch = ./nanopi-air-nand-wifi.patch;
     }
     {
       name = "rfkill";

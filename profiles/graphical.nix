@@ -33,6 +33,7 @@
 
     steam
     discord
+    vlc
 
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
