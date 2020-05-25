@@ -142,6 +142,18 @@
         nectarine = mkPlant "nectarine";
         lettuce = mkPlant "lettuce";
       };
+      automation = [
+        {
+          trigger = {
+            platform = "sun";
+            event = "sunset";
+          };
+          action = {
+            service = "cover.close_cover";
+            entity_id = "cover.main_blinds";
+          };
+        } 
+      ];
     };
   };
 

@@ -19,7 +19,7 @@ self: super:
         owner = "megous";
         repo = "linux";
         rev = "orange-pi-5.7";
-        sha256 = "0a4hfz5j6djyp99k68afafhrdy6v049v472iz02qx8gjjhj04mvm";
+        sha256 = "0i0qjn5pyg18n7w8cnvmyil72k3n46zzxaaj60h0yysp8bliy604";
       };
       version = "5.7-rc5";
       modDirVersion = "5.7.0-rc5";
@@ -60,6 +60,10 @@ self: super:
 
   # broken; stops hydra build
   darcs = null;
+  
+  kodiPlain = super.kodiPlain.overrideAttrs (old: {
+    buildInputs = old.buildInputs ++ [ super.xorg.libXext.dev super.xorg.libXrandr.dev];
+  });
 
   tvheadend = super.tvheadend.overrideAttrs(old: {
       patches = [ ./tvheadend.patch ];
