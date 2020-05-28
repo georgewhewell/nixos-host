@@ -67,6 +67,8 @@ rec {
 
   am43-ctrl = (callPackage ./am43-ctrl/override.nix { }).package;
 
+  libva-v4l2-request = (callPackage ./libva-v4l2-request { });
+  
   inherit (super) pkgsCross;
 
 }

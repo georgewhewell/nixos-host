@@ -2,11 +2,22 @@
 
 {
   networking.hostName = "amlogic-s912";
+  boot.kernelParams = [ "cma=384M" ];
 
   hardware.firmware = with pkgs; [ meson-firmware armbian-firmware ];
 
+  services.xserver.extraConfig = ''
+    Section "OutputClass"
+    	Identifier "Meson"
+    	MatchDriver "meson"
+    	Driver "modesetting"
+    	Option "PrimaryGPU" "true"
+    EndSection
+  '';
+
   # make /dev/dri0 be panfrost?
   boot.initrd.availableKernelModules = [ "panfrost" ];
+
   boot.kernelPackages = lib.mkForce (pkgs.linuxPackagesFor (pkgs.linux_testing.override {
     argsOverride = rec {
       src = pkgs.fetchFromGitHub {
@@ -21,13 +32,13 @@
   }));
 
   boot.kernelPatches = [
-      {
-        name = "enable staging";
-        patch = null;
-        extraConfig = ''
-          STAGING_MEDIA y
-        '';
-      }
+     {
+       name = "media";
+       patch = null;
+       extraConfig = ''
+         STAGING_MEDIA y
+       '';
+     }
   ];
 
   imports = [

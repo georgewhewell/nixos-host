@@ -12,7 +12,7 @@
   boot = {
     cleanTmpDir = true;
     kernelParams = [ "boot.shell_on_fail" "panic=20"];
-    supportedFilesystems = lib.mkForce [ ];
+    supportedFilesystems = lib.mkForce [ "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
 
@@ -86,6 +86,15 @@
   };
 
   boot.kernelPatches = [
+    { name = "enable-cec";
+      patch = null;
+      extraConfig = ''
+        MEDIA_CEC_SUPPORT y
+        MEDIA_CEC_RC y
+        DRM_SUN4I_HDMI_CEC y
+        FB_SUN5I_EINK n
+      '';
+    }
     {
       name = "include-symbols";
       patch = pkgs.writeText "the_patch" ''
