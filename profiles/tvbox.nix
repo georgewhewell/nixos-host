@@ -19,15 +19,23 @@
     enablePVRHTS = true;
   };
 
-  systemd.services.kodi = {
-    environment = {
-      WINDOWING = "gbm";
+  services.xserver = {
+    enable = true;
+    videoDriver = "modesetting";
+    desktopManager.kodi.enable = true;
+    displayManager.sddm = {
+      enable = true;
+      autoLogin.enable = true;
+      autoLogin.user = "grw";
     };
+  };
+
+  systemd.services.kodi = {
     wants = [ "network-online.target" "polkit.service" ];
     conflicts = [ "getty@tty1.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.kodi}/bin/kodi-standalone";
+      ExecStart = "${pkgs.kodi}/bin/kodi --standalone";
       StandardInput = "tty";
       StandardOutput = "tty";
       TTYPath = "/dev/tty1";
@@ -40,7 +48,7 @@
 
   hardware.opengl = {
     enable = true;
-    extraPackages = with pkgs; [ libva libvdpau-va-gl ];
+    extraPackages = with pkgs; [ libva libva-v4l2-request ];
   };
 
   environment.systemPackages = with pkgs; [
