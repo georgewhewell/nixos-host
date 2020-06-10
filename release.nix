@@ -38,9 +38,6 @@ let
       buildAllwinnerUboot = (defconfig:
         pkgs.pkgsCross.armv7l-hf-multiplatform.buildUBoot {
             inherit src version defconfig;
-            extraPatches = [
-              ./packages/patches/add-nanopi-duo.patch
-            ];
             extraMeta.platforms = [ "armv7l-linux" ];
             filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
       });
@@ -68,49 +65,6 @@ let
             write-with-progress 0x43300000 ${uinitrd} \
             write-with-progress 0x43100000 ${bootEnv}
       '';
-    sunxiBoot64 = config:
-      let
-        version = "2020.04";
-        src = pkgs.fetchurl {
-          url = "ftp://ftp.denx.de/pub/u-boot/u-boot-${version}.tar.bz2";
-          sha256 = "0wjkasnz87q86hx93inspdjfjsinmxi87bcvj30c773x0fpjlwzy";
-        };
-        buildAllwinnerUboot = (defconfig:
-          pkgs.pkgsCross.armv7l-hf-multiplatform.buildUBoot {
-              inherit src version defconfig;
-              extraMeta.platforms = [ "armv7l-linux" ];
-              extraPatches = [
-                ./packages/patches/uboot-sunxi64-fel32.patch
-              ];
-              BL31 = "${pkgs.pkgsCross.aarch64-multiplatform.armTrustedFirmwareAllwinner}/bl31.bin";
-              filesToInstall = [ "u-boot.itb" ];
-        });
-        uboot = buildAllwinnerUboot config.system.build.ubootDefconfig;
-        uinitrd = pkgs.runCommandNoCC "uInitrd" {} ''
-          ${pkgs.ubootTools}/bin/mkimage -A arm64 -T ramdisk -C gzip -d ${config.system.build.initialRamdisk}/initrd $out
-        '';
-        uImage = pkgs.runCommandNoCC "uImage" {} ''
-          ${pkgs.ubootTools}/bin/mkimage -A arm64 -T kernel -C gzip -d ${config.system.build.kernel}/Image $out
-        '';
-        bootEnv = pkgs.writeText "bootenv.txt" ''
-          #=uEnv
-          bootargs=init=${config.system.build.toplevel}/init ${toString config.boot.kernelParams}
-          bootcmd=bootz 0x40000000 0x43300000 0x42000000
-        '';
-      in
-          pkgs.writeScriptBin "boot.sh" ''
-            set -e
-
-            echo "Checking ver"
-            ${pkgs.sunxi-tools}/bin/sunxi-fel ver
-
-            # include stuff
-            ${pkgs.sunxi-tools}/bin/sunxi-fel -p \
-              spl ${./sunxi-h5-spl32-ddr3.bin} \
-              uboot ${uboot}/u-boot.itb \
-              write-with-progress 0x43100000 ${bootEnv}
-
-        '';
 in {
 
   tarball =
