@@ -65,6 +65,18 @@
         "url": "https://github.com/chewitt/linux/archive/c93768f387c3b293fab47e1f44c5c3e695e784bb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "linux_media": {
+        "branch": "latest",
+        "description": "TBS linux open source drivers",
+        "homepage": "https://github.com/tbsdtv/linux_media/wiki",
+        "owner": "tbsdtv",
+        "repo": "linux_media",
+        "rev": "d0a9dd94421b7dba337dd3da12afa781923821ee",
+        "sha256": "1jbi54g83ra0l52dpf59wv2a31ih315549c7cjp6apiqj0b2260q",
+        "type": "tarball",
+        "url": "https://github.com/tbsdtv/linux_media/archive/d0a9dd94421b7dba337dd3da12afa781923821ee.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "linux_megous": {
         "branch": "orange-pi-5.8",
         "description": "This is a mirror, main repo is at https://megous.com/git/linux",
@@ -99,6 +111,18 @@
         "sha256": "0ykcr8nx3irjsjwamqm65myjyx7vaf4cbaspxmragxdag3b1bl9s",
         "type": "tarball",
         "url": "https://github.com/rafaello7/linux-nanopi-m3-v4.14/archive/03995c670a26bf25edf7647e4729d3f77150826e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "media_build": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "tbsdtv",
+        "repo": "media_build",
+        "rev": "e8dea8e4dcd5ee3009dce98bf5a2bba99e2bb094",
+        "sha256": "02p906sp643in664fw8np8nixg6qwpqdkkylg9k470gky274mpi7",
+        "type": "tarball",
+        "url": "https://github.com/tbsdtv/media_build/archive/e8dea8e4dcd5ee3009dce98bf5a2bba99e2bb094.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "meson-firmware": {
