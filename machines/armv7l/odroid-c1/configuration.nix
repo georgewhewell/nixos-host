@@ -9,7 +9,7 @@
   ];
 
   boot.kernelParams = [ "boot.shell_on_fail" "console=ttyAML0,115200" "earlyprintk=serial,ttyAML0,115200" ];
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_meson_mx;
+  boot.kernelPackages = lib.mkForce 1 pkgs.linuxPackages_meson_mx;
 
   sdImage.populateFirmwareCommands = let
     bootini = pkgs.writeText "boot.ini" ''
