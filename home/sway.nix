@@ -6,6 +6,11 @@
     ./waybar.nix
   ];
 
+  home.packages = with pkgs; [
+    slurp
+    grim
+  ];
+
   wayland.windowManager.sway = {
     enable = true;
     systemdIntegration = true;
@@ -19,6 +24,7 @@
         playerctl = "${pkgs.playerctl}/bin/playerctl";
       in lib.mkOptionDefault {
         "${modifier}+Shift+s" = "exec loginctl lock-session $XDG_SESSION_ID";
+        "${modifier}+Shift+p" = "exec slurp | grim -g -";
 
         # audio keys
         XF86AudioMute = "exec ${pactl} set-sink-mute 0 toggle";
