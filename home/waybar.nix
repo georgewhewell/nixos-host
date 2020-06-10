@@ -11,8 +11,8 @@
 
     * {
       ${if config.hostId == "yoga" then ''
-        font-size: 18px;
-      '' else ''
+      font-size: 18px;
+    '' else ''
 
       ''}
     }
@@ -47,8 +47,8 @@
       format-icons = [ "" "" "" "" "" ];
       format-plugged = "{capacity}% ";
       states = {
-	critical = 15;
-	warning = 30;
+        critical = 15;
+        warning = 30;
       };
     };
     clock = {
@@ -73,13 +73,13 @@
       format-bluetooth = "{volume}% {icon} {format_source}";
       format-bluetooth-muted = " {icon} {format_source}";
       format-icons = {
-	car = "";
-	default = [ "" "" "" ];
-	handsfree = "";
-	headphones = "";
-	headset = "";
-	phone = "";
-	portable = "";
+        car = "";
+        default = [ "" "" "" ];
+        handsfree = "";
+        headphones = "";
+        headset = "";
+        phone = "";
+        portable = "";
       };
       format-muted = " {format_source}";
       format-source = "{volume}% ";

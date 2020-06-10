@@ -9,8 +9,8 @@ stdenv.mkDerivation rec {
   hardeningDisable = [ "all" ];
 
   installPhase = ''
-     mkdir -p $out/bin
-     mv nanopi-load $out/bin/
+    mkdir -p $out/bin
+    mv nanopi-load $out/bin/
   '';
 
- }
+}

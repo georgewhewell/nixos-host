@@ -15,5 +15,5 @@ buildPythonPackage rec {
 
   propagatedBuildInputs = [ aiohttp ];
   doCheck = false;
-  
+
 }

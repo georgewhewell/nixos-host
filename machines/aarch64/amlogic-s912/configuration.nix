@@ -6,15 +6,15 @@
 
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_amlogic;
   hardware.firmware = with pkgs; [ meson-firmware armbian-firmware ];
-/*
-  services.xserver.extraConfig = ''
-    Section "OutputClass"
-    	Identifier "Meson"
-    	MatchDriver "meson"
-    	Driver "modesetting"
-    	Option "PrimaryGPU" "true"
-    EndSection
-  ''; */
+  /*
+    services.xserver.extraConfig = ''
+      Section "OutputClass"
+        Identifier "Meson"
+        MatchDriver "meson"
+        Driver "modesetting"
+        Option "PrimaryGPU" "true"
+      EndSection
+    ''; */
 
   # make /dev/dri0 be panfrost?
   boot.initrd.availableKernelModules = [ "panfrost" ];

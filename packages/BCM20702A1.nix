@@ -1,4 +1,3 @@
-
 { stdenv, fetchurl }:
 
 stdenv.mkDerivation rec {
@@ -12,7 +11,7 @@ stdenv.mkDerivation rec {
   };
 
 
-  phases = ["unpackPhase" "installPhase"];
+  phases = [ "unpackPhase" "installPhase" ];
 
   installPhase = ''
     mkdir -p $out/lib/firmware

@@ -17,5 +17,5 @@ buildGoPackage rec {
   goDeps = ./deps.nix;
   buildFlags = "--tags noceph";
 
-  meta = {};
+  meta = { };
 }

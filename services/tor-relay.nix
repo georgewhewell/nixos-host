@@ -8,4 +8,3 @@
   networking.firewall.allowedTCPPorts = [ 9001 ];
   networking.firewall.allowedUDPPorts = [ 9001 ];
 }
-

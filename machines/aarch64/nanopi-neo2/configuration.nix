@@ -17,7 +17,8 @@
   networking.firewall.allowedTCPPorts = [ 8000 ];
   hardware.deviceTree = {
     enable = true;
-    base = pkgs.runCommandNoCC "mydtb" {} ''
+    base = pkgs.runCommandNoCC "mydtb"
+      { } ''
       mkdir -p $out/allwinner
       cp ${config.boot.kernelPackages.kernel}/dtbs/allwinner/${config.system.build.dtbName} $out/allwinner
     '';

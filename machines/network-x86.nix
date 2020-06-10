@@ -1,9 +1,10 @@
 let
-  pkgs = (import <nixpkgs> {});
+  pkgs = (import <nixpkgs> { });
   machines = with pkgs; (import ./x86 { inherit lib; });
-in {
+in
+{
 
-  network =  {
+  network = {
     inherit pkgs;
     description = "x86 native machines";
   };

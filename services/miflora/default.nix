@@ -1,9 +1,9 @@
 { config, lib, pkgs, ... }:
-
 let
   miflora_config = pkgs.writeTextDir "config.ini" (builtins.readFile ./config.ini);
   miflora-mqtt-daemon = (pkgs.callPackage ../../packages/miflora-mqtt-daemon { });
-in {
+in
+{
 
   systemd.services.miflora = {
     description = "run miflora";

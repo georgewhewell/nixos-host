@@ -3,39 +3,43 @@
 {
 
   fileSystems."/mnt/Media" =
-    { device = "bpool/root/Media";
+    {
+      device = "bpool/root/Media";
       fsType = "zfs";
     };
 
   fileSystems."/mnt/Home" =
-    { device = "bpool/root/Home";
+    {
+      device = "bpool/root/Home";
       fsType = "zfs";
     };
 
   fileSystems."/export/media" = {
     device = "/mnt/Media";
-    options = ["bind"];
+    options = [ "bind" ];
   };
 
   fileSystems."/export/home" = {
     device = "/mnt/Home";
-    options = ["bind"];
+    options = [ "bind" ];
   };
 
   fileSystems."/export/nixos-config" = {
     device = "/etc/nixos";
-    options = ["bind"];
+    options = [ "bind" ];
   };
 
   fileSystems."/mnt/timemachine" =
-    { device = "bpool/root/timemachine";
+    {
+      device = "bpool/root/timemachine";
       fsType = "zfs";
     };
 
   fileSystems."/mnt/cache-cache" =
-    { device = "bpool/root/nix-cache";
+    {
+      device = "bpool/root/nix-cache";
       fsType = "zfs";
-  };
+    };
 
   services.zfs.autoScrub = {
     enable = true;
@@ -63,17 +67,17 @@
       maxSize = "100g";
       resolver = "192.168.23.1";
     };
-/*
-  services.netatalk = {
-    enable = true;
-    volumes = {
-      timemachine = {
-        path = "/mnt/timemachine";
-        "time machine" = "yes";
-        "hosts allow" = "192.168.23.0/24";
+  /*
+    services.netatalk = {
+      enable = true;
+      volumes = {
+        timemachine = {
+          path = "/mnt/timemachine";
+          "time machine" = "yes";
+          "hosts allow" = "192.168.23.0/24";
+        };
       };
-    };
-  }; */
+    }; */
 
   services.nfs.server = {
     enable = true;
@@ -85,12 +89,15 @@
   };
 
   networking.firewall.allowedTCPPorts = [
-    111  # nfs?
+    111 # nfs?
     2049 # nfs
-    4000 4001 4002 4003
-    138  # smb
-    445  # smb
-    548  # netatalk
+    4000
+    4001
+    4002
+    4003
+    138 # smb
+    445 # smb
+    548 # netatalk
     10809 # nbd
 
     # nfs
@@ -100,10 +107,10 @@
   ];
 
   networking.firewall.allowedUDPPorts = [
-    111  # nfs?
+    111 # nfs?
     2049 # nfs
-    138  # smb
-    445  # smb
+    138 # smb
+    445 # smb
 
     # nfs
     20048
@@ -114,26 +121,28 @@
   systemd.services.nbd-scratch = {
     wantedBy = [ "multi-user.target" ];
 
-    serviceConfig = let
-      nbdConfig = pkgs.writeText "nbd-config.conf" ''
-        # This is a comment
-        [generic]
-            # The [generic] section is required, even if nothing is specified
-            # there.
-            # When either of these options are specified, nbd-server drops
-            # privileges to the given user and group after opening ports, but
-            # _before_ opening files.
-        [scratch]
-            exportname = scratch
-            timeout = 30
-            temporary = true
-            filesize = ${toString (16 * 1024 * 1024 * 1024)}
-            sparse_cow = true
-    ''; in {
-      ExecStart = ''
-        ${pkgs.nbd}/bin/nbd-server -d -C ${nbdConfig}
-      '';
-    };
+    serviceConfig =
+      let
+        nbdConfig = pkgs.writeText "nbd-config.conf" ''
+          # This is a comment
+          [generic]
+              # The [generic] section is required, even if nothing is specified
+              # there.
+              # When either of these options are specified, nbd-server drops
+              # privileges to the given user and group after opening ports, but
+              # _before_ opening files.
+          [scratch]
+              exportname = scratch
+              timeout = 30
+              temporary = true
+              filesize = ${toString (16 * 1024 * 1024 * 1024)}
+              sparse_cow = true
+        ''; in
+      {
+        ExecStart = ''
+          ${pkgs.nbd}/bin/nbd-server -d -C ${nbdConfig}
+        '';
+      };
   };
 
   services.samba = {
@@ -157,13 +166,15 @@
     '';
     shares = {
       Home =
-        { path = "/mnt/Home";
+        {
+          path = "/mnt/Home";
           "read only" = "no";
           "valid users" = "grw";
           "max connections" = "20000";
         };
       Media =
-        { path = "/mnt/Media";
+        {
+          path = "/mnt/Media";
           "read only" = "yes";
           "writable" = "no";
           "public" = "yes";
@@ -186,12 +197,12 @@
   };
 
   systemd.timers.fix-media-permissions = {
-      partOf = [ "fix-media-permissions.service" ];
-      wantedBy = [ "multi-user.target" ];
-      timerConfig = {
-        OnBootSec = "5min";
-        OnUnitActiveSec = "3600";
-      };
+    partOf = [ "fix-media-permissions.service" ];
+    wantedBy = [ "multi-user.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "3600";
+    };
   };
 
   services.sabnzbd = {

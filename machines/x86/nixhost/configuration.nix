@@ -9,7 +9,7 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-       /* ../../../containers/unifi.nix */
+      /* ../../../containers/unifi.nix */
 
       ../../../profiles/automation.nix
       ../../../profiles/common.nix
@@ -70,23 +70,27 @@
 
   services.consul.extraConfig = { server = true; };
   services.consul.interface =
-    let interface = "br0"; in {
+    let interface = "br0"; in
+    {
       advertise = interface;
       bind = interface;
     };
 
   fileSystems."/" =
-    { device = "fpool/root/nixos";
+    {
+      device = "fpool/root/nixos";
       fsType = "zfs";
     };
 
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/1A02-B98B";
+    {
+      device = "/dev/disk/by-uuid/1A02-B98B";
       fsType = "vfat";
     };
 
   fileSystems."/var/lib/docker" =
-    { device = "fpool/root/docker";
+    {
+      device = "fpool/root/docker";
       fsType = "zfs";
     };
 

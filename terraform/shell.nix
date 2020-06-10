@@ -1,10 +1,11 @@
 with (import <nixpkgs> { });
 
 stdenv.mkDerivation {
-   name = "nixfiles-terraform";
-   buildInputs = [
+  name = "nixfiles-terraform";
+  buildInputs = [
     (terraform.withPlugins (p: [
-      p.google p.google-beta
+      p.google
+      p.google-beta
     ]))
     kubectl
     google-cloud-sdk

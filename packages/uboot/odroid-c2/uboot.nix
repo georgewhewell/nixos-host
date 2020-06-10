@@ -2,6 +2,6 @@
 
 buildUBoot {
   defconfig = "odroid-c2_defconfig";
-  extraMeta.platforms = ["aarch64-linux"];
-  filesToInstall = ["u-boot.bin"];
+  extraMeta.platforms = [ "aarch64-linux" ];
+  filesToInstall = [ "u-boot.bin" ];
 }

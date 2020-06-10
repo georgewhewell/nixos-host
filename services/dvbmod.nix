@@ -1,7 +1,5 @@
 { options, config, lib, pkgs, stdenv, fetchurl, ... }:
-
 let version = "1.0"; in
-
 stdenv.mkDerivation {
   name = "dvb-demod-si2168";
 

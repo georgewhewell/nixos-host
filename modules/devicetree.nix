@@ -2,10 +2,10 @@
 
 with pkgs.stdenv;
 with lib;
-
 let
   cfg = config.hardware.devicetree;
-in {
+in
+{
 
   options.hardware.devicetree = {
 
@@ -35,5 +35,5 @@ in {
   config = mkIf cfg.enable rec {
     system.build.dtbName = cfg.dtbName;
   };
-  meta = {};
+  meta = { };
 }

@@ -2,7 +2,7 @@
 
 stdenv.mkDerivation {
   name = "libreelec-fw-dvb";
-  
+
   version = sources.dvb-firmware.rev;
   src = sources.dvb-firmware;
 

@@ -19,7 +19,7 @@ rec {
   gonbdserver = callPackage ./gonbdserver { };
   sunxi-dt-overlays = callPackage ./sunxi-DT-overlays { };
   dt-overlays = callPackage ./dt-overlays { };
-  boot-scripts = callPackage ./uboot {};
+  boot-scripts = callPackage ./uboot { };
 
   blind-control = callPackage ./blind-control { };
   dtv-scan-tables = callPackage ./dtv-scan-tables { };

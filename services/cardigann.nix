@@ -4,7 +4,8 @@
   networking.firewall.allowedTCPPorts = [ 5060 ];
 
   fileSystems."/var/lib/cardigann" =
-    { device = "fpool/root/config/cardigann";
+    {
+      device = "fpool/root/config/cardigann";
       fsType = "zfs";
     };
 

@@ -4,11 +4,11 @@ stdenv.mkDerivation rec {
   name = "esp-idf-${version}";
   version = "v3.0-rc1";
 
-/*
-  src = fetchurl {
-    url = "https://github.com/espressif/esp-idf/archive/${version}.tar.gz";
-    sha256 = "0v51wcgr6xx97l6bklh2c7m1za42jxhayv94dpjdc43p8jlksbvr";
-  }; */
+  /*
+    src = fetchurl {
+      url = "https://github.com/espressif/esp-idf/archive/${version}.tar.gz";
+      sha256 = "0v51wcgr6xx97l6bklh2c7m1za42jxhayv94dpjdc43p8jlksbvr";
+    }; */
 
   src = fetchgit {
     url = "https://github.com/espressif/esp-idf.git";
@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
     fetchSubmodules = true;
   };
 
-  NIX_LDFLAGS = "-lncurses" ;
+  NIX_LDFLAGS = "-lncurses";
   propagatedBuildInputs = [ ncurses flex bison gperf ];
 
   postPatch = ''

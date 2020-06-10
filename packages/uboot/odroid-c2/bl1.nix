@@ -1,5 +1,4 @@
 { stdenv, fetchurl, bc, dtc, python2, hostPlatform }:
-
 let
   fetchBl1 = { ramSpeed, sha256 }:
     stdenv.mkDerivation (rec {
@@ -20,8 +19,9 @@ let
         description = "odroid-c2 bl1 (${ramSpeed} MHz)";
         maintainers = [ stdenv.lib.maintainers.georgewhewell ];
       };
-  });
-in rec {
+    });
+in
+rec {
   inherit fetchBl1;
   ram1104 = fetchBl1 rec {
     ramSpeed = "1104";

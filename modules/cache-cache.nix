@@ -1,9 +1,7 @@
 { config, lib, ... }:
 
 with lib;
-
 let
-
   cfg = config.services.nixBinaryCacheCache;
 
   nginxCfg = config.services.nginx;
@@ -32,7 +30,6 @@ let
   };
 
 in
-
 {
   options = {
     services.nixBinaryCacheCache = {
@@ -104,20 +101,20 @@ in
           set $upstream_endpoint http://cache.nixos.org;
         '';
         locations."/" =
-        {
-          root = "/srv/www/nix-cache-cache";
-          extraConfig = ''
-            expires max;
-            add_header Cache-Control $nix_cache_cache_header always;
+          {
+            root = "/srv/www/nix-cache-cache";
+            extraConfig = ''
+              expires max;
+              add_header Cache-Control $nix_cache_cache_header always;
 
-            # Ask the upstream server if a file isn't available
-            # locally.
-            error_page 404 = @fallback;
+              # Ask the upstream server if a file isn't available
+              # locally.
+              error_page 404 = @fallback;
 
-            # Don't bother logging the above 404.
-            log_not_found off;
-          '';
-        };
+              # Don't bother logging the above 404.
+              log_not_found off;
+            '';
+          };
 
         locations."@fallback" = cacheFallbackConfig;
 

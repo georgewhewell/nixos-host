@@ -1,14 +1,22 @@
-{
-  stdenv, fetchgit,
-  autoconf, automake, libtool,
-  unrar, gperf,
-  flex, bison,
-  texinfo, ncurses,
-  expat,
-  python27Packages,
-  wget,
-  help2man,
-  which, file, unzip, git
+{ stdenv
+, fetchgit
+, autoconf
+, automake
+, libtool
+, unrar
+, gperf
+, flex
+, bison
+, texinfo
+, ncurses
+, expat
+, python27Packages
+, wget
+, help2man
+, which
+, file
+, unzip
+, git
 }:
 
 stdenv.mkDerivation rec {

@@ -18,17 +18,17 @@
   nixpkgs.config.kodi = {
     enablePVRHTS = true;
   };
-/*
-  services.xserver = {
-    enable = true;
-    videoDriver = "modesetting";
-    desktopManager.kodi.enable = true;
-    displayManager.sddm = {
+  /*
+    services.xserver = {
       enable = true;
-      autoLogin.enable = true;
-      autoLogin.user = "grw";
-    };
-  }; */
+      videoDriver = "modesetting";
+      desktopManager.kodi.enable = true;
+      displayManager.sddm = {
+        enable = true;
+        autoLogin.enable = true;
+        autoLogin.user = "grw";
+      };
+    }; */
 
   systemd.services.kodi-gbm = {
     wants = [ "network-online.target" "polkit.service" ];

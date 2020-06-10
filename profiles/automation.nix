@@ -1,4 +1,4 @@
-{ config, pkgs, ...}:
+{ config, pkgs, ... }:
 
 {
 
@@ -25,7 +25,7 @@
   systemd.services.spotifyd = {
     description = "spotifyd client";
     after = [ "network.target" ];
-    wantedBy = ["multi-user.target"];
+    wantedBy = [ "multi-user.target" ];
     serviceConfig.ExecStart = ''
       ${pkgs.spotifyd}/bin/spotifyd --username 1139118329 --password Oojae0ash2sh --device-name "UE Mobile Boombox"
     '';
@@ -34,7 +34,7 @@
   systemd.services.am43-ctrl = {
     description = "blind controller";
     after = [ "network.target" ];
-    wantedBy = ["multi-user.target"];
+    wantedBy = [ "multi-user.target" ];
     serviceConfig.ExecStart = ''
       ${pkgs.am43-ctrl}/bin/am43ctrl --mqtt-url mqtt://rw:thepassword@nixhost.lan 02:c4:da:36:73:79 02:be:75:37:b6:0a
     '';
@@ -96,11 +96,11 @@
     config = {
       homeassistant = {
         name = "Home";
-      	latitude = "51.28";
-      	longitude = "0.678";
-      	elevation = "20";
-      	unit_system = "metric";
-      	time_zone = "Europe/London";
+        latitude = "51.28";
+        longitude = "0.678";
+        elevation = "20";
+        unit_system = "metric";
+        time_zone = "Europe/London";
       };
       http = {
         server_host = "0.0.0.0";
@@ -109,41 +109,42 @@
         use_x_forwarded_for = true;
         trusted_proxies = [ "127.0.0.1" ];
       };
-      mobile_app = {};
-      frontend = {};
-      history = {};
-      config = {};
+      mobile_app = { };
+      frontend = { };
+      history = { };
+      config = { };
       deconz = {
         host = "127.0.0.1";
         port = "8080";
       };
-      influxdb = {};
+      influxdb = { };
       mqtt = {
         broker = "nixhost.lan";
         username = "rw";
         password = "thepassword";
         discovery = true;
       };
-      cover = [];
-      esphome = {};
-      media_player = [];
-      system_health = {};
-      sun = {};
+      cover = [ ];
+      esphome = { };
+      media_player = [ ];
+      system_health = { };
+      sun = { };
       plant =
-          let mkPlant = name: {
-           sensors = {
-             moisture = "sensor.${name}_moisture";
-             battery = "sensor.${name}_battery";
-             temperature = "sensor.${name}_temperature";
-             conductivity = "sensor.${name}_conductivity";
-             brightness = "sensor.${name}_light";
-           };
-      }; in {
-        poppies = mkPlant "poppies";
-        strawberries = mkPlant "strawberries";
-        nectarine = mkPlant "nectarine";
-        lettuce = mkPlant "lettuce";
-      };
+        let mkPlant = name: {
+          sensors = {
+            moisture = "sensor.${name}_moisture";
+            battery = "sensor.${name}_battery";
+            temperature = "sensor.${name}_temperature";
+            conductivity = "sensor.${name}_conductivity";
+            brightness = "sensor.${name}_light";
+          };
+        }; in
+        {
+          poppies = mkPlant "poppies";
+          strawberries = mkPlant "strawberries";
+          nectarine = mkPlant "nectarine";
+          lettuce = mkPlant "lettuce";
+        };
       automation = [
         {
           trigger = {
@@ -153,12 +154,13 @@
             below = -3.0;
           };
           action = [{
-           service = "cover.close_cover";
-           entity_id = "cover.main_blinds";
-          } {
             service = "cover.close_cover";
-            entity_id = "cover.side_blinds";
-          }];
+            entity_id = "cover.main_blinds";
+          }
+            {
+              service = "cover.close_cover";
+              entity_id = "cover.side_blinds";
+            }];
         }
         {
           trigger = {
@@ -168,32 +170,33 @@
             above = -2.0;
           };
           action = [{
-           service = "cover.open_cover";
-           entity_id = "cover.main_blinds";
-          } {
             service = "cover.open_cover";
-            entity_id = "cover.side_blinds";
-          }];
+            entity_id = "cover.main_blinds";
+          }
+            {
+              service = "cover.open_cover";
+              entity_id = "cover.side_blinds";
+            }];
         }
       ];
     };
   };
 
   services.nginx.virtualHosts."home.satanic.link" = {
-     forceSSL = true;
-     enableACME = true;
-     locations."/" = {
-       proxyPass = "http://127.0.0.1:8123";
-       extraConfig = ''
-         proxy_http_version 1.1;
-         proxy_redirect http:// https://;
-         proxy_set_header Host $host;
-         proxy_set_header Upgrade $http_upgrade;
-         proxy_set_header Connection "Upgrade";
-         proxy_set_header X-Real-IP $remote_addr;
-         proxy_buffering off;
-       '';
-     };
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:8123";
+      extraConfig = ''
+        proxy_http_version 1.1;
+        proxy_redirect http:// https://;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_buffering off;
+      '';
+    };
   };
 
 }

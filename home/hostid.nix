@@ -1,8 +1,8 @@
 { config, lib, pkgs, ... }:
-
 let
   cfg = config.hostId;
-in {
+in
+{
   options = {
     hostId = lib.mkOption {
       default = null;

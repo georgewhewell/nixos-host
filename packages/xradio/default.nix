@@ -1,7 +1,6 @@
 { stdenv, fetchFromGitHub, kernel }:
-
 let
- version = "2019-06-17";
+  version = "2019-06-17";
 in
 stdenv.mkDerivation {
   name = "xradio-${version}-${kernel.version}";

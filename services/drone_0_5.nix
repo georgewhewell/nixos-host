@@ -2,10 +2,10 @@
 
 {
   security.acme.certs."drone.tsar.su" = {
-      email = "georgerw@gmail.com";
-      webroot = "/var/www/challenges/";
+    email = "georgerw@gmail.com";
+    webroot = "/var/www/challenges/";
   };
-  
+
   services.nginx.httpConfig = ''
 
     server {
@@ -50,18 +50,18 @@
   '';
 
   environment.etc.dronerc.text = ''
-DATABASE_DRIVER=postgres
-DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone_0_5?sslmode=disable
-DRONE_GOGS=true
-DRONE_GOGS_URL=https://git.tsar.su
-DRONE_GOGS_PRIVATE_MODE=true
-SERVER_ADDR=0.0.0.0:8005
-I_UNDERSTAND_I_AM_USING_AN_UNSTABLE_VERSION=true
-I_AGREE_TO_FIX_BUGS_AND_NOT_FILE_BUGS=true
-DRONE_AGENT_SECRET=Faed0eiv
-DRONE_OPEN=true
-DRONE_ADMIN=grw
-'';
+    DATABASE_DRIVER=postgres
+    DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone_0_5?sslmode=disable
+    DRONE_GOGS=true
+    DRONE_GOGS_URL=https://git.tsar.su
+    DRONE_GOGS_PRIVATE_MODE=true
+    SERVER_ADDR=0.0.0.0:8005
+    I_UNDERSTAND_I_AM_USING_AN_UNSTABLE_VERSION=true
+    I_AGREE_TO_FIX_BUGS_AND_NOT_FILE_BUGS=true
+    DRONE_AGENT_SECRET=Faed0eiv
+    DRONE_OPEN=true
+    DRONE_ADMIN=grw
+  '';
 
   systemd.services.drone = {
     wantedBy = [ "multi-user.target" ];
@@ -84,11 +84,11 @@ DRONE_ADMIN=grw
       ExecStop = ''${pkgs.docker}/bin/docker rm -f drone'';
     };
   };
-environment.etc.droneworkerrc.text = ''
-DRONE_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiRmFlZDBlaXYiLCJ0eXBlIjoiYWdlbnQifQ.-fLSoVrTQLpRSV0L0zJZIPB1Y56Bnw3hppTF75HFEPY
-DRONE_SERVER=http://127.0.0.1:8005
-DRONE_DEBUG=true
-'';
+  environment.etc.droneworkerrc.text = ''
+    DRONE_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXh0IjoiRmFlZDBlaXYiLCJ0eXBlIjoiYWdlbnQifQ.-fLSoVrTQLpRSV0L0zJZIPB1Y56Bnw3hppTF75HFEPY
+    DRONE_SERVER=http://127.0.0.1:8005
+    DRONE_DEBUG=true
+  '';
 
   systemd.services.droneagent = {
     wantedBy = [ "multi-user.target" ];

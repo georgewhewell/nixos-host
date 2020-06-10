@@ -1,10 +1,10 @@
 { config, pkgs, lib, ... }:
 
 with pkgs;
-
 let
   entking = (callPackage ../../../packages/entking { });
-in {
+in
+{
 
   networking.hostName = "nanopi-air";
 
@@ -40,10 +40,12 @@ in {
 
   hardware.deviceTree = {
     enable = true;
-    base = pkgs.runCommandNoCC "mydtb" {} ''
-      mkdir $out
-      cp ${config.boot.kernelPackages.kernel}/dtbs/${config.hardware.devicetree.dtbName}.dtb $out/
-    '';
+    base =
+      pkgs.runCommandNoCC "mydtb"
+        { } ''
+        mkdir $out
+        cp ${config.boot.kernelPackages.kernel}/dtbs/${config.hardware.devicetree.dtbName}.dtb $out/
+      '';
     overlays = [
       "${pkgs.dt-overlays}/sunxi-h3-i2c.dts.dtbo"
       "${pkgs.dt-overlays}/nanopi-air-usbhost.dts.dtbo"
@@ -51,7 +53,7 @@ in {
       "${pkgs.dt-overlays}/nanopi-air-bt.dts.dtbo"
       "${pkgs.dt-overlays}/sunxi-i2c0-oled.dts.dtbo"
 
-    #  "${pkgs.dt-overlays}/sunxi-pca9685.dts.dtbo"
+      #  "${pkgs.dt-overlays}/sunxi-pca9685.dts.dtbo"
     ];
   };
 
@@ -74,7 +76,7 @@ in {
   hardware.opengl = {
     extraPackages = with pkgs; [ libva libva-v4l2-request ];
   };
-  
+
   systemd.services.entking = {
     description = "run entking";
     script = ''

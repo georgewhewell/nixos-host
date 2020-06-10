@@ -1,5 +1,4 @@
 { pkgs }:
-
 let
   defConfigs = [
     "Sinovoip_BPI_M3_defconfig"
@@ -24,33 +23,33 @@ let
           url = "https://raw.githubusercontent.com/armbian/build/master/patch/u-boot/u-boot-sunxi/add-nanopi-duo.patch";
           sha256 = "19wiri7hxv6r3g3z3a55hywz63d4p7n9kj3hw7yhlgqjhxnprd3d";
         })
-        (pkgs.writeText "patch"''
+        (pkgs.writeText "patch" ''
           --- a/arch/arm/dts/sun8i-h3-nanopi-neo-air.dts
           +++ b/arch/arm/dts/sun8i-h3-nanopi-neo-air.dts
           @@ -103,6 +103,23 @@
-           	};
+             };
            };
 
           +&mmc2 {
-          +	pinctrl-names = "default";
-          +	pinctrl-0 = <&mmc2_8bit_pins>;
-          +	vmmc-supply = <&reg_vcc3v3>;
-          +	bus-width = <8>;
-          +	non-removable;
-          +	cap-mmc-hw-reset;
-          +	status = "okay";
+          +  pinctrl-names = "default";
+          +  pinctrl-0 = <&mmc2_8bit_pins>;
+          +  vmmc-supply = <&reg_vcc3v3>;
+          +  bus-width = <8>;
+          +  non-removable;
+          +  cap-mmc-hw-reset;
+          +  status = "okay";
           +};
           +
           +&mmc2_8bit_pins {
-          +	/* Increase drive strength for DDR modes */
-          +	drive-strength = <40>;
-          +	/* eMMC is missing pull-ups */
-          +	bias-pull-up;
+          +  /* Increase drive strength for DDR modes */
+          +  drive-strength = <40>;
+          +  /* eMMC is missing pull-ups */
+          +  bias-pull-up;
           +};
           +
            &uart0 {
-           	pinctrl-names = "default";
-           	pinctrl-0 = <&uart0_pins_a>;
+             pinctrl-names = "default";
+             pinctrl-0 = <&uart0_pins_a>;
           --- a/configs/nanopi_neo_air_defconfig
           +++ b/configs/nanopi_neo_air_defconfig
           @@ -16,3 +16,4 @@ CONFIG_SPL=y
@@ -63,8 +62,10 @@ let
       ];
       extraMeta.platforms = [ "armv7l-linux" ];
       filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
-    });
-in pkgs.lib.genAttrs defConfigs (defconfig: pkgs.writeScript "sd-fuse" ''
+    }
+  );
+in
+pkgs.lib.genAttrs defConfigs (defconfig: pkgs.writeScript "sd-fuse" ''
   echo "writing to $1"
   dd if=${buildAllwinnerUboot defconfig}/u-boot-sunxi-with-spl.bin conv=notrunc of=$1 bs=1024 seek=8
 '')

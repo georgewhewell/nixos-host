@@ -1,5 +1,4 @@
 { stdenv, sources, dtc, linux, writeText }:
-
 let
   spi-enabled = writeText "spi-enable.dts" ''
     /dts-v1/;
@@ -7,23 +6,23 @@ let
 
     / {
       compatible = "allwinner,sun8i-h5";
-    	fragment@0 {
-    		target = <&spi0>;
-    		__overlay__ {
-    			#address-cells = <1>;
-    			#size-cells = <0>;
-    			status = "okay";
-    		};
-    	};
+      fragment@0 {
+        target = <&spi0>;
+        __overlay__ {
+          #address-cells = <1>;
+          #size-cells = <0>;
+          status = "okay";
+        };
+      };
 
-    	fragment@1 {
-    		target = <&spi1>;
-    		__overlay__ {
-    			#address-cells = <1>;
-    			#size-cells = <0>;
-    			status = "okay";
-    		};
-    	};
+      fragment@1 {
+        target = <&spi1>;
+        __overlay__ {
+          #address-cells = <1>;
+          #size-cells = <0>;
+          status = "okay";
+        };
+      };
     };
 
   '';
@@ -99,7 +98,8 @@ let
     ssd1130Overlay
     sunxi-nanopi-air-bt
   ];
-in stdenv.mkDerivation {
+in
+stdenv.mkDerivation {
   pname = "sunxi-dt-overlays";
 
   version = sources.sunxi-DT-overlays.rev;

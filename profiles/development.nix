@@ -12,7 +12,7 @@
     gitAndTools.gitFull
 
     xz
-    unar 
+    unar
     unzip
     unrar
 

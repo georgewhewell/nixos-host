@@ -47,7 +47,7 @@ self: super:
   gattool = super.bluez.overrideAttrs (
     old: {
       name = "gattool";
-      configureFlags = (old.configureFlags or []) ++ [ "--enable-deprecated" ];
+      configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-deprecated" ];
       makeFlags = [ "attrib/gatttool" ];
       doCheck = false;
       outputs = [ "out" ];
@@ -58,22 +58,22 @@ self: super:
   );
 
   kodiPlain = super.kodiPlain.overrideAttrs (old: {
-    buildInputs = old.buildInputs ++ [ super.xorg.libXext.dev super.xorg.libXrandr.dev];
+    buildInputs = old.buildInputs ++ [ super.xorg.libXext.dev super.xorg.libXrandr.dev ];
   });
 
-  tvheadend = super.tvheadend.overrideAttrs(old: {
-      patches = [ ./tvheadend.patch ];
-      preConfigure = ''
-        substituteInPlace src/input/mpegts/scanfile.c \
-            --replace 'path = "/usr/share/dvb"' 'path = "${self.dtv-scan-tables}/share/dvb"'
+  tvheadend = super.tvheadend.overrideAttrs (old: {
+    patches = [ ./tvheadend.patch ];
+    preConfigure = ''
+      substituteInPlace src/input/mpegts/scanfile.c \
+          --replace 'path = "/usr/share/dvb"' 'path = "${self.dtv-scan-tables}/share/dvb"'
 
-        ${old.preConfigure}
-      '';
+      ${old.preConfigure}
+    '';
 
   });
 
   waybar = super.waybar.override { pulseSupport = true; };
-  sunxi-tools = super.sunxi-tools.overrideAttrs(old: {
+  sunxi-tools = super.sunxi-tools.overrideAttrs (old: {
     version = "master";
     src = self.sources.sunxi-tools;
     nativeBuildInputs = old.nativeBuildInputs ++ [ super.git ];
