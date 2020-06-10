@@ -29,6 +29,10 @@
      };
   };
 
+  nix.extraOptions = ''
+    allowed-uris = https://github.com
+  '';
+
   services.hydra = {
     enable = true;
     dbi = "dbi:Pg:dbname=hydra";

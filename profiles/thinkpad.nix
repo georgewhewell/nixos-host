@@ -1,9 +1,6 @@
 { config, lib, pkgs, ... }:
 
 {
-  imports  = [
-    ../modules/auto-rotate.nix
-  ];
 
   boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
 
@@ -24,8 +21,6 @@
     enable = true;
     powerOnBoot = false;
   };
-
-  hardware.auto-rotate.enable = true;
 
   hardware.trackpoint = {
     enable = true;
