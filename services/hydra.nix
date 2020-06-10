@@ -30,7 +30,7 @@
   };
 
   nix.extraOptions = ''
-    allowed-uris = https://github.com
+    allowed-uris = https://github.com git://linuxtv.org
   '';
 
   services.hydra = {

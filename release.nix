@@ -127,8 +127,6 @@ in {
       '';
   };
 
-  # pkgs = pkgs.dontRecurseIntoAttrs pkgs;
-
   x86 = pkgs.lib.mapAttrs (name: configuration:
     (build "x86_64-linux" configuration []).config.system.build.toplevel
   ) x86Machines;
@@ -141,14 +139,10 @@ in {
         <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
       ]).config.system.build.sdImage
     ) armMachines;
-    /*
     felboot = pkgs.lib.mapAttrs(name: configuration:
       sunxiBoot (build "armv7l-linux" configuration [ felboot ]).config
-      ) armMachines;
-      */
+    ) armMachines;
   };
-
-  amlogic = (buildCross "aarch64-linux" aarch64Machines.amlogic-s912 [ <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix> ]).config.system.build;
 
   armv7lCross = {
     images = pkgs.lib.mapAttrs(name: configuration:
@@ -162,9 +156,9 @@ in {
   };
 
   aarch64 = pkgs.lib.mapAttrs (name: configuration:
-  (build "aarch64-linux" configuration [
-    <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
-  ]).config.system.build.sdImage
+    (build "aarch64-linux" configuration [
+      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+    ]).config.system.build.sdImage
   ) aarch64Machines;
 
   aarch64Cross = {
@@ -173,11 +167,6 @@ in {
         <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
       ]).config.system.build.sdImage
     ) aarch64Machines;
-    /*
-    felboot = pkgs.lib.mapAttrs(name: configuration:
-      sunxiBoot64 (buildCross "aarch64-linux" configuration [ felboot ]).config
-      ) aarch64Machines;
-    */
   };
 
 }
