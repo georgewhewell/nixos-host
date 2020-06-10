@@ -73,41 +73,43 @@
         dataDir = "/var/lib/plex";
       };
 
-      systemd.services.tvhproxy = let
-	tvh-proxy = with pkgs; stdenv.mkDerivation {
-	  pname = "tvh_proxy";
-	  version = "0.0.1";
-	  src = fetchFromGitHub {
-	    owner = "jkaberg";
-	    repo = "tvhProxy";
-	    rev = "08096e664aca5b59059de7f609bd9e0aaba95191";
-	    sha256 = "07ld4zljg1mwr87zyk5myz8k24brr1lifndixz1y4hggwzzs41cq";
-	  };
+      systemd.services.tvhproxy =
+        let
+          tvh-proxy = with pkgs; stdenv.mkDerivation {
+            pname = "tvh_proxy";
+            version = "0.0.1";
+            src = fetchFromGitHub {
+              owner = "jkaberg";
+              repo = "tvhProxy";
+              rev = "08096e664aca5b59059de7f609bd9e0aaba95191";
+              sha256 = "07ld4zljg1mwr87zyk5myz8k24brr1lifndixz1y4hggwzzs41cq";
+            };
 
-	  buildInputs = [ python3.pkgs.wrapPython ];
-	  pythonPath = with python3.pkgs; [ requests flask gevent ];
+            buildInputs = [ python3.pkgs.wrapPython ];
+            pythonPath = with python3.pkgs; [ requests flask gevent ];
 
-	  installPhase = ''
-	    sed -i '1i#!/usr/bin/env python' tvhProxy.py
-	    install -D tvhProxy.py $out/bin/tvhproxy
-            cp -rv templates $out/bin
-	  '';
+            installPhase = ''
+              sed -i '1i#!/usr/bin/env python' tvhProxy.py
+              install -D tvhProxy.py $out/bin/tvhproxy
+                    cp -rv templates $out/bin
+            '';
 
-	  postFixup = "wrapPythonPrograms";
-	  doCheck = false;
+            postFixup = "wrapPythonPrograms";
+            doCheck = false;
 
-	};
-	in {
-	environment = {
-	  TVH_URL = "http://tvheadend.lan:9981";
-	  TVH_PROXY_URL = "http://localhost:5004";
-          TVH_TUNER_COUNT = "1";
-	};
-	serviceConfig = {
-	  ExecStart = "${tvh-proxy}/bin/tvhproxy";
-	};
-        wantedBy = [ "multi-user.target" ];
-      };
+          };
+        in
+        {
+          environment = {
+            TVH_URL = "http://tvheadend.lan:9981";
+            TVH_PROXY_URL = "http://localhost:5004";
+            TVH_TUNER_COUNT = "1";
+          };
+          serviceConfig = {
+            ExecStart = "${tvh-proxy}/bin/tvhproxy";
+          };
+          wantedBy = [ "multi-user.target" ];
+        };
     };
   };
 }

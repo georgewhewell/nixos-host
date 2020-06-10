@@ -5,9 +5,9 @@
   time.timeZone = "Europe/London";
 
   nix.binaryCaches = [
-      https://hydra.satanic.link
-      https://cache.satanic.link
-      https://cache.nixos.org
+    https://hydra.satanic.link
+    https://cache.satanic.link
+    https://cache.nixos.org
   ];
 
   nix.binaryCachePublicKeys = [

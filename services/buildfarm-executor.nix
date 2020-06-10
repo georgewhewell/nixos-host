@@ -4,13 +4,13 @@
   nix = {
     distributedBuilds = true;
     buildMachines = [
-    {
+      {
         hostName = "nixhost.lan";
         sshUser = "root";
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
         maxJobs = 8;
         speedFactor = 1;
-        systems = ["x86_64-linux" "i686-linux"];
+        systems = [ "x86_64-linux" "i686-linux" ];
       }
       {
         hostName = "odroid-c2.lan";

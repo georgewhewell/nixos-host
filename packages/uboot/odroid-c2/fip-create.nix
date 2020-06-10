@@ -1,7 +1,7 @@
 { stdenv, lib, pkgs, sources }:
 
 stdenv.mkDerivation rec {
-  version="2015.01";
+  version = "2015.01";
   name = "fip_create-${version}";
 
   src = sources.u-boot-odroid-c2;
@@ -12,7 +12,7 @@ stdenv.mkDerivation rec {
     chmod -R +rw fip_create
     cd fip_create && make CC=dsadas
   ''; */
-  HOSTCC="${stdenv.cc}/bin/cc";
+  HOSTCC = "${stdenv.cc}/bin/cc";
   extraMakeFlags = [ "HOSTCC=${stdenv.cc}/bin/cc" ];
   installPhase = ''
     mkdir -p $out/bin

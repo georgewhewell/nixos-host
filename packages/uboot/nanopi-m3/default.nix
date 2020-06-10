@@ -8,7 +8,8 @@ rec {
 
   nanopi-load = pkgs.callPackage ./nanopi-load.nix { };
 
-  uboot-sd = pkgs.runCommandNoCC "uboot-sd" {} ''
+  uboot-sd = pkgs.runCommandNoCC "uboot-sd"
+    { } ''
     ${nanopi-load}/bin/nanopi-load \
       -f \
       -b SD \

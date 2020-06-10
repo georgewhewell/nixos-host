@@ -1,5 +1,4 @@
 { lib }:
-
 let
   machines = [
     "bananapi-m3"
@@ -11,5 +10,6 @@ let
     "orangepi-zero"
   ];
 in
-  lib.genAttrs machines
-    (name: import (./. + "/${name}/configuration.nix"))
+lib.genAttrs
+  machines
+  (name: import (./. + "/${name}/configuration.nix"))

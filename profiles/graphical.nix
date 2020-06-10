@@ -51,7 +51,8 @@
 
       # then start the service
       exec systemctl --user start sway.service
-    '')
+    ''
+    )
   ];
 
   systemd.user.targets.sway-session = {
@@ -133,7 +134,7 @@
       defaultFonts = {
         monospace = [ "Source Code Pro" ];
         sansSerif = [ "Source Sans Pro" ];
-        serif     = [ "Source Serif Pro" ];
+        serif = [ "Source Serif Pro" ];
       };
     };
     fonts = with pkgs; [

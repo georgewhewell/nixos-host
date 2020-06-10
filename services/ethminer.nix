@@ -12,10 +12,10 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = ''
-      /run/current-system/sw/bin/systemctl start ethminer_gpu
+        /run/current-system/sw/bin/systemctl start ethminer_gpu
       '';
       ExecStop = ''
-      /run/current-system/sw/bin/echo Started
+        /run/current-system/sw/bin/echo Started
       '';
     };
   };
@@ -26,10 +26,10 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = ''
-      /run/current-system/sw/bin/systemctl stop ethminer_gpu
+        /run/current-system/sw/bin/systemctl stop ethminer_gpu
       '';
       ExecStop = ''
-      /run/current-system/sw/bin/echo Stopped
+        /run/current-system/sw/bin/echo Stopped
       '';
     };
   };

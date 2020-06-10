@@ -5,7 +5,7 @@
     InitialKeyRepeat = 15;
     KeyRepeat = 2;
     AppleShowAllExtensions = true;
-    NSNavPanelExpandedStateForSaveMode = true; 
+    NSNavPanelExpandedStateForSaveMode = true;
     "com.apple.trackpad.enableSecondaryClick" = true;
     "com.apple.trackpad.trackpadCornerClickBehavior" = 1;
   };

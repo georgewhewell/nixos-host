@@ -1,12 +1,12 @@
 { config, lib, pkgs, ... }:
-
 let
   wanInterface = "enp1s0";
   lanInterface = "enp3s0";
   wlanInterface = "wlan-private";
   vpnInterface = "wg0";
   lanBridge = "br0.lan";
-in {
+in
+{
 
   environment.systemPackages = with pkgs; [
     wirelesstools
@@ -30,7 +30,7 @@ in {
         "192.168.24.0/24"
       ];
       internalInterfaces = [ lanBridge vpnInterface wlanInterface ];
-      externalInterface = wanInterface;  # port 1
+      externalInterface = wanInterface; # port 1
       forwardPorts = [
         { sourcePort = 80; destination = "192.168.23.5:80"; loopbackIPs = [ "82.12.183.66" ]; }
         { sourcePort = 443; destination = "192.168.23.5:443"; loopbackIPs = [ "82.12.183.66" ]; }
@@ -50,17 +50,17 @@ in {
       interfaces = {
         "${wanInterface}" = {
           allowedTCPPorts = [
-            22  # ssh
-            80  # http
+            22 # ssh
+            80 # http
             443 # https
-            51413  # transmission
-            32400  # plex
+            51413 # transmission
+            32400 # plex
           ];
-	  allowedUDPPorts = [
-	    35947  # wireguard
-	    51820  # wireguard
-            51413  # transmission
-	  ];
+          allowedUDPPorts = [
+            35947 # wireguard
+            51820 # wireguard
+            51413 # transmission
+          ];
         };
       };
     };
@@ -82,19 +82,19 @@ in {
     wireguard = {
       interfaces = {
         "${vpnInterface}" = {
-	  ips = [ "192.168.24.1/24" ];
+    ips = [ "192.168.24.1/24" ];
           listenPort = 51820;
-	  peers = [ {
-	    allowedIPs = [ "192.168.24.2/32" ];
-	    publicKey = "RHTVwkbfc6LX/rWDr42WQR1U391wv39oqO2TPyF+cC4=";
-	  } ];
-	  privateKey = "i/noVqodxmQ3x4Qw2OZIp3Es8wilR5op4BYN2JUKXL0=";
+    peers = [ {
+      allowedIPs = [ "192.168.24.2/32" ];
+      publicKey = "RHTVwkbfc6LX/rWDr42WQR1U391wv39oqO2TPyF+cC4=";
+    } ];
+    privateKey = "i/noVqodxmQ3x4Qw2OZIp3Es8wilR5op4BYN2JUKXL0=";
         };
       };
     };
    */
 
-    
+
     trafficShaping = {
       enable = true;
       wanInterface = wanInterface;
@@ -120,19 +120,19 @@ in {
 
   boot.kernelModules = [ "tcp_bbr" ];
   boot.kernel.sysctl = {
-   "net.ipv4.tcp_congestion_control" = "bbr";
-   "net.core.default_qdisc" = "fq_codel";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+    "net.core.default_qdisc" = "fq_codel";
   };
 
   services.avahi.interfaces = [ lanBridge ];
 
   services.hostapd = {
-    enable        = true;
-    interface     = wlanInterface;
-    hwMode        = "a";
-    channel       = 165;
-    ssid          = "nix";
-    wpa           = false;
+    enable = true;
+    interface = wlanInterface;
+    hwMode = "a";
+    channel = 165;
+    ssid = "nix";
+    wpa = false;
     extraConfig = ''
       bridge=${lanBridge}
     '';

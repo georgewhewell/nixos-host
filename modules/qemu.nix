@@ -1,14 +1,13 @@
 { profile, system ? builtins.currentSystem }:
-
 let
-  loadcfg = cfgfile: { config, pkgs, ...}: {
+  loadcfg = cfgfile: { config, pkgs, ... }: {
     imports = [
       cfgfile
       ../profiles/common.nix
       <nixpkgs/nixos/modules/virtualisation/qemu-vm.nix>
     ];
     config = {
-      virtualisation = {};
+      virtualisation = { };
     };
   };
   mkcfg = cfgfile:
@@ -16,4 +15,5 @@ let
       inherit system;
       modules = [ (loadcfg cfgfile) ];
     };
-in (mkcfg profile).config.system.build.vm
+in
+(mkcfg profile).config.system.build.vm

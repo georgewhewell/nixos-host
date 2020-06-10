@@ -2,20 +2,20 @@
 
 {
   services.grafana = {
-   enable = true;
-   addr = "127.0.0.1";
-   port = 3005;
-   rootUrl = "https://grafana.satanic.link";
-   security = {
-     adminUser = "admin";
-     adminPassword = "password";
-   };
-   auth.anonymous.enable = true;
+    enable = true;
+    addr = "127.0.0.1";
+    port = 3005;
+    rootUrl = "https://grafana.satanic.link";
+    security = {
+      adminUser = "admin";
+      adminPassword = "password";
+    };
+    auth.anonymous.enable = true;
   };
 
   security.acme.certs."grafana.satanic.link" = {
-     email = "georgerw@gmail.com";
-     postRun = ''systemctl reload nginx.service'';
+    email = "georgerw@gmail.com";
+    postRun = ''systemctl reload nginx.service'';
   };
 
   services.nginx.virtualHosts."grafana.satanic.link" = {

@@ -2,7 +2,8 @@
 
 {
   fileSystems."/var/lib/radarr" =
-    { device = "fpool/root/config/radarr";
+    {
+      device = "fpool/root/config/radarr";
       fsType = "zfs";
     };
 

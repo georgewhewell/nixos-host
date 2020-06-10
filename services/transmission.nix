@@ -1,10 +1,11 @@
 { config, lib, pkgs, ... }:
-
 let
   incompleteDir = "/mnt/downloads";
-in {
+in
+{
   fileSystems.${incompleteDir} =
-    { device = "bpool/root/downloads";
+    {
+      device = "bpool/root/downloads";
       fsType = "zfs";
       options = [ "nofail" ];
     };

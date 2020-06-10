@@ -2,7 +2,8 @@
 
 {
   fileSystems."/var/lib/sonarr" =
-    { device = "fpool/root/config/sonarr";
+    {
+      device = "fpool/root/config/sonarr";
       fsType = "zfs";
     };
 

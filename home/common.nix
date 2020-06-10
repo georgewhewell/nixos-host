@@ -31,8 +31,8 @@
     enable = true;
     cpuCountFromZero = true;
     meters = {
-      left = [ "AllCPUs" "Memory" "Swap"  ];
-      right = [ "Clock" "Uptime" "Tasks" "LoadAverage"  "Battery" ];
+      left = [ "AllCPUs" "Memory" "Swap" ];
+      right = [ "Clock" "Uptime" "Tasks" "LoadAverage" "Battery" ];
     };
   };
 

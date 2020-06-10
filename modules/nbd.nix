@@ -1,10 +1,10 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-
 let
   cfg = config.boot.initrd.nbd;
-in {
+in
+{
 
   options.boot.initrd.nbd = {
 
@@ -38,7 +38,7 @@ in {
       description = ''
         NBD devices to be mounted at startup
       '';
-      default = {};
+      default = { };
       example = literalExample ''
         { nbd0 = { hostname = "192.168.1.1"; port = 9000; }; }
       '';
@@ -103,11 +103,15 @@ in {
           esac
         done
         ${cfg.postCommands}
-      '');
+      ''
+    );
 
-    boot.kernelParams = lib.mapAttrsToList(device: conf:
-      "nbd.${device}=${conf.hostname}:${conf.port}/${builtins.toString conf.name}") cfg.devices;
+    boot.kernelParams =
+      lib.mapAttrsToList
+        (device: conf:
+          "nbd.${device}=${conf.hostname}:${conf.port}/${builtins.toString conf.name}")
+        cfg.devices;
 
   };
-  meta = {};
+  meta = { };
 }

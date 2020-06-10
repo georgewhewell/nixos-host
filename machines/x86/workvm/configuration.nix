@@ -11,12 +11,14 @@
   ];
 
   fileSystems."/boot" =
-    { device = "/dev/disk/by-label/EFI";
+    {
+      device = "/dev/disk/by-label/EFI";
       fsType = "vfat";
     };
 
   fileSystems."/" =
-    { device = "zpool/root/nixos";
+    {
+      device = "zpool/root/nixos";
       fsType = "zfs";
     };
 

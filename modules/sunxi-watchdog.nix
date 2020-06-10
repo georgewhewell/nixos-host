@@ -1,10 +1,10 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-
 let
   cfg = config.sunxi-watchdog;
-in {
+in
+{
 
   options = {
 
@@ -59,5 +59,5 @@ in {
     };
   };
 
-  meta = {};
+  meta = { };
 }

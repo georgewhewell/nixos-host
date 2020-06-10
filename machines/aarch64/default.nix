@@ -1,5 +1,4 @@
 { lib }:
-
 let
   machines = [
     "odroid-c2"
@@ -11,5 +10,5 @@ let
     "amlogic-s912"
   ];
 in
-  lib.genAttrs machines (name:
-      import (./. + "/${name}/configuration.nix"))
+lib.genAttrs machines (name:
+  import (./. + "/${name}/configuration.nix"))

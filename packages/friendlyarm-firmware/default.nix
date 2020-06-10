@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
     cp -rv ${fetchurl {
       url = "https://raw.githubusercontent.com/friendlyarm/android_vendor_broadcom_nanopi2/nanopi2-lollipop-mr1/proprietary/nvram_ap6212a.txt";
       sha256 = "1rhsjknicpybrvd505vdc14p4n0x4clgjk0qxdf7kvqn74m7m5sz";
-    }} $out/lib/firmware/brcm/brcmfmac43430-sdio.friendlyarm,nanopi-neo-air.txt
+      }} $out/lib/firmware/brcm/brcmfmac43430-sdio.friendlyarm,nanopi-neo-air.txt
   '';
 
   meta = {

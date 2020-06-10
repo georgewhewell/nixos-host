@@ -7,11 +7,12 @@
 
   nixpkgs.overlays = [
     (self: super: {
-        bluez = (let
+      bluez = (
+        let
           python3_ = super.python3.override {
             packageOverrides = python-self: python-super: {
               pygobject3 = python-super.pygobject3.overrideAttrs (oldAttrs: {
-                propagatedBuildInputs = [];
+                propagatedBuildInputs = [ ];
                 PYGOBJECT_WITHOUT_PYCAIRO = 1;
                 mesonFlags = oldAttrs.mesonFlags ++ [
                   "-Dpycairo=false"
@@ -20,20 +21,20 @@
             };
           };
         in
-          (super.bluez.override({
-            python3 = python3_;
-            libical = super.libical.overrideAttrs(o: {
-              doInstallCheck = false;
-            });
-          })).overrideAttrs(o: {
-            patches = [
-              (super.fetchurl {
-                url = "https://raw.githubusercontent.com/OpenELEC/OpenELEC.tv/6b9e7aaba7b3f1e7b69c8deb1558ef652dd5b82d/packages/network/bluez/patches/bluez-07-broadcom-dont-set-speed-before-loading.patch";
-                sha256 = "1qgihk1vbwn5msk9rj7xwybcn0kwd0pzq7sh2vljgkng5ixxxff3";
-              })
-            ];
-          })
-        );
+        (super.bluez.override ({
+          python3 = python3_;
+          libical = super.libical.overrideAttrs (o: {
+            doInstallCheck = false;
+          });
+        })).overrideAttrs (o: {
+          patches = [
+            (super.fetchurl {
+              url = "https://raw.githubusercontent.com/OpenELEC/OpenELEC.tv/6b9e7aaba7b3f1e7b69c8deb1558ef652dd5b82d/packages/network/bluez/patches/bluez-07-broadcom-dont-set-speed-before-loading.patch";
+              sha256 = "1qgihk1vbwn5msk9rj7xwybcn0kwd0pzq7sh2vljgkng5ixxxff3";
+            })
+          ];
+        })
+      );
     })
   ];
 
@@ -45,7 +46,7 @@
 
   services.mingetty.autologinUser = lib.mkForce "grw";
   # sd card image must be <2gb
-#  environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd ];
+  #  environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd ];
 
   boot.kernelPatches = [
     {
@@ -58,81 +59,6 @@
     {
       name = "nanopi-air";
       patch = ./nanopi-air-nand-wifi.patch;
-    }
-    {
-      name = "rfkill";
-      patch = pkgs.writeText "sunxi-rfkill" ''
-      diff --git a/net/rfkill/rfkill-gpio.c b/net/rfkill/rfkill-gpio.c
-      index 76c01cbd56e35..656847bdf00d5 100644
-      --- a/net/rfkill/rfkill-gpio.c
-      +++ b/net/rfkill/rfkill-gpio.c
-      @@ -35,7 +35,7 @@ struct rfkill_gpio_data {
-
-       	struct rfkill		*rfkill_dev;
-       	struct clk		*clk;
-      -
-      +	int             clk_frequency;
-       	bool			clk_enabled;
-       };
-
-      @@ -44,13 +44,13 @@ static int rfkill_gpio_set_power(void *data, bool blocked)
-       	struct rfkill_gpio_data *rfkill = data;
-
-       	if (!blocked && !IS_ERR(rfkill->clk) && !rfkill->clk_enabled)
-      -		clk_enable(rfkill->clk);
-      +		clk_prepare_enable(rfkill->clk);
-
-       	gpiod_set_value_cansleep(rfkill->shutdown_gpio, !blocked);
-       	gpiod_set_value_cansleep(rfkill->reset_gpio, !blocked);
-
-       	if (blocked && !IS_ERR(rfkill->clk) && rfkill->clk_enabled)
-      -		clk_disable(rfkill->clk);
-      +		clk_disable_unprepare(rfkill->clk);
-
-       	rfkill->clk_enabled = !blocked;
-
-      @@ -96,8 +96,9 @@ static int rfkill_gpio_probe(struct platform_device *pdev)
-       	if (!rfkill)
-       		return -ENOMEM;
-
-      -	device_property_read_string(&pdev->dev, "name", &rfkill->name);
-      -	device_property_read_string(&pdev->dev, "type", &type_name);
-      +	device_property_read_string(&pdev->dev, "rfkill-name", &rfkill->name);
-      +	device_property_read_string(&pdev->dev, "rfkill-type", &type_name);
-      +	device_property_read_u32(&pdev->dev, "clock-frequency", &rfkill->clk_frequency);
-
-       	if (!rfkill->name)
-       		rfkill->name = dev_name(&pdev->dev);
-      @@ -111,6 +112,9 @@ static int rfkill_gpio_probe(struct platform_device *pdev)
-       	}
-
-       	rfkill->clk = devm_clk_get(&pdev->dev, NULL);
-      +	if (!IS_ERR(rfkill->clk) && rfkill->clk_frequency > 0) {
-      +		clk_set_rate(rfkill->clk, rfkill->clk_frequency);
-      +	}
-
-       	gpio = devm_gpiod_get_optional(&pdev->dev, "reset", GPIOD_OUT_LOW);
-       	if (IS_ERR(gpio))
-      @@ -167,6 +171,10 @@ static const struct acpi_device_id rfkill_acpi_match[] = {
-       };
-       MODULE_DEVICE_TABLE(acpi, rfkill_acpi_match);
-       #endif
-      +static const struct of_device_id rfkill_of_match[] = {
-      +	{ .compatible = "rfkill-gpio", },
-      +	{},
-      +};
-
-       static struct platform_driver rfkill_gpio_driver = {
-       	.probe = rfkill_gpio_probe,
-      @@ -174,6 +182,7 @@ static struct platform_driver rfkill_gpio_driver = {
-       	.driver = {
-       		.name = "rfkill_gpio",
-       		.acpi_match_table = ACPI_PTR(rfkill_acpi_match),
-      +		.of_match_table = of_match_ptr(rfkill_of_match),
-       	},
-       };
-
-      '';
     }
     {
       name = "nanopi-duo";

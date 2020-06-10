@@ -1,5 +1,4 @@
 { lib }:
-
 let
   machines = [
     "fuckup"
@@ -10,5 +9,5 @@ let
     "router"
   ];
 in
-  lib.genAttrs machines (name:
-      import (./. + "/${name}/configuration.nix"))
+lib.genAttrs machines (name:
+  import (./. + "/${name}/configuration.nix"))

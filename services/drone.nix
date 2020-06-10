@@ -2,10 +2,10 @@
 
 {
   security.acme.certs."drone.tsar.su" = {
-      email = "georgerw@gmail.com";
-      webroot = "/var/www/challenges/";
+    email = "georgerw@gmail.com";
+    webroot = "/var/www/challenges/";
   };
-  
+
   services.nginx.httpConfig = ''
 
     server {
@@ -45,12 +45,12 @@
   '';
 
   environment.etc.dronerc.text = ''
-DATABASE_DRIVER=postgres
-DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone_04?sslmode=disable
-REMOTE_DRIVER=gogs
-REMOTE_CONFIG=https://git.tsar.su?open=false
-SERVER_ADDR=0.0.0.0:8005
-'';
+    DATABASE_DRIVER=postgres
+    DATABASE_CONFIG=postgres://drone:drone@172.17.0.1:5432/drone_04?sslmode=disable
+    REMOTE_DRIVER=gogs
+    REMOTE_CONFIG=https://git.tsar.su?open=false
+    SERVER_ADDR=0.0.0.0:8005
+  '';
 
   systemd.services.drone = {
     wantedBy = [ "multi-user.target" ];

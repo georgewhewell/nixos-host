@@ -26,17 +26,20 @@
 
   environment.systemPackages = with pkgs; [ radeon-profile ];
   fileSystems."/" =
-    { device = "zpool/root/nixos-fuckup";
+    {
+      device = "zpool/root/nixos-fuckup";
       fsType = "zfs";
     };
 
   fileSystems."/home/grw" =
-    { device = "zpool/root/grw";
+    {
+      device = "zpool/root/grw";
       fsType = "zfs";
     };
 
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/CD68-6C43";
+    {
+      device = "/dev/disk/by-uuid/CD68-6C43";
       fsType = "vfat";
     };
 
@@ -53,7 +56,8 @@
   };
 
   services.consul.interface =
-    let interface = "br0"; in {
+    let interface = "br0"; in
+    {
       advertise = interface;
       bind = interface;
     };
@@ -67,8 +71,8 @@
 
     firewall = {
       enable = true;
-      allowedTCPPortRanges = [ { from = 5000; to = 5005; } { from = 50000; to = 60000; } ];
-      allowedUDPPortRanges = [ { from = 6000; to = 6005; } { from = 35000; to = 65535; } ];
+      allowedTCPPortRanges = [{ from = 5000; to = 5005; } { from = 50000; to = 60000; }];
+      allowedUDPPortRanges = [{ from = 6000; to = 6005; } { from = 35000; to = 65535; }];
       allowedUDPPorts = [ 5353 ];
       allowedTCPPorts = [
         9100
@@ -99,12 +103,16 @@
     useGlamor = false; # off is tearing; on is lag
     videoDrivers = [ "amdgpu" ];
     xrandrHeads = [
-      { output = "DisplayPort-2"; primary = true; monitorConfig = ''
-        # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
-        Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
-        Option "PreferredMode" "3440x1440_75.00"
-        Option "Broadcast RGB" "Full"
-    '';}
+      {
+        output = "DisplayPort-2";
+        primary = true;
+        monitorConfig = ''
+          # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
+          Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
+          Option "PreferredMode" "3440x1440_75.00"
+          Option "Broadcast RGB" "Full"
+        '';
+      }
     ];
   };
 

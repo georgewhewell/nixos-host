@@ -1,8 +1,8 @@
 { config, pkgs, ... }:
-
 let
   myPkgs = import ./pkgs { inherit pkgs; };
-in {
+in
+{
   imports = [
     <home-manager/nix-darwin>
     ./system.nix
@@ -26,7 +26,8 @@ in {
   system.stateVersion = 3;
 
   nix.nixPath =
-    [ "darwin-config=$HOME/.nixpkgs/darwin-configuration.nix"
+    [
+      "darwin-config=$HOME/.nixpkgs/darwin-configuration.nix"
       "darwin=$HOME/.nix-defexpr/channels/darwin"
       "$HOME/.nix-defexpr/channels"
     ];

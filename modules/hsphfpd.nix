@@ -2,10 +2,10 @@
 
 
 with lib;
-
 let
   cfg = config.services.hsphfpd;
-in {
+in
+{
 
   options.services.hsphfpd = {
 
@@ -25,7 +25,7 @@ in {
 
     systemd.services.hsphfpd = {
       before = [ "bluetooth.service" "pulseaudio.service" ];
-      wantedBy = ["multi-user.target"];
+      wantedBy = [ "multi-user.target" ];
       script = ''
         ${pkgs.hsphfpd}/bin/hsphfpd.pl
       '';

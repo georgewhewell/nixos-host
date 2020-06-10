@@ -55,13 +55,13 @@
         }];
         relabel_configs = [
           {
-            source_labels = [];
+            source_labels = [ ];
             regex = "(.*)";
             target_label = "port";
             replacement = "9100";
           }
           {
-            source_labels = ["__meta_consul_node"];
+            source_labels = [ "__meta_consul_node" ];
             regex = "(.*)";
             target_label = "instance";
             replacement = "$1:9100";
@@ -72,28 +72,28 @@
         job_name = "nginx";
         static_configs = [{
           targets = [ "127.0.0.1:9113" ];
-          labels = {};
+          labels = { };
         }];
       }
       {
         job_name = "unifi";
         static_configs = [{
           targets = [ "127.0.0.1:9130" ];
-          labels = {};
+          labels = { };
         }];
       }
       {
         job_name = "prometheus";
         static_configs = [{
           targets = [ "127.0.0.1:9090" ];
-          labels = {};
+          labels = { };
         }];
       }
       {
         job_name = "ipmi";
         static_configs = [{
           targets = [ "127.0.0.1:9290" ];
-          labels = {};
+          labels = { };
         }];
       }
       {
@@ -101,9 +101,9 @@
         metrics_path = "/snmp";
         params = { module = [ "if_mib" ]; };
         relabel_configs = [
-          { source_labels = ["__address__"];    target_label = "__param_target"; }
-          { source_labels = ["__param_target"]; target_label = "instance"; }
-          { source_labels = []; target_label = "__address__"; replacement = "localhost:9116"; }
+          { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+          { source_labels = [ "__param_target" ]; target_label = "instance"; }
+          { source_labels = [ ]; target_label = "__address__"; replacement = "localhost:9116"; }
         ];
         static_configs = [{
           targets = [ "mikrotik.lan" ];

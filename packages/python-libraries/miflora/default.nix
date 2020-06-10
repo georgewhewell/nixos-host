@@ -19,7 +19,7 @@ buildPythonPackage rec {
     rev = "bumpversion-0.7";
     sha256 = "0gq6lmgkgixy6n9lcynqpb1imb7b3whnrl9iimv4v8c5cz7vrvay";
   };
-*/  
+*/
   src = fetchFromGitHub {
     owner = "open-homeautomation";
     repo = "miflora";
@@ -32,7 +32,7 @@ buildPythonPackage rec {
     sed -i '/install_requires/d' setup.py
     rm -rf test
   '';
-  
+
   checkInputs = [ pytest ];
   doCheck = false;
 

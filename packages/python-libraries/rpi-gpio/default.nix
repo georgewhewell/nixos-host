@@ -14,7 +14,7 @@ buildPythonPackage rec {
     sha256 = "0gvxp0nfm2ph89f2j2zjv9vl10m0hy0w2rpn617pcrjl41nbq93l";
   };
 
-  propagatedBuildInputs = [  ];
+  propagatedBuildInputs = [ ];
 
   doCheck = false;
 

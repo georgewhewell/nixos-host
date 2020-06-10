@@ -2,10 +2,10 @@
 
 {
   security.acme.certs."jupyter.tsar.su" = {
-      email = "georgerw@gmail.com";
-      webroot = "/var/www/challenges/";
+    email = "georgerw@gmail.com";
+    webroot = "/var/www/challenges/";
   };
-  
+
   services.nginx.httpConfig = ''
 
     server {

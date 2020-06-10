@@ -1,19 +1,19 @@
 google-app-engine-sdk =
-  if !isPy27
-  then throw "google-app-engine-sdk requires Python 2.7; it is not supported for interpreter ${python.executable}"
-  else pkgs.stdenv.mkDerivation rec {
-    name = "google-app-engine-sdk-${version}";
-    version = "1.9.35";
-    buildInputs = [ pkgs.unzip pkgs.makeWrapper ];
+if !isPy27
+then throw "google-app-engine-sdk requires Python 2.7; it is not supported for interpreter ${python.executable}"
+else pkgs.stdenv.mkDerivation rec {
+name = "google-app-engine-sdk-${version}";
+version = "1.9.35";
+buildInputs = [ pkgs.unzip pkgs.makeWrapper ];
 
-    src = pkgs.fetchurl {
-      url = "https://storage.googleapis.com/appengine-sdks/featured/google_appengine_${version}.zip";
-      sha256 = "19qxkxvb7nxs64mdjlxdhzbg16n5qwp8v229lvkpw9w0i8hghpj0";
-    };
+src = pkgs.fetchurl {
+url = "https://storage.googleapis.com/appengine-sdks/featured/google_appengine_${version}.zip";
+sha256 = "19qxkxvb7nxs64mdjlxdhzbg16n5qwp8v229lvkpw9w0i8hghpj0";
+};
 
-    unpackPhase = "unzip $src";
+unpackPhase = "unzip $src";
 
-    installPhase = ''
+installPhase = ''
       mkdir -p $out/lib/${python.libPrefix}
       mv google_appengine $out/lib/${python.libPrefix}/site-packages
       mkdir -p $out/bin
@@ -28,9 +28,9 @@ google-app-engine-sdk =
       done
     '';
 
-    meta = {
-      description = "A sandbox that emulates Google App Engine services";
-      homepage = "https://cloud.google.com/appengine/docs/python/";
-      license = licenses.asl20;
-    };
-  };
+meta = {
+description = "A sandbox that emulates Google App Engine services";
+homepage = "https://cloud.google.com/appengine/docs/python/";
+license = licenses.asl20;
+};
+};

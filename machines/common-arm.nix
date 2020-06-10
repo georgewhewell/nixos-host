@@ -11,7 +11,7 @@
 
   boot = {
     cleanTmpDir = true;
-    kernelParams = [ "boot.shell_on_fail" "panic=20"];
+    kernelParams = [ "boot.shell_on_fail" "panic=20" ];
     supportedFilesystems = lib.mkForce [ "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
@@ -48,13 +48,15 @@
     dates = "daily";
   };
 
-  systemd.services."lights-off" = let
-    turn-off-leds = pkgs.writeScriptBin "turn-off-leds" ''
-      for i in /sys/class/leds/* ; do
-        echo 0 > $i/brightness
-      done
-    '';
-    in {
+  systemd.services."lights-off" =
+    let
+      turn-off-leds = pkgs.writeScriptBin "turn-off-leds" ''
+        for i in /sys/class/leds/* ; do
+          echo 0 > $i/brightness
+        done
+      '';
+    in
+    {
       description = "turn off leds";
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
@@ -62,20 +64,22 @@
         RemainAfterExit = true;
         ExecStart = "${pkgs.bash}/bin/bash ${turn-off-leds}/bin/turn-off-leds";
       };
-  };
+    };
 
-  systemd.services."io-is-busy" = let
-    io-is-busy = pkgs.writeScriptBin "io-is-busy" ''
-      cd /sys/devices/system/cpu
-      for i in cpufreq/ondemand cpu0/cpufreq/ondemand cpu4/cpufreq/ondemand ; do
-        if [ -d $i ]; then
-          echo 1  >$i/io_is_busy
-          echo 25 >$i/up_threshold
-          echo 10 >$i/sampling_down_factor
-        fi
-      done
-    '';
-    in {
+  systemd.services."io-is-busy" =
+    let
+      io-is-busy = pkgs.writeScriptBin "io-is-busy" ''
+        cd /sys/devices/system/cpu
+        for i in cpufreq/ondemand cpu0/cpufreq/ondemand cpu4/cpufreq/ondemand ; do
+          if [ -d $i ]; then
+            echo 1  >$i/io_is_busy
+            echo 25 >$i/up_threshold
+            echo 10 >$i/sampling_down_factor
+          fi
+        done
+      '';
+    in
+    {
       description = "set io_is_busy";
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
@@ -83,10 +87,11 @@
         RemainAfterExit = true;
         ExecStart = "${pkgs.bash}/bin/bash ${io-is-busy}/bin/io-is-busy";
       };
-  };
+    };
 
   boot.kernelPatches = [
-    { name = "enable-cec";
+    {
+      name = "enable-cec";
       patch = null;
       extraConfig = ''
         MEDIA_CEC_SUPPORT y
@@ -113,25 +118,7 @@
     {
       # uboot should be setting this properly but..
       name = "fix odroid-hc1 dts name";
-      patch = pkgs.writeText "patch" ''
-        diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-        index e8dd99201397..142e5a28783c 100644
-        --- a/arch/arm/boot/dts/Makefile
-        +++ b/arch/arm/boot/dts/Makefile
-        @@ -208,7 +208,7 @@ dtb-$(CONFIG_ARCH_EXYNOS5) += \
-          exynos5420-arndale-octa.dtb \
-          exynos5420-peach-pit.dtb \
-          exynos5420-smdk5420.dtb \
-        -	exynos5422-odroidhc1.dtb \
-        +	exynos5422-odroid.dtb \
-          exynos5422-odroidxu3.dtb \
-          exynos5422-odroidxu3-lite.dtb \
-          exynos5422-odroidxu4.dtb \
-        diff --git a/arch/arm/boot/dts/exynos5422-odroidhc1.dts b/arch/arm/boot/dts/exynos5422-odroid.dts
-        similarity index 100%
-        rename from arch/arm/boot/dts/exynos5422-odroidhc1.dts
-        rename to arch/arm/boot/dts/exynos5422-odroid.dts
-      '';
+      patch = ../packages/patches/fix-odroid-hc1-dtbname.patch;
     }
   ];
 }

@@ -1,8 +1,8 @@
 { config, lib, pkgs, ... }:
-
 let
   bridgeName = "br0";
-in {
+in
+{
 
   fileSystems."/export/store" = {
     device = "/nix/store";
@@ -18,12 +18,15 @@ in {
   };
 
   networking.firewall.allowedTCPPorts = [
-    111  # nfs?
+    111 # nfs?
     2049 # nfs
-    4000 4001 4002 4003
-    138  # smb
-    445  # smb
-    548  # netatalk
+    4000
+    4001
+    4002
+    4003
+    138 # smb
+    445 # smb
+    548 # netatalk
     10809 # nbd
 
     # nfs
@@ -33,24 +36,24 @@ in {
   ];
 
   networking.firewall.allowedUDPPorts = [
-    111  # nfs?
+    111 # nfs?
     2049 # nfs
-    138  # smb
-    445  # smb
+    138 # smb
+    445 # smb
 
     # nfs
     20048
     37914
     42074
   ];
-    /*# Create an empty bridge
-  networking.bridges.${bridgeName} = {
-    interfaces = [];
-  };
+  /*# Create an empty bridge
+networking.bridges.${bridgeName} = {
+  interfaces = [];
+};
 
-  networking.interfaces.${bridgeName} = {
-    ipAddress = "10.0.10.1/24";
-  };*/
+networking.interfaces.${bridgeName} = {
+  ipAddress = "10.0.10.1/24";
+};*/
 
   # Auto-chmod pre-boot devices and trigger bridge job for new interfaces
   services.udev.extraRules = ''
@@ -77,7 +80,7 @@ in {
 
   # Add new interface to bridge
   systemd.services."bridge-rndis@" = {
-    bindsTo = [ "sys-subsystem-net-devices-%i.device"];
+    bindsTo = [ "sys-subsystem-net-devices-%i.device" ];
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "${pkgs.bridge-utils}/bin/brctl setfd ${bridgeName} 0";
@@ -86,6 +89,6 @@ in {
     };
   };
 
-  networking.firewall.allowedTCPPortRanges = [ {from = 50000; to = 51000; } ];
+  networking.firewall.allowedTCPPortRanges = [{ from = 50000; to = 51000; }];
 
 }
