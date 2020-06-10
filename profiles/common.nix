@@ -3,13 +3,13 @@
 {
 
   imports = [
-    ../modules/blinds.nix
     ../modules/cache-cache.nix
     ../modules/usb-gadget.nix
     ../modules/devicetree.nix
     ../modules/sunxi-watchdog.nix
     ../modules/nbd.nix
     ../modules/netboot.nix
+    ../modules/hsphfpd.nix
     ../modules/traffic-shaping.nix
     ./users.nix
   ];

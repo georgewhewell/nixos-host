@@ -15,8 +15,8 @@ python3.pkgs.buildPythonApplication rec {
     flask
     smbus2
     miflora
-    fswebcam
-    ffmpeg
+#    fswebcam
+#    ffmpeg
   ];
 
   doCheck = false;

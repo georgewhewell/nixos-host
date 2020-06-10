@@ -11,4 +11,7 @@
 
   odroid-hc1 = callPackage ./odroid-hc1 { };
   odroid-c1 = callPackage ./odroid-c1 { };
+
+  amlogic-s912 = callPackage ./s912 { };
+
 }

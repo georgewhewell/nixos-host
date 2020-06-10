@@ -1,13 +1,11 @@
-{ pkgs, sources }:
+{ fetchFromGitHub, pkgs }:
 
 let
-  uboot = pkgs.callPackage <nixpkgs/pkgs/misc/uboot> { stdenv = pkgs.gcc49Stdenv; };
+  /* uboot = pkgs.callPackage <nixpkgs/pkgs/misc/uboot> { stdenv = pkgs.gcc49Stdenv; }; */
 in
-uboot.buildUBoot rec {
-  pname = "odroid-c1-uboot";
-
-  version = "2011.03";
-  src = sources.u-boot-odroid-c1;
+pkgs.buildUBoot rec {
+  pname = "amlogic-s912-uboot";
+  version = "master";
 
   defconfig = "odroidc_config";
   targetPlatforms = [ "armv7l-linux" ];

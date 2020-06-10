@@ -1,17 +1,11 @@
-{ config, lib, pkgs, ... }:
+{ stdenv, sources, libusb, pkgconfig }:
 
-pkgs.stdenv.mkDerivation rec {
-  version="master";
-  name = "nanopi-load-${version}";
+stdenv.mkDerivation rec {
+  pname = "nanopi-load";
+  version = sources.nanopi-load.rev;
+  src = sources.nanopi-load;
 
-  src = pkgs.fetchFromGitHub {
-    owner = "rafaello7";
-    repo = "nanopi-load";
-    rev = "001d2e36ff91e130c0ace5e152d224b05681b6e3";
-    sha256 = "187hgsa5rrw1f8q2zfhfr31p8didh5sgj051ddl1lq617wgj7798";
-  };
-
-  nativeBuildInputs = [ pkgs.libusb pkgs.pkgconfig pkgs.gcc ];
+  nativeBuildInputs = [ libusb pkgconfig ];
   hardeningDisable = [ "all" ];
 
   installPhase = ''
@@ -20,4 +14,3 @@ pkgs.stdenv.mkDerivation rec {
   '';
 
  }
-

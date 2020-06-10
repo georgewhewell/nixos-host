@@ -1,15 +1,10 @@
-{ stdenv, binutils, openssl, fetchFromGitHub }:
+{ stdenv, binutils, openssl, sources }:
 
 stdenv.mkDerivation rec {
     version="0.1";
     name = "meson-tools-${version}";
 
-    src = fetchFromGitHub {
-      owner = "afaerber";
-      repo = "meson-tools";
-      rev = "v${version}";
-      sha256 = "1bvshfa9pa012yzdwapi3nalpgcwmfq7d3n3w3mlr357a6kq64qk";
-    };
+    src = sources.meson-tools;
 
     hardeningDisable = [ "all" ];
     nativeBuildInputs = [ binutils openssl ];

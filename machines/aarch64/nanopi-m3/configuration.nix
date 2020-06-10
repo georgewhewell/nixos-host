@@ -14,27 +14,22 @@
   # stop kernel build OOM
   nix.buildCores = 7;
 
-  boot.kernelPackages = 
+  boot.kernelPackages =
     with pkgs; recurseIntoAttrs (linuxPackagesFor (
       buildLinux ({
     version = "4.14";
     modDirVersion = "4.14.137";
     defconfig = "nanopim3_defconfig";
 
-    src = fetchFromGitHub {
-      owner = "rafaello7";
-      repo = "linux-nanopi-m3-v4.14";
-      rev = "03995c670a26bf25edf7647e4729d3f77150826e";
-      sha256 = "0ykcr8nx3irjsjwamqm65myjyx7vaf4cbaspxmragxdag3b1bl9s";
-    };
+    src = pkgs.sources.linux_nanopi_m3;
 
     inherit (pkgs) buildPackages stdenv;
 
     kernelPatches = [
-    {
-      name = "revert cross compile";
-      patch = ./revert-cross-compile.patch;
-    }
+      {
+        name = "revert cross compile";
+        patch = ./revert-cross-compile.patch;
+      }
     {
       name = "export-func";
       patch = ./export-func.patch;
@@ -88,11 +83,10 @@
         SOUND n
       '';
     }];
-  }))); 
+  })));
 
   imports = [
     ../common.nix
   ];
 
 }
-

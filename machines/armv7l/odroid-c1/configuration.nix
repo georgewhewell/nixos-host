@@ -9,28 +9,7 @@
   ];
 
   boot.kernelParams = [ "boot.shell_on_fail" "console=ttyAML0,115200" "earlyprintk=serial,ttyAML0,115200" ];
-
-  boot.kernelPackages = lib.mkForce (pkgs.linuxPackagesFor (pkgs.linux_testing.override {
-    argsOverride = rec {
-      src = pkgs.fetchFromGitHub {
-        owner = "xdarklight";
-        repo = "linux";
-        rev = "meson-mx-integration-5.8-20200520";
-        sha256 = "0iyhvq5l536a501m0xmj3s84xz50p0q4z3kyj4i57f43g0bflxa0";
-      };
-      version = "5.7-rc6";
-      modDirVersion = "5.7.0-rc6";
-    };
-  }));
-
-  boot.kernelPatches = [{
-    name = "broken-extcon";
-    patch = null;
-    extraConfig = ''
-      USB_CONN_EXTCON n
-      MESON_MX_AO_ARC_FIRMWARE n
-    '';
-  }]; 
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_meson_mx;
 
   sdImage.populateFirmwareCommands = let
     bootini = pkgs.writeText "boot.ini" ''

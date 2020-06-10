@@ -7,7 +7,6 @@ let
     "orangepi-prime"
     "rock64"
     "tvheadend"
-    "router"
     "nanopi-m3"
     "amlogic-s912"
   ];

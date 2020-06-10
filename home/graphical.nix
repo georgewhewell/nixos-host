@@ -28,7 +28,7 @@
     font-awesome_5
 
     spotify
-    vlc
+    /* vlc */
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;

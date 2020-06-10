@@ -1,7 +1,0 @@
-{
-  "url": "https://github.com/armbian/sunxi-DT-overlays.git",
-  "rev": "8e29b9245ecc17b58a875d61e4ca5671c4aca3fc",
-  "date": "2018-11-13T17:41:35-05:00",
-  "sha256": "1zapanml9hjd5yc4zpq8jy77w51r12s51a83hrx1yz433da9w0vl",
-  "fetchSubmodules": false
-}

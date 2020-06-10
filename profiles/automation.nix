@@ -96,8 +96,8 @@
     config = {
       homeassistant = {
         name = "Home";
-      	latitude = "51.5074";
-      	longitude = "0.1278";
+      	latitude = "51.28";
+      	longitude = "0.678";
       	elevation = "20";
       	unit_system = "metric";
       	time_zone = "Europe/London";
@@ -127,6 +127,8 @@
       cover = [];
       esphome = {};
       media_player = [];
+      system_health = {};
+      sun = {};
       plant =
           let mkPlant = name: {
            sensors = {
@@ -145,14 +147,34 @@
       automation = [
         {
           trigger = {
-            platform = "sun";
-            event = "sunset";
+            platform = "numeric_state";
+            entity_id = "sun.sun";
+            value_template = "{{ state_attr('sun.sun', 'elevation') }}";
+            below = -3.0;
           };
-          action = {
+          action = [{
+           service = "cover.close_cover";
+           entity_id = "cover.main_blinds";
+          } {
             service = "cover.close_cover";
-            entity_id = "cover.main_blinds";
+            entity_id = "cover.side_blinds";
+          }];
+        }
+        {
+          trigger = {
+            platform = "numeric_state";
+            entity_id = "sun.sun";
+            value_template = "{{ state_attr('sun.sun', 'elevation') }}";
+            above = -2.0;
           };
-        } 
+          action = [{
+           service = "cover.open_cover";
+           entity_id = "cover.main_blinds";
+          } {
+            service = "cover.open_cover";
+            entity_id = "cover.side_blinds";
+          }];
+        }
       ];
     };
   };

@@ -58,19 +58,23 @@ in {
   environment.systemPackages = [
     i2c-tools
     devmem2
-    git
-    dtc
-    broadcom-bluetooth
-    fswebcam
-    xawtv
-    ffmpeg
-    libva-utils
-    v4l-utils
+    #git
+    #dtc
+    #broadcom-bluetooth
+    #fswebcam
+    #xawtv
+    #ffmpeg
+    #libva-utils
+    #v4l-utils
     #(python3.withPackages (ps: [ ps.luma-oled ]))
     #ffmpeg
     #v4l-utils
   ];
 
+  hardware.opengl = {
+    extraPackages = with pkgs; [ libva libva-v4l2-request ];
+  };
+  
   systemd.services.entking = {
     description = "run entking";
     script = ''
