@@ -23,8 +23,8 @@
       ../../../services/virt/host.nix
       ../../../services/virt/vfio.nix
     ];
-    services.home-assistant.enable = true;
 
+  environment.systemPackages = with pkgs; [ radeon-profile ];
   fileSystems."/" =
     { device = "zpool/root/nixos-fuckup";
       fsType = "zfs";

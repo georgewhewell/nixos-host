@@ -33,7 +33,6 @@
 
     steam
     discord
-    vlc
 
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
@@ -102,12 +101,13 @@
   services.blueman.enable = true;
   hardware.pulseaudio = {
     enable = true;
-    package = pkgs.pulseaudioFull;
-    extraModules = [ pkgs.pulseaudio-modules-bt ];
     support32Bit = true;
+    systemWide = true;
+    extraModules = [ pkgs.pulseaudio-modules-bt ];
+    package = pkgs.pulseaudioFull;
     extraConfig = ''
       # make bluetooth work?
-      load-module module-bluetooth-policy auto_switch=2
+      # load-module module-bluetooth-policy auto_switch=2
     '';
   };
 

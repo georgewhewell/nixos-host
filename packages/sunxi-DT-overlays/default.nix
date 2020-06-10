@@ -1,7 +1,6 @@
-{ stdenv, fetchgit, dtc, linux, writeText }:
+{ stdenv, sources, dtc, linux, writeText }:
 
 let
-  pinnedVersion = stdenv.lib.importJSON ./src.json;
   spi-enabled = writeText "spi-enable.dts" ''
     /dts-v1/;
     /plugin/;
@@ -101,10 +100,10 @@ let
     sunxi-nanopi-air-bt
   ];
 in stdenv.mkDerivation {
-  name = "sunxi-dt-overlays-${pinnedVersion.rev}";
-  src = fetchgit {
-    inherit (pinnedVersion) url rev sha256;
-  };
+  pname = "sunxi-dt-overlays";
+
+  version = sources.sunxi-DT-overlays.rev;
+  src = sources.sunxi-DT-overlays;
 
   nativeBuildInputs = [ dtc ];
 

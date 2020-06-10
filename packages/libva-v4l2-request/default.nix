@@ -1,5 +1,5 @@
 { stdenv
-, fetchFromGitHub
+, sources
 , meson
 , ninja
 , cmake
@@ -11,14 +11,9 @@
 
 stdenv.mkDerivation rec {
   pname = "libva-v4l2-request";
-  version = "1.1.0";
+  version = sources.libva-v4l2-request.rev;
 
-  src = fetchFromGitHub {
-    owner = "bootlin";
-    repo = "libva-v4l2-request";
-    rev = "a3c2476de19e6635458273ceeaeceff124fabd63";
-    sha256 = "1sbfg5qybahmchwjbm81rmxxxqvbp0dzi4zzqmwb1mzs3asqc3m3";
-  };
+  src = sources.libva-v4l2-request;
 
   buildInputs = [ libva libdrm ];
   nativeBuildInputs = [ meson ninja pkg-config cmake ];

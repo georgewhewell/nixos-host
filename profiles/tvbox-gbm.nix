@@ -18,7 +18,7 @@
   nixpkgs.config.kodi = {
     enablePVRHTS = true;
   };
-
+/*
   services.xserver = {
     enable = true;
     videoDriver = "modesetting";
@@ -28,14 +28,14 @@
       autoLogin.enable = true;
       autoLogin.user = "grw";
     };
-  };
+  }; */
 
-  systemd.services.kodi = {
+  systemd.services.kodi-gbm = {
     wants = [ "network-online.target" "polkit.service" ];
     conflicts = [ "getty@tty1.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.kodi}/bin/kodi --standalone";
+      ExecStart = "${pkgs.kodi-gbm}/bin/kodi --standalone";
       StandardInput = "tty";
       StandardOutput = "tty";
       TTYPath = "/dev/tty1";
@@ -54,7 +54,7 @@
   environment.systemPackages = with pkgs; [
     libva-utils
     v4l-utils
-    kodi-gbm
+    mpv
   ];
 
 }

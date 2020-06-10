@@ -1,15 +1,10 @@
-{ stdenv, lib, pkgs }:
+{ stdenv, lib, pkgs, sources }:
 
 stdenv.mkDerivation rec {
   version="2015.01";
   name = "fip_create-${version}";
 
-  src = pkgs.fetchFromGitHub {
-    owner = "hardkernel";
-    repo = "u-boot";
-    rev = "odroidc2-v${version}";
-    sha256 = "09s0y69ilrwnvqi1g11axsnhylq8kfljwqxdfjifa227mi0kzq37";
-  };
+  src = sources.u-boot-odroid-c2;
 
   sourceRoot = "source/tools/fip_create";
   /* buildPhase = ''

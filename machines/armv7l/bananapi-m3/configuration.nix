@@ -3,7 +3,7 @@
 {
 
   networking.hostName = "bananapi-m3";
-  nix.buildCores = 7;
+  nix.buildCores = 6;
 
   imports = [
     ../common.nix

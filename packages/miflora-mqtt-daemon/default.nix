@@ -1,19 +1,14 @@
 { stdenv
+, sources
 , fetchFromGitHub
 , python3
 }:
 
 stdenv.mkDerivation rec {
   pname = "miflora-mqtt-daemon";
-  version = "0.0.1";
+  version = "master";
 
-  src = fetchFromGitHub {
-    owner = "ThomDietrich";
-    repo = pname;
-    rev = "master";
-    sha256 = "1494yl0kq0wgjg3fjqy21qr7dqhab0r6dm1xqiw1ad2vgj0b95fj";
-  };
-
+  src = sources.miflora-mqtt-daemon;
 
   buildInputs = [
     (python3.withPackages (ps: with ps; [

@@ -148,6 +148,8 @@ in {
       */
   };
 
+  amlogic = (buildCross "aarch64-linux" aarch64Machines.amlogic-s912 [ <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix> ]).config.system.build;
+
   armv7lCross = {
     images = pkgs.lib.mapAttrs(name: configuration:
       (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
