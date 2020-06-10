@@ -55,6 +55,7 @@
     },
     "linux_amlogic": {
         "branch": "amlogic",
+        "builtin": true,
         "description": "Linux kernel source tree",
         "homepage": "",
         "owner": "chewitt",
