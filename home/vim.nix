@@ -2,6 +2,11 @@
 
 {
 
+  home.packages = with pkgs; [
+    fzf
+    fd
+  ];
+
   programs.vim = {
     enable = true;
     plugins = with pkgs.vimPlugins; [
@@ -30,6 +35,8 @@
       nmap <silent> t<C-l> :TestLast<CR>
       nmap <silent> t<C-g> :TestVisit<CR>
       
+      nnoremap <silent> <Space><Space> :Files<CR>
+
       let g:rustfmt_autosave = 1
       let g:racer_cmd = "/run/current-system/sw/bin/racer"
     '';
