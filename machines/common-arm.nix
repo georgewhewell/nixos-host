@@ -115,10 +115,5 @@
         +DTC_FLAGS += $(DTC_FLAGS_$(basetarget)) -@
       '';
     }
-    {
-      # uboot should be setting this properly but..
-      name = "fix odroid-hc1 dts name";
-      patch = ../packages/patches/fix-odroid-hc1-dtbname.patch;
-    }
   ];
 }
