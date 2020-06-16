@@ -59,10 +59,10 @@
         "homepage": "",
         "owner": "chewitt",
         "repo": "linux",
-        "rev": "c93768f387c3b293fab47e1f44c5c3e695e784bb",
-        "sha256": "01p4kcvv9xns3w4n45vr9hhzfb9fkdfwgkfzp1jazgqrvsj8pfii",
+        "rev": "3ba5c035b97f9b0e09c15da449a9171e613d7a19",
+        "sha256": "09hmwyzfqsjair0jfj6cdq86snncg2c793r2hax7ii4c3k1kz1bl",
         "type": "tarball",
-        "url": "https://github.com/chewitt/linux/archive/c93768f387c3b293fab47e1f44c5c3e695e784bb.tar.gz",
+        "url": "https://github.com/chewitt/linux/archive/3ba5c035b97f9b0e09c15da449a9171e613d7a19.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_media": {
@@ -83,10 +83,10 @@
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "e03a0d413dcd89378352291feacda6a2050a1aed",
-        "sha256": "1mxfp9zsi6ailvcfmxc6c0si0bhavc4pa37qlkvr17612n81mcsr",
+        "rev": "ec568174c3f7fdcfd1d92ca4fec0ad979c65085a",
+        "sha256": "10mmmfqwylpmvp2x1varzs4hnyhanixs8djp2nr25l77wz01gdxv",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/e03a0d413dcd89378352291feacda6a2050a1aed.tar.gz",
+        "url": "https://github.com/megous/linux/archive/ec568174c3f7fdcfd1d92ca4fec0ad979c65085a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
@@ -203,10 +203,10 @@
         "homepage": "http://linux-sunxi.org/",
         "owner": "linux-sunxi",
         "repo": "sunxi-tools",
-        "rev": "42ffc5f76a30ecd10c89989a7fe100feb15ce16e",
-        "sha256": "005cma0nm5mwdb4wn8n4351n93d0b1p4y2bssrfj9fjvba7fl5q1",
+        "rev": "c714fb068a0dd0013880ac974f0db0f08438b4e8",
+        "sha256": "1kv9s9fc64xyg5h6azy0b9ai0wldhwj109iqw99s918d7jxal8k3",
         "type": "tarball",
-        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/42ffc5f76a30ecd10c89989a7fe100feb15ce16e.tar.gz",
+        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/c714fb068a0dd0013880ac974f0db0f08438b4e8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "u-boot-nanopi-m3": {
