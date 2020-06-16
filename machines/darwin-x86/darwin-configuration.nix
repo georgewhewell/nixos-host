@@ -19,11 +19,9 @@ in
     ];
   };
 
-  programs.chunkwm.enable = true;
-  services.chunkwm.enable = true;
-
   # Used for backwards compatibility, please read the changelog before changing.
   system.stateVersion = 3;
+  services.nix-daemon.enable = true;
 
   nix.nixPath =
     [
@@ -31,6 +29,8 @@ in
       "darwin=$HOME/.nix-defexpr/channels/darwin"
       "$HOME/.nix-defexpr/channels"
     ];
+
+  programs.zsh.enable = true;
 
   environment.shellAliases = rec {
     ll = "exa --long --header --git --git-ignore --sort=created";

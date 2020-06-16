@@ -2,7 +2,11 @@
 
 {
   # replace crappy mac utils
-  home.packages = [ pkgs.gnused ];
+  home.packages = with pkgs; [
+    gnused
+    coreutils
+    openvpn
+  ];
 
   # darwin-specific overlays
   nixpkgs.overlays = [
