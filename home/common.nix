@@ -16,6 +16,7 @@
     pv
     exa
     ripgrep
+    pwgen
     docker-compose
   ];
 
