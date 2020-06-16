@@ -58,7 +58,12 @@
     }
     {
       name = "nanopi-air";
-      patch = ./nanopi-air-nand-wifi.patch;
+      patch = ../../packages/patches/nanopi-air-nand-wifi.patch;
+    }
+    {
+      # uboot should be setting this properly but..
+      name = "fix odroid-hc1 dts name";
+      patch = ../../packages/patches/fix-odroid-hc1-dtbname.patch;
     }
     {
       name = "nanopi-duo";
