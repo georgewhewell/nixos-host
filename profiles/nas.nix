@@ -29,12 +29,6 @@
     options = [ "bind" ];
   };
 
-  fileSystems."/mnt/timemachine" =
-    {
-      device = "bpool/root/timemachine";
-      fsType = "zfs";
-    };
-
   fileSystems."/mnt/cache-cache" =
     {
       device = "bpool/root/nix-cache";
@@ -96,6 +90,7 @@
     4002
     4003
     138 # smb
+    139 # smb
     445 # smb
     548 # netatalk
     10809 # nbd
