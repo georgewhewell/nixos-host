@@ -1,6 +1,7 @@
 { config, pkgs, ... }:
 
 {
+  boot.kernel.sysctl.max_user_instances = 262143;
 
   environment.systemPackages = with pkgs; [
     atom
