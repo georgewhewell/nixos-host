@@ -11,5 +11,6 @@ stdenv.mkDerivation {
     google-cloud-sdk
   ];
 
-  GOOGLE_APPLICATION_CREDENTIALS = "../secrets/domain-owner-terraformer.json";
+  GOOGLE_APPLICATION_CREDENTIALS = "../secrets/nixos-secrets/domain-owner-terraformer.json";
+
 }
