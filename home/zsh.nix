@@ -46,7 +46,8 @@
       'utility' \
       'completion' \
       'prompt' \
-            'git'
+      'git' \
+      'gpg'
 
           #
           # Autosuggestions
