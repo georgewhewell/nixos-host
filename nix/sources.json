@@ -41,6 +41,18 @@
         "url": "https://github.com/LibreElec/dvb-firmware/archive/82f1b520e82fd4889ddb062fe5c7d40dcb773069.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "hosts-blocklists": {
+        "branch": "master",
+        "description": "Automatically updated, moderated and optimized lists for blocking ads, trackers, malware and other garbage",
+        "homepage": "",
+        "owner": "notracking",
+        "repo": "hosts-blocklists",
+        "rev": "4be2886c17b1dcc37f678ff4a3179c957f25dccc",
+        "sha256": "0d7f68zh4xh542sl793fzmffn0l6m2ibv3r721y3n9bk071zhags",
+        "type": "tarball",
+        "url": "https://github.com/notracking/hosts-blocklists/archive/4be2886c17b1dcc37f678ff4a3179c957f25dccc.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "libva-v4l2-request": {
         "branch": "master",
         "description": "LibVA implementation for the Linux Video4Linux2 Request API",
