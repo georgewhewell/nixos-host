@@ -105,6 +105,16 @@ in
     };
   };
 
+  services.dnscrypt-proxy2 = {
+    enable = true;
+    settings = {
+      listen_addresses = [ "127.0.0.1:53" ];
+      static.cloudflare = {
+        stamp = "sdns://AgcAAAAAAAAABzEuMC4wLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5";
+      };
+    };
+  };
+
   services.consul.interface = {
     advertise = lanBridge;
     bind = lanBridge;
@@ -141,7 +151,7 @@ in
   services.dnsmasq = {
     enable = true;
     resolveLocalQueries = true;
-    servers = [ "1.1.1.1" ];
+    servers = [ "127.0.0.1#53" ];
     extraConfig = ''
       domain-needed
       bogus-priv
@@ -149,8 +159,8 @@ in
       no-hosts
       log-dhcp
       domain=lan
-      interface=lo
-      interface=${vpnInterface}
+      bind-interfaces
+      except-interface=lo
       interface=${lanBridge}
       dhcp-range=${lanBridge},192.168.23.10,192.168.23.254,6h
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
