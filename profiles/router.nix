@@ -167,7 +167,7 @@ in
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
       dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
       dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
-      dhcp-host=ce:f2:b6:d7:03:98,192.168.23.5   # nixhost
+      dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
       dhcp-host=de:18:46:58:73:da,192.168.23.200 # plex
       dhcp-host=f0:99:b6:42:49:05,192.168.23.48  # phone
 

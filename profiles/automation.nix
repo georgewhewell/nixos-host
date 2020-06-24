@@ -27,7 +27,7 @@
     after = [ "network.target" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig.ExecStart = ''
-      ${pkgs.spotifyd}/bin/spotifyd --username 1139118329 --password Oojae0ash2sh --device-name "UE Mobile Boombox"
+      ${pkgs.spotifyd}/bin/spotifyd --username 1139118329 --password ${pkgs.secrets.spotify-password} --device-name "UE Mobile Boombox"
     '';
   };
 
@@ -36,7 +36,7 @@
     after = [ "network.target" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig.ExecStart = ''
-      ${pkgs.am43-ctrl}/bin/am43ctrl --mqtt-url mqtt://rw:thepassword@nixhost.lan 02:c4:da:36:73:79 02:be:75:37:b6:0a
+      ${pkgs.am43-ctrl}/bin/am43ctrl --mqtt-url mqtt://rw:${pkgs.secrets.mqtt-password}@nixhost.lan 02:c4:da:36:73:79 02:be:75:37:b6:0a
     '';
   };
 
@@ -73,7 +73,7 @@
     users = {
       "rw" = {
         acl = [ "topic readwrite #" ];
-        password = "thepassword";
+        password = pkgs.secrets.mqtt-password;
       };
     };
   };
@@ -121,7 +121,7 @@
       mqtt = {
         broker = "nixhost.lan";
         username = "rw";
-        password = "thepassword";
+        password = pkgs.secrets.mqtt-password;
         discovery = true;
       };
       cover = [ ];

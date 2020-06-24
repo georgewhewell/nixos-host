@@ -9,6 +9,7 @@
     ../modules/sunxi-watchdog.nix
     ../modules/nbd.nix
     ../modules/netboot.nix
+    ../modules/miflora.nix
     ../modules/hsphfpd.nix
     ../modules/traffic-shaping.nix
     ./users.nix

@@ -5,6 +5,7 @@ with pkgs;
 rec {
 
   sources = (import ../nix/sources.nix);
+  secrets = (import ../secrets);
 
   openelec-fw-dvb = callPackage ./openelec-fw-dvb.nix { };
   libreelec-dvb-firmware = callPackage ./libreelec-dvb-firmware { };

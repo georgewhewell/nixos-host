@@ -102,7 +102,7 @@
     }
     {
       name = "include-symbols";
-      patch = pkgs.writeText "the_patch" ''
+      patch = pkgs.writeText "include-dts-symbols" ''
         diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
         index 97547108ee7f..436e60b97264 100644
         --- a/scripts/Makefile.lib

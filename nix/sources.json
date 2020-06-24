@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "armbian",
         "repo": "firmware",
-        "rev": "3145fad0279c34546d5429821b639daa330a56be",
-        "sha256": "1abw7y5ry8gha1zpp92lw6x2577h93xzfz6cvjk9r69i55krj15s",
+        "rev": "95f8a1b3cb4f490bb49b5e916101bfa1a33051f7",
+        "sha256": "0ky33cnxkzlx8jwirbb5b2gg4q5paclqf70g3r5djgdhmmcdvb2k",
         "type": "tarball",
-        "url": "https://github.com/armbian/firmware/archive/3145fad0279c34546d5429821b639daa330a56be.tar.gz",
+        "url": "https://github.com/armbian/firmware/archive/95f8a1b3cb4f490bb49b5e916101bfa1a33051f7.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "bl1-nanopi-m3": {
@@ -71,10 +71,10 @@
         "homepage": "",
         "owner": "chewitt",
         "repo": "linux",
-        "rev": "3ba5c035b97f9b0e09c15da449a9171e613d7a19",
-        "sha256": "09hmwyzfqsjair0jfj6cdq86snncg2c793r2hax7ii4c3k1kz1bl",
+        "rev": "7c8b985be7375e503c412ce7897fc281725204cd",
+        "sha256": "1sr9h2rklh2lnh876jz5kgkdkjhnas8v5vf2ls8vfd7wbrmz81cl",
         "type": "tarball",
-        "url": "https://github.com/chewitt/linux/archive/3ba5c035b97f9b0e09c15da449a9171e613d7a19.tar.gz",
+        "url": "https://github.com/chewitt/linux/archive/7c8b985be7375e503c412ce7897fc281725204cd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_media": {
@@ -95,10 +95,10 @@
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "ec568174c3f7fdcfd1d92ca4fec0ad979c65085a",
-        "sha256": "10mmmfqwylpmvp2x1varzs4hnyhanixs8djp2nr25l77wz01gdxv",
+        "rev": "52b95e141db7eb3ca69d0d5e4eead67a7e5942ed",
+        "sha256": "054q5yg3rsypby8z0vsad4qk4bhgxx4bf669nrf1jhwbxwa9mc35",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/ec568174c3f7fdcfd1d92ca4fec0ad979c65085a.tar.gz",
+        "url": "https://github.com/megous/linux/archive/52b95e141db7eb3ca69d0d5e4eead67a7e5942ed.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {

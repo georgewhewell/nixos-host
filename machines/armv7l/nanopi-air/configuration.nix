@@ -14,6 +14,8 @@ in
     friendlyarm-firmware
   ];
 
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
+
   system.build.ubootDefconfig = "nanopi_neo_air_defconfig";
 
   boot.kernelParams = [ "boot.shell_on_fail" "console=ttyS0,115200" "earlycon=uart,mmio32,0x1c28000" ];
@@ -121,6 +123,5 @@ in
     ../common.nix
     ../../../profiles/wireless.nix
     ../../../services/miflora
-
   ];
 }

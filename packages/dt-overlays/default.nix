@@ -5,7 +5,7 @@ stdenv.mkDerivation rec {
   version = "0.1";
   src = ./overlays;
 
-  nativeBuildInputs = with pkgs; [ dtc ];
+  nativeBuildInputs = with pkgs.buildPackages; [ dtc ];
 
   installPhase = ''
     mkdir $out
