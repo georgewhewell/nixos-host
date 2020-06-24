@@ -72,7 +72,7 @@
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN4I_CSI');" v4l/scripts/make_kconfig.pl
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN6I_CSI');" v4l/scripts/make_kconfig.pl
 
-          make dir DIR=../${media.name}
+          make dir DIR=../linux_media
 
           # make module in parallel
           sed -i "/MYCFLAGS :=/s/.*/ MYCFLAGS := -j$NIX_BUILD_CORES/" v4l/Makefile

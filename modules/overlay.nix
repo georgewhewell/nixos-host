@@ -6,8 +6,15 @@ self: super:
   linux_megous = super.linux_testing.override {
     argsOverride = rec {
       src = self.sources.linux_megous;
-      version = "5.7";
-      modDirVersion = "5.7.0";
+      version = "5.8";
+      modDirVersion = "5.8.0-rc2";
+      kernelPatches = super.linux_testing.kernelPatches ++ [{
+        name = "fix realtek config";
+        patch = null;
+        extraConfig = ''
+          WLAN_VENDOR_REALTEK n
+        '';
+      }];
     };
   };
 
@@ -39,6 +46,9 @@ self: super:
         extraConfig = ''
           WLAN_VENDOR_REALTEK n
           USB_CONN_EXTCON n
+          MESON_MX_AO_ARC_MAILBOX n
+          MESON_MX_AO_ARC_FIRMWARE n
+          MESON_MX_AO_ARC_REMOTEPROC n
         '';
       }];
     };

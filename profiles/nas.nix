@@ -61,22 +61,11 @@
       maxSize = "100g";
       resolver = "192.168.23.1";
     };
-  /*
-    services.netatalk = {
-      enable = true;
-      volumes = {
-        timemachine = {
-          path = "/mnt/timemachine";
-          "time machine" = "yes";
-          "hosts allow" = "192.168.23.0/24";
-        };
-      };
-    }; */
 
   services.nfs.server = {
     enable = true;
     exports = ''
-      /export                192.168.23.0/24(rw,fsid=0,no_subtree_check)
+      /export                192.168.23.0/24(rw,all_squash,fsid=0,no_subtree_check)
       /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
       /export/home           192.168.23.0/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
     '';

@@ -9,7 +9,6 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-      /* ../../../containers/unifi.nix */
 
       ../../../profiles/automation.nix
       ../../../profiles/common.nix
@@ -23,7 +22,6 @@
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
-      ../../../services/gogs.nix
       ../../../services/hydra.nix
       ../../../services/grafana.nix
       ../../../services/nginx.nix

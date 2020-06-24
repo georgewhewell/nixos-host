@@ -8,7 +8,7 @@
     rootUrl = "https://grafana.satanic.link";
     security = {
       adminUser = "admin";
-      adminPassword = "password";
+      adminPassword = pkgs.secrets.grafana-admin-password;
     };
     auth.anonymous.enable = true;
   };

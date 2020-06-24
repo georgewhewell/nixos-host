@@ -11,8 +11,7 @@ rec {
   luma-core = callPackage ./luma.core { inherit smbus2 spidev rpi-gpio opi-gpio; };
   luma-oled = callPackage ./luma.oled { inherit luma-core; };
   python-periphery = callPackage ./python-periphery { };
-  bluepy = callPackage ./bluepy { };
-  btlewrap = callPackage ./btlewrap { inherit bluepy; };
+  btlewrap = callPackage ./btlewrap { };
   miflora = callPackage ./miflora { inherit btlewrap; };
 
 }

@@ -7,6 +7,8 @@
 
   nixpkgs.overlays = [
     (self: super: {
+      # broken
+      efibootmgr = super.hello;
       bluez = (
         let
           python3_ = super.python3.override {
@@ -37,8 +39,6 @@
       );
     })
   ];
-
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
 
   # takes ages
   security.polkit.enable = lib.mkForce false;

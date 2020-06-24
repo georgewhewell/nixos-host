@@ -37,6 +37,7 @@
 
     niv
     morph
+    nixpkgs-fmt
     nix-prefetch-git
     screen
     /* openocd */
