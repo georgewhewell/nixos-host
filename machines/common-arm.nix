@@ -16,6 +16,13 @@
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
 
+  nixpkgs.overlays = [
+    (self: super: {
+      # broken
+      efibootmgr = super.hello;
+    })
+  ];
+
   # sometimes fails to build, dont need
   programs.bash.enableCompletion = false;
 
