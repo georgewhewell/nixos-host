@@ -7,8 +7,6 @@
 
   nixpkgs.overlays = [
     (self: super: {
-      # broken
-      efibootmgr = super.hello;
       bluez = (
         let
           python3_ = super.python3.override {
