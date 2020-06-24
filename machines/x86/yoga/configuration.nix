@@ -50,12 +50,12 @@
 
   services.undervolt = {
     enable = true;
-    /* tempAc = "97"; */
-    tempBat = "75";
-    coreOffset = "-110";
-    gpuOffset = "-50";
-    uncoreOffset = "-60";
-    analogioOffset = "-60";
+    tempAc = 95;
+    tempBat = 75;
+    coreOffset = -110;
+    gpuOffset = -50;
+    uncoreOffset = -60;
+    analogioOffset = -60;
   };
 
 }
