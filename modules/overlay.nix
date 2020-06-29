@@ -14,7 +14,12 @@ self: super:
         extraConfig = ''
           WLAN_VENDOR_REALTEK n
         '';
-      }];
+      }
+      {
+        name = "export of_chosen";
+        patch = ../packages/patches/v4-1-5-of-Add-EXPORT_SYMBOL-for-of_chosen.diff;
+      }
+      ];
     };
   };
 
@@ -38,8 +43,8 @@ self: super:
   linux_meson_mx = super.linux_testing.override {
     argsOverride = rec {
       src = self.sources.linux_meson_mx;
-      version = "5.7";
-      modDirVersion = "5.7.0";
+      version = "5.8";
+      modDirVersion = "5.8.0-rc2";
       kernelPatches = super.linux_testing.kernelPatches ++ [{
         name = "disable broken stuff";
         patch = null;

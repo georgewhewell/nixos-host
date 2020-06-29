@@ -102,15 +102,15 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
-        "branch": "meson-mx-integration-5.9-20200607",
+        "branch": "meson-mx-integration-5.9-20200625",
         "description": "Various Linux kernel changes - Amlogic Meson (32-bit and 64-bit) SoCs, lantiq SoCs, ath9k, etc.. - see branch list",
         "homepage": "",
         "owner": "xdarklight",
         "repo": "linux",
-        "rev": "59a55fec384a2c5501f30453568326be3c83db92",
-        "sha256": "1im16r99gfr5y8jk5cdfpmsm6pv8ffrayxcpssf9j847n6c6pd5f",
+        "rev": "a76babd260edc36025e12e62ede0b0cfc46f2ba5",
+        "sha256": "1lklwjxn01rbzjpajkb7lbn7snnd92ygrnxhk615lz2jm1pksjpf",
         "type": "tarball",
-        "url": "https://github.com/xdarklight/linux/archive/59a55fec384a2c5501f30453568326be3c83db92.tar.gz",
+        "url": "https://github.com/xdarklight/linux/archive/a76babd260edc36025e12e62ede0b0cfc46f2ba5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_nanopi_m3": {
