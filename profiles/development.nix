@@ -16,6 +16,7 @@
     unar
     unzip
     unrar
+    file
 
     iperf
     vnstat
