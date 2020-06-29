@@ -16,6 +16,12 @@
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
 
+  fileSystems."/var/log" = {
+    device = "tmpfs";
+    fsType = "tmpfs";
+    options = [ "size=16M" ];
+  };
+
   nixpkgs.overlays = [
     (self: super: {
       # broken
