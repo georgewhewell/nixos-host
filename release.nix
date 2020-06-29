@@ -98,6 +98,14 @@ in
   x86-bootdisk = (build "x86_64-linux" x86Machines.installer [ ]).config.system.build.isoImage;
 
   armv7l = {
+    kernels = pkgs.lib.mapAttrs
+      (name: configuration:
+        (build "armv7l-linux" configuration [
+          <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+        ]
+        ).config.system.build.kernel
+      )
+      armMachines;
     images = pkgs.lib.mapAttrs
       (name: configuration:
         (build "armv7l-linux" configuration [
@@ -114,6 +122,14 @@ in
   };
 
   armv7lCross = {
+    kernels = pkgs.lib.mapAttrs
+      (name: configuration:
+        (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
+          <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-armv7l-multiplatform.nix>
+        ]
+        ).config.system.build.kernel
+      )
+      armMachines;
     images = pkgs.lib.mapAttrs
       (name: configuration:
         (buildCross "armv7l-unknown-linux-gnueabihf" configuration [
@@ -129,16 +145,35 @@ in
       armMachines;
   };
 
-  aarch64 = pkgs.lib.mapAttrs
-    (name: configuration:
-      (build "aarch64-linux" configuration [
-        <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
-      ]
-      ).config.system.build.sdImage
-    )
-    aarch64Machines;
+  aarch64 = {
+    kernels = pkgs.lib.mapAttrs
+      (name: configuration:
+        (build "aarch64-linux" configuration [
+          <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+        ]
+        ).config.system.build.kernel
+      )
+      aarch64Machines;
+    images = pkgs.lib.mapAttrs
+      (name: configuration:
+        (build "aarch64-linux" configuration [
+          <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+        ]
+        ).config.system.build.sdImage
+      )
+      aarch64Machines;
+  };
+
 
   aarch64Cross = {
+    kernels = pkgs.lib.mapAttrs
+      (name: configuration:
+        (buildCross "aarch64-linux" configuration [
+          <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+        ]
+        ).config.system.build.kernel
+      )
+      aarch64Machines;
     images = pkgs.lib.mapAttrs
       (name: configuration:
         (buildCross "aarch64-linux" configuration [

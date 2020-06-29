@@ -2,7 +2,15 @@
 
 {
   # Turn on virt
-  virtualisation.libvirtd.enable = true;
+  virtualisation.libvirtd = {
+    enable = true;
+    qemuVerbatimConfig = ''
+      namespaces = []
+
+      # Whether libvirt should dynamically change file ownership
+      dynamic_ownership = 0
+    '';
+  };
 
   environment.systemPackages = with pkgs; [
     virtmanager

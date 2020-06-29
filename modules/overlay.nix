@@ -7,7 +7,7 @@ self: super:
     argsOverride = rec {
       src = self.sources.linux_megous;
       version = "5.8";
-      modDirVersion = "5.8.0-rc2";
+      modDirVersion = "5.8.0-rc3";
       kernelPatches = super.linux_testing.kernelPatches ++ [{
         name = "fix realtek config";
         patch = null;
