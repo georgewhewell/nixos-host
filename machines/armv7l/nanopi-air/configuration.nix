@@ -14,8 +14,6 @@ in
     friendlyarm-firmware
   ];
 
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
-
   system.build.ubootDefconfig = "nanopi_neo_air_defconfig";
 
   boot.kernelParams = [ "boot.shell_on_fail" "console=ttyS0,115200" "earlycon=uart,mmio32,0x1c28000" ];
@@ -50,12 +48,7 @@ in
       '';
     overlays = [
       "${pkgs.dt-overlays}/sunxi-h3-i2c.dts.dtbo"
-      "${pkgs.dt-overlays}/nanopi-air-usbhost.dts.dtbo"
-      /* "${pkgs.dt-overlays}/sunxi-uart3-rtscts.dts.dtbo" */
       "${pkgs.dt-overlays}/nanopi-air-bt.dts.dtbo"
-      "${pkgs.dt-overlays}/sunxi-i2c0-oled.dts.dtbo"
-
-      #  "${pkgs.dt-overlays}/sunxi-pca9685.dts.dtbo"
     ];
   };
 
