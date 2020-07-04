@@ -44,7 +44,7 @@ self: super:
     argsOverride = rec {
       src = self.sources.linux_meson_mx;
       version = "5.8";
-      modDirVersion = "5.8.0-rc2";
+      modDirVersion = "5.8.0-rc3";
       kernelPatches = super.linux_testing.kernelPatches ++ [{
         name = "disable broken stuff";
         patch = null;
@@ -85,6 +85,14 @@ self: super:
       ${old.preConfigure}
     '';
 
+  });
+
+  firmwareLinuxNonfree = super.firmwareLinuxNonfree.overrideAttrs(old: {
+    src = super.fetchurl {
+      url = "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/snapshot/linux-firmware-20200619.tar.gz";
+      sha256 = "1i8gnmsppq531mzmq9z72w2h4wyn6dvynzvbr6xsqp2iqw0sjsi5";
+    };
+    outputHash = "1cnl2f5s42pybxmlpzqhjwpx33fy3na6xwnfxdk8sv7s6nzkwbiv";
   });
 
   waybar = super.waybar.override { pulseSupport = true; };

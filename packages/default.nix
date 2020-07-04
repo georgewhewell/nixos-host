@@ -22,7 +22,6 @@ rec {
   dt-overlays = callPackage ./dt-overlays { };
   boot-scripts = callPackage ./uboot { };
 
-  blind-control = callPackage ./blind-control { };
   dtv-scan-tables = callPackage ./dtv-scan-tables { };
   meson-firmware = callPackage ./meson-firmware { };
   natures_prophet = callPackage ./natures_prophet { };
@@ -40,5 +39,6 @@ rec {
 
   libva-v4l2-request = (callPackage ./libva-v4l2-request { });
   hsphfpd = (callPackage ./hsphfpd { });
+  radeon-profile-daemon = libsForQt5.callPackage ./radeon-profile-daemon { };
 
 }

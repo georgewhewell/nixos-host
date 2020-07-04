@@ -17,6 +17,7 @@
       ../../../profiles/uefi-boot.nix
       ../../../profiles/g_ether.nix
       ../../../profiles/graphical.nix
+      ../../../profiles/radeon.nix
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
       ../../../services/docker.nix
@@ -24,7 +25,6 @@
       ../../../services/virt/vfio.nix
     ];
 
-  environment.systemPackages = with pkgs; [ radeon-profile ];
   fileSystems."/" =
     {
       device = "zpool/root/nixos-fuckup";
@@ -42,10 +42,6 @@
       device = "/dev/disk/by-uuid/CD68-6C43";
       fsType = "vfat";
     };
-
-  boot.kernelParams = [
-    "amdgpu.ppfeaturemask=0xfffd7fff"
-  ];
 
   nix.maxJobs = lib.mkDefault 8;
   powerManagement.cpuFreqGovernor = "performance";
