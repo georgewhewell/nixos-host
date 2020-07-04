@@ -94,7 +94,7 @@ in
   };
 
   systemd.services.enable-bluetooth = {
-    description = "run entking";
+    description = "enable bluetooth";
     script = ''
       ${pkgs.devmem2}/bin/devmem2 0x1f00060 b 1
       echo 205 > /sys/class/gpio/export

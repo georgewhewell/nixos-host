@@ -47,10 +47,10 @@
         "homepage": "",
         "owner": "notracking",
         "repo": "hosts-blocklists",
-        "rev": "09eb92c3c5e61e943c27f6442e5bc979c2500a5e",
-        "sha256": "0cv8p9k7j9cblx4d9xa3cil01sr3f0pcp8nszqmpi85v2nkip9xm",
+        "rev": "94d06cc877a7919a33bf298fcdbc82bbea9c53a8",
+        "sha256": "0c9n6i6cdlfxjxdb83cbpdxmnlrhba2ycgvzybr0q01wn2h5fjvd",
         "type": "tarball",
-        "url": "https://github.com/notracking/hosts-blocklists/archive/09eb92c3c5e61e943c27f6442e5bc979c2500a5e.tar.gz",
+        "url": "https://github.com/notracking/hosts-blocklists/archive/94d06cc877a7919a33bf298fcdbc82bbea9c53a8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libva-v4l2-request": {
@@ -102,15 +102,15 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
-        "branch": "meson-mx-integration-5.9-20200625",
+        "branch": "meson-mx-integration-5.9-20200629",
         "description": "Various Linux kernel changes - Amlogic Meson (32-bit and 64-bit) SoCs, lantiq SoCs, ath9k, etc.. - see branch list",
         "homepage": "",
         "owner": "xdarklight",
         "repo": "linux",
-        "rev": "a76babd260edc36025e12e62ede0b0cfc46f2ba5",
-        "sha256": "1lklwjxn01rbzjpajkb7lbn7snnd92ygrnxhk615lz2jm1pksjpf",
+        "rev": "0ccd81392e1aa16f6a46e73be31c09f0a16982e1",
+        "sha256": "1vigj50bf7jqag66v773dx2jnkgqfdyqari9q5gqbmr4a8f1zjyh",
         "type": "tarball",
-        "url": "https://github.com/xdarklight/linux/archive/a76babd260edc36025e12e62ede0b0cfc46f2ba5.tar.gz",
+        "url": "https://github.com/xdarklight/linux/archive/0ccd81392e1aa16f6a46e73be31c09f0a16982e1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_nanopi_m3": {
@@ -195,6 +195,30 @@
         "sha256": "0jlmrx633jvqrqlyhlzpvdrnim128gc81q5psz2lpp2af8p8q9qs",
         "type": "tarball",
         "url": "https://github.com/nmattia/niv/archive/f73bf8d584148677b01859677a63191c31911eae.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixos-rocm": {
+        "branch": "master",
+        "description": "NixOS support for the ROCm graphics stack (rocm.github.io)",
+        "homepage": null,
+        "owner": "nixos-rocm",
+        "repo": "nixos-rocm",
+        "rev": "0dd8b5279ad5c390564bc36b533142ddccbe15ff",
+        "sha256": "01br6vvjga6sqvs6sbd50d3b6dmcr9hsrrsllfp5vjhnxwlp5l4l",
+        "type": "tarball",
+        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/0dd8b5279ad5c390564bc36b533142ddccbe15ff.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "radeon-profile-daemon": {
+        "branch": "master",
+        "description": "Daemon for radeon-profile GUI",
+        "homepage": null,
+        "owner": "marazmista",
+        "repo": "radeon-profile-daemon",
+        "rev": "7923bd62df3ab2c5c355e4085613895bfaa774fe",
+        "sha256": "06qxq2hv3l9shna8x5d9awbdm9pbwlc6vckcr63kf37rrs8ykk0j",
+        "type": "tarball",
+        "url": "https://github.com/marazmista/radeon-profile-daemon/archive/7923bd62df3ab2c5c355e4085613895bfaa774fe.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "sunxi-DT-overlays": {

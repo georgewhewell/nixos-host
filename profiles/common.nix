@@ -11,6 +11,7 @@
     ../modules/netboot.nix
     ../modules/miflora.nix
     ../modules/hsphfpd.nix
+    ../modules/radeon-profile-daemon.nix
     ../modules/traffic-shaping.nix
     ./users.nix
   ];

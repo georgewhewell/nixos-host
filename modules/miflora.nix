@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 
 with lib;
+
 let
   cfg = config.services.miflora;
 in
@@ -52,7 +53,7 @@ in
 
     systemd.services.miflora =
       let
-        configfile = pkgs.writeText "miflora.ini" (
+        configdir = pkgs.writeTextDir "config.ini" (
           generators.toINI
             { } {
             General = {
@@ -74,7 +75,7 @@ in
         description = "miflora daemon";
         after = [ "network-online.target" ];
         script = ''
-          ${pkgs.miflora-mqtt-daemon}/bin/miflora-mqtt-daemon --config_dir ${configfile}/miflora.ini
+          ${pkgs.miflora-mqtt-daemon}/bin/miflora-mqtt-daemon --config_dir ${configdir}
         '';
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
