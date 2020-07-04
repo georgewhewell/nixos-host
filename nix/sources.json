@@ -47,10 +47,10 @@
         "homepage": "",
         "owner": "notracking",
         "repo": "hosts-blocklists",
-        "rev": "94d06cc877a7919a33bf298fcdbc82bbea9c53a8",
-        "sha256": "0c9n6i6cdlfxjxdb83cbpdxmnlrhba2ycgvzybr0q01wn2h5fjvd",
+        "rev": "80961a5f410e5e303c06d393517eabdd362a2aa2",
+        "sha256": "1r339zn44kay4y9wl1bql3ipzxdn7v7jazplq44qln0zb5vkbfcj",
         "type": "tarball",
-        "url": "https://github.com/notracking/hosts-blocklists/archive/94d06cc877a7919a33bf298fcdbc82bbea9c53a8.tar.gz",
+        "url": "https://github.com/notracking/hosts-blocklists/archive/80961a5f410e5e303c06d393517eabdd362a2aa2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libva-v4l2-request": {
@@ -71,10 +71,10 @@
         "homepage": "",
         "owner": "chewitt",
         "repo": "linux",
-        "rev": "257ba1b256571e19b521a1122f8863b21922d5ae",
-        "sha256": "0wq9dymfmcxxb7g87r2v31c4q3dagwlj1zy7mmg0kiwpxww6kdps",
+        "rev": "af96f988cd28bddedf6538548fae92c3121df2e4",
+        "sha256": "0vr5dp97r5dpcmxl01bjmx7z10ls3ap1d096i038kjrkdvmm6bjv",
         "type": "tarball",
-        "url": "https://github.com/chewitt/linux/archive/257ba1b256571e19b521a1122f8863b21922d5ae.tar.gz",
+        "url": "https://github.com/chewitt/linux/archive/af96f988cd28bddedf6538548fae92c3121df2e4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_media": {
@@ -83,10 +83,10 @@
         "homepage": "https://github.com/tbsdtv/linux_media/wiki",
         "owner": "tbsdtv",
         "repo": "linux_media",
-        "rev": "2783cc1524b6a093109904840b6739a8329b23a5",
-        "sha256": "0b6gaycx33wz1laf7ixmqq7398bvh4j4qfs3pbmfpwbpf38nwabx",
+        "rev": "117b57628865401c17de8d59e31e31b9d2b0b6e7",
+        "sha256": "0zlam5nba8df6b1v99s5jc6paf511ica4sbx6sdxsm37fn3q6gpj",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/linux_media/archive/2783cc1524b6a093109904840b6739a8329b23a5.tar.gz",
+        "url": "https://github.com/tbsdtv/linux_media/archive/117b57628865401c17de8d59e31e31b9d2b0b6e7.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_megous": {
@@ -95,22 +95,22 @@
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "9b78c5067a56e80d3a18c0e9a88f2b2ad6ec314b",
-        "sha256": "0pa4dyx7zy4ia9i9hnmmg1aylj8wdhqzlzmrgj8ddqx1yz55j9xq",
+        "rev": "20021aedad96ee7614933cdbc8bc07d15234c79e",
+        "sha256": "0rfqf21y5rm7q7gv02yj8dkn38k0lvhswhchla48rrbrn45a70vk",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/9b78c5067a56e80d3a18c0e9a88f2b2ad6ec314b.tar.gz",
+        "url": "https://github.com/megous/linux/archive/20021aedad96ee7614933cdbc8bc07d15234c79e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
-        "branch": "meson-mx-integration-5.9-20200629",
+        "branch": "meson-mx-integration-5.9-20200630",
         "description": "Various Linux kernel changes - Amlogic Meson (32-bit and 64-bit) SoCs, lantiq SoCs, ath9k, etc.. - see branch list",
         "homepage": "",
         "owner": "xdarklight",
         "repo": "linux",
-        "rev": "0ccd81392e1aa16f6a46e73be31c09f0a16982e1",
-        "sha256": "1vigj50bf7jqag66v773dx2jnkgqfdyqari9q5gqbmr4a8f1zjyh",
+        "rev": "a1a7bd9d49cbcf47dd90b0e935eb018e5ba74bc4",
+        "sha256": "0q1f9frv8snmwr95kcx3p4hq1fw97zm01935rzx0836lfxpw9hlk",
         "type": "tarball",
-        "url": "https://github.com/xdarklight/linux/archive/0ccd81392e1aa16f6a46e73be31c09f0a16982e1.tar.gz",
+        "url": "https://github.com/xdarklight/linux/archive/a1a7bd9d49cbcf47dd90b0e935eb018e5ba74bc4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_nanopi_m3": {
