@@ -28,7 +28,7 @@ self: super:
     argsOverride = rec {
       src = self.sources.linux_amlogic;
       version = "5.7";
-      modDirVersion = "5.7.0";
+      modDirVersion = "5.7.6";
       kernelPatches = super.linux_testing.kernelPatches ++ [{
         name = "enable staging media drivers";
         patch = null;
