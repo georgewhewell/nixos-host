@@ -36,13 +36,20 @@
   boot.extraModulePackages = [
     (config.boot.kernelPackages.tbs.overrideAttrs (old:
       let
-        media = pkgs.sources.linux_media // { name = "linux_media"; };
-        build = pkgs.sources.media_build // { name = "media_build"; };
+        # fetchFromGitHub does unpack differently from niv ?
+        media = pkgs.fetchFromGitHub { inherit (pkgs.sources.linux_media) repo owner rev sha256; name = "linux_media"; };
+        build = pkgs.fetchFromGitHub { inherit (pkgs.sources.media_build) repo owner rev sha256; name = "media_build"; };
       in
       {
         name = "tbs-2020.01.01";
         srcs = [ media build ];
-        preConfigure = ''
+        sourceRoot = "media_build";
+
+        preConfigure = let
+          disableModule = module: ''
+            sed -i "/DVB_SAA716X_FF/a disable_config('${module}');" v4l/scripts/make_kconfig.pl
+          '';
+        in ''
           # dont need
           sed -i "/DVB_SAA716X_FF/a disable_config('MEDIA_PCI_SUPPORT');" v4l/scripts/make_kconfig.pl
 
@@ -72,7 +79,7 @@
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN4I_CSI');" v4l/scripts/make_kconfig.pl
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN6I_CSI');" v4l/scripts/make_kconfig.pl
 
-          make dir DIR=../linux_media
+          make dir DIR=../${media.name}
 
           # make module in parallel
           sed -i "/MYCFLAGS :=/s/.*/ MYCFLAGS := -j$NIX_BUILD_CORES/" v4l/Makefile
