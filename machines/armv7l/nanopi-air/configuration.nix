@@ -17,6 +17,7 @@ in
   system.build.ubootDefconfig = "nanopi_neo_air_defconfig";
 
   boot.kernelParams = [ "boot.shell_on_fail" "console=ttyS0,115200" "earlycon=uart,mmio32,0x1c28000" ];
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_allwinner;
 
   console = {
     earlySetup = true;
@@ -55,17 +56,15 @@ in
   environment.systemPackages = [
     i2c-tools
     devmem2
-    #git
-    #dtc
-    #broadcom-bluetooth
-    #fswebcam
-    #xawtv
-    #ffmpeg
-    #libva-utils
-    #v4l-utils
-    #(python3.withPackages (ps: [ ps.luma-oled ]))
-    #ffmpeg
-    #v4l-utils
+    gitMinimal
+    wget
+    avrdude
+    (python3.withPackages(ps: with ps; [
+      flask
+      smbus-cffi
+      miflora
+      fswebcam
+    ]))
   ];
 
   hardware.opengl = {
@@ -96,14 +95,6 @@ in
       echo 1 > /sys/class/gpio/gpio205/value
       sleep 0.1
       ${pkgs.bluez}/bin/btattach -B /dev/ttyS1 -S 1500000 -P bcm
-    '';
-    wantedBy = [ "multi-user.target" ];
-  };
-
-  systemd.services.disable-powersaving = {
-    description = "disable powersave";
-    script = ''
-      ${pkgs.wirelesstools}/bin/iwconfig wlan0 power off
     '';
     wantedBy = [ "multi-user.target" ];
   };

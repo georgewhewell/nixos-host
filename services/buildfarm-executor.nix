@@ -15,7 +15,7 @@
       {
         hostName = "odroid-c2.lan";
         sshUser = "root";
-        speedFactor = 2;
+        speedFactor = 3;
         supportedFeatures = [ "big-parallel" ];
         systems = [ "aarch64-linux" ];
       }
@@ -23,6 +23,13 @@
         hostName = "rock64.lan";
         sshUser = "root";
         speedFactor = 2;
+        supportedFeatures = [ "big-parallel" ];
+        systems = [ "aarch64-linux" ];
+      }
+      {
+        hostName = "amlogic-s912.lan";
+        sshUser = "root";
+        speedFactor = 1;
         supportedFeatures = [ "big-parallel" ];
         systems = [ "aarch64-linux" ];
       }

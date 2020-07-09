@@ -11,6 +11,10 @@
     "console=ttySAC0,115200"
   ];
 
+  boot.initrd.kernelModules = [
+    "nexell-dwmac"
+  ];
+
   # stop kernel build OOM
   nix.buildCores = 7;
 

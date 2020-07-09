@@ -12,11 +12,18 @@ except (ImportError, FileNotFoundError) as exc:
     pump_controller = None
 
 try:
-    print('Importing sensors..')
+    print('Importing bt sensors..')
     from .sensors.miflora import pollers
 except (ImportError, FileNotFoundError) as exc:
     print(f'Failed to import sensors: {exc}')
     pollers = None
+
+try:
+    print('Importing tank sensor..')
+    from .sensors.tank_level import get_distance
+except (ImportError, FileNotFoundError) as exc:
+    print(f'Failed to import sensors: {exc}')
+    get_distance = None
 
 try:
     print('Importing camera..')
@@ -58,6 +65,11 @@ def set_speed(motor, speed):
     pump_controller.apply()
     return 'OK'
 
+@app.route('/tank', methods=['GET'])
+def get_tank_level():
+    return {
+        'distance': get_distance()
+    }
 
 @app.route('/capture')
 def get_camera():

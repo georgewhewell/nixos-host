@@ -182,6 +182,14 @@ in
         ).config.system.build.sdImage
       )
       aarch64Machines;
+    felboot = pkgs.lib.mapAttrs
+      (name: configuration:
+        (buildCross "aarch64-linux" configuration [
+          ./modules/nanopi-load.nix
+        ]
+        ).config.system.build.usb.loader
+      )
+      aarch64Machines;
   };
 
 }

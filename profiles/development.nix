@@ -1,12 +1,13 @@
 { config, pkgs, ... }:
 
 {
-  boot.kernel.sysctl.max_user_instances = 262143;
+  boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
 
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
 
+    fswatch
     screen
     wget
     rsync

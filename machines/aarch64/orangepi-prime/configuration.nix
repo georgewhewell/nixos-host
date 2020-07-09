@@ -4,7 +4,7 @@
 
   networking.hostName = "orangepi-prime";
   boot.kernelParams = [ "cma=384M" ];
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_megous;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_allwinner;
 
   boot.kernelPatches = [
     {

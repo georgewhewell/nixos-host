@@ -16,6 +16,9 @@
         BT n
         DRM n
         SOUND n
+        FS_XFS n
+        FS_UDF n
+        FS_UBIFS n
       '';
     }
     {
@@ -32,17 +35,25 @@
 
   hardware.firmware = [ pkgs.libreelec-dvb-firmware ];
 
-  boot.kernelPackages = lib.mkOverride 1 pkgs.linuxPackages_4_19;
+  boot.kernelPackages = lib.mkOverride 1 pkgs.linuxPackages_allwinner;
   boot.extraModulePackages = [
     (config.boot.kernelPackages.tbs.overrideAttrs (old:
       let
         # fetchFromGitHub does unpack differently from niv ?
         media = pkgs.fetchFromGitHub { inherit (pkgs.sources.linux_media) repo owner rev sha256; name = "linux_media"; };
         build = pkgs.fetchFromGitHub { inherit (pkgs.sources.media_build) repo owner rev sha256; name = "media_build"; };
+        media_patched = pkgs.runCommandNoCC "linux_media" { } ''
+          cp -r ${media} linux_media
+          chmod -R +w linux_media
+          cd linux_media
+          patch -p1 < ${../packages/patches/linux-tbs.patch}
+          cd ..
+          mv linux_media $out
+        '';
       in
       {
         name = "tbs-2020.01.01";
-        srcs = [ media build ];
+        srcs = [ media_patched build ];
         sourceRoot = "media_build";
 
         preConfigure = let
@@ -78,6 +89,17 @@
 
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN4I_CSI');" v4l/scripts/make_kconfig.pl
           sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SUN6I_CSI');" v4l/scripts/make_kconfig.pl
+
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_CODA');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_IMX_VDOA');" v4l/scripts/make_kconfig.pl
+
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SAA7146');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_SAA7146_VV');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_TC358743');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_OV9650');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_ADV7511');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_ADV7842');" v4l/scripts/make_kconfig.pl
+          sed -i "/DVB_SAA716X_FF/a disable_config('VIDEO_ADV7604');" v4l/scripts/make_kconfig.pl
 
           make dir DIR=../${media.name}
 
