@@ -32,6 +32,12 @@ rec {
   };
   python3Packages = python3.pkgs;
 
+  python2 = pkgs.python2.override {
+    packageOverrides = self: super_:
+      (pkgs.python2.pkgs.callPackage ./python-libraries { });
+  };
+  python2Packages = python2.pkgs;
+
   entking = callPackage ./entking { };
   miflora-mqtt-daemon = callPackage ./miflora-mqtt-daemon { };
 
@@ -40,5 +46,14 @@ rec {
   libva-v4l2-request = (callPackage ./libva-v4l2-request { });
   hsphfpd = (callPackage ./hsphfpd { });
   radeon-profile-daemon = libsForQt5.callPackage ./radeon-profile-daemon { };
+
+  linux_allwinner = (import ./linux-allwinner { inherit linux_testing sources; });
+  linuxPackages_allwinner = linuxPackagesFor (linux_allwinner);
+
+  linux_amlogic = (import ./linux-amlogic { inherit linux_latest sources; });
+  linuxPackages_amlogic = linuxPackagesFor (linux_amlogic);
+
+  linux_meson_mx = (import ./linux-meson-mx { inherit linux_testing sources; });
+  linuxPackages_meson_mx = linuxPackagesFor (linux_meson_mx);
 
 }

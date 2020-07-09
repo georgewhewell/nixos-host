@@ -10,13 +10,14 @@ buildUBoot {
   targetPlatforms = [ "aarch64-linux" ];
   filesToInstall = [ "u-boot.bin" ];
 
-  nativeBuildInputs = with pkgs; [
+  nativeBuildInputs = with pkgs.buildPackages; [
     bc
     bison
     flex
-    openssl
     swig
   ];
+
+  buildInputs = [ pkgs.openssl ];
 
   makeFlags = [
     "DTC=${pkgs.buildPackages.dtc}/bin/dtc"

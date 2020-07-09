@@ -110,7 +110,13 @@
         MEDIA_CEC_SUPPORT y
         MEDIA_CEC_RC y
         DRM_SUN4I_HDMI_CEC y
-        FB_SUN5I_EINK n
+      '';
+    }
+    {
+      name = "gpio-sysfs";
+      patch = null;
+      extraConfig = ''
+        GPIO_SYSFS y
       '';
     }
     {

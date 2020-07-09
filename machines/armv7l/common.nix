@@ -41,27 +41,12 @@
   # takes ages
   security.polkit.enable = lib.mkForce false;
   services.udisks2.enable = lib.mkForce false;
-
   services.mingetty.autologinUser = lib.mkForce "grw";
-  # sd card image must be <2gb
-  #  environment.systemPackages = with pkgs; lib.mkForce [ bash nix coreutils systemd ];
 
   boot.kernelPatches = [
     {
-      name = "gpio-sysfs";
-      patch = null;
-      extraConfig = ''
-        GPIO_SYSFS y
-      '';
-    }
-    {
       name = "nanopi-air";
       patch = ../../packages/patches/nanopi-air-nand-wifi.patch;
-    }
-    {
-      # uboot should be setting this properly but..
-      name = "fix odroid-hc1 dts name";
-      patch = ../../packages/patches/fix-odroid-hc1-dtbname.patch;
     }
     {
       name = "nanopi-duo";

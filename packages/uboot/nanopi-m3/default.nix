@@ -22,7 +22,4 @@ rec {
     dd conv=notrunc if=${uboot-sd} of=$1 seek=64
   '';
 
-  boot-usb = pkgs.writeScriptBin "boot-usb" ''
-    
-  '';
 }

@@ -16,6 +16,6 @@ in {
   hardware.opengl.extraPackages = [ pkgs.rocm-opencl-icd ];
 
   services.radeon-profile-daemon.enable = true;
-  environment.systemPackages = with pkgs; [ radeon-profile rocminfo rocm-opencl-runtime ];
+  environment.systemPackages = with pkgs; [ radeon-profile rocminfo rocm-opencl-runtime rocm-opencl-icd rocm-smi ];
 
 }

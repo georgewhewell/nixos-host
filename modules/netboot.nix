@@ -25,6 +25,7 @@ in
 
     netboot.bootloader = mkOption {
       example = literalExample "pkgs.UBootOrangePiZero";
+      default = null;
     };
 
   };

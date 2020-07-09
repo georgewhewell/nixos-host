@@ -1,0 +1,210 @@
+diff --git a/drivers/media/common/videobuf2/videobuf2-dma-sg.c b/drivers/media/common/videobuf2/videobuf2-dma-sg.c
+index 6db60e9d5183..ddec396fda8a 100644
+--- a/drivers/media/common/videobuf2/videobuf2-dma-sg.c
++++ b/drivers/media/common/videobuf2/videobuf2-dma-sg.c
+@@ -310,7 +310,7 @@ static void *vb2_dma_sg_vaddr(void *buf_priv)
+ 			buf->vaddr = dma_buf_vmap(buf->db_attach->dmabuf);
+ 		else
+ 			buf->vaddr = vm_map_ram(buf->pages,
+-					buf->num_pages, -1, PAGE_KERNEL);
++					buf->num_pages, -1);
+ 	}
+ 
+ 	/* add offset in case userptr is not page-aligned */
+diff --git a/drivers/media/common/videobuf2/videobuf2-vmalloc.c b/drivers/media/common/videobuf2/videobuf2-vmalloc.c
+index 1a4f0ca87c7c..c66fda4a65e4 100644
+--- a/drivers/media/common/videobuf2/videobuf2-vmalloc.c
++++ b/drivers/media/common/videobuf2/videobuf2-vmalloc.c
+@@ -107,8 +107,7 @@ static void *vb2_vmalloc_get_userptr(struct device *dev, unsigned long vaddr,
+ 		buf->vaddr = (__force void *)
+ 			ioremap(__pfn_to_phys(nums[0]), size + offset);
+ 	} else {
+-		buf->vaddr = vm_map_ram(frame_vector_pages(vec), n_pages, -1,
+-					PAGE_KERNEL);
++		buf->vaddr = vm_map_ram(frame_vector_pages(vec), n_pages, -1);
+ 	}
+ 
+ 	if (!buf->vaddr)
+diff --git a/drivers/media/usb/dvb-usb/tbs5220.c b/drivers/media/usb/dvb-usb/tbs5220.c
+index c90820c0af51..e6248b6ba9d3 100644
+--- a/drivers/media/usb/dvb-usb/tbs5220.c
++++ b/drivers/media/usb/dvb-usb/tbs5220.c
+@@ -192,7 +192,7 @@ static int tbs5220_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x64;
+ 	info.platform_data = &si2168_config;
+ 	request_module(info.type);
+-	client_demod = i2c_new_device(&d->i2c_adap, &info);
++	client_demod = i2c_new_client_device(&d->i2c_adap, &info);
+ 	if (client_demod == NULL || client_demod->dev.driver == NULL)
+ 		return -ENODEV;
+ 
+@@ -210,7 +210,7 @@ static int tbs5220_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x60;
+ 	info.platform_data = &si2157_config;
+ 	request_module(info.type);
+-	client_tuner = i2c_new_device(adapter, &info);
++	client_tuner = i2c_new_client_device(adapter, &info);
+ 	if (client_tuner == NULL || client_tuner->dev.driver == NULL) {
+ 		module_put(client_demod->dev.driver->owner);
+ 		i2c_unregister_device(client_demod);
+diff --git a/drivers/media/usb/dvb-usb/tbs5520se.c b/drivers/media/usb/dvb-usb/tbs5520se.c
+index 48e1bcd0b4e9..c456e9319195 100644
+--- a/drivers/media/usb/dvb-usb/tbs5520se.c
++++ b/drivers/media/usb/dvb-usb/tbs5520se.c
+@@ -234,7 +234,7 @@ static int tbs5520se_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x67;
+ 	info.platform_data = &si2183_config;
+ 	request_module(info.type);
+-	client_demod = i2c_new_device(&d->i2c_adap, &info);
++	client_demod = i2c_new_client_device(&d->i2c_adap, &info);
+ 	if (client_demod == NULL || client_demod->dev.driver == NULL)
+ 		return -ENODEV;
+ 
+@@ -268,7 +268,7 @@ static int tbs5520se_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x61;
+ 	info.platform_data = &si2157_config;
+ 	request_module(info.type);
+-	client_tuner = i2c_new_device(adapter, &info);
++	client_tuner = i2c_new_client_device(adapter, &info);
+ 	if (client_tuner == NULL || client_tuner->dev.driver == NULL) {
+ 		module_put(client_demod->dev.driver->owner);
+ 		i2c_unregister_device(client_demod);
+diff --git a/drivers/media/usb/dvb-usb/tbs5580.c b/drivers/media/usb/dvb-usb/tbs5580.c
+index 5af6c597deb9..bbb42844facd 100644
+--- a/drivers/media/usb/dvb-usb/tbs5580.c
++++ b/drivers/media/usb/dvb-usb/tbs5580.c
+@@ -532,7 +532,7 @@ static int tbs5580_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x67;
+ 	info.platform_data = &si2183_config;
+ 	request_module(info.type);
+-	client_demod = i2c_new_device(&d->i2c_adap, &info);
++	client_demod = i2c_new_client_device(&d->i2c_adap, &info);
+ 	if (client_demod == NULL || client_demod->dev.driver == NULL)
+ 		return -ENODEV;
+ 
+@@ -565,7 +565,7 @@ static int tbs5580_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x61;
+ 	info.platform_data = &si2157_config;
+ 	request_module(info.type);
+-	client_tuner = i2c_new_device(adapter, &info);
++	client_tuner = i2c_new_client_device(adapter, &info);
+ 	if (client_tuner == NULL || client_tuner->dev.driver == NULL) {
+ 		module_put(client_demod->dev.driver->owner);
+ 		i2c_unregister_device(client_demod);
+diff --git a/drivers/media/usb/dvb-usb/tbs5590.c b/drivers/media/usb/dvb-usb/tbs5590.c
+index 95c03a42a0c7..6c615bb9bfd7 100644
+--- a/drivers/media/usb/dvb-usb/tbs5590.c
++++ b/drivers/media/usb/dvb-usb/tbs5590.c
+@@ -401,7 +401,7 @@ static int tbs5590_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x67;
+ 	info.platform_data = &si2183_config;
+ 	request_module(info.type);
+-	client_demod = i2c_new_device(&d->i2c_adap, &info);
++	client_demod = i2c_new_client_device(&d->i2c_adap, &info);
+ 	if (client_demod == NULL || client_demod->dev.driver == NULL)
+ 		return -ENODEV;
+ 
+@@ -435,7 +435,7 @@ static int tbs5590_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x61;
+ 	info.platform_data = &si2157_config;
+ 	request_module(info.type);
+-	client_tuner = i2c_new_device(adapter, &info);
++	client_tuner = i2c_new_client_device(adapter, &info);
+ 	if (client_tuner == NULL || client_tuner->dev.driver == NULL) {
+ 		module_put(client_demod->dev.driver->owner);
+ 		i2c_unregister_device(client_demod);
+diff --git a/drivers/media/usb/dvb-usb/tbs5880.c b/drivers/media/usb/dvb-usb/tbs5880.c
+index 9a84814603f5..631746abf02b 100644
+--- a/drivers/media/usb/dvb-usb/tbs5880.c
++++ b/drivers/media/usb/dvb-usb/tbs5880.c
+@@ -553,7 +553,7 @@ static int tbs5880_tuner_attach(struct dvb_usb_adapter *adap)
+ 	/* attach tuner */
+ 	tda18212_config.fe = adap->fe_adap->fe;
+ 	request_module("tda18212");
+-	client = i2c_new_device(adapter, &board_info);
++	client = i2c_new_client_device(adapter, &board_info);
+ 	if (client == NULL || client->dev.driver == NULL) {
+ 		dvb_frontend_detach(adap->fe_adap->fe);
+ 		goto err;
+diff --git a/drivers/media/usb/dvb-usb/tbs5881.c b/drivers/media/usb/dvb-usb/tbs5881.c
+index 238476672b0b..c0bf51468e33 100644
+--- a/drivers/media/usb/dvb-usb/tbs5881.c
++++ b/drivers/media/usb/dvb-usb/tbs5881.c
+@@ -511,7 +511,7 @@ static int tbs5881_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x64;
+ 	info.platform_data = &si2168_config;
+ 	request_module(info.type);
+-	client_demod = i2c_new_device(&d->i2c_adap, &info);
++	client_demod = i2c_new_client_device(&d->i2c_adap, &info);
+ 	if (client_demod == NULL || client_demod->dev.driver == NULL)
+ 		return -ENODEV;
+ 
+@@ -529,7 +529,7 @@ static int tbs5881_frontend_attach(struct dvb_usb_adapter *adap)
+ 	info.addr = 0x60;
+ 	info.platform_data = &si2157_config;
+ 	request_module(info.type);
+-	client_tuner = i2c_new_device(adapter, &info);
++	client_tuner = i2c_new_client_device(adapter, &info);
+ 	if (client_tuner == NULL || client_tuner->dev.driver == NULL) {
+ 		module_put(client_demod->dev.driver->owner);
+ 		i2c_unregister_device(client_demod);
+diff --git a/drivers/media/v4l2-core/videobuf-core.c b/drivers/media/v4l2-core/videobuf-core.c
+index 2686f03b322e..440c2727fc56 100644
+--- a/drivers/media/v4l2-core/videobuf-core.c
++++ b/drivers/media/v4l2-core/videobuf-core.c
+@@ -535,7 +535,7 @@ int videobuf_qbuf(struct videobuf_queue *q, struct v4l2_buffer *b)
+ 	MAGIC_CHECK(q->int_ops->magic, MAGIC_QTYPE_OPS);
+ 
+ 	if (b->memory == V4L2_MEMORY_MMAP)
+-		down_read(&current->mm->mmap_sem);
++		down_read(&current->mm->mmap_lock);
+ 
+ 	videobuf_queue_lock(q);
+ 	retval = -EBUSY;
+@@ -622,7 +622,7 @@ int videobuf_qbuf(struct videobuf_queue *q, struct v4l2_buffer *b)
+ 	videobuf_queue_unlock(q);
+ 
+ 	if (b->memory == V4L2_MEMORY_MMAP)
+-		up_read(&current->mm->mmap_sem);
++		up_read(&current->mm->mmap_lock);
+ 
+ 	return retval;
+ }
+diff --git a/drivers/media/v4l2-core/videobuf-dma-contig.c b/drivers/media/v4l2-core/videobuf-dma-contig.c
+index aeb2f497c683..4d3efd199f16 100644
+--- a/drivers/media/v4l2-core/videobuf-dma-contig.c
++++ b/drivers/media/v4l2-core/videobuf-dma-contig.c
+@@ -169,7 +169,7 @@ static int videobuf_dma_contig_user_get(struct videobuf_dma_contig_memory *mem,
+ 	mem->size = PAGE_ALIGN(vb->size + offset);
+ 	ret = -EINVAL;
+ 
+-	down_read(&mm->mmap_sem);
++	down_read(&mm->mmap_lock);
+ 
+ 	vma = find_vma(mm, untagged_baddr);
+ 	if (!vma)
+@@ -201,7 +201,7 @@ static int videobuf_dma_contig_user_get(struct videobuf_dma_contig_memory *mem,
+ 	}
+ 
+ out_up:
+-	up_read(&current->mm->mmap_sem);
++	up_read(&current->mm->mmap_lock);
+ 
+ 	return ret;
+ }
+diff --git a/drivers/media/v4l2-core/videobuf-dma-sg.c b/drivers/media/v4l2-core/videobuf-dma-sg.c
+index 13b65ed9e74c..1ff53308691a 100644
+--- a/drivers/media/v4l2-core/videobuf-dma-sg.c
++++ b/drivers/media/v4l2-core/videobuf-dma-sg.c
+@@ -200,9 +200,9 @@ static int videobuf_dma_init_user(struct videobuf_dmabuf *dma, int direction,
+ {
+ 	int ret;
+ 
+-	down_read(&current->mm->mmap_sem);
++	down_read(&current->mm->mmap_lock);
+ 	ret = videobuf_dma_init_user_locked(dma, direction, data, size);
+-	up_read(&current->mm->mmap_sem);
++	up_read(&current->mm->mmap_lock);
+ 
+ 	return ret;
+ }
