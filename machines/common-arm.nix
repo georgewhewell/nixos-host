@@ -104,6 +104,62 @@
 
   boot.kernelPatches = [
     {
+      name = "disable-slowthings";
+      patch = null;
+      extraConfig = ''
+        PCI n
+        XEN n
+        KVM n
+
+        OPENVSWITCH n
+        INFINIBAND n
+        6LOWPAN n
+        CAN n
+
+        ATA n
+        SCSI n
+        BLK_DEV_DM n
+
+        INPUT_TOUCHSCREEN n
+
+        DRM_PANEL n
+        DRM_AMDGPU n
+        DRM_RADEON n
+        DRM_ETANIV n
+        DRM_NOUVEAU n
+        DRM_VC4 n
+        DRM_MSM n
+
+        AFS_FS n
+        ADFS_FS n
+        CEPH_FS n
+        EROFS_FS n
+        UBIFS_FS n
+        HFS_FS n
+        HFSPLUS_FS n
+        AFFS_FS n
+        ORANGEFS_FS n
+        NTFS_FS n
+        NILFS2_FS n
+        BTRFS_FS n
+        OCFS2_FS n
+        GFS2_FS n
+        JFS_FS n
+        REISERFS_FS n
+        ECRYPT_FS n
+        VXFS_FS n
+
+        ARCH_MEDIATEK n
+        ARCH_BCM2835 n
+        ARCH_QCOM n
+        ARCH_RENESAS n
+        ARCH_TEGRA n
+        ARCH_THUNDER n
+        ARCH_THUNDER2 n
+        ARCH_XGENE n
+      '';
+    }
+    {
       name = "enable-cec";
       patch = null;
       extraConfig = ''
