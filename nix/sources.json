@@ -47,10 +47,10 @@
         "homepage": "",
         "owner": "notracking",
         "repo": "hosts-blocklists",
-        "rev": "43db61907920f2ee0b1bb9f51aa1c4834cd22cf6",
-        "sha256": "0p2h9fncc94k2z1wnqqbssvxbpqplmscyi273yswiz2c8hyxiam1",
+        "rev": "f7decdb708c36c47340ef23b2592b0b5e99a8664",
+        "sha256": "03id0jb649kghwmgygp103q99vxh0j02j1hixnng6dlyvggrrk1m",
         "type": "tarball",
-        "url": "https://github.com/notracking/hosts-blocklists/archive/43db61907920f2ee0b1bb9f51aa1c4834cd22cf6.tar.gz",
+        "url": "https://github.com/notracking/hosts-blocklists/archive/f7decdb708c36c47340ef23b2592b0b5e99a8664.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libva-v4l2-request": {
