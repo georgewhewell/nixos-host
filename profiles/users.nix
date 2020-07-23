@@ -21,6 +21,7 @@ in
       "scanner"
       "networkmanager"
       "vboxsf"
+      "sway"
     ];
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
