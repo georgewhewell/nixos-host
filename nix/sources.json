@@ -203,10 +203,10 @@
         "homepage": null,
         "owner": "nixos-rocm",
         "repo": "nixos-rocm",
-        "rev": "69d4c202280076cddfea1df07284b5b2fa358880",
-        "sha256": "04n92fmj8389r2nald4fzjff23a6n35a87b20npqgldfzppzq0s4",
+        "rev": "01d3c5bc69a1a578c003e4d9706b81dfa4989666",
+        "sha256": "1hdvhklha5b0k0gh1qkfyvm7nqgg3q78ip4m2nkdllaqzpj4gjav",
         "type": "tarball",
-        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/69d4c202280076cddfea1df07284b5b2fa358880.tar.gz",
+        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/01d3c5bc69a1a578c003e4d9706b81dfa4989666.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "radeon-profile-daemon": {
