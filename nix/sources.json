@@ -131,10 +131,10 @@
         "homepage": null,
         "owner": "tbsdtv",
         "repo": "media_build",
-        "rev": "e8dea8e4dcd5ee3009dce98bf5a2bba99e2bb094",
-        "sha256": "02p906sp643in664fw8np8nixg6qwpqdkkylg9k470gky274mpi7",
+        "rev": "17b4bfadf728cbb80a98279eb60e72fe94b0c0b9",
+        "sha256": "02q3zv3d6rxp4w8l3hv1g7fhbjrijws96wgnnxw69a02lwjl5qln",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/media_build/archive/e8dea8e4dcd5ee3009dce98bf5a2bba99e2bb094.tar.gz",
+        "url": "https://github.com/tbsdtv/media_build/archive/17b4bfadf728cbb80a98279eb60e72fe94b0c0b9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "meson-firmware": {
