@@ -191,10 +191,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "febd3530f0c2f2fb74752ee4d9dd2518d302f618",
-        "sha256": "1gifi50k4h6wk9ix0yvp66p7jk8rrqgr39r5rf4lyha6pbs7dbk6",
+        "rev": "0d30bfd7b085147b181f7f71263e5d711dfc90b1",
+        "sha256": "0vhmxx2y01h76fn94dhvxzzaabd1sxcd2w9dlhikyw61lpy46h35",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/febd3530f0c2f2fb74752ee4d9dd2518d302f618.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/0d30bfd7b085147b181f7f71263e5d711dfc90b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixos-rocm": {
