@@ -83,10 +83,10 @@
         "homepage": "https://github.com/tbsdtv/linux_media/wiki",
         "owner": "tbsdtv",
         "repo": "linux_media",
-        "rev": "212b5e489c79d12b5d32449f46b8a5d4458e0f0a",
-        "sha256": "1kr3x55r3cg3m97rylzs102c5rdadc8niky477hnp86f5x68vdaa",
+        "rev": "7166c2a1ce5aebbb4f7a550f4ce343a2c29e5f44",
+        "sha256": "0drd4ls856216d2l0d3b2432pkcf29hnhfg4fl9aazhcrgv46fzg",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/linux_media/archive/212b5e489c79d12b5d32449f46b8a5d4458e0f0a.tar.gz",
+        "url": "https://github.com/tbsdtv/linux_media/archive/7166c2a1ce5aebbb4f7a550f4ce343a2c29e5f44.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_megous": {
