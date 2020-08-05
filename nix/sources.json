@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "armbian",
         "repo": "firmware",
-        "rev": "ece81648d27814a8fbd0b82b1344174f786f6f2b",
-        "sha256": "19xc70nwh5jdzj6rrkra0cqlyvagm0ry4nhz3rshsg3538jpbs2j",
+        "rev": "88a394347b1b8508e4814df86b97432a160b891e",
+        "sha256": "08rshavwygq6vzsai45crhgc1v37aq8p2w82pfmcz11bcz1z7lkq",
         "type": "tarball",
-        "url": "https://github.com/armbian/firmware/archive/ece81648d27814a8fbd0b82b1344174f786f6f2b.tar.gz",
+        "url": "https://github.com/armbian/firmware/archive/88a394347b1b8508e4814df86b97432a160b891e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "bl1-nanopi-m3": {
