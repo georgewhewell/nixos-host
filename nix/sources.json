@@ -95,10 +95,10 @@
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "96fb6bb44fb566d7cd58753a487aab9ecabfa336",
-        "sha256": "14lakd3nvy0l8mr8sn4jspy88bbd48m0y93pnf25561dx47mqadn",
+        "rev": "43e359f4472798c78492bc26df80ab2aff76872a",
+        "sha256": "0dyq6w83yni3wlx5hc2kci2l1d5bcg9w6783bygvc6wk2sacjk9f",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/96fb6bb44fb566d7cd58753a487aab9ecabfa336.tar.gz",
+        "url": "https://github.com/megous/linux/archive/43e359f4472798c78492bc26df80ab2aff76872a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
