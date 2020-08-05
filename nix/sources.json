@@ -71,10 +71,10 @@
         "homepage": "",
         "owner": "chewitt",
         "repo": "linux",
-        "rev": "750098cd376da202a53e7d73c800d3664a09bbab",
-        "sha256": "1hhk8m2b0hqiyb89zfnmniz1515jry2xms19qfkgzq21ahszbjqx",
+        "rev": "8ec88095b72d3b77e8294dba8c82d7f1831e32c0",
+        "sha256": "1gd3ayq2948fd072ld125wlxdhyz8a7db4x1zqkdxhk4q4wrhfzc",
         "type": "tarball",
-        "url": "https://github.com/chewitt/linux/archive/750098cd376da202a53e7d73c800d3664a09bbab.tar.gz",
+        "url": "https://github.com/chewitt/linux/archive/8ec88095b72d3b77e8294dba8c82d7f1831e32c0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_media": {
