@@ -1,32 +1,33 @@
-use vl53l0x::VL53L0x;
-use linux_embedded_hal::{I2cdev};
+use linux_embedded_hal::I2cdev;
 use serde::Serialize;
+use serde_json::json;
 use shared_bus;
+use vl53l0x::VL53L0x;
 
 #[derive(Serialize)]
 pub struct TankState {
     mm: u16,
 }
 
-pub fn read_tank_level() -> TankState {
+pub fn config() -> serde_json::value::Value {
+    json!({
+        "name": "water_tank".to_string(),
+        "device_class": "sensor",
+        "unit_of_measurement": "%",
+        "value_template": "{{value_json['water_level']}}",
+        "platform": "farmbot"
+    })
+}
+
+pub fn read_tank_level() -> u16 {
     println!("Reading tank level!");
     let i2c_bus = I2cdev::new("/dev/i2c-0").unwrap();
     let manager = shared_bus::BusManager::<std::sync::Mutex<_>, _>::new(i2c_bus);
 
     let mut tof = VL53L0x::new(manager.acquire()).unwrap();
-    match tof.read_range_mm() {
-        Ok(meas) => {
-            println!("vl: millis {}\r\n", meas);
-            TankState {
-                mm: meas,
-            }
-        }
-        Err(e) => {
-            println!("Err meas: {:?}\r\n", e);
-            TankState {
-                mm: 0,
-            }
-        }
-    }
 
+    match tof.read_range_single_millimeters_blocking() {
+        Ok(meas) => meas,
+        Err(e) => 0.0 as u16,
+    }
 }
