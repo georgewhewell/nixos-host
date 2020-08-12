@@ -3,6 +3,7 @@ use serde::Serialize;
 use serde_json::json;
 use shared_bus;
 use vl53l0x::VL53L0x;
+use i2cdev::linux::LinuxI2CError;
 
 #[derive(Serialize)]
 pub struct TankState {
@@ -19,15 +20,15 @@ pub fn config() -> serde_json::value::Value {
     })
 }
 
-pub fn read_tank_level() -> u16 {
+pub fn read_tank_level() -> Result<u16, LinuxI2CError> {
     println!("Reading tank level!");
-    let i2c_bus = I2cdev::new("/dev/i2c-0").unwrap();
+    let i2c_bus = I2cdev::new("/dev/i2c-0")?;
     let manager = shared_bus::BusManager::<std::sync::Mutex<_>, _>::new(i2c_bus);
 
     let mut tof = VL53L0x::new(manager.acquire()).unwrap();
 
     match tof.read_range_single_millimeters_blocking() {
-        Ok(meas) => meas,
-        Err(e) => 0.0 as u16,
+        Ok(meas) => Ok(meas),
+        Err(_e) => Ok(0.0 as u16),
     }
 }

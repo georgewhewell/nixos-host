@@ -29,7 +29,7 @@ async fn write(client: &Client, topic: String, payload: String) {
 pub async fn connect(
     mqtt_hostname: String,
     mqtt_username: String,
-    sender: Sender<PumpStartCommand>,
+    _sender: Sender<PumpStartCommand>,
     receiver: Receiver<SensorUpdate>,
     topics: Vec<String>,
 ) {

@@ -4,13 +4,13 @@ use tokio::task;
 use tokio::time;
 use serde_json::json;
 use crate::sensors::listen;
-use crate::mqtt::{connect, SensorUpdate};
+use crate::mqtt::{SensorUpdate};
 use futures::{
     future::FutureExt, // for `.fuse()`
     pin_mut,
     select,
 };
-use async_channel::{Receiver, Sender};
+
 
 mod http;
 mod mqtt;
@@ -25,17 +25,13 @@ static SENSOR_PREFIX: &str = "home-assistant";
 
 trait Sensor {
     fn config(prefix: &str) -> serde_json::value::Value;
-    fn reading(&Self) -> f32;
+    fn reading(&self) -> serde_json::value::Value;
 }
 
 trait Switch {
     fn config(prefix: &str) -> serde_json::value::Value;
 }
 
-trait Peripheral {
-    pub fn sensors(&Self) -> &[Sensor]
-    pub fn switches(&Self) -> &[Switch]
-}
 
 #[tokio::main]
 async fn main() {
@@ -55,7 +51,7 @@ async fn main() {
     let (mqtt_sub_s, mqtt_sub_r) = async_channel::unbounded();
     let (mqtt_sub_s1, mqtt_sub_r1) = (mqtt_sub_s.clone(), mqtt_sub_r.clone());
     let (mqtt_pub_s, mqtt_pub_r) = async_channel::unbounded();
-    let (mqtt_pub_s1, mqtt_pub_r1) = (mqtt_pub_s.clone(), mqtt_pub_r.clone());
+    let (_mqtt_pub_s1, mqtt_pub_r1) = (mqtt_pub_s.clone(), mqtt_pub_r.clone());
     task::spawn(
         mqtt::connect(
             settings.mqtt_hostname,
@@ -73,9 +69,15 @@ async fn main() {
 
     let (miflora_s, miflora_r) = async_channel::unbounded();
     let (miflora_s1, miflora_r1) = (miflora_s.clone(), miflora_r.clone());
-    listen(
-        miflora_s1,
-    );
+
+    let x = std::thread::spawn(move || {
+        println!("Spawning FLOWER thread");
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(sensors::listen(
+            miflora_s1,
+        ));
+    });
+
 
     mqtt_pub_s.send(SensorUpdate {
         topic: format!("{}/sensor/weather/config", SENSOR_PREFIX),
@@ -84,18 +86,18 @@ async fn main() {
     .await
     .unwrap();
 
-    for i in [
-        weather::TemperatureSensor,
-        weather::PressureSensor,
-        weather::HumiditySensor,
-    ] {
-        mqtt_pub_s.send(SensorUpdate {
-            topic: format!("{}/switch/pumps/pump{}/config", SENSOR_PREFIX, i),
-            message: i.config(SENSOR_PREFIX.to_string()).to_string(),
-        })
-        .await
-        .unwrap();
-    }
+    // for i in [
+    //     &weather::TemperatureSensor,
+    //     &weather::PressureSensor,
+    //     &weather::HumiditySensor,
+    // ] {
+    //     mqtt_pub_s.send(SensorUpdate {
+    //         topic: format!("{}/switch/pumps/pump{}/config", SENSOR_PREFIX, i),
+    //         message: i.config(SENSOR_PREFIX.to_string()).to_string(),
+    //     })
+    //     .await
+    //     .unwrap();
+    // }
 
     mqtt_pub_s.send(SensorUpdate {
         topic: format!("{}/sensor/water_tank/config", SENSOR_PREFIX),
@@ -123,35 +125,44 @@ async fn main() {
     println!("Seup complete");
     // let run = pumps::run_all().await;
     // println!("finished spin test: {:?}", run);
-    let next_tick = time::delay_for(Duration::from_millis(500)).await;
+    let _next_tick = time::delay_for(Duration::from_millis(500)).await;
 
     loop {
-        let weather = weather::read_weather().await;
-        mqtt_pub_s.send(SensorUpdate {
-            topic: format!("{}/sensor/weather/state", SENSOR_PREFIX),
-            message: json!({
-                "temperature": weather.temperature,
-                "pressure": weather.pressure,
-                "humidity": weather.humidity,
-            })
-            .to_string(),
-        })
-        .await
-        .unwrap();
+        match weather::read_weather().await {
+            Ok(weather) => {
+                mqtt_pub_s.send(SensorUpdate {
+                    topic: format!("{}/sensor/weather/state", SENSOR_PREFIX),
+                    message: json!({
+                        "temperature": weather.temperature,
+                        "pressure": weather.pressure,
+                        "humidity": weather.humidity,
+                    })
+                    .to_string(),
+                })
+                .await
+                .unwrap();
+                println!("send weather update: {:?}", weather);
+            },
+            Err(_) => {
+                println!("Error getting weather!");
+            }
+        };
 
-        println!("send weather update: {:?}", weather);
-
-        // //
-        let tank_level = tank::read_tank_level();
-        mqtt_pub_s.send(mqtt::SensorUpdate{
-            topic: format!("{}/sensor/water_tank/state", SENSOR_PREFIX),
-            message: json!({
-                "water_level": tank_level,
-            }).to_string(),
-        }).await
-        .unwrap();
-
-        println!("send tank update: {:?}", tank_level);
+        match tank::read_tank_level() {
+            Ok(tank_level) => {
+                mqtt_pub_s.send(mqtt::SensorUpdate{
+                    topic: format!("{}/sensor/water_tank/state", SENSOR_PREFIX),
+                    message: json!({
+                        "water_level": tank_level,
+                    }).to_string(),
+                }).await
+                .unwrap();
+                println!("send tank update: {:?}", tank_level);
+            },
+            Err(_) => {
+                println!("Bad tank");
+            },
+        };
 
         time::delay_for(Duration::from_millis(50)).await;
 
