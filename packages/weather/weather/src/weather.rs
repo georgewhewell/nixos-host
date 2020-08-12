@@ -1,12 +1,19 @@
-use bme280::{Measurements, BME280};
+use bme280::{BME280};
 use linux_embedded_hal::{Delay, I2cdev};
+use i2cdev::linux::LinuxI2CError;
 use serde::Serialize;
-use serde_json::{json, value};
+use serde_json::{json};
 use shared_bus;
-use std::{thread, time::Duration};
+use std::{time::Duration};
 use tokio::time;
 
-use crate::mqtt::SensorUpdate;
+
+use crate::Sensor;
+
+struct FarmbotWeather {
+    last_reading: WeatherState,
+}
+
 
 #[derive(Debug, Serialize)]
 pub struct WeatherState {
@@ -15,9 +22,17 @@ pub struct WeatherState {
     pub pressure: f32,
 }
 
-struct TemperatureSensor;
+pub struct TemperatureSensor {
+    pub state: WeatherState,
+}
+pub struct HumiditySensor {
+    pub state: WeatherState,
+}
+pub struct PressureSensor {
+    pub state: WeatherState,
+}
 
-impl SensorReading for TemperatureSensor {
+impl Sensor for TemperatureSensor {
     fn config(prefix: &str) -> serde_json::value::Value {
         json!([{
             "name": "Outside Temperature",
@@ -29,13 +44,12 @@ impl SensorReading for TemperatureSensor {
         }])
     }
 
-    fn reading(mes: WeatherState) -> f32 {
-        mes.temperature
+    fn reading(&self) -> serde_json::value::Value {
+        json!({"temperature": self.state.temperature})
     }
 }
 
-struct HumiditySensor;
-impl SensorReading for HumiditySensor {
+impl Sensor for HumiditySensor {
     fn config(prefix: &str) -> serde_json::value::Value {
         json!([{
             "name": "Outside Humidity",
@@ -47,13 +61,12 @@ impl SensorReading for HumiditySensor {
         }])
     }
 
-    fn reading(mes: WeatherState) -> f32 {
-        mes.humidity
+    fn reading(&self) -> serde_json::value::Value {
+        json!({"humidity": self.state.humidity})
     }
 }
 
-struct PressureSensor;
-impl SensorReading for PressureSensor {
+impl Sensor for PressureSensor {
     fn config(prefix: &str) -> serde_json::value::Value {
         json!([{
             "name": "Atmospheric Pressure",
@@ -65,8 +78,8 @@ impl SensorReading for PressureSensor {
         }])
     }
 
-    fn reading(mes: WeatherState) -> f32 {
-        mes.pressure
+    fn reading(&self) -> serde_json::value::Value {
+        json!({"pressure": self.state.pressure})
     }
 }
 
@@ -81,9 +94,9 @@ pub fn config() -> serde_json::value::Value {
     }])
 }
 
-pub async fn read_weather() -> WeatherState {
+pub async fn read_weather() -> Result<WeatherState, LinuxI2CError> {
     println!("Reading weather!");
-    let i2c_bus = I2cdev::new("/dev/i2c-0").unwrap();
+    let i2c_bus = I2cdev::new("/dev/i2c-0")?;
     let manager = shared_bus::BusManager::<std::sync::Mutex<_>, _>::new(i2c_bus);
     let mut bme280 = BME280::new_primary(manager.acquire(), Delay);
 
@@ -92,9 +105,9 @@ pub async fn read_weather() -> WeatherState {
 
     let measurements = bme280.measure().unwrap();
 
-    return WeatherState {
+    return Ok(WeatherState {
         humidity: measurements.humidity,
         temperature: measurements.temperature,
         pressure: measurements.pressure,
-    };
+    });
 }

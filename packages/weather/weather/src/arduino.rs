@@ -1,6 +1,5 @@
-use linux_embedded_hal::I2cdev;
+
 use {
-    embedded_hal::blocking::i2c::{Read, Write, WriteRead},
     std::thread,
     std::time::Duration,
 };
@@ -11,7 +10,7 @@ const BUS: &'static str = "/dev/i2c-0";
 const PIN: u8 = 0;
 
 use i2cdev::core::*;
-use i2cdev::linux::{LinuxI2CDevice, LinuxI2CError};
+use i2cdev::linux::{LinuxI2CDevice};
 
 pub fn read_voltage() -> u32 {
     let mut dev = LinuxI2CDevice::new(&BUS, ADDRESS).unwrap();

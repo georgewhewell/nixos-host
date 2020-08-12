@@ -1,10 +1,10 @@
 extern crate pwm_pca9685 as pca9685;
 
-use linux_embedded_hal::{Delay, I2cdev};
-use pca9685::{Channel, Pca9685, SlaveAddr};
+use linux_embedded_hal::{I2cdev};
+use pca9685::{Channel, Pca9685};
 use tokio::time::{delay_for, Duration};
-use serde_json::{json, value};
-use std::fmt;
+use serde_json::{json};
+
 
 
 #[derive(Debug)]

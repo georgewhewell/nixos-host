@@ -1,12 +1,9 @@
-use async_channel::{Receiver, Sender};
+use async_channel::{Sender};
 use std::convert::Infallible;
-use std::str::FromStr;
-use std::time::Duration;
-use warp::{Filter, http::StatusCode, reject, Rejection, Reply};
+use warp::{Filter, http::StatusCode, Rejection, Reply};
 
 use crate::pumps::PumpStartCommand;
 
-use crate::mqtt::SensorUpdate;
 
 type Result<T> = std::result::Result<T, Rejection>;
 

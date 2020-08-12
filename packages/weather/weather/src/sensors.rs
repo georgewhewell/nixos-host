@@ -3,13 +3,10 @@ use btleplug;
 use crate::mqtt::{SensorUpdate};
 use btleplug::bluez::manager::Manager;
 use btleplug::api::{Central, BDAddr};
-use btleplug::bluez::protocol::*;
+
 use btleplug::bluez::protocol::hci::LEAdvertisingData;
-use async_channel::{Receiver, Sender};
-use std::sync::Arc;
-use std::thread::sleep;
-use std::collections::HashMap;
-use tokio::time::{delay_for};
+use async_channel::{Sender};
+
 use std::time::{Duration};
 use std::cmp::PartialEq;
 
@@ -95,7 +92,7 @@ mod tests{
 }
 
 pub fn parse_xiaomi_announce(data: &Vec<u8>) -> XiaomiData{
-    let device_type = match(&data[2..4]) {
+    let device_type = match &data[2..4] {
         [152, 0] => XiomiDevice::Miflora,
         _ => XiomiDevice::Unknown
     };
@@ -133,7 +130,7 @@ pub fn parse_xiaomi_announce(data: &Vec<u8>) -> XiaomiData{
             },
             [7, 16] => {
                 builder.illuminance = Some(
-                    ((xval_data[0] as u16) | ((xval_data[1] as u16) << 8))
+                    (xval_data[0] as u16) | ((xval_data[1] as u16) << 8)
                 );
             },
             [4, 16] => {
@@ -169,8 +166,9 @@ pub fn parse_xiaomi_announce(data: &Vec<u8>) -> XiaomiData{
 }
 
 pub async fn listen(
-    sender: Sender<SensorUpdate>,
+    sender: Sender<XiaomiData>,
 ) {
+    println!("Hello! I am PLANT LISTENER");
     let manager = Manager::new().unwrap();
 
     // get the first bluetooth adapter
@@ -186,22 +184,16 @@ pub async fn listen(
 
     central.on_event(Box::new(move |event: btleplug::api::CentralEvent| {
         match event {
-            btleplug::api::CentralEvent::DeviceUpdated(upd, up2) => {
-                // let () = upd;
-                // let [flags, service_class, service_data] = up2;
-
-                // let f: () = flags;
-                if upd.to_string().starts_with("C4:7C:8D") {
-                    // println!("MIFLORA EVENT: {:?}", up2);
-                    println!("{:?}", up2);
-
-                    for x in up2 {
+            btleplug::api::CentralEvent::DeviceUpdated(addr, data) => {
+                if addr.to_string().starts_with("C4:7C:8D") {
+                    for x in data {
                         match x {
-                            LEAdvertisingData::Flags(a) => (),
-                            LEAdvertisingData::ServiceClassUUID16(a) => (),
+                            LEAdvertisingData::Flags(_a) => (),
+                            LEAdvertisingData::ServiceClassUUID16(_a) => (),
                             LEAdvertisingData::ServiceData16(65173, b) => {
                                 let parsed = parse_xiaomi_announce(b);
                                 // let a = parse_mijia_bt_data(b);
+                                sender.send(parsed).await;
                                 println!("parsed: {:?} ", parsed);
                             },
                             any => {
@@ -209,17 +201,9 @@ pub async fn listen(
                             },
 
                         }
-                        // let f: () = x;
                     }
 
                 }
-
-                //     match service_class {
-                //         Ok(flags) => println!("Data was flags..")
-                //     }
-                //     // let a = parse_mijia_bt_data(service_data.to_slice());
-                //     println!("MIFLORA EVENT: {:?}", service_data.to_vec());
-                // }
             },
             _ => ()
         }
@@ -235,29 +219,6 @@ pub async fn listen(
     central.start_scan().unwrap();
 
     loop {
-        for p in central.peripherals() {
-            // let prop = p.properties();
-            //
-            // if prop.address.to_string().starts_with("C4:7C:8D") {
-            //     println!("Found MIJA");
-            //     println!("dump: {:?}", prop);
-            // }
-            // let ls = last_seen.entry(prop.address).or_insert(0);
-            // if *ls != prop.discovery_count {
-            //     if let Some(data) = prop.manufacturer_data {
-            //         println!("Wow, we found some discovery data from {}", prop.address.to_string());
-                    // let advert = BLEAdvert {
-                    //     manufacturer_data: data,
-                    //     mac: prop.address.to_string(),
-                    //     time: SystemTime::now(),
-                    //     listener: listener.clone(),
-                    // };
-                    // let json = serde_json::to_string(&advert).unwrap();
-                    // mqtt_client.publish(mqtt_topic.clone(), QoS::AtLeastOnce, false, json).unwrap();
-                // }
-            // }
-            // *ls = prop.discovery_count;
-        }
         std::thread::sleep(Duration::from_millis(1000));
     }
 }
