@@ -6,7 +6,7 @@
     ../modules/cache-cache.nix
     ../modules/usb-gadget.nix
     ../modules/devicetree.nix
-    ../modules/sunxi-watchdog.nix
+    # ../modules/sunxi-watchdog.nix
     ../modules/nbd.nix
     ../modules/netboot.nix
     ../modules/miflora.nix
