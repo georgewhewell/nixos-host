@@ -38,10 +38,9 @@
   # no documentation :X
   documentation = {
     enable = lib.mkOverride 0 false;
-    nixos = lib.mkOverride 0 false;
+    nixos.enable = lib.mkOverride 0 false;
   };
 
-  services.nixosManual.showManual = lib.mkForce false;
   services.xserver.enable = lib.mkDefault false;
 
   zramSwap = {
