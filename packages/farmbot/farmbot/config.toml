@@ -1,0 +1,22 @@
+mqtt_hostname = "192.168.23.5"
+mqtt_username = "rw"
+
+farming_enabled = true
+max_tank_level = 900
+target_moisture = 20
+default_interval = 120
+watering_seconds = 20
+
+[plants.poppies]
+address = "0xc47c8d65ac8b"
+
+[plants.strawberries]
+address = "0xC47C8D6287BA"
+
+[plants.lettuce]
+address = "0xC47C8D65AAA3"
+pump = 3
+
+[plants.nectarine]
+address = "0xC47C8D65A992"
+pump = 0
