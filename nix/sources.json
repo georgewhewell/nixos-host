@@ -239,10 +239,10 @@
         "homepage": "http://linux-sunxi.org/",
         "owner": "linux-sunxi",
         "repo": "sunxi-tools",
-        "rev": "c714fb068a0dd0013880ac974f0db0f08438b4e8",
-        "sha256": "1kv9s9fc64xyg5h6azy0b9ai0wldhwj109iqw99s918d7jxal8k3",
+        "rev": "613e4bae5c00a3d7a8c21341b61fe45b4b522cf5",
+        "sha256": "095861pz9hm57qm998zjfj39yxvs4xqh83djrm63d2qji9vmx684",
         "type": "tarball",
-        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/c714fb068a0dd0013880ac974f0db0f08438b4e8.tar.gz",
+        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/613e4bae5c00a3d7a8c21341b61fe45b4b522cf5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "u-boot-nanopi-m3": {
