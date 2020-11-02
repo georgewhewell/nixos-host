@@ -3,6 +3,9 @@
 {
 
   boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
+  boot.kernelParams = [
+    "msr.allow_writes=on"
+  ];
 
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
@@ -14,7 +17,6 @@
     msr-tools
     networkmanagerapplet
     powertop
-    rfkill
   ];
 
   hardware.bluetooth = {
