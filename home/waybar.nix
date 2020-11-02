@@ -31,15 +31,10 @@
       "cpu"
       "memory"
       "temperature"
-      "backlight"
       "battery"
       "clock"
       "tray"
     ];
-    backlight = {
-      format = "{percent}% {icon}";
-      format-icons = [ "" "" ];
-    };
     battery = {
       format = "{capacity}% {icon}";
       format-alt = "{time} {icon}";
