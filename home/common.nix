@@ -20,6 +20,7 @@
     docker-compose
   ];
 
+  manual.manpages.enable = false;
   programs.ssh = {
     enable = true;
     controlMaster = "auto";

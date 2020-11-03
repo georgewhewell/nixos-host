@@ -29,6 +29,7 @@
 
     spotify
     vlc
+    steam-run
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;
