@@ -9,6 +9,7 @@
   home.packages = with pkgs; [
     slurp
     grim
+    waypipe
   ];
 
   wayland.windowManager.sway = {
@@ -17,7 +18,7 @@
     config = rec {
       bars = [ ];
       modifier = "Mod1";
-      menu = "${pkgs.rofi}/bin/rofi -show drun";
+      menu = "${pkgs.rofi}/bin/rofi -show combi";
       terminal = "${pkgs.alacritty}/bin/alacritty";
       keybindings =
         let
@@ -59,16 +60,24 @@
       };
       output = {
         "*" = { scale = "1"; };
-        "DP-5" = { mode = "3440x1440@75.050003Hz"; };
+        "DP-1" = { mode = "5120x1440@239.761002Hz"; };
+        "Virtual-1" = { resolution = "1920x1200"; };
       };
       startup = [
         { command = "systemctl --user import-environment SWAYSOCK"; always = false; }
         { command = "systemctl --user restart waybar"; always = true; }
+        { command = ''
+            swayidle \
+              timeout 300 'swaymsg "output * dpms off"' \
+              resume 'swaymsg "output * dpms on"'
+          '';
+          always = false;
+        }
 
         # static workspaces
         {
           command = ''
-            swaymsg "workspace 9; exec $term --working-directory /etc/nixos -e sh -c 'while true; do vim .; done'; workspace 1"
+            swaymsg "workspace 9; exec alacritty --working-directory /etc/nixos -e sh -c 'while true; do vim .; done'; workspace 1"
           '';
           always = false;
         }
