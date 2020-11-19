@@ -143,10 +143,10 @@
         "homepage": null,
         "owner": "LibreElec",
         "repo": "meson-firmware",
-        "rev": "89f739f8914fa537657f7f41fa104a711fee43a8",
-        "sha256": "1f9a271g9yxqj45qqzwghacwnryk1bvcj068p0licnb8yqci2rb1",
+        "rev": "548ecf585074a3b2aa1a380fdfba34cdc2b2b41d",
+        "sha256": "05wf4441r331ll0s3r2kygv86m3d127nn3x471q3mf9nhanf2qlk",
         "type": "tarball",
-        "url": "https://github.com/LibreElec/meson-firmware/archive/89f739f8914fa537657f7f41fa104a711fee43a8.tar.gz",
+        "url": "https://github.com/LibreElec/meson-firmware/archive/548ecf585074a3b2aa1a380fdfba34cdc2b2b41d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "meson-tools": {
