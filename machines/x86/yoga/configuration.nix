@@ -22,8 +22,15 @@
 
   fileSystems."/" =
     {
-      device = "/dev/nvme0n1p3";
-      fsType = "ext4";
+      device = "/dev/mapper/vg1-nixos";
+      fsType = "f2fs";
+    };
+
+  fileSystems."/home/grw" =
+
+    {
+      device = "/dev/mapper/vg1-home";
+      fsType = "f2fs";
     };
 
   fileSystems."/boot" =
@@ -52,8 +59,8 @@
     enable = true;
     tempAc = 95;
     tempBat = 75;
-    coreOffset = -110;
-    gpuOffset = -50;
+    coreOffset = -125;
+    gpuOffset = -60;
     uncoreOffset = -60;
     analogioOffset = -60;
   };
