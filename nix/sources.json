@@ -35,10 +35,10 @@
         "homepage": "",
         "owner": "LibreElec",
         "repo": "dvb-firmware",
-        "rev": "82f1b520e82fd4889ddb062fe5c7d40dcb773069",
-        "sha256": "1lf8l8lqc6nr2wfrawld7mnyxffpvlw2lq86ahdvb6y41hzic2n6",
+        "rev": "6c61d1249b9bad2a9f900664049574fcaac8de96",
+        "sha256": "1qkrwlwkp79fqc2fv5x1prj0im85wkic7z9fhas259bcivp84nwh",
         "type": "tarball",
-        "url": "https://github.com/LibreElec/dvb-firmware/archive/82f1b520e82fd4889ddb062fe5c7d40dcb773069.tar.gz",
+        "url": "https://github.com/LibreElec/dvb-firmware/archive/6c61d1249b9bad2a9f900664049574fcaac8de96.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hosts-blocklists": {
