@@ -1,7 +1,6 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  systemd.services."container@plex".unitConfig.RequiresMountsFor = [ "/mnt/Media" ];
 
   containers.plex = {
     autoStart = true;
@@ -22,24 +21,15 @@
         hostPath = "/dev/dri/renderD128";
         isReadOnly = false;
       };
-      "/var/lib/plex" = {
-        hostPath = "/var/lib/plex";
-        isReadOnly = false;
-      };
-      "/movies" = {
-        hostPath = "/mnt/Media/Movies";
-        isReadOnly = false;
-      };
-      "/tv" = {
-        hostPath = "/mnt/Media/TV";
-        isReadOnly = false;
-      };
     };
 
     config = {
-      imports = [ ../profiles/container.nix ];
-      networking.hostName = "plex";
+      imports = [
+        ../profiles/container.nix
+        ../profiles/nas-mounts.nix
+      ];
 
+      networking.hostName = "plex";
       services.avahi = {
         enable = true;
         nssmdns = true;
@@ -64,14 +54,19 @@
       };
 
       nixpkgs.config.allowUnfree = true;
-      users.extraUsers.plex.extraGroups = [ "video" "render" ];
       environment.systemPackages = [ pkgs.libva-utils ];
 
       services.plex = {
         enable = true;
         openFirewall = true;
-        dataDir = "/var/lib/plex";
+        dataDir = "/mnt/Home/plex";
       };
+
+      fileSystems."/mnt/Media".options = [ "uid=plex" "gid=plex" ];
+
+      users.users.plex.uid = lib.mkForce 1001;
+      users.groups.plex.gid = lib.mkForce 70;
+      users.users.plex.extraGroups = [ "video" "render" ];
 
       systemd.services.tvhproxy =
         let
@@ -103,7 +98,7 @@
           environment = {
             TVH_URL = "http://tvheadend.lan:9981";
             TVH_PROXY_URL = "http://localhost:5004";
-            TVH_TUNER_COUNT = "1";
+            TVH_TUNER_COUNT = "2";
           };
           serviceConfig = {
             ExecStart = "${tvh-proxy}/bin/tvhproxy";

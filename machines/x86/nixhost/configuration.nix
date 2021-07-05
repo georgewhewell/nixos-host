@@ -9,6 +9,7 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
+      /* ../../../containers/jupyter.nix */
 
       ../../../profiles/automation.nix
       ../../../profiles/common.nix
@@ -17,20 +18,22 @@
       ../../../profiles/home.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/logserver.nix
+      ../../../profiles/crypto.nix
       ../../../profiles/nas.nix
       ../../../profiles/logserver.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
-      ../../../services/hydra.nix
+      # ../../../services/hydra.nix
       ../../../services/grafana.nix
       ../../../services/nginx.nix
+      ../../../services/metabase.nix
       ../../../services/transmission.nix
       ../../../services/sync-server.nix
       ../../../services/virt/host.nix
-      ../../../services/virt/vfio.nix
     ];
 
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_5_10;
   boot.kernelModules = [
     "ipmi_devintf"
     "ipmi_si"
@@ -66,7 +69,7 @@
     };
   };
 
-  services.consul.extraConfig = { server = true; };
+  services.consul.extraConfig = { server = true; bootstrap_expect = 1; };
   services.consul.interface =
     let interface = "br0"; in
     {
@@ -76,34 +79,64 @@
 
   fileSystems."/" =
     {
-      device = "fpool/root/nixos";
-      fsType = "zfs";
+      device = "/dev/mapper/vg1-nixos";
+      fsType = "ext4";
     };
 
   fileSystems."/boot" =
     {
-      device = "/dev/disk/by-uuid/1A02-B98B";
+      device = "/dev/disk/by-label/EFI";
       fsType = "vfat";
     };
 
-  fileSystems."/var/lib/docker" =
+  fileSystems."/mnt/scratch" =
     {
-      device = "fpool/root/docker";
-      fsType = "zfs";
+      device = "/dev/mapper/vg0-scratch";
+      fsType = "f2fs";
     };
 
+
+  # fileSystems."/var/lib/docker" =
+  #   {
+  #     device = "fpool/root/docker";
+  #     fsType = "zfs";
+  #   };
+
+  # fileSystems."/var/lib/postgresql" =
+  #   {
+  #     device = "/dev/nvme1n1p2";
+  #     fsType = "ext4";
+  #     options = [ "noatime" "discard" "nobarrier" ];
+  #   };
+
+  # virtualisation.docker.storageDriver = "zfs";
+  system.activationScripts = {
+      mnt = {
+        text = ''
+          if [ ! -d /mnt/scratch/postgresql/13 ] ; then
+            mkdir -p /mnt/scratch/postgresql/13
+            chown -R postgres:postgres /mnt/scratch/postgresql
+          fi
+        '';
+        deps = [];
+      };
+   };
+
   services.postgresql = {
+    dataDir = "/mnt/scratch/postgresql/13";
+    package = pkgs.postgresql_13;
     enable = true;
     enableTCPIP = true;
     authentication = ''
+      local all all trust
       host all all 192.168.23.0/24 trust
     '';
     extraPlugins = with pkgs; [
       timescaledb
     ];
-    extraConfig = ''
-      shared_preload_libraries = 'timescaledb'
-    '';
+    settings = {
+      max_wal_size = "4GB";
+    };
   };
 
   networking.firewall = {

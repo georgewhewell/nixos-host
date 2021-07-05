@@ -6,6 +6,7 @@ stdenv.mkDerivation {
     (terraform.withPlugins (p: [
       p.google
       p.google-beta
+      p.aws
     ]))
     kubectl
     google-cloud-sdk

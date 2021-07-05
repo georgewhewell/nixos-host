@@ -1,0 +1,146 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+  compatible = "allwinner,sun8i-h3";
+
+    fragment@0 {
+       target = <&usbphy>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@1 {
+       target = <&mali>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@2 {
+       target = <&de>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@3 {
+       target = <&mixer0>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@4 {
+       target = <&tcon0>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@5 {
+       target = <&usb_otg>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@6 {
+       target = <&ehci0>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@7 {
+       target = <&ohci0>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@8 {
+       target = <&csi>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@9 {
+       target = <&cpu1>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@10 {
+       target = <&cpu2>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@11 {
+       target = <&cpu3>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@12 {
+       target = <&ov5640>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@13 {
+       target = <&hdmi_out>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@14 {
+       target = <&hdmi_sound>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@15 {
+       target = <&hdmi_out>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@16 {
+       target = <&codec>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@17 {
+       target = <&deinterlace>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@18 {
+       target = <&codec_analog>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+
+    fragment@19 {
+       target = <&spdif>;
+       __overlay__  {
+         status = "disabled";         
+       };
+    };
+};

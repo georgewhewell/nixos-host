@@ -28,6 +28,7 @@
         lib.mkOptionDefault {
           "${modifier}+Shift+s" = "exec loginctl lock-session $XDG_SESSION_ID";
           "${modifier}+Shift+p" = "exec slurp | grim -g -";
+          "${modifier}+Pause" = "mode passthrough";
 
           # audio keys
           XF86AudioMute = "exec ${pactl} set-sink-mute 0 toggle";
@@ -60,15 +61,18 @@
       };
       output = {
         "*" = { scale = "1"; };
-        "DP-1" = { mode = "5120x1440@239.761002Hz"; };
+        "DP-1" = { mode = "5120x1440@60Hz"; };
+        "DP-3" = { mode = "5120x1440@239.761002Hz"; };
+        #"DP-*" = { mode = "5120x1440@239.761002Hz"; };
         "Virtual-1" = { resolution = "1920x1200"; };
+        "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
       };
       startup = [
         { command = "systemctl --user import-environment SWAYSOCK"; always = false; }
         { command = "systemctl --user restart waybar"; always = true; }
         { command = ''
             swayidle \
-              timeout 300 'swaymsg "output * dpms off"' \
+              timeout 600 'swaymsg "output * dpms off"' \
               resume 'swaymsg "output * dpms on"'
           '';
           always = false;
@@ -88,7 +92,30 @@
           always = false;
         }
       ]
-      ++ lib.optionals (config.hostId == "yoga") [ ];
+      ++ lib.optionals (config.hostId == "yoga") [ ]
+      ++ lib.optionals (config.hostId == "workvm") [ {
+        command = ''
+          ${pkgs.wayvnc}/bin/wayvnc 0.0.0.0
+        '';
+        always = false;
+      }];
+      modes = {
+        passthrough = {
+          "Mod1+Pause" = "mode default";
+        };
+        resize = {
+          "h" = "resize shrink width 10 px";
+          "j" = "resize grow height 10 px";
+          "k" = "resize shrink height 10 px";
+          "l" = "resize grow width 10 px";
+          "Left" = "resize shrink width 10 px";
+          "Down" = "resize grow height 10 px";
+          "Up" = "resize shrink height 10 px";
+          "Right" = "resize grow width 10 px";
+          "Escape" = "mode default";
+          "Return" = "mode default";
+        };
+      };
     };
     extraConfig = ''
       # Styling
@@ -96,6 +123,8 @@
 
       # lock inhibitors
       for_window [app_id="firefox"] inhibit_idle fullscreen
+      for_window [app_id="Firefox"] inhibit_idle fullscreen
+      for_window [class="dota2"] inhibit_idle fullscreen
     '';
   };
 }

@@ -7,14 +7,16 @@
     ../common.nix
   ];
 
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+
   system.build.dtbName = "sun50i-h5-nanopi-neo2.dtb";
   system.build.ubootDefconfig = "sun50i-h5-ddr3-spl_defconfig";
 
   environment.systemPackages = [
-    pkgs.i2c-tools
+    pkgs.sysinfo
   ];
 
-  networking.firewall.allowedTCPPorts = [ 8000 ];
+  networking.firewall.allowedTCPPorts = [ 8000 3030 ];
   hardware.deviceTree = {
     enable = true;
     base = pkgs.runCommandNoCC "mydtb"

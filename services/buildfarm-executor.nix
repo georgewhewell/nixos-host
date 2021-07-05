@@ -8,7 +8,7 @@
         hostName = "nixhost.lan";
         sshUser = "root";
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-        maxJobs = 8;
+        maxJobs = 2;
         speedFactor = 1;
         systems = [ "x86_64-linux" "i686-linux" ];
       }
@@ -20,31 +20,10 @@
         systems = [ "aarch64-linux" ];
       }
       {
-        hostName = "rock64.lan";
-        sshUser = "root";
-        speedFactor = 2;
-        supportedFeatures = [ "big-parallel" ];
-        systems = [ "aarch64-linux" ];
-      }
-      {
-        hostName = "amlogic-s912.lan";
-        sshUser = "root";
-        speedFactor = 1;
-        supportedFeatures = [ "big-parallel" ];
-        systems = [ "aarch64-linux" ];
-      }
-      {
         hostName = "odroid-hc1.lan";
         sshUser = "root";
-        speedFactor = 2;
+        speedFactor = 4;
         supportedFeatures = [ "big-parallel" ];
-        systems = [ "armv7l-linux" ];
-      }
-      {
-        hostName = "bananapi-m3.lan";
-        sshUser = "root";
-        speedFactor = 1;
-        supportedFeatures = [ ];
         systems = [ "armv7l-linux" ];
       }
     ];

@@ -75,6 +75,7 @@ let configFile = pkgs.writeText "prometheus.yml" ''
       '';
     };
   };
+
   networking.firewall.allowedTCPPorts = [ 9090 9100 ];
 
   systemd.services.prometheus-ipmi-exporter = {

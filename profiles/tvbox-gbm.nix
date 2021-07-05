@@ -48,13 +48,13 @@
 
   hardware.opengl = {
     enable = true;
-    extraPackages = with pkgs; [ libva libva-v4l2-request ];
+    extraPackages = with pkgs; [ libva ];
   };
 
   environment.systemPackages = with pkgs; [
     libva-utils
-    v4l-utils
-    mpv
+    /* v4l-utils
+    mpv */
   ];
 
 }

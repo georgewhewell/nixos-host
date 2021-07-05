@@ -19,6 +19,9 @@
     enable = true;
   };
 
+  services.flatpak.enable = true;
+  xdg.portal.enable = true;
+
   environment.systemPackages = with pkgs; [
     # save settings
     gnome3.dconf
@@ -31,12 +34,6 @@
     pasystray
     pavucontrol
     pamixer
-
-    #torbrowser
-    #monero-gui
-
-    steam
-    discord
 
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
@@ -89,12 +86,16 @@
 
   environment.sessionVariables = {
     _JAVA_AWT_WM_NONREPARENTING = "1";
+    MOZ_ENABLE_WAYLAND = "1";
+  };
+
+  services.upower = {
+    enable = true;
   };
 
   hardware.bluetooth = {
     enable = true;
-    #package = pkgs.pulseaudioFull;
-    config = {
+    settings = {
       General = {
         ControllerMode = "bredr";
         Enable = "Source,Sink,Media,Socket";
@@ -102,17 +103,16 @@
     };
   };
 
-  users.users.pulse.extraGroups = [ "lp" ];
   services.blueman.enable = true;
   hardware.pulseaudio = {
     enable = true;
     support32Bit = true;
-    systemWide = true;
     extraModules = [ pkgs.pulseaudio-modules-bt ];
     package = pkgs.pulseaudioFull;
     extraConfig = ''
       # make bluetooth work?
       # load-module module-bluetooth-policy auto_switch=2
+      unload-module module-switch-on-port-available
     '';
   };
 

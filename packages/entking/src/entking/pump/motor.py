@@ -64,16 +64,11 @@ class FriendlyELEC_NanoHatMotor:
     BRAKE = 3
     RELEASE = 4
 
-    SINGLE = 1
-    DOUBLE = 2
-    INTERLEAVE = 3
-    MICROSTEP = 4
-
     def __init__(self, addr = 0x60, freq = 1600):
         self._i2caddr = addr            # default addr on HAT
         self._frequency = freq        # default @1600Hz PWM freq
         self.motors = [FriendlyELEC_DCMotor(self, m) for m in range(4)]
-        self._pwm =  PWM(addr, debug=False)
+        self._pwm =  PWM(addr, debug=True)
         self._pwm.setPWMFreq(self._frequency)
 
     def setPin(self, pin, value):
@@ -86,12 +81,7 @@ class FriendlyELEC_NanoHatMotor:
         if (value == 1):
             self._pwm.setPWM(pin, 4096, 0)
 
-    def getStepper(self, steps, num):
-        if (num < 1) or (num > 2):
-            raise NameError('NanoHat Stepper must be between 1 and 2 inclusive')
-        return self.steppers[num-1]
-
     def getMotor(self, num):
-        if (num < 1) or (num > 4):
+        if (num < 0) or (num > 3):
             raise NameError('NanoHat Motor must be between 1 and 4 inclusive')
-        return self.motors[num-1]
+        return self.motors[num]

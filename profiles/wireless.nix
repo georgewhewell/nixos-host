@@ -14,9 +14,14 @@
   };
 
   systemd.services.wpa_supplicant.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
-  systemd.services.wpa_supplicant.serviceConfig = {
-    Restart = "on-failure";
-    RestartSec = "5s";
+  systemd.services.wpa_supplicant = {
+    startLimitIntervalSec = 5;
+    startLimitBurst = 1;
+
+    serviceConfig = {
+      Restart = "on-failure";
+      RestartSec = "1";
+    };
   };
 
 }

@@ -4,7 +4,12 @@ let
   }
   );
   mkCross = name: conf: { ... }: {
-    imports = [ conf ./common-cross.nix <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix> ];
+    imports = [
+      conf
+      ./common-cross.nix
+      <nixpkgs/nixos/modules/profiles/minimal.nix>
+      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image.nix>
+    ];
     nixpkgs.crossSystem = pkgs.lib.systems.elaborate "aarch64-linux";
   };
   machines = with pkgs; (import ./aarch64 { inherit lib; });
