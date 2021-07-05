@@ -7,33 +7,45 @@
 
   nixpkgs.overlays = [
     (self: super: {
-      bluez = (
-        let
-          python3_ = super.python3.override {
-            packageOverrides = python-self: python-super: {
-              pygobject3 = python-super.pygobject3.overrideAttrs (oldAttrs: {
-                propagatedBuildInputs = [ ];
-                PYGOBJECT_WITHOUT_PYCAIRO = 1;
-                mesonFlags = oldAttrs.mesonFlags ++ [
-                  "-Dpycairo=false"
-                ];
-              });
-            };
-          };
-        in
-        (super.bluez.override ({
-          python3 = python3_;
-          libical = super.libical.overrideAttrs (o: {
-            doInstallCheck = false;
-          });
-        })).overrideAttrs (o: {
-          patches = [
-            (super.fetchurl {
-              url = "https://raw.githubusercontent.com/OpenELEC/OpenELEC.tv/6b9e7aaba7b3f1e7b69c8deb1558ef652dd5b82d/packages/network/bluez/patches/bluez-07-broadcom-dont-set-speed-before-loading.patch";
-              sha256 = "1qgihk1vbwn5msk9rj7xwybcn0kwd0pzq7sh2vljgkng5ixxxff3";
-            })
-          ];
-        })
+
+      # https://github.com/NixOS/nixpkgs/pull/119590
+      /* gnutls = super.gnutls.overrideAttrs(o: {
+        patches = builtins.filter (f: !lib.hasInfix "fix-gnulib-tests" f) o.patches;
+      }); */
+
+      /* should be able to set this null but preBuild unconditionally uses it  */
+      wpa_supplicant = super.wpa_supplicant.overrideAttrs(o: {
+        buildInputs = with self; [ openssl libnl dbus readline ];
+        preBuild = ''
+          for manpage in wpa_supplicant/doc/docbook/wpa_supplicant.conf* ; do
+            substituteInPlace "$manpage" --replace /usr/share/doc $out/share/doc
+          done
+          cd wpa_supplicant
+          cp -v defconfig .config
+          echo "$extraConfig" >> .config
+          sed -i '/CONFIG_PCSC/d' .config
+          sed -i '/CONFIG_EAP_SIM/d' .config
+          sed -i '/CONFIG_EAP_AKA/d' .config
+          sed -i '/CONFIG_EAP_AKA_PRIME/d' .config
+          cat -n .config
+          substituteInPlace Makefile --replace /usr/local $out
+          export NIX_CFLAGS_COMPILE="$NIX_CFLAGS_COMPILE \
+            -I$(echo "${lib.getDev self.libnl}"/include/libnl*/)"
+        '';
+      });
+
+      /* gtk-doc = null; */
+      rfcomm = self.bluez.overrideAttrs (
+        old: {
+          name = "rfcomm";
+          configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-deprecated" ];
+          makeFlags = [ "tools/rfcomm" ];
+          doCheck = false;
+          outputs = [ "out" ];
+          installPhase = ''
+            install -D tools/rfcomm $out/bin/rfcomm
+          '';
+        }
       );
     })
   ];
@@ -41,7 +53,6 @@
   # takes ages
   security.polkit.enable = lib.mkForce false;
   services.udisks2.enable = lib.mkForce false;
-  services.mingetty.autologinUser = lib.mkForce "grw";
 
   boot.kernelPatches = [
     {
@@ -49,11 +60,8 @@
       patch = ../../packages/patches/nanopi-air-nand-wifi.patch;
     }
     {
-      name = "nanopi-duo";
-      patch = pkgs.fetchurl {
-        url = "https://raw.githubusercontent.com/armbian/build/master/patch/kernel/sunxi-dev/board-h2plus-nanopi-duo-add-device.patch";
-        sha256 = "1vksyr3icjf0j53fmsghbj5bl1ip25v4kh0s7lm3s91mdk5kk86m";
-      };
+      name = "otg-stuff";
+      patch = null;
       extraConfig = ''
         USB_DWC2 m
         USB_OTG y

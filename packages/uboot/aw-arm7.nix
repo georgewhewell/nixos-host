@@ -5,6 +5,7 @@ let
     "nanopi_neo_defconfig"
     "nanopi_neo_air_defconfig"
     "orangepi_zero_defconfig"
+    "orangepi_plus2e_defconfig"
   ];
   version = "2020.04";
   src = pkgs.fetchurl {

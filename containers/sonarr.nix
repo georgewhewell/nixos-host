@@ -1,11 +1,11 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  fileSystems."/var/lib/sonarr" =
-    {
-      device = "fpool/root/config/sonarr";
-      fsType = "zfs";
-    };
+
+  systemd.services."container@sonarr" = {
+    bindsTo = [ "mnt-Home.mount" "mnt-Media.mount" ];
+    after = [ "mnt-Home.mount" "mnt-Media.mount" ];
+  };
 
   containers.sonarr = {
     autoStart = true;
@@ -27,9 +27,12 @@
       imports = [ ../profiles/container.nix ];
 
       networking.hostName = "sonarr";
-      networking.firewall.allowedTCPPorts = [ 8989 ];
+      
+      services.sonarr = {
+        enable = true;
+        openFirewall = true;
+      };
 
-      services.sonarr.enable = true;
     };
   };
 }

@@ -4,7 +4,46 @@
 
   imports = [ ./buildfarm-executor.nix ];
 
-  systemd.services."hydra-init".after = [ "network-online.target" ];
+  services.postgresql = {
+    ensureDatabases = [ "hydra" ];
+    ensureUsers = [
+      {
+        name = "hydra";
+        ensurePermissions = {
+          "DATABASE hydra" = "ALL PRIVILEGES";
+        };
+      }
+      {
+        name = "hydra-evaluator";
+        ensurePermissions = {
+          "DATABASE hydra" = "ALL PRIVILEGES";
+        };
+      }
+      {
+        name = "hydra-queue-runner";
+        ensurePermissions = {
+          "DATABASE hydra" = "ALL PRIVILEGES";
+        };
+      }
+      {
+        name = "hydra-www";
+        ensurePermissions = {
+          "DATABASE hydra" = "ALL PRIVILEGES";
+        };
+      }
+    ];
+  };
+
+  systemd.services.postgresql.postStart = lib.mkAfter ''
+    $PSQL hydra -tAc 'GRANT ALL ON ALL TABLES IN SCHEMA public TO "hydra-queue-runner"'
+    $PSQL hydra -tAc 'GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO "hydra-queue-runner"'
+
+    $PSQL hydra -tAc 'GRANT ALL ON ALL TABLES IN SCHEMA public TO "hydra-evaluator"'
+    $PSQL hydra -tAc 'GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO "hydra-evaluator"'
+
+    $PSQL hydra -tAc 'GRANT ALL ON ALL TABLES IN SCHEMA public TO "hydra-www"'
+    $PSQL hydra -tAc 'GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO "hydra-www"'
+  '';
 
   services.nginx.virtualHosts."hydra.satanic.link" = {
     forceSSL = true;
@@ -50,7 +89,7 @@
       base_uri https://hydra.satanic.link
       max_output_size = 4294967296
       evaluator_initial_heap_size = 4294967296
-      binary_cache_secret_key_file /etc/nix/signing-key.sec
+      binary_cache_secret_key_file /etc/nix/hydra.key
     '';
   };
 

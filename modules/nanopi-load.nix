@@ -1,14 +1,10 @@
 { config, lib, pkgs, ... }:
 
 {
-
+  imports = [../profiles/nbd-overlayfs.nix];
   options = {};
 
   config = {
-
-    netboot = {
-      enable = true;
-    };
 
     system.build.usb = {
       loader = let
@@ -26,9 +22,15 @@
             ${pkgs.buildPackages.boot-scripts.nanopi-m3.nanopi-load}/bin/nanopi-load -b USB -o $out/u-boot-nsih.bin $out/u-boot.bin 0x00000000
           '';
         };
+        storeRoot = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
+        rootfsImage = pkgs.callPackage <nixpkgs/nixos/lib/make-ext4-fs.nix> ({
+          storePaths = [ config.system.build.toplevel pkgs.stdenv ];
+          compressImage = false;
+          volumeLabel = "NIXOS_SD";
+        });
         bootEnv = pkgs.writeText "bootenv.txt" ''
           #=uEnv
-          bootargs=init=${config.system.build.toplevel}/init ${toString config.boot.kernelParams}
+          bootargs=init=${config.system.build.toplevel}/init rootImage=${rootfsImage} storeRoot=${storeRoot} ${toString config.boot.kernelParams}
           udown_kernel=udown 0x41000000
           udown_initrd=udown 0x45000000
           udown_dtb=udown 0x4c000000
@@ -70,7 +72,6 @@
         echo "uploading dtb"
         ${nanopi-load-native}/bin/nanopi-load \
           ${netboot-binaries}/dtbs/nexell/nanopim3.dtb 0
-
       '';
     };
 

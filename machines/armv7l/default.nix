@@ -8,6 +8,7 @@ let
     "odroid-c1"
     "odroid-hc1"
     "orangepi-zero"
+    "orangepi-plus2e"
   ];
 in
 lib.genAttrs

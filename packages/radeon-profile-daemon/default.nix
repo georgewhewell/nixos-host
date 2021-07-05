@@ -1,6 +1,6 @@
 { lib, stdenv, fetchFromGitHub
 , sources
-, qtbase, qtcharts, qmake, libXrandr, libdrm
+, qtbase, qtcharts, qmake, libXrandr, libdrm, wrapQtAppsHook
 }:
 
 stdenv.mkDerivation rec {
@@ -9,7 +9,7 @@ stdenv.mkDerivation rec {
   version = "20190903";
 
   nativeBuildInputs = [ qmake ];
-  buildInputs = [ qtbase qtcharts libXrandr libdrm ];
+  buildInputs = [ qtbase qtcharts libXrandr libdrm wrapQtAppsHook ];
 
   src = (sources.radeon-profile-daemon) + "/radeon-profile-daemon";
 

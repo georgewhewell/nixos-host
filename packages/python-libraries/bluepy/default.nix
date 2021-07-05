@@ -1,4 +1,5 @@
 { stdenv
+, buildPackages
 , buildPythonPackage
 , fetchPypi
 , pkg-config
@@ -14,8 +15,13 @@ buildPythonPackage rec {
     sha256 = "1v0wjy1rz0rbwghr1z3xhdm06lqn9iig6vr5j2wmymh3w6pysw9a";
   };
 
+  preConfigure = ''
+    substituteInPlace bluepy/Makefile \
+      --replace "pkg-config" "$PKG_CONFIG"
+  '';
+
   buildInputs = [ glib ];
-  nativeBuildInputs = [ pkg-config ];
+  depsBuildBuild = [ buildPackages.stdenv.cc buildPackages.pkg-config ];
 
   # tests try to access hardware
   checkPhase = ''
@@ -23,6 +29,7 @@ buildPythonPackage rec {
     $out/bin/sensortag --help > /dev/null
     $out/bin/thingy52 --help > /dev/null
   '';
+
   pythonImportsCheck = [ "bluepy" ];
 
   meta = with stdenv.lib; {

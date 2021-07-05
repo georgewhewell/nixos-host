@@ -1,11 +1,10 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  fileSystems."/var/lib/radarr" =
-    {
-      device = "fpool/root/config/radarr";
-      fsType = "zfs";
-    };
+  systemd.services."container@radarr" = {
+    bindsTo = [ "mnt-Home.mount" "mnt-Media.mount" ];
+    after = [ "mnt-Home.mount" "mnt-Media.mount" ];
+  };
 
   containers.radarr = {
     autoStart = true;
@@ -27,9 +26,11 @@
       imports = [ ../profiles/container.nix ];
 
       networking.hostName = "radarr";
-      networking.firewall.allowedTCPPorts = [ 7878 ];
 
-      services.radarr.enable = true;
+      services.radarr = {
+        enable = true;
+        openFirewall = true;
+      };
 
     };
 

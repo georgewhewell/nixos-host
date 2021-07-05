@@ -1,15 +1,71 @@
 {
+    "Amlogic_s905-kernel": {
+        "branch": "master",
+        "description": "Kernel Amlogic S905",
+        "homepage": null,
+        "owner": "150balbes",
+        "repo": "Amlogic_s905-kernel",
+        "rev": "fcd674b015c2f680fa0aba89a0dc328191f1716f",
+        "sha256": "0pzfjq99iwbzgph8xkplafssqbdiii2q1rygp5in3ja9n6jzck3b",
+        "type": "tarball",
+        "url": "https://github.com/150balbes/Amlogic_s905-kernel/archive/fcd674b015c2f680fa0aba89a0dc328191f1716f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "LibreELEC.tv": {
+        "branch": "master",
+        "description": "Just enough OS for KODI",
+        "homepage": "http://libreelec.tv",
+        "owner": "LibreELEC",
+        "repo": "LibreELEC.tv",
+        "rev": "cf4721ac29928069647d62c16ee341d1b330f72d",
+        "sha256": "0i42qmv6jxnz5bhccvmmrr766fbxfmh28hig68d423ps3ff3fdfy",
+        "type": "tarball",
+        "url": "https://github.com/LibreELEC/LibreELEC.tv/archive/cf4721ac29928069647d62c16ee341d1b330f72d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "PhoenixMiner": {
+        "branch": "main",
+        "description": "Official repository of the fastest Ethereum/Ethash miner with lowest devfee",
+        "homepage": null,
+        "owner": "PhoenixMinerDevTeam",
+        "repo": "PhoenixMiner",
+        "rev": "5.4c",
+        "sha256": "0kimf84m4b2zqny1gag4z8ca9b1x48ckvw9a27kg15jzpsc78a7s",
+        "type": "tarball",
+        "url": "https://github.com/PhoenixMinerDevTeam/PhoenixMiner/releases/download/5.4c/PhoenixMiner_5.4c_Linux.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/releases/download/<rev>/PhoenixMiner_<rev>_Linux.tar.gz"
+    },
+    "armbian": {
+        "branch": "master",
+        "description": "Armbian build tools",
+        "homepage": "https://www.armbian.com",
+        "owner": "armbian",
+        "repo": "build",
+        "rev": "02a4cf161884160f7df9e0537625f57f16efcfae",
+        "sha256": "0hyrwrs5xh6cawf62l3ywwpaigv4f0bkzdwnsh7p9gal7kwsc30i",
+        "type": "tarball",
+        "url": "https://github.com/armbian/build/archive/02a4cf161884160f7df9e0537625f57f16efcfae.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "armbian_firmware": {
         "branch": "master",
         "description": "Armbian firmware",
         "homepage": "",
         "owner": "armbian",
         "repo": "firmware",
-        "rev": "050e4cd6e02047bdc6f8f48872bd78bca674cee0",
-        "sha256": "0f5hjyzwp296x6z27chvx3yc0paw09ai5kb2nf758zbr4y130jgp",
+        "rev": "1347610daac11ef7071c646657ec4521f3d1e829",
+        "sha256": "0i2lyqjcpi59xqn9sn7vqqdgsplcvb64g772j0w43l0jp17k2j24",
         "type": "tarball",
-        "url": "https://github.com/armbian/firmware/archive/050e4cd6e02047bdc6f8f48872bd78bca674cee0.tar.gz",
+        "url": "https://github.com/armbian/firmware/archive/1347610daac11ef7071c646657ec4521f3d1e829.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "besu": {
+        "branch": "master",
+        "ref": "master",
+        "repo": "https://github.com/hyperledger/besu",
+        "rev": "008daad6b459fdd90bbda43eafa4b8514b9a5651",
+        "submodules": true,
+        "type": "git"
     },
     "bl1-nanopi-m3": {
         "branch": "master",
@@ -23,10 +79,47 @@
         "url": "https://github.com/rafaello7/bl1-nanopi-m3/archive/f53c8d83b9d6057e39d6c5cf556a10d7a6d1f692.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "bsc": {
+        "branch": "master",
+        "description": "A Binance Smart Chain client based on the go-ethereum fork",
+        "homepage": "",
+        "owner": "binance-chain",
+        "repo": "bsc",
+        "rev": "46d185b4cfed54436f526b24c47b15ed58a5e1bb",
+        "sha256": "0yqp8jxaq1ii76bhnph2nw44bvy16dm1czldlvvjp2p832ydl923",
+        "type": "tarball",
+        "url": "https://github.com/binance-chain/bsc/archive/46d185b4cfed54436f526b24c47b15ed58a5e1bb.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ddcutil": {
+        "branch": "1.0.0-dev",
+        "description": "Query and change Linux monitor settings using DDC/CI and USB",
+        "homepage": "http://www.ddcutil.com",
+        "owner": "rockowitz",
+        "repo": "ddcutil",
+        "rev": "b8a1e9539bd6a8f9a1e1b75ad6c0d979f02b4bc1",
+        "sha256": "0n7hqydfd09xwrb1xfxzxamf6sfdjsf906c4mzyj47wh8p6mwz7q",
+        "type": "tarball",
+        "url": "https://github.com/rockowitz/ddcutil/archive/b8a1e9539bd6a8f9a1e1b75ad6c0d979f02b4bc1.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ddns-gcloud": {
+        "branch": "master",
+        "description": "Dynamic DNS configuration utility for Google Cloud",
+        "homepage": null,
+        "owner": "andreycizov",
+        "repo": "ddns-gcloud",
+        "rev": "df8c95bac7ec740750490a75db435137b82746ba",
+        "sha256": "1fn46wgahn7f0g47jphz5890zyzzvg6yk8qdlv9qz631wmxlxn1p",
+        "type": "tarball",
+        "url": "https://github.com/andreycizov/ddns-gcloud/archive/df8c95bac7ec740750490a75db435137b82746ba.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "dtv_scan_tables": {
+        "branch": "master",
         "ref": "master",
         "repo": "git://linuxtv.org/dtv-scan-tables.git",
-        "rev": "bb0b4e9a8197f093d6c6663729b3285b6dd194d6",
+        "rev": "3899e3173ca4c15cc45aa0de413aca8139938d86",
         "type": "git"
     },
     "dvb-firmware": {
@@ -35,10 +128,58 @@
         "homepage": "",
         "owner": "LibreElec",
         "repo": "dvb-firmware",
-        "rev": "82f1b520e82fd4889ddb062fe5c7d40dcb773069",
-        "sha256": "1lf8l8lqc6nr2wfrawld7mnyxffpvlw2lq86ahdvb6y41hzic2n6",
+        "rev": "6c61d1249b9bad2a9f900664049574fcaac8de96",
+        "sha256": "1qkrwlwkp79fqc2fv5x1prj0im85wkic7z9fhas259bcivp84nwh",
         "type": "tarball",
-        "url": "https://github.com/LibreElec/dvb-firmware/archive/82f1b520e82fd4889ddb062fe5c7d40dcb773069.tar.gz",
+        "url": "https://github.com/LibreElec/dvb-firmware/archive/6c61d1249b9bad2a9f900664049574fcaac8de96.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ethminer": {
+        "branch": "master",
+        "description": "Ethereum miner with OpenCL, CUDA and stratum support",
+        "homepage": "",
+        "owner": "ethereum-mining",
+        "repo": "ethminer",
+        "rev": "ce52c74021b6fbaaddea3c3c52f64f24e39ea3e9",
+        "sha256": "1lp4qiik95abyw4434a75ixrv07x6q5mn9k3jpnbraxc1hgdpfjb",
+        "type": "tarball",
+        "url": "https://github.com/ethereum-mining/ethminer/archive/ce52c74021b6fbaaddea3c3c52f64f24e39ea3e9.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "gcloud-dyndns": {
+        "branch": "master",
+        "description": "Update GCP Cloud DNS using the host's publicly visible IP address",
+        "homepage": null,
+        "owner": "jasonrig",
+        "repo": "gcloud-dyndns",
+        "rev": "a54b20fbeafe7f7278bf13b632fee94496098c34",
+        "sha256": "0m7jx0l17nwb4lp8i03p7669z83cnshki729gjpvx4x6rg6b3cyc",
+        "type": "tarball",
+        "url": "https://github.com/jasonrig/gcloud-dyndns/archive/a54b20fbeafe7f7278bf13b632fee94496098c34.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "go-ethereum": {
+        "branch": "v1.10.2",
+        "description": "Official Go implementation of the Ethereum protocol",
+        "homepage": "https://geth.ethereum.org",
+        "owner": "ethereum",
+        "repo": "go-ethereum",
+        "rev": "97d11b0187b4695ccf44e3b71b54155fe405a36f",
+        "sha256": "00rkahmjbxxqx6bhrs129bi69dvknrb9say40ladasxgy3sqk5iw",
+        "type": "tarball",
+        "url": "https://github.com/ethereum/go-ethereum/archive/97d11b0187b4695ccf44e3b71b54155fe405a36f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "graph-node": {
+        "branch": "master",
+        "description": "Graph Node indexes data from blockchains such as Ethereum and serves it over GraphQL",
+        "homepage": "https://thegraph.com",
+        "owner": "graphprotocol",
+        "repo": "graph-node",
+        "rev": "v0.20.0",
+        "sha256": "1nbgq6gn6ikg326hzcqfskbxbxynk8kpmdn6d4ax4c4plsr2manw",
+        "type": "tarball",
+        "url": "https://github.com/graphprotocol/graph-node/archive/v0.20.0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hosts-blocklists": {
@@ -47,10 +188,10 @@
         "homepage": "",
         "owner": "notracking",
         "repo": "hosts-blocklists",
-        "rev": "3868b13621f7bc5c0a3e65ad6948138be9fc7dc1",
-        "sha256": "0yq03pbbkiv5706amvqc1k1rqjvw3k7mmcq72jg3xm88r28zj00n",
+        "rev": "751f2e989ef4dad2f3790be3f3312dd17e12972e",
+        "sha256": "16nir6knb9v06f1i3b15dmwj1zj5j60jl5x0rxy4bn6ray8iyhaq",
         "type": "tarball",
-        "url": "https://github.com/notracking/hosts-blocklists/archive/3868b13621f7bc5c0a3e65ad6948138be9fc7dc1.tar.gz",
+        "url": "https://github.com/notracking/hosts-blocklists/archive/751f2e989ef4dad2f3790be3f3312dd17e12972e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libva-v4l2-request": {
@@ -65,16 +206,40 @@
         "url": "https://github.com/bootlin/libva-v4l2-request/archive/a3c2476de19e6635458273ceeaeceff124fabd63.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "linux_allwinner_5_6": {
+        "branch": "orange-pi-5.6",
+        "description": "This is a mirror, main repo is at https://megous.com/git/linux",
+        "homepage": "https://megous.com/git/linux",
+        "owner": "megous",
+        "repo": "linux",
+        "rev": "0cec8a0ca53f5f87eae3c2bb5a8ae02309b4540e",
+        "sha256": "0qvsa303q8q2kfmbwfyp06rszfjys1zi2bwxl5csbr4y69ldnmcg",
+        "type": "tarball",
+        "url": "https://github.com/megous/linux/archive/0cec8a0ca53f5f87eae3c2bb5a8ae02309b4540e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "linux_allwinner_5_7": {
+        "branch": "orange-pi-5.7",
+        "description": "This is a mirror, main repo is at https://megous.com/git/linux",
+        "homepage": "https://megous.com/git/linux",
+        "owner": "megous",
+        "repo": "linux",
+        "rev": "9422c45f7b9fb598a4d65ecc6e524e8022f2cb3a",
+        "sha256": "10x3bmp5k1grxrlqxl13inxz41z47qfqf2vxqjzk8lr4v2imf3l9",
+        "type": "tarball",
+        "url": "https://github.com/megous/linux/archive/9422c45f7b9fb598a4d65ecc6e524e8022f2cb3a.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "linux_amlogic": {
-        "branch": "amlogic",
+        "branch": "amlogic-5.9-integ",
         "description": "Linux kernel source tree",
         "homepage": "",
         "owner": "chewitt",
         "repo": "linux",
-        "rev": "ba894845fd3ceb7500b8b37efe7159579e9855b1",
-        "sha256": "1gd3ayq2948fd072ld125wlxdhyz8a7db4x1zqkdxhk4q4wrhfzc",
+        "rev": "3d9a4c9635c987b97647fea7a6ff99101bec8f51",
+        "sha256": "1afp1gbjjaab6d3pcbwc502ibyqmnz6dx3sfr0p3gzzd190dldgw",
         "type": "tarball",
-        "url": "https://github.com/chewitt/linux/archive/ba894845fd3ceb7500b8b37efe7159579e9855b1.tar.gz",
+        "url": "https://github.com/chewitt/linux/archive/3d9a4c9635c987b97647fea7a6ff99101bec8f51.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_media": {
@@ -83,22 +248,22 @@
         "homepage": "https://github.com/tbsdtv/linux_media/wiki",
         "owner": "tbsdtv",
         "repo": "linux_media",
-        "rev": "7e51be37fae078b0f1ac465f9235e23d63a9d375",
-        "sha256": "0d0hrwq5p76xn0w8bjd8zhrdg8677jj62xxhamhsjahkb26r8pjv",
+        "rev": "4a3d911da787b1f7544a70cd85eab6c73be97de0",
+        "sha256": "0rvmagjs96qqybhgrj3cw6b4riq6icbmr55vr4q0rnmxslcxg91j",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/linux_media/archive/7e51be37fae078b0f1ac465f9235e23d63a9d375.tar.gz",
+        "url": "https://github.com/tbsdtv/linux_media/archive/4a3d911da787b1f7544a70cd85eab6c73be97de0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_megous": {
-        "branch": "orange-pi-5.8",
+        "branch": "orange-pi-5.12",
         "description": "This is a mirror, main repo is at https://megous.com/git/linux",
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "febba121caeebf1e32d5c6c3203ba0a5944d0ab6",
-        "sha256": "11bz8xsd3q4kmwl6hzgv93hcabcjnz0vdgbaa7l3b90lv9x116pw",
+        "rev": "3e14045d352625628aa544a175fdbc0dda64298a",
+        "sha256": "11gh36a2j86pxbkwshx473hpyd4495x5k841bwibkf5lgqj9k5bv",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/febba121caeebf1e32d5c6c3203ba0a5944d0ab6.tar.gz",
+        "url": "https://github.com/megous/linux/archive/3e14045d352625628aa544a175fdbc0dda64298a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
@@ -131,10 +296,10 @@
         "homepage": null,
         "owner": "tbsdtv",
         "repo": "media_build",
-        "rev": "e88c9da722ad8fbd007df6c6f723387146d983ae",
-        "sha256": "10mnp1khdg0vxp2wc898g5rx04x1q713pwl7wv8yxfhap3vm1df5",
+        "rev": "093e768a9e25e30e9c23afc4390c3a5bba0b9040",
+        "sha256": "1xn59d13zzn5bs9h9qv56wjwfk82hi7g04gl4ja79rjm2ynyjxy4",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/media_build/archive/e88c9da722ad8fbd007df6c6f723387146d983ae.tar.gz",
+        "url": "https://github.com/tbsdtv/media_build/archive/093e768a9e25e30e9c23afc4390c3a5bba0b9040.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "meson-firmware": {
@@ -191,10 +356,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "dd13098d01eaa6be68237e7e38f96782b0480755",
-        "sha256": "1cfjdbsn0219fjzam1k7nqzkz8fb1ypab50rhyj026qbklqq2kvq",
+        "rev": "af958e8057f345ee1aca714c1247ef3ba1c15f5e",
+        "sha256": "1qjavxabbrsh73yck5dcq8jggvh3r2jkbr6b5nlz5d9yrqm9255n",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/dd13098d01eaa6be68237e7e38f96782b0480755.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/af958e8057f345ee1aca714c1247ef3ba1c15f5e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixos-rocm": {
@@ -203,10 +368,22 @@
         "homepage": null,
         "owner": "nixos-rocm",
         "repo": "nixos-rocm",
-        "rev": "d08050a12eeb43ace66c02d104f031b4f9611143",
-        "sha256": "07354nnqa4vjma8z5015lv4wgmzacnbciivmdyp7ks8fc47m2787",
+        "rev": "b5b9be0c0caa2e36e488850bfb0cdf7ede055b32",
+        "sha256": "1wxcxbga1wwy23jk32fmvq29si9441z59v4r3y9sqv2439j6vhld",
         "type": "tarball",
-        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/d08050a12eeb43ace66c02d104f031b4f9611143.tar.gz",
+        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/b5b9be0c0caa2e36e488850bfb0cdf7ede055b32.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "public-ip-sync-google-clouddns": {
+        "branch": "master",
+        "description": "DynDNS-like dynamic DNS reconfiguration using Google Cloud DNS",
+        "homepage": null,
+        "owner": "headcr4sh",
+        "repo": "public-ip-sync-google-clouddns",
+        "rev": "ecd0af091bd775996b8388e26159a38d14dc60b1",
+        "sha256": "1w5zy14cvnwddq0djn1h464ah2gj51fr1a5w4715d2sh54j5jz4j",
+        "type": "tarball",
+        "url": "https://github.com/headcr4sh/public-ip-sync-google-clouddns/archive/ecd0af091bd775996b8388e26159a38d14dc60b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "radeon-profile-daemon": {
@@ -219,6 +396,30 @@
         "sha256": "06qxq2hv3l9shna8x5d9awbdm9pbwlc6vckcr63kf37rrs8ykk0j",
         "type": "tarball",
         "url": "https://github.com/marazmista/radeon-profile-daemon/archive/7923bd62df3ab2c5c355e4085613895bfaa774fe.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "rtl8723bs_bt": {
+        "branch": "master",
+        "description": "Bluetooth Code for RTL8723bs",
+        "homepage": null,
+        "owner": "lwfinger",
+        "repo": "rtl8723bs_bt",
+        "rev": "09eb91f52a639ec5e4c5c4c98dc2afede046cf20",
+        "sha256": "0b7mvvsdsih48nb3dgknfd9xj5h38q8wyspxi7h0hynb8szjjda4",
+        "type": "tarball",
+        "url": "https://github.com/lwfinger/rtl8723bs_bt/archive/09eb91f52a639ec5e4c5c4c98dc2afede046cf20.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "spotcast": {
+        "branch": "master",
+        "description": "Home assistant custom component to start Spotify playback on an idle chromecast device",
+        "homepage": null,
+        "owner": "fondberg",
+        "repo": "spotcast",
+        "rev": "5c746da55684feb3bf311f9700be62bc57d7dc9d",
+        "sha256": "13haxj352vhb4935righs2m6ij61mgf79hwkkg7axhmbrpzb1fcg",
+        "type": "tarball",
+        "url": "https://github.com/fondberg/spotcast/archive/5c746da55684feb3bf311f9700be62bc57d7dc9d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "sunxi-DT-overlays": {
@@ -239,10 +440,10 @@
         "homepage": "http://linux-sunxi.org/",
         "owner": "linux-sunxi",
         "repo": "sunxi-tools",
-        "rev": "c714fb068a0dd0013880ac974f0db0f08438b4e8",
-        "sha256": "1kv9s9fc64xyg5h6azy0b9ai0wldhwj109iqw99s918d7jxal8k3",
+        "rev": "613e4bae5c00a3d7a8c21341b61fe45b4b522cf5",
+        "sha256": "095861pz9hm57qm998zjfj39yxvs4xqh83djrm63d2qji9vmx684",
         "type": "tarball",
-        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/c714fb068a0dd0013880ac974f0db0f08438b4e8.tar.gz",
+        "url": "https://github.com/linux-sunxi/sunxi-tools/archive/613e4bae5c00a3d7a8c21341b61fe45b4b522cf5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "u-boot-nanopi-m3": {
@@ -279,6 +480,24 @@
         "sha256": "09s0y69ilrwnvqi1g11axsnhylq8kfljwqxdfjifa227mi0kzq37",
         "type": "tarball",
         "url": "https://github.com/hardkernel/u-boot/archive/fac4d2da0a1b61dfdeaca0034a45151ff5983fb8.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "uniswap-data": {
+        "branch": "master",
+        "repo": "git@github.com:georgewhewell/uniswap-data",
+        "rev": "216f9da19990721bba94c500f0164c00939be86d",
+        "type": "git"
+    },
+    "vendor-reset": {
+        "branch": "master",
+        "description": "Linux kernel vendor specific hardware reset module for sequences that are too complex/complicated to land in pci_quirks.c",
+        "homepage": null,
+        "owner": "gnif",
+        "repo": "vendor-reset",
+        "rev": "a6458b3dbf62b00844e52fb4f2e0b679eaf1e625",
+        "sha256": "0lq8j2qpvym5jhkab78kyc7flg3wfzpwnjc7kjdsgbzg2g2nm8d2",
+        "type": "tarball",
+        "url": "https://github.com/gnif/vendor-reset/archive/a6458b3dbf62b00844e52fb4f2e0b679eaf1e625.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

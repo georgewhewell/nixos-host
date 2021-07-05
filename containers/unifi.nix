@@ -24,6 +24,7 @@
         enable = true;
         openPorts = true;
         unifiPackage = pkgs.unifiStable;
+        jrePackage = pkgs.openjdk8_headless;
       };
     };
   };

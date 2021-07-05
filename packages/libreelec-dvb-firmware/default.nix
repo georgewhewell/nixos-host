@@ -1,4 +1,4 @@
-{ stdenv, sources }:
+{ stdenv, lib, sources }:
 
 stdenv.mkDerivation {
   name = "libreelec-fw-dvb";
@@ -12,8 +12,8 @@ stdenv.mkDerivation {
     cp -rv firmware $out/lib/
   '';
 
-  meta = with stdenv.lib; {
-    license = stdenv.lib.licenses.unfreeRedistributableFirmware;
+  meta = with lib; {
+    license = licenses.unfreeRedistributableFirmware;
     maintainers = with maintainers; [ georgewhewell ];
     platforms = with platforms; linux;
   };

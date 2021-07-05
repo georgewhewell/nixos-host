@@ -5,13 +5,13 @@
   time.timeZone = "Europe/London";
 
   nix.binaryCaches = [
-    https://hydra.satanic.link
+    /* https://hydra.satanic.link */
     https://cache.satanic.link
     https://cache.nixos.org
   ];
 
   nix.binaryCachePublicKeys = [
-    "hydra.satanic.link-1:U4ZvldOwA3GWLmFTqdXwUu9oS0Qzh4+H/HSl8O6ew5o="
+    "hydra.satanic.link-1:dqovbpJdboPkY2O2D4UAh4IgEReKf608IJ7aLl6CAoM="
     "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
   ];
@@ -22,7 +22,7 @@
     forceIpv4 = true;
     interface.bind = lib.mkDefault "eth0";
     extraConfig = {
-      retry_join = [ "nixhost" ];
+      retry_join = [ "nixhost.lan" ];
     };
   };
 
@@ -39,7 +39,7 @@
     };
   };
 
-  networking.firewall.allowedTCPPorts = [ 8500 8301 8302 8300 8602 8600 ];
+  networking.firewall.allowedTCPPorts = [ 8500 8300 8301 8302 8300 8602 8600 ];
   networking.firewall.allowedUDPPorts = [ 8500 8301 8302 8300 8602 8600 ];
 
   # Collect metrics for prometheus
@@ -50,5 +50,9 @@
       enabledCollectors = [ "systemd" ];
     };
   };
+
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
+  '';
 
 }

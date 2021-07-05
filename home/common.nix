@@ -10,6 +10,7 @@
   ];
 
   nixpkgs.config.allowUnfree = true;
+  xdg.enable = true;
 
   home.packages = with pkgs; [
     bat
@@ -18,9 +19,11 @@
     ripgrep
     pwgen
     docker-compose
+    tmux
   ];
 
   manual.manpages.enable = false;
+
   programs.ssh = {
     enable = true;
     controlMaster = "auto";
@@ -32,9 +35,9 @@
   programs.htop = {
     enable = true;
     cpuCountFromZero = true;
-    meters = {
-      left = [ "AllCPUs" "Memory" "Swap" ];
-      right = [ "Clock" "Uptime" "Tasks" "LoadAverage" "Battery" ];
+    settings = {
+      left_meters = [ "AllCPUs" "Memory" "Swap" ];
+      right_meters = [ "Clock" "Uptime" "Tasks" "LoadAverage" "Battery" ];
     };
   };
 
