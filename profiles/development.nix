@@ -46,17 +46,6 @@
     nixpkgs-fmt
     nix-prefetch-git
     screen
-    /* openocd */
-    /* saleae-logic */
-    /* kicad-unstable */
-    #arduinoWithPackages (apkgs: with apkgs; [
-    #  esp32 esp8266 BLE spiflash ])
-    /* (eclipses.eclipseWithPlugins {
-      eclipse = eclipses.eclipse-cpp;
-      jvmArgs = [ "-Xmx2048m" ];
-      plugins = with eclipses.plugins;
-        [ cdt gnuarmeclipse ];
-    }) */
   ];
 
   users.extraUsers.grw = {
