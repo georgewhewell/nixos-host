@@ -8,8 +8,6 @@
   documentation.enable = false;
   imports =
     [
-      ../../../containers/plex.nix
-
       ../../../profiles/common.nix
       ../../../profiles/development.nix
       ../../../profiles/bridge-interfaces.nix
@@ -24,37 +22,55 @@
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
       ../../../services/docker.nix
+      ../../../services/jellyfin.nix
       ../../../services/virt/host.nix
-      ../../../services/virt/vfio.nix
+      #../../../services/virt/vfio.nix
     ];
 
-  services.ethminer = {
+  /*
+  services.ethminer-proxychain = {
     enable = true;
-    stratumPort = 4444;
-    wallet = "0xC297dCD484a9559854B763F8D25aC3693Dc22A12";
-    pool = "eu1.ethermine.org";
-    registerMail = "";
+    stratumPort = 5555;
+    proxyChain = "socks5 192.168.24.2 9090";
+    wallet = pkgs.secrets.ethminer-address;
+    pool = "eth-de.flexpool.io";
     toolkit = "opencl";
-    rig = "fuckup";
+    rig = "worker";
+    maxPower = 80;
   };
+  */
 
   fileSystems."/" =
     {
-      device = "zpool/root/nixos-fuckup";
-      fsType = "zfs";
+      device = "/dev/mapper/vg1-nixos";
+      fsType = "f2fs";
     };
 
   fileSystems."/home/grw" =
     {
-      device = "zpool/root/grw";
-      fsType = "zfs";
+      device = "/dev/mapper/vg1-home";
+      fsType = "f2fs";
     };
 
   fileSystems."/boot" =
     {
-      device = "/dev/disk/by-uuid/CD68-6C43";
+      device = "/dev/nvme0n1p1";
       fsType = "vfat";
     };
+
+  fileSystems."/mnt/uniswap" = {
+      device = "//192.168.25.2/home/uniswap";
+      fsType = "cifs";
+      options = let
+        # this line prevents hanging on network split
+        automount_opts = "x-systemd.automount,noauto,x-systemd.idle-timeout=60,x-systemd.device-timeout=5s,x-systemd.mount-timeout=5s";
+      in ["${automount_opts},credentials=/etc/nixos/smb-secrets"];
+  };
+
+  environment.etc."OpenCL/vendors" = {
+    mode = "symlink";
+    source = "/run/opengl-driver/etc/OpenCL/vendors";
+  };
 
   nix.maxJobs = lib.mkDefault 8;
   powerManagement.cpuFreqGovernor = "performance";
@@ -104,35 +120,17 @@
     bridges.br0 = {
       interfaces = [
         "enp0s31f6" # onboard ethernet
-        # "enp1s0f0"  # sfp+
-        # "enp1s0f1"  # sfp+
-        "enp4s0f0"
-        "enp4s0f1"
+        #"enp4s0f0"  # sfp+
+        #"enp4s0f1"  # sfp+
       ];
     };
   };
 
   services.xserver = {
     useGlamor = false; # off is tearing; on is lag
-    videoDrivers = [ "amdgpu" ];
-    xrandrHeads = [
-      {
-        output = "DisplayPort-2";
-        primary = true;
-        monitorConfig = ''
-          # 3440x1440 @ 75.05 Hz (GTF) hsync: 112.80 kHz; pclk: 534.22 MHz
-          Modeline "3440x1440_75.00"  533.87  3440 3712 4088 4736  1440 1441 1444 1503  -HSync +Vsync
-          Option "PreferredMode" "3440x1440_75.00"
-          Option "Broadcast RGB" "Full"
-        '';
-      }
-    ];
   };
 
-  services.jellyfin = {
-    enable = true;
-  };
-
+  /*
   virtualisation.kvmgt = {
     enable = false;
     vgpus = {
@@ -141,6 +139,7 @@
       };
     };
   };
+  */
 
   nix = {
     # hydra doesnt like /nix/store in buildfarm-executor so add it here
@@ -148,7 +147,7 @@
       hostName = "/nix/store";
       supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
       maxJobs = 2;
-      speedFactor = 5;
+      speedFactor = 2;
       systems = [ "builtin" "x86_64-linux" "i686-linux" ];
     }];
   };

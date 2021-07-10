@@ -107,4 +107,5 @@
 
   services.tvheadend.enable = true;
   networking.firewall.allowedTCPPorts = [ 9981 9982 ];
+
 }

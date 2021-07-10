@@ -5,5 +5,6 @@
 
   imports = [
     ../common.nix
+    ../../../services/tvheadend.nix
   ];
 }

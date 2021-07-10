@@ -19,35 +19,13 @@
   ];
 
   boot.kernelParams = [
-    "kvm.report_ignored_msrs=0"
-    "hugepagesz=1GB" "default_hugepagesz=1G" "hugepages=16"
-    "transparent_hugepages=never"
+    # Use IOMMU
+    "intel_iommu=on"
+
+    # Needed by OS X
     "kvm.ignore_msrs=1"
     "vfio_iommu_type1.allow_unsafe_interrupts=1"
   ];
-
-  systemd.mounts = [
-      # disable mounting hugepages by systemd,
-      # it doesn't know about 1G pagesize
-      { where = "/dev/hugepages";
-	  enable = false;
-      }
-      { where = "/dev/hugepages/hugepages-1048576kB";
-	  enable  = true;
-	  what  = "hugetlbfs";
-	  type  = "hugetlbfs";
-	  options = "pagesize=1G";
-	  requiredBy  = [ "basic.target" ];
-      }
-  ];
-
-  environment.etc."tmpfiles.d/thp.conf".text = ''
-    w /sys/kernel/mm/transparent_hugepage/enabled         - - - - never
-  '';
-
-  boot.kernel.sysctl = {
-    "vm.nr_hugepages" = lib.mkForce 16;
-  };
 
   environment.etc."qemu-ifup" = rec {
     target = "qemu-ifup";
@@ -64,6 +42,14 @@
     uid = config.ids.uids.root;
   };
 
+  boot.kernelModules = [
+    "vfio"
+    "vfio_pci"
+    "vfio_iommu_type1"
+    "nct6775"
+    "coretemp"
+    "vendor_reset"
+  ];
   /* systemd.services.libvirtd.preStart = let
     cpuset-script = pkgs.fetchurl {
       url = "https://raw.githubusercontent.com/PassthroughPOST/VFIO-Tools/master/libvirt_hooks/hooks/cset.sh";

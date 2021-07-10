@@ -2,6 +2,10 @@
 
 {
 
+  home.sessionVariables = {
+    EDITOR = "vim";
+  };
+
   home.packages = with pkgs; [
     fzf
     fd
@@ -34,7 +38,7 @@
       nmap <silent> t<C-s> :TestSuite<CR>
       nmap <silent> t<C-l> :TestLast<CR>
       nmap <silent> t<C-g> :TestVisit<CR>
-      
+
       nnoremap <silent> <Space><Space> :Files<CR>
 
       let g:rustfmt_autosave = 1

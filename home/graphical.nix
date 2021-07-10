@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
 
@@ -7,16 +7,33 @@
     ./sway.nix
   ];
 
+
   programs.firefox = {
     enable = true;
-    /*
-    package = pkgs.wrapFirefox pkgs.firefox-unwrapped {
-      forceWayland = true;
-      extraPolicies = {
-	ExtensionSettings = {};
-      };
-      };
-      */
+    /* package = pkgs.firefox-wayland; */
+    #package = pkgs.firefox-bin-unwrapped;
+  };
+
+  programs.vscode = {
+    package = pkgs.vscodium;
+    enable = true;
+    extensions = with pkgs.vscode-extensions; [
+      bbenoist.Nix
+      vscodevim.vim
+      matklad.rust-analyzer
+      ms-vsliveshare.vsliveshare
+      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+        mktplcRef = {
+          publisher = "JuanBlanco";
+          name = "solidity";
+          version = "0.0.120";
+          sha256 = "1ryxr80sk15dbwsh1hxyq9a7im6f8ma2g2ql0vzdmcwrkrhj65if";
+        };
+        meta = {
+          license = lib.licenses.mit;
+        };
+      })
+    ];
   };
 
   home.packages = with pkgs; [
@@ -37,9 +54,18 @@
     steam
     spotify
     vlc
+
+    signal-desktop
+    whatsapp-for-linux
+    torbrowser
+    monero-gui
+    (steam.override { extraProfile = ''unset VK_ICD_FILENAMES''; })
+    steam-run-native
+    discord
+    wineFull
     zoom-us
+    calibre
     slack
-    freeorion
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;
@@ -49,9 +75,9 @@
     package = pkgs.redshift-wlr;
     latitude = "51.5";
     longitude = "0";
-    brightness = {
+    /* brightness = {
       day = "1";
       night = "0.6";
-    };
+    }; */
   };
 }

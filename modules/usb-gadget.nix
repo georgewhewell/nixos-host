@@ -29,8 +29,6 @@ in
 
   config = lib.mkIf cfg.enable rec {
 
-    console.extraTTYs = [ "ttyGS0" ];
-
     boot.initrd.availableKernelModules = [
       "g_ether"
       "libcomposite"
@@ -38,7 +36,7 @@ in
       "usb_f_acm"
       "usb_f_acm"
       "usb_f_rndis"
-      "usb_f_iacm"
+      /* "usb_f_iacm" */
       "u_ether"
       "u_serial"
       "r8152"

@@ -1,6 +1,9 @@
 { config, pkgs, lib, ... }:
 
 {
+  # modprobe: FATAL: Module ahci not found
+  boot.initrd.availableKernelModules = lib.mkForce [ "ip_tables" ];
+  boot.initrd.includeDefaultModules = false;
 
   networking.hostName = "nanopi-air";
 
@@ -19,13 +22,6 @@
   ];
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_allwinner;
 
-  console = {
-    earlySetup = true;
-    font = lib.mkForce "drdos8x6";
-    extraTTYs = [ "ttyS0" ];
-  };
-
-
   services.consul = {
     enable = lib.mkForce false;
     interface = {
@@ -35,6 +31,7 @@
   };
 
   networking.firewall.enable = false;
+  networking.wireless.interfaces = [ "wlan0" ];
 
   hardware.devicetree = {
     enable = true;
@@ -52,7 +49,7 @@
 
   environment.systemPackages =  with pkgs; [
     rfcomm
-    farmbot
+    /* farmbot */
     i2c-tools
     sysfsutils
     dtc
@@ -68,6 +65,7 @@
       TimeoutStartSec = 0;
       Restart = "always";
       Type = "idle";
+      ExecStartPre="${pkgs.coreutils}/bin/sleep 30";
       ExecStart = "${pkgs.farmbot}/bin/farmbot /home/grw/config.toml";
     };
     after = [ "enable-bluetooth.service" ];

@@ -9,6 +9,8 @@ linux_testing.override {
     patch = null;
     extraConfig = ''
       WLAN_VENDOR_REALTEK n
+      KS8851 n
+      CRYPTO_AEGIS128 n
     '';
   }
   {
@@ -26,7 +28,7 @@ linux_testing.override {
   ];
   argsOverride = rec {
     src = sources.linux_megous;
-    version = "5.8";
-    modDirVersion = "5.8.12";
+    version = "5.12";
+    modDirVersion = "5.12.12";
   };
 }

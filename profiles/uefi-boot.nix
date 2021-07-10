@@ -5,16 +5,7 @@
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-#  security.rngd.enable = pkgs.lib.mkDefault true;
   services.fwupd.enable = true;
-
-  /*
-  zramSwap = {
-    enable = true;
-    algorithm = "zstd";
-    };
-    */
-
   programs.mosh.enable = true;
 
   nix.extraOptions = ''
@@ -26,6 +17,7 @@
     kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
 
     kernelParams = [
+      "msr.allow_writes=on"
       "mitigations=off"
       "panic=30"
     ];
@@ -35,12 +27,14 @@
       systemd-boot = {
         enable = true;
         configurationLimit = 10;
+        memtest86.enable = true;
       };
     };
 
+    supportedFilesystems = [ "vfat" "f2fs" ];
     initrd = {
       supportedFilesystems = [
-        #"zfs"
+        "f2fs"
         "nfs"
       ];
 

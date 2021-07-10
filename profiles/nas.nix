@@ -10,7 +10,13 @@
 
   fileSystems."/mnt/Home" =
     {
-      device = "bpool/root/Home";
+      device = "fpool/root/Home";
+      fsType = "zfs";
+    };
+
+  fileSystems."/var/cache/nix-cache-cache" =
+    {
+      device = "fpool/root/nix-cache";
       fsType = "zfs";
     };
 
@@ -23,17 +29,6 @@
     device = "/mnt/Home";
     options = [ "bind" ];
   };
-
-  fileSystems."/export/nixos-config" = {
-    device = "/etc/nixos";
-    options = [ "bind" ];
-  };
-
-  fileSystems."/mnt/cache-cache" =
-    {
-      device = "bpool/root/nix-cache";
-      fsType = "zfs";
-    };
 
   services.zfs.autoScrub = {
     enable = true;
@@ -53,14 +48,12 @@
     interval = "weekly";
   };
 
-  services.nixBinaryCacheCache =
-    {
-      enable = true;
-      virtualHost = "cache.satanic.link";
-      cacheDir = "/mnt/cache-cache";
-      maxSize = "100g";
-      resolver = "192.168.23.1";
-    };
+  services.nixBinaryCacheCache = {
+    enable = true;
+    virtualHost = "cache.satanic.link";
+    cacheDir = "/var/cache/nix-cache-cache";
+    maxSize = "100g";
+  };
 
   services.nfs.server = {
     enable = true;
@@ -190,8 +183,6 @@
 
   services.sabnzbd = {
     enable = true;
-    user = "transmission";
-    group = "transmission";
   };
 
 }

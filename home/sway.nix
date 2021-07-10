@@ -61,8 +61,11 @@
       };
       output = {
         "*" = { scale = "1"; };
-        "DP-1" = { mode = "5120x1440@239.761002Hz"; };
+        "DP-1" = { mode = "5120x1440@60Hz"; };
+        "DP-3" = { mode = "5120x1440@239.761002Hz"; };
+        #"DP-*" = { mode = "5120x1440@239.761002Hz"; };
         "Virtual-1" = { resolution = "1920x1200"; };
+        "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
       };
       startup = [
         { command = "systemctl --user import-environment SWAYSOCK"; always = false; }
@@ -120,6 +123,7 @@
 
       # lock inhibitors
       for_window [app_id="firefox"] inhibit_idle fullscreen
+      for_window [app_id="Firefox"] inhibit_idle fullscreen
       for_window [class="dota2"] inhibit_idle fullscreen
     '';
   };

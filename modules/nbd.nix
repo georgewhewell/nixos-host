@@ -76,7 +76,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    boot.initrd.kernelModules = [ "nbd" ];
+    /* boot.initrd.kernelModules = [ "nbd" ]; */
     boot.initrd.extraUtilsCommands = ''
       copy_bin_and_libs ${pkgs.nbd}/bin/nbd-client
     '';

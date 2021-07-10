@@ -4,7 +4,12 @@ let
   }
   );
   mkNative = name: conf: { ... }: {
-    imports = [ conf <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix> <home-manager/nixos> ];
+    imports = [
+      conf
+      <nixpkgs/nixos/modules/profiles/minimal.nix>
+      <nixpkgs/nixos/modules/installer/cd-dvd/sd-image.nix>
+      <home-manager/nixos>
+    ];
     nixpkgs.localSystem = pkgs.lib.systems.elaborate "aarch64-linux";
   };
   machines = with pkgs; (import ./aarch64 { inherit lib; });
