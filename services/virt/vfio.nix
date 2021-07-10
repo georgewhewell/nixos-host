@@ -37,24 +37,45 @@
               00:1f.4 SMBus [0c05]: Intel Corporation Sunrise Point-H SMBus [8086:a123] (rev 31)
     ?         00:1f.6 Ethernet controller [0200]: Intel Corporation Ethernet Connection (2) I219-V [8086:15b8] (rev 31)
   */
-  boot.kernelModules = [
-    "vfio"
-    "vfio_pci"
-    "vfio_iommu_type1"
-    "nct6775"
-    "coretemp"
-    "vendor_reset"
+
+  boot.blacklistedKernelModules = [
+    "nouveau"
+    "nvidia"
+    "b43"
+  #  "amdgpu"
   ];
 
   boot.kernelParams = [
-    # Use IOMMU
-    "intel_iommu=on"
-
     # amdgpu passthrough
     "vfio-pci.ids=1002:731f,1002:ab38"
     "pcie_acs_override=downstream,multifunction"
     "video=efifb:off"
+    "hugepagesz=1GB" "default_hugepagesz=1G" "hugepages=16"
+    "transparent_hugepages=never"
   ];
+
+  systemd.mounts = [
+      # disable mounting hugepages by systemd,
+      # it doesn't know about 1G pagesize
+      { where = "/dev/hugepages";
+	  enable = false;
+      }
+      { where = "/dev/hugepages/hugepages-1048576kB";
+	  enable  = true;
+	  what  = "hugetlbfs";
+	  type  = "hugetlbfs";
+	  options = "pagesize=1G";
+	  requiredBy  = [ "basic.target" ];
+      }
+  ];
+
+  environment.etc."tmpfiles.d/thp.conf".text = ''
+    w /sys/kernel/mm/transparent_hugepage/enabled         - - - - never
+  '';
+
+  boot.kernel.sysctl = {
+    "vm.nr_hugepages" = lib.mkForce 16;
+  };
 
   boot.kernelPatches = [
     { name = "acs-overrides"; patch = ./add-acs-overrides.patch; }
@@ -65,10 +86,8 @@
     (config.boot.kernelPackages.callPackage pkgs.vendor-reset { })
   ];
 
-
   systemd.services.scream-receiver = {
     wantedBy = [ "libvirtd.service" ];
-
     serviceConfig = {
       ExecStart = "${pkgs.scream-receivers}/bin/scream-ivshmem-alsa /dev/shm/scream-ivshmem";
       User = "grw";

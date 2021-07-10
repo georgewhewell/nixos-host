@@ -27,13 +27,6 @@
   boot.supportedFilesystems = lib.mkForce [ "ext4" ];
   boot.initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
 
-  networking = {
-    hostName = "router";
-    /* wlanInterfaces = {
-      wlan-private = {
-        device = "wlp2s0";
-      };
-    }; */
-  };
+  networking.hostName = "router";
 
 }

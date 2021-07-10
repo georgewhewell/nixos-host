@@ -17,7 +17,7 @@ rec {
     dontBuild = true;
     dontStrip = true;
 
-    buildInputs = [ dpkg qt5.qtbase qt5.qtserialport qt5.qtwebsockets sqlite hicolor_icon_theme libcap libpng ];
+    buildInputs = [ dpkg qt5.qtbase qt5.qtserialport qt5.qtwebsockets sqlite hicolor_icon_theme libcap libpng qt5.wrapQtAppsHook ];
 
     unpackPhase = "dpkg-deb -x $src .";
     installPhase = ''

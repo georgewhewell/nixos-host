@@ -57,7 +57,6 @@
   services.prometheus = {
     enable = true;
     listenAddress = "0.0.0.0";
-    /* port = 9090; */
     exporters = {
       unifi = {
         enable = true;
@@ -70,6 +69,10 @@
         enable = true;
         configuration = null;
         configurationPath = "${pkgs.prometheus-snmp-exporter.src}/snmp.yml";
+      };
+      postgres = {
+        enable = true;
+        extraFlags = [ "--auto-discover-databases" ];
       };
     };
     scrapeConfigs = [
@@ -86,15 +89,9 @@
         }];
         relabel_configs = [
           {
-            source_labels = [ ];
-            regex = "(.*)";
-            target_label = "port";
-            replacement = "9100";
-          }
-          {
             source_labels = [ "__meta_consul_node" ];
             regex = "(.*)";
-            target_label = "instance";
+            target_label = "host";
             replacement = "$1:9100";
           }
         ];
@@ -117,6 +114,13 @@
         job_name = "prometheus";
         static_configs = [{
           targets = [ "127.0.0.1:9090" ];
+          labels = { };
+        }];
+      }
+      {
+        job_name = "postgres";
+        static_configs = [{
+          targets = [ "127.0.0.1:9187" ];
           labels = { };
         }];
       }

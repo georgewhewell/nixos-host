@@ -6,7 +6,6 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
-    vscodium
     qcachegrind
 
     fswatch
@@ -19,7 +18,7 @@
     rls
 
     xz
-    unar
+    /* unar */
     unzip
     unrar
     file
@@ -65,6 +64,7 @@
   };
 
   services.postgresql = {
+    package = pkgs.postgresql_13;
     enable = true;
     enableTCPIP = true;
     authentication = ''
@@ -82,5 +82,10 @@
   virtualisation.docker.enable = true;
 
   programs.wireshark.enable = true;
-
+  security.wrappers.dumpcap = {
+    source = "${pkgs.wireshark}/bin/dumpcap";
+    permissions = "u+xs,g+x";
+    owner = "root";
+    group = "wireshark";
+  };
 }

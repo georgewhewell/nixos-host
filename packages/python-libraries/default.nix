@@ -15,4 +15,13 @@ rec {
   btlewrap = callPackage ./btlewrap { };
   miflora = callPackage ./miflora { inherit btlewrap; };
 
+  pydeconz = callPackage ./pydeconz { };
+  spotify_token = callPackage ./spotify_token { };
+
+
+  numpyro = callPackage ./numpyro { };
+  jax = callPackage ./jax { };
+  jaxlib = callPackage ./jaxlib { };
+  jaxlib-bin = callPackage ./jaxlib-bin { };
+
 }

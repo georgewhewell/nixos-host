@@ -21,6 +21,14 @@ rec {
   sunxi-dt-overlays = callPackage ./sunxi-DT-overlays { };
   dt-overlays = callPackage ./dt-overlays { };
   boot-scripts = callPackage ./uboot { };
+  public-ip-sync-google-clouddns = callPackage ./public-ip-sync-google-clouddns { };
+
+  phoenix-miner = callPackage ./phoenix-miner { };
+  graph-node = callPackage ./graph-node { };
+  uniswap = (callPackage sources.uniswap-data { }).overrideAttrs(o: {
+      cargoSha256 = "1qg7b4jw0f4zab2jfl8yljcypmiggy81sh2k37wa1wv2pfn9p6yh";
+  });
+  besu = callPackage ./besu { };
 
   ethminer = callPackage ./ethminer { };
 
@@ -82,7 +90,7 @@ rec {
   font-5x5 = (callPackage ./5x5-font { });
 
   weather = (callPackage ./weather { });
-  farmbot = (callPackage ./farmbot { });
+  farmbot = (callPackage /mnt/Home/src/farmbot { });
   sysinfo = (callPackage ./sysinfo { });
 
   vendor-reset = ./vendor-reset;
@@ -100,5 +108,8 @@ rec {
 
   linux_meson_mx = (import ./linux-meson-mx { inherit linux_testing sources; });
   linuxPackages_meson_mx = linuxPackagesFor (linux_meson_mx);
+
+  lazylibrarian = (callPackage ./lazylibrarian { });
+  go-bsc = (callPackage ./bsc { });
 
 }

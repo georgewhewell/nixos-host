@@ -15,7 +15,7 @@ buildGoPackage rec {
 
   doCheck = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "IPMI Exporter for Prometheus";
     homepage = https://github.com/soundcloud/ipmi_exporter;
     license = licenses.mit;

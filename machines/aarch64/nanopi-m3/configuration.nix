@@ -14,6 +14,7 @@
   boot.initrd.kernelModules = [
     "nexell-dwmac"
   ];
+  boot.initrd.includeDefaultModules = false;
 
   # stop kernel build OOM
   nix.buildCores = 7;

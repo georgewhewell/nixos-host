@@ -14,6 +14,10 @@
     kernelParams = [ "boot.shell_on_fail" "panic=20" ];
 #    supportedFilesystems = lib.mkForce [ "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
+    initrd.includeDefaultModules = false;
+
+    loader.grub.enable = false;
+    loader.generic-extlinux-compatible.enable = true;
   };
 
   fileSystems."/var/log" = {

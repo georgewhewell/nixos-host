@@ -19,5 +19,5 @@ in {
 
   services.radeon-profile-daemon.enable = true;
   # environment.systemPackages = with pkgs; [ radeon-profile rocminfo rocm-opencl-runtime rocm-opencl-icd rocm-smi ];
-  environment.systemPackages = with pkgs; [ radeon-profile ];
+  environment.systemPackages = with pkgs; [ radeon-profile corectrl ];
 }

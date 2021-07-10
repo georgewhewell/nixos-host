@@ -18,7 +18,6 @@ let
 
       # Needed for CloudFront.
       proxy_ssl_server_name on;
-
       proxy_set_header Host $proxy_host;
       proxy_cache nix_cache_cache;
       proxy_cache_valid 200 302 60m;
@@ -67,16 +66,11 @@ in
   };
 
   config = mkIf cfg.enable {
-    /* systemd.services.nginx.preStart = ''
-      mkdir -p ${cfg.cacheDir} /srv/www/nix-cache-cache
-      chmod 700 ${cfg.cacheDir} /srv/www/nix-cache-cache
-      chown ${nginxCfg.user}:${nginxCfg.group} \
-        ${cfg.cacheDir} /srv/www/nix-cache-cache
-    ''; */
+
+    systemd.services.nginx.serviceConfig.ReadWritePaths = [ cfg.cacheDir "/srv/www/nix-cache-cache" ];
 
     services.nginx = {
       enable = true;
-
       appendHttpConfig = ''
         proxy_cache_path ${cfg.cacheDir}
           levels=1:2
@@ -124,7 +118,7 @@ in
         # by default has priority 50 (compared to cache.nixos.org's
         # `Priority: 40`), which will make download clients prefer
         # `cache.nixos.org` over our binary cache.
-        locations."= /nix-cache-info" = cacheFallbackConfig;
+        locations."~ ^/nix-cache-info" = cacheFallbackConfig;
       };
     };
   };

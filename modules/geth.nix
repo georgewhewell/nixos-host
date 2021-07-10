@@ -3,22 +3,25 @@
 with lib;
 
 let
-  cfg = config.services.geth;
+  cfg = config.services.geth-local;
   cmdArgs =
     [
-      "--syncmode" "fast"
       "--http"
-      "--http.port" cfg.apiPort
       "--http.addr" "0.0.0.0"
-      "--http.vhosts" "nixhost.lan"
+      "--http.port" cfg.apiPort
+      "--http.vhosts" "nixhost.lan,127.0.0.1,localhost"
       "--ws"
-      "--ws.port" cfg.wsPort
       "--ws.addr" "0.0.0.0"
+      "--ws.port" cfg.wsPort
+      "--cache" cfg.cacheSize
+      "--light.maxpeers" "1"
+      "--light.egress" "10"
+      "--maxpeers" "4"
     ];
 in
 {
   options = {
-    services.geth = {
+    services.geth-local = {
       enable = mkOption {
         type = types.bool;
         default = false;
@@ -41,19 +44,11 @@ in
         '';
       };
 
-      unsafeExpose = mkOption {
-        type = types.bool;
-        default = false;
+      cacheSize = mkOption {
+        type = types.int;
+        default = 1024;
         description = ''
-          unsafe
-        '';
-      };
-
-      noAncientBlocks = mkOption {
-        type = types.bool;
-        default = true;
-        description = ''
-          no ancient blocks
+          --cache=
         '';
       };
 
@@ -77,13 +72,15 @@ in
 
   config = mkIf cfg.enable {
 
-    networking.firewall.allowedTCPPorts = [ cfg.apiPort cfg.wsPort ];
+    networking.firewall.allowedTCPPorts = [ cfg.apiPort cfg.wsPort 30303 ];
+    networking.firewall.allowedUDPPorts = [ 30303 ];
 
     users.users.geth = {
       group = cfg.group;
       description = "geth user";
       home = "/var/lib/geth/";
-      createHome = true;
+      extraGroups = [ "docker" ];
+      isNormalUser = true;
     };
 
     users.groups.geth = {

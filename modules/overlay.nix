@@ -28,16 +28,6 @@ self: super:
     buildInputs = old.buildInputs ++ [ super.xorg.libXext.dev super.xorg.libXrandr.dev ];
   });
 
-  /*
-  firmwareLinuxNonfree = super.firmwareLinuxNonfree.overrideAttrs(old: {
-    src = super.fetchurl {
-      url = "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/snapshot/linux-firmware-20201218.tar.gz";
-      sha256 = "0hjinnj29h2vr44sxxmgankdlhsxpv5rjgk3xwb9l7hjcfwv6rcr";
-    };
-    outputHash = "1p7vn2hfwca6w69jhw5zq70w44ji8mdnibm1z959aalax6ndy146";
-  });
-  */
-
   waybar = super.waybar.override { pulseSupport = true; };
   sunxi-tools = super.sunxi-tools.overrideAttrs (old: {
     version = "master";
@@ -54,6 +44,31 @@ self: super:
       substituteInPlace libavrdude.h \
         --replace "PIN_MAX     31" "PIN_MAX     255"
     '';
+  });
+
+  esphome = super.esphome.overrideAttrs(old: rec {
+    src = super.fetchFromGitHub {
+      owner = "buxtronix";
+      repo = "esphome";
+      rev = "am43";
+      sha256 = "1mki3jz66xx6iy23dxp3xqgvd1ry6lp8q2kxhiyav59f43hrjxa5";
+    };
+  });
+
+  metabase = super.metabase.overrideAttrs(old: rec {
+    version = "0.37.6";
+    src = super.fetchurl {
+      url = "https://downloads.metabase.com/v${version}/metabase.jar";
+      sha256 = "1bzc2dv7apa1b6gd2qlr3nmxk2cgq34wf0yp8jx419wv8xq5hrqr";
+    };
+    installPhase = ''
+      makeWrapper ${super.jre8}/bin/java $out/bin/metabase --add-flags "-jar $src"
+    '';
+  });
+
+  go-ethereum = super.go-ethereum.overrideAttrs(old: rec {
+    src = self.sources.go-ethereum;
+    vendorSha256 = null;
   });
 
   # Append local packages

@@ -6,7 +6,10 @@
     ../modules/cache-cache.nix
     ../modules/usb-gadget.nix
     ../modules/devicetree.nix
-#    ../modules/geth.nix
+    ../modules/besu.nix
+    ../modules/geth.nix
+    ../modules/ethminer.nix
+    ../modules/graph-node.nix
     ../modules/openethereum.nix
     ../modules/nbd.nix
     ../modules/netboot.nix

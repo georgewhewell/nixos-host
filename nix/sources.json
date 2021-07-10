@@ -23,6 +23,18 @@
         "url": "https://github.com/LibreELEC/LibreELEC.tv/archive/cf4721ac29928069647d62c16ee341d1b330f72d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "PhoenixMiner": {
+        "branch": "main",
+        "description": "Official repository of the fastest Ethereum/Ethash miner with lowest devfee",
+        "homepage": null,
+        "owner": "PhoenixMinerDevTeam",
+        "repo": "PhoenixMiner",
+        "rev": "5.4c",
+        "sha256": "0kimf84m4b2zqny1gag4z8ca9b1x48ckvw9a27kg15jzpsc78a7s",
+        "type": "tarball",
+        "url": "https://github.com/PhoenixMinerDevTeam/PhoenixMiner/releases/download/5.4c/PhoenixMiner_5.4c_Linux.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/releases/download/<rev>/PhoenixMiner_<rev>_Linux.tar.gz"
+    },
     "armbian": {
         "branch": "master",
         "description": "Armbian build tools",
@@ -47,6 +59,14 @@
         "url": "https://github.com/armbian/firmware/archive/1347610daac11ef7071c646657ec4521f3d1e829.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "besu": {
+        "branch": "master",
+        "ref": "master",
+        "repo": "https://github.com/hyperledger/besu",
+        "rev": "008daad6b459fdd90bbda43eafa4b8514b9a5651",
+        "submodules": true,
+        "type": "git"
+    },
     "bl1-nanopi-m3": {
         "branch": "master",
         "description": "BL1 source for NanoPi M3",
@@ -57,6 +77,42 @@
         "sha256": "15qhv2s99lyjx92abhl7iq3v3s1468bjzfkxj0dh7xlh4wk6hmaj",
         "type": "tarball",
         "url": "https://github.com/rafaello7/bl1-nanopi-m3/archive/f53c8d83b9d6057e39d6c5cf556a10d7a6d1f692.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "bsc": {
+        "branch": "master",
+        "description": "A Binance Smart Chain client based on the go-ethereum fork",
+        "homepage": "",
+        "owner": "binance-chain",
+        "repo": "bsc",
+        "rev": "46d185b4cfed54436f526b24c47b15ed58a5e1bb",
+        "sha256": "0yqp8jxaq1ii76bhnph2nw44bvy16dm1czldlvvjp2p832ydl923",
+        "type": "tarball",
+        "url": "https://github.com/binance-chain/bsc/archive/46d185b4cfed54436f526b24c47b15ed58a5e1bb.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ddcutil": {
+        "branch": "1.0.0-dev",
+        "description": "Query and change Linux monitor settings using DDC/CI and USB",
+        "homepage": "http://www.ddcutil.com",
+        "owner": "rockowitz",
+        "repo": "ddcutil",
+        "rev": "b8a1e9539bd6a8f9a1e1b75ad6c0d979f02b4bc1",
+        "sha256": "0n7hqydfd09xwrb1xfxzxamf6sfdjsf906c4mzyj47wh8p6mwz7q",
+        "type": "tarball",
+        "url": "https://github.com/rockowitz/ddcutil/archive/b8a1e9539bd6a8f9a1e1b75ad6c0d979f02b4bc1.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ddns-gcloud": {
+        "branch": "master",
+        "description": "Dynamic DNS configuration utility for Google Cloud",
+        "homepage": null,
+        "owner": "andreycizov",
+        "repo": "ddns-gcloud",
+        "rev": "df8c95bac7ec740750490a75db435137b82746ba",
+        "sha256": "1fn46wgahn7f0g47jphz5890zyzzvg6yk8qdlv9qz631wmxlxn1p",
+        "type": "tarball",
+        "url": "https://github.com/andreycizov/ddns-gcloud/archive/df8c95bac7ec740750490a75db435137b82746ba.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "dtv_scan_tables": {
@@ -76,6 +132,54 @@
         "sha256": "1qkrwlwkp79fqc2fv5x1prj0im85wkic7z9fhas259bcivp84nwh",
         "type": "tarball",
         "url": "https://github.com/LibreElec/dvb-firmware/archive/6c61d1249b9bad2a9f900664049574fcaac8de96.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ethminer": {
+        "branch": "master",
+        "description": "Ethereum miner with OpenCL, CUDA and stratum support",
+        "homepage": "",
+        "owner": "ethereum-mining",
+        "repo": "ethminer",
+        "rev": "ce52c74021b6fbaaddea3c3c52f64f24e39ea3e9",
+        "sha256": "1lp4qiik95abyw4434a75ixrv07x6q5mn9k3jpnbraxc1hgdpfjb",
+        "type": "tarball",
+        "url": "https://github.com/ethereum-mining/ethminer/archive/ce52c74021b6fbaaddea3c3c52f64f24e39ea3e9.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "gcloud-dyndns": {
+        "branch": "master",
+        "description": "Update GCP Cloud DNS using the host's publicly visible IP address",
+        "homepage": null,
+        "owner": "jasonrig",
+        "repo": "gcloud-dyndns",
+        "rev": "a54b20fbeafe7f7278bf13b632fee94496098c34",
+        "sha256": "0m7jx0l17nwb4lp8i03p7669z83cnshki729gjpvx4x6rg6b3cyc",
+        "type": "tarball",
+        "url": "https://github.com/jasonrig/gcloud-dyndns/archive/a54b20fbeafe7f7278bf13b632fee94496098c34.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "go-ethereum": {
+        "branch": "v1.10.2",
+        "description": "Official Go implementation of the Ethereum protocol",
+        "homepage": "https://geth.ethereum.org",
+        "owner": "ethereum",
+        "repo": "go-ethereum",
+        "rev": "97d11b0187b4695ccf44e3b71b54155fe405a36f",
+        "sha256": "00rkahmjbxxqx6bhrs129bi69dvknrb9say40ladasxgy3sqk5iw",
+        "type": "tarball",
+        "url": "https://github.com/ethereum/go-ethereum/archive/97d11b0187b4695ccf44e3b71b54155fe405a36f.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "graph-node": {
+        "branch": "master",
+        "description": "Graph Node indexes data from blockchains such as Ethereum and serves it over GraphQL",
+        "homepage": "https://thegraph.com",
+        "owner": "graphprotocol",
+        "repo": "graph-node",
+        "rev": "v0.20.0",
+        "sha256": "1nbgq6gn6ikg326hzcqfskbxbxynk8kpmdn6d4ax4c4plsr2manw",
+        "type": "tarball",
+        "url": "https://github.com/graphprotocol/graph-node/archive/v0.20.0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "hosts-blocklists": {
@@ -144,22 +248,22 @@
         "homepage": "https://github.com/tbsdtv/linux_media/wiki",
         "owner": "tbsdtv",
         "repo": "linux_media",
-        "rev": "82bbb2d0bd1accd5709fd7ab1605b3ed61762686",
-        "sha256": "0yi4gsnzqfmi501raskrglmbmcw6a95m60f7lmmy4mcm2mh0hq53",
+        "rev": "4a3d911da787b1f7544a70cd85eab6c73be97de0",
+        "sha256": "0rvmagjs96qqybhgrj3cw6b4riq6icbmr55vr4q0rnmxslcxg91j",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/linux_media/archive/82bbb2d0bd1accd5709fd7ab1605b3ed61762686.tar.gz",
+        "url": "https://github.com/tbsdtv/linux_media/archive/4a3d911da787b1f7544a70cd85eab6c73be97de0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_megous": {
-        "branch": "orange-pi-5.8",
+        "branch": "orange-pi-5.12",
         "description": "This is a mirror, main repo is at https://megous.com/git/linux",
         "homepage": "https://megous.com/git/linux",
         "owner": "megous",
         "repo": "linux",
-        "rev": "5e5f740a0d69ab9318105212b1b49b287816d8da",
-        "sha256": "0kl6m5hyg30gi79f3sagznzlqdgn031h1829i1jgdj1q45n5gs23",
+        "rev": "3e14045d352625628aa544a175fdbc0dda64298a",
+        "sha256": "11gh36a2j86pxbkwshx473hpyd4495x5k841bwibkf5lgqj9k5bv",
         "type": "tarball",
-        "url": "https://github.com/megous/linux/archive/5e5f740a0d69ab9318105212b1b49b287816d8da.tar.gz",
+        "url": "https://github.com/megous/linux/archive/3e14045d352625628aa544a175fdbc0dda64298a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "linux_meson_mx": {
@@ -192,10 +296,10 @@
         "homepage": null,
         "owner": "tbsdtv",
         "repo": "media_build",
-        "rev": "e88c9da722ad8fbd007df6c6f723387146d983ae",
-        "sha256": "10mnp1khdg0vxp2wc898g5rx04x1q713pwl7wv8yxfhap3vm1df5",
+        "rev": "093e768a9e25e30e9c23afc4390c3a5bba0b9040",
+        "sha256": "1xn59d13zzn5bs9h9qv56wjwfk82hi7g04gl4ja79rjm2ynyjxy4",
         "type": "tarball",
-        "url": "https://github.com/tbsdtv/media_build/archive/e88c9da722ad8fbd007df6c6f723387146d983ae.tar.gz",
+        "url": "https://github.com/tbsdtv/media_build/archive/093e768a9e25e30e9c23afc4390c3a5bba0b9040.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "meson-firmware": {
@@ -252,10 +356,10 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "29ddaaf4e099c3ac0647f5b652469dfc79cd3b53",
-        "sha256": "1va6myp07gkspgxfch8z3rs9nyvys6jmgzkys6a2c4j09qxp1bs0",
+        "rev": "af958e8057f345ee1aca714c1247ef3ba1c15f5e",
+        "sha256": "1qjavxabbrsh73yck5dcq8jggvh3r2jkbr6b5nlz5d9yrqm9255n",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/29ddaaf4e099c3ac0647f5b652469dfc79cd3b53.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/af958e8057f345ee1aca714c1247ef3ba1c15f5e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixos-rocm": {
@@ -264,10 +368,22 @@
         "homepage": null,
         "owner": "nixos-rocm",
         "repo": "nixos-rocm",
-        "rev": "6d96507e2a9ec297d8a8d68d0af47756cd0b1c0b",
-        "sha256": "0hkf5m419vzjv6hsl6z1pcskggfl0gr5rzbi1vy6sisvzzlhly1a",
+        "rev": "b5b9be0c0caa2e36e488850bfb0cdf7ede055b32",
+        "sha256": "1wxcxbga1wwy23jk32fmvq29si9441z59v4r3y9sqv2439j6vhld",
         "type": "tarball",
-        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/6d96507e2a9ec297d8a8d68d0af47756cd0b1c0b.tar.gz",
+        "url": "https://github.com/nixos-rocm/nixos-rocm/archive/b5b9be0c0caa2e36e488850bfb0cdf7ede055b32.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "public-ip-sync-google-clouddns": {
+        "branch": "master",
+        "description": "DynDNS-like dynamic DNS reconfiguration using Google Cloud DNS",
+        "homepage": null,
+        "owner": "headcr4sh",
+        "repo": "public-ip-sync-google-clouddns",
+        "rev": "ecd0af091bd775996b8388e26159a38d14dc60b1",
+        "sha256": "1w5zy14cvnwddq0djn1h464ah2gj51fr1a5w4715d2sh54j5jz4j",
+        "type": "tarball",
+        "url": "https://github.com/headcr4sh/public-ip-sync-google-clouddns/archive/ecd0af091bd775996b8388e26159a38d14dc60b1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "radeon-profile-daemon": {
@@ -292,6 +408,18 @@
         "sha256": "0b7mvvsdsih48nb3dgknfd9xj5h38q8wyspxi7h0hynb8szjjda4",
         "type": "tarball",
         "url": "https://github.com/lwfinger/rtl8723bs_bt/archive/09eb91f52a639ec5e4c5c4c98dc2afede046cf20.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "spotcast": {
+        "branch": "master",
+        "description": "Home assistant custom component to start Spotify playback on an idle chromecast device",
+        "homepage": null,
+        "owner": "fondberg",
+        "repo": "spotcast",
+        "rev": "5c746da55684feb3bf311f9700be62bc57d7dc9d",
+        "sha256": "13haxj352vhb4935righs2m6ij61mgf79hwkkg7axhmbrpzb1fcg",
+        "type": "tarball",
+        "url": "https://github.com/fondberg/spotcast/archive/5c746da55684feb3bf311f9700be62bc57d7dc9d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "sunxi-DT-overlays": {
@@ -353,6 +481,12 @@
         "type": "tarball",
         "url": "https://github.com/hardkernel/u-boot/archive/fac4d2da0a1b61dfdeaca0034a45151ff5983fb8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "uniswap-data": {
+        "branch": "master",
+        "repo": "git@github.com:georgewhewell/uniswap-data",
+        "rev": "216f9da19990721bba94c500f0164c00939be86d",
+        "type": "git"
     },
     "vendor-reset": {
         "branch": "master",
