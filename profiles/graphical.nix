@@ -35,12 +35,6 @@
     pavucontrol
     pamixer
 
-    #torbrowser
-    #monero-guipppp
-
-#   steam
-    discord
-
     (pkgs.writeScriptBin "startsway" ''
       #! ${pkgs.bash}/bin/bash
 
