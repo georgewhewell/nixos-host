@@ -24,16 +24,47 @@
     };
   };
 
+  /* services.loki = let
+    configFile = pkgs.writeText "loki-config.yaml" ''
+      ingester:
+        lifecycler:
+          interface_names: ["br0"]
+
+      schema_config:
+        configs:
+          - from: 2020-10-24
+            store: boltdb-shipper
+            object_store: filesystem
+            schema: v11
+            index:
+              prefix: index_
+              period: 24h
+
+      storage_config:
+        boltdb_shipper:
+          active_index_directory: /tmp/loki/boltdb-shipper-active
+          cache_location: /tmp/loki/boltdb-shipper-cache
+          cache_ttl: 24h         # Can be increased for faster performance over longer query periods, uses more disk space
+          shared_store: filesystem
+        filesystem:
+          directory: /tmp/loki/chunks
+    '';
+  in {
+    enable = true;
+    inherit configFile;
+  }; */
+
   services.prometheus = {
     enable = true;
-    listenAddress = "127.0.0.1:9090";
+    listenAddress = "0.0.0.0";
+    /* port = 9090; */
     exporters = {
       unifi = {
         enable = true;
         unifiAddress = "https://unifi.lan:8443";
         unifiInsecure = true;
         unifiUsername = "readonly";
-        unifiPassword = "readonly";
+        unifiPassword = "&)l_Q4s?f}ai5}k=Q(z=ph;C3";
       };
       snmp = {
         enable = true;

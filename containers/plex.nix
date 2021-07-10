@@ -1,7 +1,12 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
-  systemd.services."container@plex".unitConfig.RequiresMountsFor = [ "/mnt/Media" ];
+
+  /* Start after/stop before mounts */
+  systemd.services."container@plex" = {
+    bindsTo = [ "mnt-Home.mount" "mnt-Media.mount" ];
+    after = [ "mnt-Home.mount" "mnt-Media.mount" ];
+  };
 
   containers.plex = {
     autoStart = true;
@@ -23,7 +28,7 @@
         isReadOnly = false;
       };
       "/var/lib/plex" = {
-        hostPath = "/var/lib/plex";
+        hostPath = "/mnt/Home/plex";
         isReadOnly = false;
       };
       "/movies" = {
@@ -73,6 +78,7 @@
         dataDir = "/var/lib/plex";
       };
 
+      /*
       systemd.services.tvhproxy =
         let
           tvh-proxy = with pkgs; stdenv.mkDerivation {
@@ -110,6 +116,7 @@
           };
           wantedBy = [ "multi-user.target" ];
         };
+        */
     };
   };
 }

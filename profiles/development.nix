@@ -6,12 +6,17 @@
   environment.systemPackages = with pkgs; [
     atom
     idea.pycharm-community
+    vscodium
+    qcachegrind
 
     fswatch
     screen
     wget
     rsync
     gitAndTools.gitFull
+    mosquitto
+    rustup
+    rls
 
     xz
     unar

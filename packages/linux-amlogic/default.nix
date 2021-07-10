@@ -14,7 +14,7 @@ linux_latest.override {
   }];
   argsOverride = rec {
     src = sources.linux_amlogic;
-    version = "5.7";
-    modDirVersion = "5.7.6";
+    version = "5.9";
+    modDirVersion = "5.9.0-rc7";
   };
 }

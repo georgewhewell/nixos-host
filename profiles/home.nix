@@ -3,10 +3,11 @@
 {
   # Config for machines on home network
   time.timeZone = "Europe/London";
+  #services.localtime.enable = true;
 
   nix.binaryCaches = [
-    https://hydra.satanic.link
-    https://cache.satanic.link
+    /* https://hydra.satanic.link */
+    /* https://cache.satanic.link */
     https://cache.nixos.org
   ];
 

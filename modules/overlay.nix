@@ -2,6 +2,15 @@ self: super:
 
 {
 
+  dfu-util = super.dfu-util.overrideAttrs (old: {
+    src = super.fetchFromGitHub {
+      owner = "riscv-mcu";
+      repo = "gd32-dfu-utils";
+      rev = "master";
+      sha256 = "0hyzbwx29qws5bpp3gw161z6x1bacsnq1lw0v5ja8z4nr9mj9ds7";
+    };
+  });
+
   gattool = super.bluez.overrideAttrs (
     old: {
       name = "gattool";
@@ -19,24 +28,15 @@ self: super:
     buildInputs = old.buildInputs ++ [ super.xorg.libXext.dev super.xorg.libXrandr.dev ];
   });
 
-  tvheadend = super.tvheadend.overrideAttrs (old: {
-    patches = [ ./tvheadend.patch ];
-    preConfigure = ''
-      substituteInPlace src/input/mpegts/scanfile.c \
-          --replace 'path = "/usr/share/dvb"' 'path = "${self.dtv-scan-tables}/share/dvb"'
-
-      ${old.preConfigure}
-    '';
-
-  });
-
+  /*
   firmwareLinuxNonfree = super.firmwareLinuxNonfree.overrideAttrs(old: {
     src = super.fetchurl {
-      url = "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/snapshot/linux-firmware-20200619.tar.gz";
-      sha256 = "1i8gnmsppq531mzmq9z72w2h4wyn6dvynzvbr6xsqp2iqw0sjsi5";
+      url = "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/snapshot/linux-firmware-20201218.tar.gz";
+      sha256 = "0hjinnj29h2vr44sxxmgankdlhsxpv5rjgk3xwb9l7hjcfwv6rcr";
     };
-    outputHash = "1cnl2f5s42pybxmlpzqhjwpx33fy3na6xwnfxdk8sv7s6nzkwbiv";
+    outputHash = "1p7vn2hfwca6w69jhw5zq70w44ji8mdnibm1z959aalax6ndy146";
   });
+  */
 
   waybar = super.waybar.override { pulseSupport = true; };
   sunxi-tools = super.sunxi-tools.overrideAttrs (old: {

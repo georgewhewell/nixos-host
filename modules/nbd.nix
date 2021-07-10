@@ -94,7 +94,6 @@ in
               name=$(echo $o | cut -f2 -d '/')
               echo "Mounting $address:$port/$name on $device"
               nbd-client $address $port /dev/$device \
-                -name $name \
                 -persist \
                 -systemd-mark \
                 -b 1024 \

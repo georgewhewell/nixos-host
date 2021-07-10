@@ -2,29 +2,19 @@
 /plugin/;
 
 / {
-  compatible = "allwinner,sun8i-h3";
+  compatible = "allwinner,sun8i-h3", "allwinner,sun8i-a83t", "allwinner,sun50i-a64", "allwinner,sun50i-h5";
 
   fragment@0 {
     target = <&pio>;
     __overlay__ {
-      oled_reset_pins: oled_reset_pins {
-        allwinner,pins = "PG11";
-        allwinner,function = "gpio_out";
+      oled_pins: oled_pins {
+        pins = "PE5", "PE4";
+        function = "gpio_out";
       };
     };
   };
 
   fragment@1 {
-    target = <&pio>;
-    __overlay__ {
-      oled_dc_pins: oled_dc_pins {
-        allwinner,pins = "PA6";
-        allwinner,function = "gpio_out";
-      };
-    };
-  };
-
-  fragment@2 {
     target = <&spi0>;
 
     __overlay__ {
@@ -34,22 +24,20 @@
 			status = "okay";
 
       oled: oled@0 {
+        compatible = "solomon,ssd1306";
         reg = <0>;
-        compatible = "solomon,ssd1351";
-        spi-max-frequency = <10000000>;
-        width = <128>;
-        height = <128>;
-        rotate = <0>;
-        debug = <3>;
+
+        spi-max-frequency = <500000>;
+        fps = <10>;
         buswidth = <8>;
 
-        pinmux-0 = <&oled_dc_pins>;
-        pinmux-1 = <&oled_reset_pins>;
+        width = <128>;
+        height = <64>;
+        
+        solomon,low-power;
 
-        dc-gpios = <&pio 0 6 0>;
-        reset-gpios = <&pio 6 11 0>;
-
-				status = "okay";
+        dc-gpios = <&pio 4 4 0>;
+        reset-gpios = <&pio 4 5 1>;
       };
     };
   };

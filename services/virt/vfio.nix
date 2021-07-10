@@ -43,22 +43,37 @@
     "vfio_iommu_type1"
     "nct6775"
     "coretemp"
-  ];
-
-  boot.blacklistedKernelModules = [
-    "nouveau"
-    "nvidia"
-    "b43"
+    "vendor_reset"
   ];
 
   boot.kernelParams = [
     # Use IOMMU
     "intel_iommu=on"
 
-    # Needed by OS X
-    "kvm.ignore_msrs=1"
-    "vfio_iommu_type1.allow_unsafe_interrupts=1"
-
+    # amdgpu passthrough
+    "vfio-pci.ids=1002:731f,1002:ab38"
+    "pcie_acs_override=downstream,multifunction"
+    "video=efifb:off"
   ];
+
+  boot.kernelPatches = [
+    { name = "acs-overrides"; patch = ./add-acs-overrides.patch; }
+    { name = "i915-vga-arbiter"; patch = ./i915-vga-arbiter.patch; }
+  ];
+
+  boot.extraModulePackages = [
+    (config.boot.kernelPackages.callPackage pkgs.vendor-reset { })
+  ];
+
+
+  systemd.services.scream-receiver = {
+    wantedBy = [ "libvirtd.service" ];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.scream-receivers}/bin/scream-ivshmem-alsa /dev/shm/scream-ivshmem";
+      User = "grw";
+      Group = "audio";
+    };
+  };
 
 }

@@ -1,6 +1,0 @@
-mqtt_hostname = "192.168.23.5"
-mqtt_username = "rw"
-
-[mifloras.poppies]
-address = "something"
-pump = 3

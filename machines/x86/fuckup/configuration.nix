@@ -5,9 +5,11 @@
     fuckup: skylake desktop
   */
 
+  documentation.enable = false;
   imports =
     [
       ../../../containers/plex.nix
+
       ../../../profiles/common.nix
       ../../../profiles/development.nix
       ../../../profiles/bridge-interfaces.nix
@@ -18,12 +20,23 @@
       ../../../profiles/g_ether.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
+
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
       ../../../services/docker.nix
       ../../../services/virt/host.nix
       ../../../services/virt/vfio.nix
     ];
+
+  services.ethminer = {
+    enable = true;
+    stratumPort = 4444;
+    wallet = "0xC297dCD484a9559854B763F8D25aC3693Dc22A12";
+    pool = "eu1.ethermine.org";
+    registerMail = "";
+    toolkit = "opencl";
+    rig = "fuckup";
+  };
 
   fileSystems."/" =
     {
@@ -78,6 +91,8 @@
         /* shairport */
         3689
         5353
+
+        8096 # jellyfin
       ];
       checkReversePath = false;
     };
@@ -91,6 +106,8 @@
         "enp0s31f6" # onboard ethernet
         # "enp1s0f0"  # sfp+
         # "enp1s0f1"  # sfp+
+        "enp4s0f0"
+        "enp4s0f1"
       ];
     };
   };
@@ -110,6 +127,10 @@
         '';
       }
     ];
+  };
+
+  services.jellyfin = {
+    enable = true;
   };
 
   virtualisation.kvmgt = {

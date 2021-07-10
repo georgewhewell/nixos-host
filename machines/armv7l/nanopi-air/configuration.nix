@@ -1,9 +1,5 @@
 { config, pkgs, lib, ... }:
 
-with pkgs;
-let
-  entking = (callPackage ../../../packages/entking { });
-in
 {
 
   networking.hostName = "nanopi-air";
@@ -16,7 +12,11 @@ in
 
   system.build.ubootDefconfig = "nanopi_neo_air_defconfig";
 
-  boot.kernelParams = [ "boot.shell_on_fail" "console=ttyS0,115200" "earlycon=uart,mmio32,0x1c28000" ];
+  boot.kernelParams = [
+    "boot.shell_on_fail"
+    "console=ttyS0,115200"
+    "earlycon=uart,mmio32,0x1c28000"
+  ];
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_allwinner;
 
   console = {
@@ -25,11 +25,13 @@ in
     extraTTYs = [ "ttyS0" ];
   };
 
-  powerManagement.cpuFreqGovernor = lib.mkForce "powersave";
 
-  services.consul.interface = {
-    bind = "wlan0";
-    advertise = "wlan0";
+  services.consul = {
+    enable = lib.mkForce false;
+    interface = {
+      bind = "wlan0";
+      advertise = "wlan0";
+    };
   };
 
   networking.firewall.enable = false;
@@ -41,48 +43,35 @@ in
 
   hardware.deviceTree = {
     enable = true;
-    base =
-      pkgs.runCommandNoCC "mydtb"
-        { } ''
-        mkdir $out
-        cp ${config.boot.kernelPackages.kernel}/dtbs/${config.hardware.devicetree.dtbName}.dtb $out/
-      '';
+    filter = "*nanopi-neo-air*";
     overlays = [
-      "${pkgs.dt-overlays}/sunxi-h3-i2c.dts.dtbo"
-      "${pkgs.dt-overlays}/nanopi-air-bt.dts.dtbo"
+      { name = "i2c"; dtsFile = "${pkgs.dt-overlays}/sunxi-h3-i2c.dts"; }
+      { name = "bt";  dtsFile = "${pkgs.dt-overlays}/nanopi-air-bt.dts"; }
     ];
   };
 
-  environment.systemPackages = [
+  environment.systemPackages =  with pkgs; [
+    rfcomm
+    farmbot
     i2c-tools
-    devmem2
-    gitMinimal
-    wget
-    avrdude
-    (python3.withPackages(ps: with ps; [
-      flask
-      smbus-cffi
-      miflora
-      fswebcam
-    ]))
+    sysfsutils
+    dtc
+    htop
   ];
 
-  hardware.opengl = {
-    extraPackages = with pkgs; [ libva libva-v4l2-request ];
-  };
-
-  systemd.services.entking = {
-    description = "run entking";
-    script = ''
-      ${entking}/bin/entking
-    '';
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Restart = "on-failure";
-      RestartSec = "5";
-      StartLimitIntervalSec = "0";
-      StartLimitBurst = "0";
+  systemd.services.farmbot = {
+    description = "plow the fields and scatter";
+    environment = {
+      RUST_LOG = "info";
     };
+    serviceConfig = {
+      TimeoutStartSec = 0;
+      Restart = "always";
+      Type = "idle";
+      ExecStart = "${pkgs.farmbot}/bin/farmbot /home/grw/config.toml";
+    };
+    after = [ "enable-bluetooth.service" ];
+    wantedBy = [ "multi-user.target" ];
   };
 
   systemd.services.enable-bluetooth = {
@@ -104,8 +93,8 @@ in
   };
 
   imports = [
+    ./powersave.nix
     ../common.nix
     ../../../profiles/wireless.nix
-    ../../../services/miflora
   ];
 }

@@ -19,6 +19,9 @@
     enable = true;
   };
 
+  services.flatpak.enable = true;
+  xdg.portal.enable = true;
+
   environment.systemPackages = with pkgs; [
     # save settings
     gnome3.dconf
@@ -35,7 +38,7 @@
     #torbrowser
     #monero-gui
 
-    steam
+#    steam
     discord
 
     (pkgs.writeScriptBin "startsway" ''

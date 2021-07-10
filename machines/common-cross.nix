@@ -7,6 +7,9 @@
 
       # needs a bunch of python stuff which does not CC
       crda = pkgs.runCommandNoCC "crda" { } "mkdir -p $out";
+
+      # broken
+      smartmontools = pkgs.runCommandNoCC "smartmontools" { } "mkdir -p $out";
     })
   ];
 

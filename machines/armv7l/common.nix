@@ -25,6 +25,13 @@
           python3 = python3_;
           libical = super.libical.overrideAttrs (o: {
             doInstallCheck = false;
+            cmakeFlags = [
+              "-DGOBJECT_INTROSPECTION=False"
+              "-DICAL_GLIB_VAPI=False"
+              "-DENABLE_GTK_DOC=False"
+              "-DLIBICAL_BUILD_TESTING=False"
+              "-DICAL_GLIB=False"
+            ];
           });
         })).overrideAttrs (o: {
           patches = [
@@ -34,6 +41,19 @@
             })
           ];
         })
+      );
+
+      rfcomm = self.bluez.overrideAttrs (
+        old: {
+          name = "rfcomm";
+          configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-deprecated" ];
+          makeFlags = [ "tools/rfcomm" ];
+          doCheck = false;
+          outputs = [ "out" ];
+          installPhase = ''
+            install -D tools/rfcomm $out/bin/rfcomm
+          '';
+        }
       );
     })
   ];

@@ -9,7 +9,14 @@
 
   programs.firefox = {
     enable = true;
-    package = pkgs.firefox-wayland;
+    /*
+    package = pkgs.wrapFirefox pkgs.firefox-unwrapped {
+      forceWayland = true;
+      extraPolicies = {
+	ExtensionSettings = {};
+      };
+      };
+      */
   };
 
   home.packages = with pkgs; [
@@ -27,9 +34,12 @@
     source-serif-pro
     font-awesome_5
 
+    steam
     spotify
     vlc
-    steam-run
+    zoom-us
+    slack
+    freeorion
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;

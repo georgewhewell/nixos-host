@@ -26,4 +26,17 @@
     };
   };
 
+  security.acme.certs."jellyfin.satanic.link" = {
+    email = "georgerw@gmail.com";
+    postRun = ''systemctl reload nginx.service'';
+  };
+
+  services.nginx.virtualHosts."jellyfin.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://fuckup.lan:8096";
+    };
+  };
+
 }

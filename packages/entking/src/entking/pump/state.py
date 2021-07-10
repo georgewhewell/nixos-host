@@ -6,7 +6,7 @@ from .motor import FriendlyELEC_DCMotor as Motor
 
 class MotorState:
     speed: int = 0
-    command: str = 'release'
+    command: str = 'forward'
 
 
 class PumpControllerState:
@@ -16,8 +16,8 @@ class PumpControllerState:
     def __init__(self, addr=0x60, freq=250):
         self.addr = addr
         self.freq = freq
-        self.state = [MotorState() for i in range(4)]
-        self.apply()
+        self.state = [MotorState() for i in [0]]
+        # self.apply()
 
     def apply(self):
         for motor, state in zip(self.motors, self.state):
@@ -30,7 +30,7 @@ class PumpControllerState:
 
     @property
     def motors(self) -> List[Motor]:
-        return [self.controller.getMotor(i+1) for i in range(4)]
+        return [self.controller.getMotor(i) for i in range(4)]
 
     def set_speed(self, num: int, speed: int):
         self.state[num].speed = speed
