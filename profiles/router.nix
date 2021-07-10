@@ -1,4 +1,5 @@
 { config, lib, pkgs, ... }:
+
 let
   wanInterface = "enp1s0";
   lanInterface = "enp3s0";
@@ -78,31 +79,40 @@ in
       }];
     };
 
-    /*
-    wireguard = {
+    wireless = {
+      enable = false;
+    };
+
+    /* wireguard = {
       interfaces = {
         "${vpnInterface}" = {
-    ips = [ "192.168.24.1/24" ];
+          ips = [ "192.168.24.1/24" ];
           listenPort = 51820;
-    peers = [ {
-      allowedIPs = [ "192.168.24.2/32" ];
-      publicKey = "RHTVwkbfc6LX/rWDr42WQR1U391wv39oqO2TPyF+cC4=";
-    } ];
-    privateKey = "i/noVqodxmQ3x4Qw2OZIp3Es8wilR5op4BYN2JUKXL0=";
+          privateKey = pkgs.secrets.wg-router-priv;
+          postSetup = ''
+            ${pkgs.iptables}/bin/iptables -t nat -A POSTROUTING -s 192.168.24.0/24 -o ${lanBridge} -j MASQUERADE
+          '';
+          postShutdown = ''
+            ${pkgs.iptables}/bin/iptables -t nat -D POSTROUTING -s 192.168.24.0/24 -o ${lanBridge} -j MASQUERADE
+          '';
+          peers = [
+            {
+              publicKey = pkgs.secrets.wg-router-pub;
+              allowedIPs = [ "192.168.24.0/24" ];
+            }
+          ];
         };
       };
-    };
-   */
+    }; */
 
-
-    trafficShaping = {
+    /* trafficShaping = {
       enable = true;
       wanInterface = wanInterface;
       lanInterface = "br.lan";
       lanNetwork = "192.168.23.0/24";
       maxDown = "95mbit";
       maxUp = "5mbit";
-    };
+    }; */
   };
 
   services.dnscrypt-proxy2 = {
@@ -136,19 +146,6 @@ in
   };
 
   services.avahi.interfaces = [ lanBridge ];
-
-  services.hostapd = {
-    enable = true;
-    interface = wlanInterface;
-    hwMode = "a";
-    channel = 165;
-    ssid = "nix";
-    wpa = false;
-    extraConfig = ''
-      bridge=${lanBridge}
-    '';
-  };
-
   services.dnsmasq = {
     enable = true;
     resolveLocalQueries = true;
@@ -179,6 +176,7 @@ in
       cname=grafana.satanic.link,nixhost.lan
       cname=git.satanic.link,nixhost.lan
       cname=home.satanic.link,nixhost.lan
+      cname=jellyfin.satanic.link,nixhost.lan
     '';
   };
 

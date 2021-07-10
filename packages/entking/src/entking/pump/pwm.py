@@ -79,6 +79,7 @@ class PWM :
 
   def setPWM(self, channel, on, off):
     "Sets a single PWM channel"
+    print(f"settig channel {channel} to {on}/{off}")
     self.i2c.write8(self.__LED0_ON_L+4*channel, on & 0xFF)
     self.i2c.write8(self.__LED0_ON_H+4*channel, on >> 8)
     self.i2c.write8(self.__LED0_OFF_L+4*channel, off & 0xFF)

@@ -6,7 +6,8 @@
     ../modules/cache-cache.nix
     ../modules/usb-gadget.nix
     ../modules/devicetree.nix
-    # ../modules/sunxi-watchdog.nix
+#    ../modules/geth.nix
+    ../modules/openethereum.nix
     ../modules/nbd.nix
     ../modules/netboot.nix
     ../modules/miflora.nix

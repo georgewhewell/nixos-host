@@ -14,8 +14,8 @@ python3.pkgs.buildPythonApplication rec {
   propagatedBuildInputs = with python3.pkgs; [
     flask
     smbus2
-    miflora
-    fswebcam
+    /* miflora */
+    /* fswebcam */
   ];
 
   doCheck = false;

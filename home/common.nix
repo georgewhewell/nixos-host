@@ -11,6 +11,11 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  services.lorri.enable = true;
+  programs.direnv = {
+    enable = true;
+  };
+
   home.packages = with pkgs; [
     bat
     pv

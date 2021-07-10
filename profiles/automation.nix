@@ -2,33 +2,9 @@
 
 {
 
-  # BT audio passthu
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
-  };
-
-  users.users.pulse.extraGroups = [ "lp" ];
-
-  hardware.pulseaudio = {
-    enable = true;
-    extraModules = [ pkgs.pulseaudio-modules-bt ];
-    support32Bit = true;
-    systemWide = true;
-    extraConfig = ''
-      # make bluetooth work?
-      load-module module-bluetooth-policy
-      load-module module-bluetooth-discover
-    '';
-  };
-
-  systemd.services.spotifyd = {
-    description = "spotifyd client";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig.ExecStart = ''
-      ${pkgs.spotifyd}/bin/spotifyd --username 1139118329 --password ${pkgs.secrets.spotify-password} --device-name "UE Mobile Boombox"
-    '';
   };
 
   systemd.services.am43-ctrl = {
@@ -89,9 +65,8 @@
   services.home-assistant = {
     enable = true;
     openFirewall = true;
-    # configWritable = true;
     package = pkgs.home-assistant.override {
-      extraPackages = ps: with ps; [ cryptography hass-nabucasa ];
+      extraPackages = ps: with ps; [ cryptography python-miio aiounifi PyChromecast ];
     };
     config = {
       homeassistant = {
@@ -101,13 +76,18 @@
         elevation = "20";
         unit_system = "metric";
         time_zone = "Europe/London";
+        internal_url = "https://home.satanic.link";
+        external_url = "https://home.satanic.link";
       };
       http = {
         server_host = "0.0.0.0";
         server_port = 8123;
-        base_url = "https://home.satanic.link";
         use_x_forwarded_for = true;
         trusted_proxies = [ "127.0.0.1" ];
+      };
+      spotify = {
+        client_id = pkgs.secrets.spotify-client-id;
+        client_secret = pkgs.secrets.spotify-secret;
       };
       mobile_app = { };
       frontend = { };
@@ -117,16 +97,26 @@
         host = "127.0.0.1";
         port = "8080";
       };
+      vacuum = {
+        platform = "xiaomi_miio";
+        host = "192.168.23.43";
+        token = "30646a4c6259726d3834476862436553";
+      };
       influxdb = { };
       mqtt = {
-        broker = "nixhost.lan";
+        broker = "127.0.0.1";
         username = "rw";
         password = pkgs.secrets.mqtt-password;
         discovery = true;
       };
       cover = [ ];
-      esphome = { };
-      media_player = [ ];
+      esphome = {};
+      media_player = [
+        {
+          platform = "kodi";
+          host = "amlogic-s912";
+        }
+      ];
       system_health = { };
       sun = { };
       plant =
@@ -140,12 +130,13 @@
           };
         }; in
         {
-          poppies = mkPlant "poppies";
+          hemp = mkPlant "hemp";
           strawberries = mkPlant "strawberries";
           nectarine = mkPlant "nectarine";
           lettuce = mkPlant "lettuce";
         };
       automation = [
+        /* Open/Close blinds */
         {
           trigger = {
             platform = "numeric_state";
@@ -153,14 +144,16 @@
             value_template = "{{ state_attr('sun.sun', 'elevation') }}";
             below = -3.0;
           };
-          action = [{
-            service = "cover.close_cover";
-            entity_id = "cover.main_blinds";
-          }
+          action = [
+            {
+              service = "cover.close_cover";
+              entity_id = "cover.main_blinds";
+            }
             {
               service = "cover.close_cover";
               entity_id = "cover.side_blinds";
-            }];
+            }
+          ];
         }
         {
           trigger = {
@@ -169,15 +162,55 @@
             value_template = "{{ state_attr('sun.sun', 'elevation') }}";
             above = -2.0;
           };
-          action = [{
-            service = "cover.open_cover";
-            entity_id = "cover.main_blinds";
-          }
+          action = [
+            {
+              service = "cover.open_cover";
+              entity_id = "cover.main_blinds";
+            }
             {
               service = "cover.open_cover";
               entity_id = "cover.side_blinds";
-            }];
+            }
+          ];
         }
+
+        /* Start wake-up playlist */
+        /* {
+          trigger = {
+            platform = "time";
+            at = "07:30:00";
+          };
+          action = [
+            {
+              service = "media_player.select_source";
+              data = {
+                entity_id = "media_player.spotify_1139118329";
+                source = "Spotifyd@tvheadend";
+              };
+            }
+            {
+              service = "media_player.play_media";
+              data = {
+                entity_id = "media_player.spotify_1139118329";
+                media_content_type = "playlist";
+                media_content_id = "spotify:playlist:1QyZvdRFOEiCZykP43c9Ie";
+              };
+            }
+            {
+              service = "media_player.shuffle_set";
+              data = {
+                entity_id = "media_player.spotify_1139118329";
+                shuffle = true;
+              };
+            }
+            {
+              service = "media_player.media_next_track";
+              data = {
+                entity_id = "media_player.spotify_1139118329";
+              };
+            }
+          ];
+        } */
       ];
     };
   };

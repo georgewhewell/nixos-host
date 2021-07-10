@@ -17,18 +17,18 @@
       ../../../profiles/home.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/logserver.nix
+      ../../../profiles/crypto.nix
       ../../../profiles/nas.nix
       ../../../profiles/logserver.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
-      ../../../services/hydra.nix
+      /* ../../../services/hydra.nix */
       ../../../services/grafana.nix
       ../../../services/nginx.nix
       ../../../services/transmission.nix
       ../../../services/sync-server.nix
       ../../../services/virt/host.nix
-      ../../../services/virt/vfio.nix
     ];
 
   boot.kernelModules = [
@@ -101,9 +101,6 @@
     extraPlugins = with pkgs; [
       timescaledb
     ];
-    extraConfig = ''
-      shared_preload_libraries = 'timescaledb'
-    '';
   };
 
   networking.firewall = {

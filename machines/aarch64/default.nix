@@ -3,9 +3,9 @@ let
   machines = [
     "odroid-c2"
     "nanopi-neo2"
-    "orangepi-prime"
     "rock64"
     "tvheadend"
+    "orangepi-pc2"
     "nanopi-m3"
     "amlogic-s912"
   ];

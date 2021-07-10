@@ -2,9 +2,9 @@
 
 {
   networking.hostName = "odroid-hc1";
-  nix.buildCores = 6;
+  nix.buildCores = 4;
 
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
 
   hardware.deviceTree = {
     enable = true;

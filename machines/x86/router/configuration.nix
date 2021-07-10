@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ../../../containers/unifi.nix
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/router.nix
@@ -28,11 +29,11 @@
 
   networking = {
     hostName = "router";
-    wlanInterfaces = {
+    /* wlanInterfaces = {
       wlan-private = {
         device = "wlp2s0";
       };
-    };
+    }; */
   };
 
 }

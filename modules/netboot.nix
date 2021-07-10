@@ -44,9 +44,9 @@ in
 
     fileSystems."/nix/store" =
       {
-        device = "192.168.23.43:/store";
-        fsType = "nfs";
-        options = [ "vers=4" "ro" "rsize=32768" "wsize=32768" "nconnect=4" ];
+        device = "192.168.23.130:/store";
+        fsType = "nfs4";
+        /* options = [ "ro" "rsize=32768" "wsize=32768" "nconnect=4" ]; */
         neededForBoot = true;
       };
 

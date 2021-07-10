@@ -7,6 +7,7 @@ let
     "installer"
     "workvm"
     "router"
+    "hetzner"
   ];
 in
 lib.genAttrs machines (name:

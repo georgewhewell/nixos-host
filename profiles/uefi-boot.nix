@@ -5,13 +5,15 @@
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-  security.rngd.enable = pkgs.lib.mkDefault true;
+#  security.rngd.enable = pkgs.lib.mkDefault true;
   services.fwupd.enable = true;
 
+  /*
   zramSwap = {
     enable = true;
     algorithm = "zstd";
-  };
+    };
+    */
 
   programs.mosh.enable = true;
 
@@ -36,10 +38,9 @@
       };
     };
 
-    supportedFilesystems = [ "vfat" "zfs" ];
     initrd = {
       supportedFilesystems = [
-        "zfs"
+        #"zfs"
         "nfs"
       ];
 

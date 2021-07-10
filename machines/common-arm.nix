@@ -12,7 +12,7 @@
   boot = {
     cleanTmpDir = true;
     kernelParams = [ "boot.shell_on_fail" "panic=20" ];
-    supportedFilesystems = lib.mkForce [ "nfs" ];
+#    supportedFilesystems = lib.mkForce [ "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
   };
 
@@ -108,7 +108,6 @@
       extraConfig = ''
         PCI n
         XEN n
-        KVM n
 
         OPENVSWITCH n
         INFINIBAND n

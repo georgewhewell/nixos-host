@@ -10,12 +10,8 @@
       patch = null;
       extraConfig = ''
         MEDIA_SUPPORT n
-        STAGING n
         PCI n
-        WLAN n
-        BT n
         DRM n
-        SOUND n
         FS_XFS n
         FS_UDF n
         FS_UBIFS n
@@ -31,25 +27,25 @@
         FRAME_VECTOR y
       '';
     }
+    {
+      name = "rtk hciuart";
+      patch = null;
+      extraConfig = ''
+        BT_HCIUART_3WIRE y
+        BT_HCIUART_RTL y
+      '';
+    }
   ];
 
   hardware.firmware = [ pkgs.libreelec-dvb-firmware ];
 
-  boot.kernelPackages = lib.mkOverride 1 pkgs.linuxPackages_allwinner;
   boot.extraModulePackages = [
     (config.boot.kernelPackages.tbs.overrideAttrs (old:
       let
         # fetchFromGitHub does unpack differently from niv ?
         media = pkgs.fetchFromGitHub { inherit (pkgs.sources.linux_media) repo owner rev sha256; name = "linux_media"; };
         build = pkgs.fetchFromGitHub { inherit (pkgs.sources.media_build) repo owner rev sha256; name = "media_build"; };
-        media_patched = pkgs.runCommandNoCC "linux_media" { } ''
-          cp -r ${media} linux_media
-          chmod -R +w linux_media
-          cd linux_media
-          patch -p1 < ${../packages/patches/linux-tbs.patch}
-          cd ..
-          mv linux_media $out
-        '';
+        media_patched = media;
       in
       {
         name = "tbs-2020.01.01";

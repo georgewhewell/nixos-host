@@ -67,12 +67,12 @@ in
   };
 
   config = mkIf cfg.enable {
-    systemd.services.nginx.preStart = ''
+    /* systemd.services.nginx.preStart = ''
       mkdir -p ${cfg.cacheDir} /srv/www/nix-cache-cache
       chmod 700 ${cfg.cacheDir} /srv/www/nix-cache-cache
       chown ${nginxCfg.user}:${nginxCfg.group} \
         ${cfg.cacheDir} /srv/www/nix-cache-cache
-    '';
+    ''; */
 
     services.nginx = {
       enable = true;

@@ -35,11 +35,15 @@
 
   services.tlp = {
     enable = true;
-    # https://github.com/NixOS/nixpkgs/issues/46048
-    extraConfig = ''
-      CPU_SCALING_GOVERNOR_ON_AC=ondemand
-      CPU_SCALING_GOVERNOR_ON_BAT=powersave
-    '';
+    settings = {
+      CPU_SCALING_GOVERNOR_ON_AC = "ondemand";
+      CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+
+      START_CHARGE_THRESH_BAT0 = 80;
+      STOP_CHARGE_THRESH_BAT0 = 85;
+
+      USB_BLACKLIST_PHONE = 1;
+    };
   };
 
   services.xserver.libinput = {

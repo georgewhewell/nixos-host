@@ -131,7 +131,6 @@
 
   services.samba = {
     enable = true;
-    syncPasswordsByPam = true;
     extraConfig = ''
       guest account = nobody
       map to guest = bad user

@@ -1,0 +1,35 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+  compatible = "allwinner,sun8i-h3";
+
+  fragment@0 {
+    target = <&cpu1>;
+    __overlay__ {
+      status = "disabled";
+    };
+  };
+
+  fragment@1 {
+    target = <&cpu2>;
+    __overlay__ {
+      status = "disabled";
+    };
+  };
+
+  fragment@2 {
+    target = <&cpu3>;
+    __overlay__ {
+      status = "disabled";
+    };
+  };
+
+  fragment@3 {
+    target = <&gpu>;
+    __overlay__ {
+      status = "disabled";
+    };
+  };
+
+};
