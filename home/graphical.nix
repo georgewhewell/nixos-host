@@ -51,7 +51,6 @@
     source-serif-pro
     font-awesome_5
 
-    steam
     spotify
     vlc
 

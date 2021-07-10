@@ -39,8 +39,8 @@
 
   programs.htop = {
     enable = true;
-    cpuCountFromZero = true;
     settings = {
+      cpu_count_from_zero = true;
       left_meters = [ "AllCPUs" "Memory" "Swap" ];
       right_meters = [ "Clock" "Uptime" "Tasks" "LoadAverage" "Battery" ];
     };
