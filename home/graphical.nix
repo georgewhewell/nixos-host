@@ -15,11 +15,13 @@
   };
 
   programs.vscode = {
-    package = pkgs.vscodium;
+    package = pkgs.vscode;
     enable = true;
     extensions = with pkgs.vscode-extensions; [
       bbenoist.Nix
-      vscodevim.vim
+
+      # vscodevim.vim
+      ms-vscode-remote.remote-ssh
       matklad.rust-analyzer
       ms-vsliveshare.vsliveshare
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
@@ -28,9 +30,6 @@
           name = "solidity";
           version = "0.0.120";
           sha256 = "1ryxr80sk15dbwsh1hxyq9a7im6f8ma2g2ql0vzdmcwrkrhj65if";
-        };
-        meta = {
-          license = lib.licenses.mit;
         };
       })
     ];

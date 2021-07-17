@@ -23,6 +23,7 @@
       ../../../services/buildfarm-executor.nix
       ../../../services/docker.nix
       ../../../services/jellyfin.nix
+      ../../../containers/plex.nix
       ../../../services/virt/host.nix
       #../../../services/virt/vfio.nix
     ];

@@ -21,6 +21,10 @@
         hostPath = "/dev/dri/renderD128";
         isReadOnly = false;
       };
+      "/media" = {
+        hostPath = "/mnt/Media";
+        isReadOnly = false;
+      };
     };
 
     config = {
@@ -62,11 +66,12 @@
         dataDir = "/mnt/Home/plex";
       };
 
-      fileSystems."/mnt/Media".options = [ "uid=plex" "gid=plex" ];
+      #fileSystems."/mnt/Media".options = [ "uid=plex" "gid=plex" ];
 
-      users.users.plex.uid = lib.mkForce 1001;
-      users.groups.plex.gid = lib.mkForce 70;
+      #users.users.plex.uid = lib.mkForce 1001;
+      #users.groups.plex.gid = lib.mkForce 70;
       users.users.plex.extraGroups = [ "video" "render" ];
+      users.users.plex.isSystemUser = true;
 
       systemd.services.tvhproxy =
         let
@@ -105,7 +110,6 @@
           };
           wantedBy = [ "multi-user.target" ];
         };
-        */
     };
   };
 }
