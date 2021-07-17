@@ -66,10 +66,10 @@ self: super:
     '';
   });
 
-  go-ethereum = super.go-ethereum.overrideAttrs(old: rec {
-    src = self.sources.go-ethereum;
-    vendorSha256 = null;
-  });
+  # go-ethereum = super.go-ethereum.overrideAttrs(old: rec {
+  #   src = self.sources.go-ethereum;
+  #   vendorSha256 = null;
+  # });
 
   # Append local packages
 } // (import ../packages { pkgs = super; })

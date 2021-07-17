@@ -13,9 +13,7 @@
   xdg.enable = true;
 
   services.lorri.enable = true;
-  programs.direnv = {
-    enable = true;
-  };
+  programs.direnv.enable = true;
 
   home.packages = with pkgs; [
     bat
@@ -35,6 +33,11 @@
     controlPersist = "60m";
     hashKnownHosts = true;
     forwardAgent = true;
+    matchBlocks = {
+      "ax101.satanic.link" = {
+        hostname = "ax101.satanic.link";
+      };
+    };
   };
 
   programs.htop = {
