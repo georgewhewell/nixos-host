@@ -25,6 +25,8 @@
       matklad.rust-analyzer
       ms-vsliveshare.vsliveshare
       golang.go
+      ms-python.python
+      ms-python.vscode-pylance
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
           publisher = "JuanBlanco";
@@ -65,6 +67,7 @@
     zoom-us
     calibre
     slack
+    xournal
   ];
 
   fonts.fontconfig.enable = pkgs.lib.mkForce true;

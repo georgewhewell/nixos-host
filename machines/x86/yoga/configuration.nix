@@ -19,6 +19,7 @@
   networking.hostId = "deadbeef";
 
   virtualisation.docker.storageDriver = lib.mkForce null;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
 
   fileSystems."/" =
     {
