@@ -18,12 +18,13 @@
     package = pkgs.vscode;
     enable = true;
     extensions = with pkgs.vscode-extensions; [
-      bbenoist.Nix
+      bbenoist.nix
 
       # vscodevim.vim
       ms-vscode-remote.remote-ssh
       matklad.rust-analyzer
       ms-vsliveshare.vsliveshare
+      golang.go
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
           publisher = "JuanBlanco";
