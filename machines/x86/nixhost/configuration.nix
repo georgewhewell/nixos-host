@@ -11,7 +11,6 @@
       ../../../containers/sonarr.nix
       /* ../../../containers/jupyter.nix */
 
-      ../../../profiles/automation.nix
       ../../../profiles/common.nix
       ../../../profiles/bridge-interfaces.nix
       ../../../profiles/headless.nix
@@ -24,6 +23,7 @@
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
+      ../../../services/home-assistant/default.nix
       # ../../../services/hydra.nix
       ../../../services/grafana.nix
       ../../../services/nginx.nix

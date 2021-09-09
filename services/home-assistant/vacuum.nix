@@ -5,7 +5,7 @@
   systemd.tmpfiles.rules = let
     valetudo-map-card = pkgs.fetchurl {
       url = "https://raw.githubusercontent.com/TheLastProject/lovelace-valetudo-map-card/master/valetudo-map-card.js";
-      sha256 = "0xsbzq0s982ml2lmd0zl5w92743iwh0h5b2s3f7znbp28rd29305";
+      sha256 = "0qnqv4q2149rf3gwarwbsig592w1imccpm8p1bv9r3rv3v63prpy";
     };
   in [
     "d /var/lib/hass/www 0755 hass hass"
