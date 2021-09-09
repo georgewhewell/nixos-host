@@ -14,7 +14,7 @@
 
   boot = {
     tmpOnTmpfs = true;
-    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages-rt_latest;
+    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
 
     kernelParams = [
       "msr.allow_writes=on"

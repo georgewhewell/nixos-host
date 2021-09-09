@@ -27,6 +27,7 @@
       golang.go
       ms-python.python
       ms-python.vscode-pylance
+      hashicorp.terraform
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
           publisher = "JuanBlanco";
