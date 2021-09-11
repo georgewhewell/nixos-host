@@ -25,7 +25,7 @@
       matklad.rust-analyzer
       ms-vsliveshare.vsliveshare
       golang.go
-      ms-python.python
+    #  ms-python.python
       ms-python.vscode-pylance
       hashicorp.terraform
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
