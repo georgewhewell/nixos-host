@@ -57,8 +57,10 @@
 
   services.xserver.libinput = {
     enable = true;
-    accelSpeed = "0.1";
-    naturalScrolling = true;
+    touchpad = {
+      accelSpeed = "0.1";
+      naturalScrolling = true;
+    };
   };
 
   sound.mediaKeys.enable = true;

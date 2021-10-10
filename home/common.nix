@@ -31,6 +31,8 @@
     enable = true;
     controlMaster = "auto";
     controlPersist = "60m";
+    serverAliveInterval = 60;
+    serverAliveCountMax = 5;
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
