@@ -63,7 +63,7 @@
     daemonNiceLevel = 10;
     trustedUsers = [ "grw" ];
     gc = {
-      automatic = true;
+      automatic = false;
       dates = pkgs.lib.mkDefault "weekly";
     };
   };

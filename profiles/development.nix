@@ -71,10 +71,4 @@
   virtualisation.docker.enable = true;
 
   programs.wireshark.enable = true;
-  security.wrappers.dumpcap = {
-    source = "${pkgs.wireshark}/bin/dumpcap";
-    permissions = "u+xs,g+x";
-    owner = "root";
-    group = "wireshark";
-  };
 }
