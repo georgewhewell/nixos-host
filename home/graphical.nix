@@ -62,10 +62,7 @@
     whatsapp-for-linux
     torbrowser
     monero-gui
-    (steam.override { extraProfile = ''unset VK_ICD_FILENAMES''; })
-    steam-run-native
     discord
-    wineFull
     zoom-us
     calibre
     slack

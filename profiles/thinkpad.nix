@@ -8,6 +8,7 @@
     "cpuidle.governor=teo"
   ];
 
+  /*
   boot.kernelPatches = [{
     name = "enable-teo";
     patch = null;
@@ -15,6 +16,7 @@
       CPU_IDLE_GOV_TEO y
     '';
   }];
+  */
 
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
