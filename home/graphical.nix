@@ -41,6 +41,7 @@
 
   home.packages = with pkgs; [
     wl-clipboard
+    wdisplays
 
     corefonts
     dejavu_fonts
