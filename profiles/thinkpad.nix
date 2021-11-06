@@ -28,7 +28,10 @@
     msr-tools
     networkmanagerapplet
     powertop
+    neard
   ];
+
+  services.neard.enable = true;
 
   hardware.bluetooth = {
     enable = true;

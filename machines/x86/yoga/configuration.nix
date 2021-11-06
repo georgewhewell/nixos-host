@@ -60,7 +60,7 @@
     enable = true;
     tempAc = 97;
     tempBat = 75;
-    coreOffset = -125;
+    coreOffset = -115;
     gpuOffset = -60;
     uncoreOffset = -60;
     analogioOffset = -60;
