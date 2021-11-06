@@ -46,6 +46,7 @@ self: super:
     '';
   });
 
+  /*
   esphome = super.esphome.overrideAttrs(old: rec {
     src = super.fetchFromGitHub {
       owner = "buxtronix";
@@ -54,7 +55,7 @@ self: super:
       sha256 = "1mki3jz66xx6iy23dxp3xqgvd1ry6lp8q2kxhiyav59f43hrjxa5";
     };
   });
-
+*/
   metabase = super.metabase.overrideAttrs(old: rec {
     version = "0.37.6";
     src = super.fetchurl {

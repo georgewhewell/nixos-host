@@ -76,11 +76,6 @@
   nix.maxJobs = lib.mkDefault 8;
   powerManagement.cpuFreqGovernor = "performance";
 
-  services.shairport-sync = {
-    enable = true;
-    arguments = "-o pa -a Airplay";
-  };
-
   services.consul.interface =
     let interface = "br0"; in
     {

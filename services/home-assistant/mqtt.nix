@@ -4,15 +4,15 @@
 
   services.mosquitto = {
     enable = true;
-    host = "0.0.0.0";
-    checkPasswords = true;
-    allowAnonymous = false;
+    listeners = [{
+      address = "0.0.0.0";
     users = {
       "rw" = {
         acl = [ "topic readwrite #" ];
         password = pkgs.secrets.mqtt-password;
       };
     };
+    }];
   };
 
   services.home-assistant.config = {
