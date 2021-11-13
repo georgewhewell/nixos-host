@@ -69,7 +69,7 @@
     xournal
   ];
 
-  fonts.fontconfig.enable = pkgs.lib.mkForce true;
+  #fonts.fontconfig.enable = pkgs.lib.mkForce true;
 
   services.redshift = {
     enable = true;

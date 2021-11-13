@@ -132,6 +132,7 @@
 
   services.openssh.forwardX11 = true;
 
+  /*
   fonts = {
     fontconfig = {
       useEmbeddedBitmaps = true;
@@ -147,6 +148,7 @@
       source-serif-pro
     ];
   };
+  */
 
   hardware.opengl = {
     enable = true;
