@@ -79,6 +79,18 @@
         "url": "https://github.com/rafaello7/bl1-nanopi-m3/archive/f53c8d83b9d6057e39d6c5cf556a10d7a6d1f692.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "bor": {
+        "branch": "v0.2.9",
+        "description": "Official repository for the Matic Blockchain",
+        "homepage": "https://matic.network/",
+        "owner": "maticnetwork",
+        "repo": "bor",
+        "rev": "f020b881575ee6c2265d0560365b2a1169a3cb8b",
+        "sha256": "0gbjg2h6h510lz1cxfxnb9bwyrsirgj62x6l9hi3lanas5xsnv7c",
+        "type": "tarball",
+        "url": "https://github.com/maticnetwork/bor/archive/f020b881575ee6c2265d0560365b2a1169a3cb8b.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "bsc": {
         "branch": "master",
         "description": "A Binance Smart Chain client based on the go-ethereum fork",

@@ -59,8 +59,6 @@
   };
 
   nix = {
-    daemonIONiceLevel = 7;
-    daemonNiceLevel = 10;
     trustedUsers = [ "grw" ];
     gc = {
       automatic = false;

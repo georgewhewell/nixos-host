@@ -111,5 +111,6 @@ rec {
 
   lazylibrarian = (callPackage ./lazylibrarian { });
   go-bsc = (callPackage ./bsc { });
+  # bor = (callPackage ./bor { });
 
 }

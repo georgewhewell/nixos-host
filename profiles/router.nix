@@ -226,8 +226,7 @@ in
       cname=grafana.satanic.link,nixhost.lan
       cname=git.satanic.link,nixhost.lan
       cname=home.satanic.link,nixhost.lan
-      cname=jupyter.satanic.link,nixhost.lan
-      cname=metabase.satanic.link,nixhost.lan
+      cname=jellyfin.satanic.link,nixhost.lan
       cname=sync-server.satanic.link,nixhost.lan
     '';
   };

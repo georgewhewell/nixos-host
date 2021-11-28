@@ -23,6 +23,7 @@
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
+      ../../../services/deconz.nix
       ../../../services/home-assistant/default.nix
       # ../../../services/hydra.nix
       ../../../services/grafana.nix
