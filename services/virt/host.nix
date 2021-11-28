@@ -4,7 +4,7 @@
   # Turn on virt
   virtualisation.libvirtd = {
     enable = true;
-    qemu.VerbatimConfig = ''
+    qemu.verbatimConfig = ''
       namespaces = []
 
       # Whether libvirt should dynamically change file ownership

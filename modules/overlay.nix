@@ -46,6 +46,25 @@ self: super:
     '';
   });
 
+    bor = super.go-ethereum.overrideAttrs(o: {
+      src = self.sources.bor;
+      runVend = true;
+      vendorSha256 = "1rfg2368fgjxdqz1y0wa5iplrjwpng523and3fghs5j2430103hf";
+    });
+  # bor = super.go-ethereum.overrideAttrs(o: {
+  #   src = /home/grw/src/bor;
+  #   # propagatedBuildInputs = o.propagatedBuildInputs ++ [ super.goimports ];
+  #   buildPhase = ''
+  #     export PATH=${super.goimports}/bin/:$PATH
+  #     goimports -v
+  #     ./build/goimports.sh
+  #     go run build/ci.go
+  #   '';
+  #   runVend = false;
+  #   vendorSha256 = null;
+  #   # vendorSha256 = super.lib.fakeSha256;
+  # });
+
   /*
   esphome = super.esphome.overrideAttrs(old: rec {
     src = super.fetchFromGitHub {
