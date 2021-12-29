@@ -6,14 +6,12 @@
   services.pcscd.enable = true;
 
   # enable sway
-  programs.sway.enable = true;
-  programs.waybar.enable = true;
+  # programs.sway.enable = true;
+  # programs.waybar.enable = true;
 
   environment.loginShellInit = ''
     [[ "$(tty)" == /dev/tty1 ]] && startsway
   '';
-
-  systemd.user.services.waybar.unitConfig.wants = [ "sway.service" ];
 
   services.ofono = {
     enable = true;

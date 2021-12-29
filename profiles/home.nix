@@ -7,7 +7,7 @@
 
   nix.binaryCaches = [
     /* https://hydra.satanic.link */
-    /* https://cache.satanic.link */
+    https://cache.satanic.link
     https://cache.nixos.org
   ];
 

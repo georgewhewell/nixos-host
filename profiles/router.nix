@@ -40,7 +40,7 @@ in
         { sourcePort = 443; destination = "192.168.23.5:443"; loopbackIPs = [ "82.12.183.66" ]; }
         { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; }
         { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "tcp"; }
-        { sourcePort = 32400; destination = "192.168.23.200:32400"; }
+        { sourcePort = 32400; destination = "192.168.23.116:32400"; }
       ];
     };
 

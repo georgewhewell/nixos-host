@@ -2,17 +2,6 @@
 
 {
 
-  hardware.enableAllFirmware = true;
-  hardware.cpu.intel.updateMicrocode = true;
-
-  services.fwupd.enable = true;
-  programs.mosh.enable = true;
-
-  nix.extraOptions = ''
-    auto-optimise-store = true
-    experimental-features = nix-command flakes
-  '';
-
   boot = {
     tmpOnTmpfs = true;
     kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
