@@ -126,6 +126,16 @@
     useGlamor = false; # off is tearing; on is lag
   };
 
+  environment.systemPackages = with pkgs; [ openrgb ];
+  services.udev.extraRules = let
+    orig = builtins.fetchurl {
+      url = "https://gitlab.com/CalcProgrammer1/OpenRGB/-/raw/master/60-openrgb.rules";
+    };
+    patched = pkgs.runCommandNoCC "remove-chmod" {} ''
+      sed '/chmod/d' ${orig} > $out
+    '';
+    in builtins.readFile patched;
+
   /*
   virtualisation.kvmgt = {
     enable = false;

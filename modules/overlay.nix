@@ -91,5 +91,10 @@ self: super:
   #   vendorSha256 = null;
   # });
 
+  openrgb = super.openrgb.overrideAttrs(old: rec {
+    src = self.sources.openrgb;
+    buildInputs = old.buildInputs ++ [ super.mbedtls ];
+  });
+
   # Append local packages
 } // (import ../packages { pkgs = super; })

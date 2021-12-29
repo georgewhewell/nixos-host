@@ -386,6 +386,13 @@
         "url": "https://github.com/nixos-rocm/nixos-rocm/archive/b5b9be0c0caa2e36e488850bfb0cdf7ede055b32.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "openrgb": {
+        "sha256": "1jz2ysjj2cwcqq46vz8bavagz0syv97z4zxfvhnq819s7f2h8lzn",
+        "type": "tarball",
+        "url": "https://gitlab.com/CalcProgrammer1/OpenRGB/-/archive/master/OpenRGB-master.tar.gz",
+        "url_template": "https://gitlab.com/CalcProgrammer1/OpenRGB/-/archive/master/OpenRGB-<version>.tar.gz",
+        "version": "master"
+    },
     "public-ip-sync-google-clouddns": {
         "branch": "master",
         "description": "DynDNS-like dynamic DNS reconfiguration using Google Cloud DNS",
