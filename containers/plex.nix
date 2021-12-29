@@ -86,7 +86,7 @@
             };
 
             buildInputs = [ python3.pkgs.wrapPython ];
-            pythonPath = with python3.pkgs; [ requests flask gevent ];
+            pythonPath = with python3.pkgs; [ requests flask gevent setuptools ];
 
             installPhase = ''
               sed -i '1i#!/usr/bin/env python' tvhProxy.py
