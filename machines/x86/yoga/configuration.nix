@@ -18,21 +18,8 @@
   networking.hostName = "yoga";
   networking.hostId = "deadbeef";
 
-  # deployment.targetHost = "nixos-installer";
-
-  boot.loader = {
-    efi = {
-      canTouchEfiVariables = true;
-      efiSysMountPoint = "/boot";
-    };
-    grub = {
-      efiSupport = true;
-      device = "nodev";
-    };  
-  };
-
   virtualisation.docker.storageDriver = lib.mkForce null;
-  
+
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
   boot.initrd.network = { 
     enable = true;

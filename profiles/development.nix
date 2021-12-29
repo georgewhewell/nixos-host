@@ -4,7 +4,6 @@
   boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
 
   environment.systemPackages = with pkgs; [
-    atom
     idea.pycharm-community
     qcachegrind
 
@@ -45,6 +44,7 @@
     morph
     nixpkgs-fmt
     nix-prefetch-git
+    nixos-option
     screen
   ];
 
@@ -66,6 +66,9 @@
 
   services.redis = {
     enable = true;
+    servers.default = {
+      enable = true;
+    };
   };
 
   virtualisation.docker.enable = true;

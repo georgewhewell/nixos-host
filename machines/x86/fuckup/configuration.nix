@@ -18,6 +18,7 @@
       ../../../profiles/g_ether.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
+      ../../../profiles/intel-gfx.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
@@ -27,19 +28,6 @@
       ../../../services/virt/host.nix
       #../../../services/virt/vfio.nix
     ];
-
-  /*
-  services.ethminer-proxychain = {
-    enable = true;
-    stratumPort = 5555;
-    proxyChain = "socks5 192.168.24.2 9090";
-    wallet = pkgs.secrets.ethminer-address;
-    pool = "eth-de.flexpool.io";
-    toolkit = "opencl";
-    rig = "worker";
-    maxPower = 80;
-  };
-  */
 
   fileSystems."/" =
     {

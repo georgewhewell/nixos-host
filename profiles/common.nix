@@ -20,6 +20,17 @@
     ./users.nix
   ];
 
+  hardware.enableAllFirmware = true;
+  hardware.cpu.intel.updateMicrocode = true;
+
+  services.fwupd.enable = true;
+  programs.mosh.enable = true;
+
+  nix.extraOptions = ''
+    auto-optimise-store = true
+    experimental-features = nix-command flakes
+  '';
+
   location = {
     latitude = 51.5;
     longitude = 0.0;
@@ -65,10 +76,5 @@
       dates = pkgs.lib.mkDefault "weekly";
     };
   };
-
-  environment.systemPackages = with pkgs; [
-    /* alacritty.terminfo
-    termite.terminfo */
-  ];
 
 }
