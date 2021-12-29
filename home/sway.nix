@@ -7,14 +7,24 @@
   ];
 
   home.packages = with pkgs; [
+    alacritty
     slurp
     grim
     waypipe
+    swaylock-effects
   ];
+
+  programs.mako = {
+    enable = true;
+    defaultTimeout = 15000;
+  };
 
   wayland.windowManager.sway = {
     enable = true;
     systemdIntegration = true;
+    extraSessionCommands = ''
+      . "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh"
+    '';
     config = rec {
       bars = [ ];
       modifier = "Mod1";
