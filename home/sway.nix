@@ -61,6 +61,10 @@
           repeat_delay = "190";
         };
 
+        "1133:49983:Logitech_G815_RGB_MECHANICAL_GAMING_KEYBOARD" = {
+          xkb_layout = "us";
+        };
+
         # yoga touchpad
         "2:7:SynPS/2_Synaptics_TouchPad" = {
           dwt = "enabled";
