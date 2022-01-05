@@ -2,11 +2,6 @@
 
 {
 
-  security.acme.certs."sentry.tsar.su" = {
-    email = "georgerw@gmail.com";
-    webroot = "/var/www/challenges/";
-  };
-
   services.nginx.httpConfig = ''
     server {
        listen 80;

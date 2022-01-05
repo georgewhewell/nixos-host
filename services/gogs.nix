@@ -4,11 +4,6 @@ let
 in
 {
 
-  security.acme.certs."git.satanic.link" = {
-    email = "georgerw@gmail.com";
-    postRun = ''systemctl reload nginx.service'';
-  };
-
   networking.firewall.allowedTCPPorts = [ 2222 ];
 
   fileSystems.${stateDir} = {

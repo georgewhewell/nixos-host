@@ -9,7 +9,6 @@
         };
     };
 
-    security.acme.certs."metabase.satanic.link".email = "georgerw@gmail.com";
     services.nginx.virtualHosts."metabase.satanic.link" = {
         forceSSL = true;
         enableACME = true;

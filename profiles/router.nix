@@ -227,7 +227,6 @@ in
       cname=git.satanic.link,nixhost.lan
       cname=home.satanic.link,nixhost.lan
       cname=jellyfin.satanic.link,nixhost.lan
-      cname=sync-server.satanic.link,nixhost.lan
     '';
   };
 

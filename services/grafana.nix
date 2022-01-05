@@ -13,7 +13,6 @@
     auth.anonymous.enable = true;
   };
 
-  security.acme.certs."grafana.satanic.link".email = "georgerw@gmail.com";
   services.nginx.virtualHosts."grafana.satanic.link" = {
     forceSSL = true;
     enableACME = true;

@@ -1,6 +1,13 @@
 { config, lib, pkgs, ... }:
 
 {
+  programs.starship = {
+    enable = true;
+    settings = {
+      aws.disabled = true;
+      gcloud.disabled = true;
+    };
+  };
 
   programs.zsh = {
     enable = true;
@@ -17,26 +24,26 @@
       pc = "pycharm-community . > /dev/null 2>&1 &";
     };
 
-    prezto = {
-      enable = true;
-      pmodules = [
-        "environment"
-        "terminal"
-        "editor"
-        "history"
-        "directory"
-        "spectrum"
-        "utility"
-        "completion"
-        "prompt"
-        "git"
-        "gpg"
-      ];
-      prompt = {
-        theme = "paradox";
-      };
-      utility.safeOps = false;
-    };
+    # prezto = {
+    #   enable = true;
+    #   pmodules = [
+    #     "environment"
+    #     "terminal"
+    #     "editor"
+    #     "history"
+    #     "directory"
+    #     "spectrum"
+    #     "utility"
+    #     "completion"
+    #     "prompt"
+    #     "git"
+    #     "gpg"
+    #   ];
+    #   prompt = {
+    #     theme = "paradox";
+    #   };
+    #   utility.safeOps = false;
+    # };
   };
 
 }

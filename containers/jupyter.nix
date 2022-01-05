@@ -6,7 +6,6 @@
   #   after = [ "mnt-var-lib-jupyter.mount" ];
   # };
 
-  security.acme.certs."jupyter.satanic.link".email = "georgerw@gmail.com";
   services.nginx.virtualHosts."jupyter.satanic.link" = {
     forceSSL = true;
     enableACME = true;

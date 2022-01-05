@@ -5,7 +5,7 @@
 
   security.acme = {
     acceptTerms = true;
-    email = "georgerw@gmail.com";
+    defaults.email = "georgerw@gmail.com";
   };
 
   services.nginx = {
@@ -30,7 +30,6 @@
     extraGroups = [ "acme" ];
   };
 
-  security.acme.certs."jellyfin.satanic.link".email = "georgerw@gmail.com";
   services.nginx.virtualHosts."jellyfin.satanic.link" = {
     forceSSL = true;
     enableACME = true;
