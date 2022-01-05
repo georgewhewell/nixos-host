@@ -42,17 +42,7 @@
     wl-clipboard
     wdisplays
 
-    corefonts
-    dejavu_fonts
-    ubuntu_font_family
-    hack-font
-    roboto
-    powerline-fonts
-    font-awesome-ttf
-    source-code-pro
-    source-sans-pro
-    source-serif-pro
-    font-awesome_5
+
 
     spotify
     vlc
@@ -68,11 +58,8 @@
     xournal
   ];
 
-  #fonts.fontconfig.enable = pkgs.lib.mkForce true;
-
   services.redshift = {
     enable = true;
-    package = pkgs.redshift-wlr;
     latitude = "51.5";
     longitude = "0";
     /* brightness = {

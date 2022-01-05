@@ -8,7 +8,7 @@
       address = "0.0.0.0";
     users = {
       "rw" = {
-        acl = [ "topic readwrite #" ];
+        acl = [ "readwrite #" ];
         password = pkgs.secrets.mqtt-password;
       };
     };

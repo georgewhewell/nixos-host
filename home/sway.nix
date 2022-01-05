@@ -11,7 +11,6 @@
     slurp
     grim
     waypipe
-    swaylock-effects
   ];
 
   programs.mako = {
@@ -82,11 +81,26 @@
         "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
       };
       startup = [
-        { command = "systemctl --user import-environment SWAYSOCK"; always = false; }
-        { command = "systemctl --user restart waybar"; always = true; }
+        { command = "mako"; always = true; }
         { command = ''
-            swayidle \
-              timeout 600 'swaymsg "output * dpms off"' \
+            ${pkgs.swayidle}/bin/swayidle \
+              timeout 120 "${pkgs.swaylock-effects}/bin/swaylock \
+                --screenshots \
+                --clock \
+                --indicator \
+                --indicator-radius 100 \
+                --indicator-thickness 7 \
+                --effect-blur 7x5 \
+                --effect-vignette 0.5:0.5 \
+                --ring-color bb00cc \
+                --key-hl-color 880033 \
+                --line-color 00000000 \
+                --inside-color 00000088 \
+                --separator-color 00000000 \
+                --grace 30 \
+                --fade-in 0.2" \
+              timeout 120 'swaymsg \
+                "output * dpms off"' \
               resume 'swaymsg "output * dpms on"'
           '';
           always = false;
@@ -106,7 +120,7 @@
           always = false;
         }
       ]
-      ++ lib.optionals (config.hostId == "yoga") [ ]
+      ++ lib.optionals (config.hostId == "yoga") []
       ++ lib.optionals (config.hostId == "workvm") [ {
         command = ''
           ${pkgs.wayvnc}/bin/wayvnc 0.0.0.0

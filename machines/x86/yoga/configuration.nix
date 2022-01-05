@@ -31,9 +31,6 @@
       ];
       hostKeys = [ "/etc/nixos/secrets/nixos-secrets/initrd/ssh_host_ed25519_key" ];
     };
-    postCommands = ''
-      echo "post network"
-    '';
   };
 
   fileSystems."/" =
@@ -54,7 +51,7 @@
       fsType = "vfat";
     };
 
-  # swapDevices = [{ device = "/dev/mapper/vg0-swap"; }];
+  swapDevices = [{ device = "/dev/mapper/vg0-swap"; }];
 
   nix.maxJobs = lib.mkDefault 4;
 
@@ -82,44 +79,44 @@
 
   networking.wireguard = {
     interfaces = {
-      "wg0-cloud" = {
-	ips = [ "192.168.24.3/24" ];
-	listenPort = 51820;
-	privateKey = pkgs.secrets.wg-yoga-priv;
-	peers = [
-	  {
-	    publicKey = pkgs.secrets.wg-router-pub;
-	    allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
-	    endpoint = "home.satanic.link:51820";
-	    persistentKeepalive = 25;
-	  }
-	  {
-	    publicKey = pkgs.secrets.wg-hetzner-pub;
-	    allowedIPs = [ "192.168.24.0/24" ];
-	    endpoint = "cloud.satanic.link:51820";
-	    persistentKeepalive = 25;
-	  }
-	];
-      };
-      "wg1-swaps" = {
-	ips = [ "192.168.25.5/24" ];
-	listenPort = 51821;
-	privateKey = pkgs.secrets.wg-yoga-priv;
-	peers = [
-	  {
-	    publicKey = pkgs.secrets.wg-swaps-router-pub;
-	    allowedIPs = [ "192.168.25.0/24" "192.168.23.0/24" ];
-	    endpoint = "home.satanic.link:51821";
-	    persistentKeepalive = 25;
-	  }
-	  {
-	    publicKey = pkgs.secrets.wg-swaps-hetzner-pub;
-	    allowedIPs = [ "192.168.25.0/24" ];
-            endpoint = "116.202.128.94:51821";
-	    persistentKeepalive = 25;
-	  }
-	];
-      };
+      # "wg0-cloud" = {
+      #   ips = [ "192.168.24.3/24" ];
+      #   listenPort = 51820;
+      #   privateKey = pkgs.secrets.wg-yoga-priv;
+      #   peers = [
+      #     {
+      #       publicKey = pkgs.secrets.wg-router-pub;
+      #       allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
+      #       endpoint = "home.satanic.link:51820";
+      #       persistentKeepalive = 25;
+      #     }
+      #     {
+      #       publicKey = pkgs.secrets.wg-hetzner-pub;
+      #       allowedIPs = [ "192.168.24.0/24" ];
+      #       endpoint = "cloud.satanic.link:51820";
+      #       persistentKeepalive = 25;
+      #     }
+      #   ];
+      # };
+      # "wg1-swaps" = {
+      #   ips = [ "192.168.25.5/24" ];
+      #   listenPort = 51821;
+      #   privateKey = pkgs.secrets.wg-yoga-priv;
+      #   peers = [
+      #     {
+      #       publicKey = pkgs.secrets.wg-swaps-router-pub;
+      #       allowedIPs = [ "192.168.25.0/24" "192.168.23.0/24" ];
+      #       endpoint = "home.satanic.link:51821";
+      #       persistentKeepalive = 25;
+      #     }
+      #     {
+      #       publicKey = pkgs.secrets.wg-swaps-hetzner-pub;
+      #       allowedIPs = [ "192.168.25.0/24" ];
+      #             endpoint = "116.202.128.94:51821";
+      #       persistentKeepalive = 25;
+      #     }
+      #   ];
+      # };
     };
   };
 

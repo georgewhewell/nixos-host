@@ -5,7 +5,6 @@
     fuckup: skylake desktop
   */
 
-  documentation.enable = false;
   imports =
     [
       ../../../profiles/common.nix
@@ -114,6 +113,7 @@
     useGlamor = false; # off is tearing; on is lag
   };
 
+  /*
   environment.systemPackages = with pkgs; [ openrgb ];
   services.udev.extraRules = let
     orig = builtins.fetchurl {
@@ -123,6 +123,7 @@
       sed '/chmod/d' ${orig} > $out
     '';
     in builtins.readFile patched;
+  */
 
   /*
   virtualisation.kvmgt = {

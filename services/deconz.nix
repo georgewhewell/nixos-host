@@ -23,7 +23,7 @@
       ExecReload = "${pkgs.coreutils}/bin/kill -HUP $MAINPID";
       Restart = "always";
       RestartSec = "10s";
-      StartLimitInterval = "1min";
+      StartLimitIntervalSec = 60;
       User = "deconz";
     };
   };

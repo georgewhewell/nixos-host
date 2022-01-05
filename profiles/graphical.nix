@@ -6,8 +6,7 @@
   services.pcscd.enable = true;
 
   # enable sway
-  # programs.sway.enable = true;
-  # programs.waybar.enable = true;
+  security.pam.services.swaylock = {};
 
   environment.loginShellInit = ''
     [[ "$(tty)" == /dev/tty1 ]] && startsway
@@ -130,23 +129,31 @@
 
   services.openssh.forwardX11 = true;
 
-  /*
   fonts = {
     fontconfig = {
       useEmbeddedBitmaps = true;
-      defaultFonts = {
-        monospace = [ "Source Code Pro" ];
-        sansSerif = [ "Source Sans Pro" ];
-        serif = [ "Source Serif Pro" ];
-      };
+      # defaultFonts = {
+      #   monospace = [ "Source Code Pro" ];
+      #   sansSerif = [ "Source Sans Pro" ];
+      #   serif = [ "Source Serif Pro" ];
+      # };
     };
     fonts = with pkgs; [
+      corefonts
+      dejavu_fonts
+      ubuntu_font_family
+      hack-font
+      
+      roboto
+      powerline-fonts
+      powerline-symbols
+      font-awesome-ttf
       source-code-pro
       source-sans-pro
       source-serif-pro
+      font-awesome_5
     ];
   };
-  */
 
   hardware.opengl = {
     enable = true;

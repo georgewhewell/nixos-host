@@ -77,7 +77,6 @@ rec {
   };
   python2Packages = python2.pkgs;
 
-  entking = callPackage ./entking { };
   miflora-mqtt-daemon = callPackage ./miflora-mqtt-daemon { };
 
   am43-ctrl = (callPackage ./am43-ctrl/override.nix { }).package;

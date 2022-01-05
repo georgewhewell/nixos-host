@@ -5,7 +5,6 @@
   imports = [
     ./blinds.nix
     ./mqtt.nix
-    ./spotcast.nix
     ./vacuum.nix
   ];
 
@@ -27,6 +26,8 @@
   };
 
   users.extraUsers."hass".extraGroups = [ "dialout" ];
+
+  services.influxdb.enable = true;
 
   services.home-assistant = let
     package = pkgs.home-assistant.override {
@@ -76,12 +77,6 @@
         client_id = pkgs.secrets.spotify-client-id;
         client_secret = pkgs.secrets.spotify-secret;
       };
-      /* cast = {
-        media_player = [
-          "2563d4dd-39a2-3cb6-77b9-7282624a7ae2"  # tv
-          "fdd3040e-0536-b483-b37b-e040ce9ae954"  # speaker
-        ];
-      }; */
       google_assistant = {
         project_id = "home-9bb96";
       };

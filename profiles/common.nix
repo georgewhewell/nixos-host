@@ -23,7 +23,7 @@
   hardware.enableAllFirmware = true;
   hardware.cpu.intel.updateMicrocode = true;
 
-  services.fwupd.enable = true;
+  # services.fwupd.enable = true;
   programs.mosh.enable = true;
 
   nix.extraOptions = ''
@@ -49,6 +49,16 @@
     extraConfig = ''
       StreamLocalBindUnlink yes
     '';
+  };
+
+  services.avahi = {
+    enable = true;
+    nssmdns = true;
+    publish.addresses = true;
+    publish.domain = true;
+    publish.enable = true;
+    publish.userServices = true;
+    publish.workstation = true;
   };
 
   programs.ssh.extraConfig = ''

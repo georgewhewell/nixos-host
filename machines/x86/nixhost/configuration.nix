@@ -30,7 +30,6 @@
       ../../../services/nginx.nix
       ../../../services/metabase.nix
       ../../../services/transmission.nix
-      ../../../services/sync-server.nix
       ../../../services/virt/host.nix
     ];
 
