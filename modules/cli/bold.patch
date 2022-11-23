@@ -1,0 +1,13 @@
+diff --git a/powerline.go b/powerline.go
+index 0b640ac..7778ebf 100644
+--- a/powerline.go
++++ b/powerline.go
+@@ -177,7 +177,7 @@ func (p *powerline) color(prefix string, code uint8) string {
+ }
+ 
+ func (p *powerline) fgColor(code uint8) string {
+-	return p.color("38", code)
++	return p.color("1;38", code)
+ }
+ 
+ func (p *powerline) bgColor(code uint8) string {

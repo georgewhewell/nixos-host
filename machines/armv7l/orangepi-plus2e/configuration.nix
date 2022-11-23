@@ -39,7 +39,9 @@
   };
 
   boot.blacklistedKernelModules = [
-    "drm" "sun4i_drm" "lima"
+    "drm"
+    "sun4i_drm"
+    "lima"
   ];
 
   imports = [

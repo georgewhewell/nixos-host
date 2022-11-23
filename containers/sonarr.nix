@@ -10,7 +10,7 @@
   containers.sonarr = {
     autoStart = true;
     privateNetwork = true;
-    hostBridge = "br0";
+    hostBridge = "br0.lan";
 
     bindMounts = {
       "/var/lib/sonarr" = {
@@ -27,7 +27,6 @@
       imports = [ ../profiles/container.nix ];
 
       networking.hostName = "sonarr";
-      
       services.sonarr = {
         enable = true;
         openFirewall = true;

@@ -4,6 +4,7 @@
   # Turn on virt
   virtualisation.libvirtd = {
     enable = true;
+    qemu.swtpm.enable = true;
     qemu.verbatimConfig = ''
       namespaces = []
 
@@ -33,7 +34,7 @@
       #!${pkgs.stdenv.shell}
       echo "Executing ${target}"
       echo "Bringing up $1 for bridged mode..."
-      ${pkgs.iproute}/bin/ip link set $1 up promisc on
+      ${pkgs.iproute2}/bin/ip link set $1 up promisc on
       echo "Adding $1 to br0..."
       ${pkgs.bridge-utils}/bin/brctl addif br0 $1
       sleep 2
@@ -50,22 +51,25 @@
     "coretemp"
     "vendor_reset"
   ];
-  /* systemd.services.libvirtd.preStart = let
+
+  /*
+    systemd.services.libvirtd.preStart = let
     cpuset-script = pkgs.fetchurl {
-      url = "https://raw.githubusercontent.com/PassthroughPOST/VFIO-Tools/master/libvirt_hooks/hooks/cset.sh";
-      sha256 = "0vmbgsdym2j0wn907arh5y5kqlq55i77vy4nif4nm0ckf507hi22";
+    url = "https://raw.githubusercontent.com/PassthroughPOST/VFIO-Tools/master/libvirt_hooks/hooks/cset.sh";
+    sha256 = "0vmbgsdym2j0wn907arh5y5kqlq55i77vy4nif4nm0ckf507hi22";
     };
     qemuHookFile = pkgs.writeText "qemu" ''
 
     '';
-  in ''
-      mkdir -p /var/lib/libvirt/hooks
-      chmod 755 /var/lib/libvirt/hooks
+    in ''
+    mkdir -p /var/lib/libvirt/hooks
+    chmod 755 /var/lib/libvirt/hooks
 
-      # Copy hook files
-      cp -f ${cpuset-script} /var/lib/libvirt/hooks/qemu
+    # Copy hook files
+    cp -f ${cpuset-script} /var/lib/libvirt/hooks/qemu
 
-      # Make them executable
-      chmod +x /var/lib/libvirt/hooks/qemu
-  ''; */
+    # Make them executable
+    chmod +x /var/lib/libvirt/hooks/qemu
+    '';
+  */
 }

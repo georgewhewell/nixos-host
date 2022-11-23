@@ -5,6 +5,7 @@
     <nixpkgs/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix>
     <nixpkgs/nixos/modules/installer/cd-dvd/channel.nix>
     ../../../profiles/common.nix
+    ../../../profiles/thinkpad.nix
   ];
 
   boot.initrd.supportedFilesystems = [
@@ -15,6 +16,12 @@
 
   environment.systemPackages = with pkgs; [
     nfsUtils
+
+    cryptsetup
+    openssl
+    parted
+    pbkdf2Sha512
+    yubikey-personalization
   ];
 
   hardware.enableAllFirmware = true;

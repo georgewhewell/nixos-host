@@ -9,6 +9,8 @@
     userName = "georgewhewell";
     userEmail = "georgerw@gmail.com";
 
+    ignores = [ ".vscode/settings.json" ];
+
     signing = {
       key = "0x0C414B6F2BA7BB19";
       signByDefault = true;
@@ -16,8 +18,9 @@
 
     extraConfig = {
       core = { whitespace = "trailing-space,space-before-tab"; };
-      pull = { rebase = true; };
+      pull = { rebase = true; autostash = true; };
       diff = { algorithm = "patience"; };
+      push = { autoSetupRemote = true; };
     };
   };
 

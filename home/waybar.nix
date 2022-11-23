@@ -33,7 +33,8 @@
         "cpu"
         "memory"
         "temperature"
-        "battery"
+      ] ++ (if config.hostId == "yoga" then [ "battery" ] else [ ])
+      ++ [
         "clock"
         "tray"
       ];

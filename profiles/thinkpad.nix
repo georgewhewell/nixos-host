@@ -9,18 +9,18 @@
   ];
 
   /*
-  boot.kernelPatches = [{
+    boot.kernelPatches = [{
     name = "enable-teo";
     patch = null;
     extraConfig = ''
-      CPU_IDLE_GOV_TEO y
+    CPU_IDLE_GOV_TEO y
     '';
-  }];
+    }];
   */
 
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
-    config.boot.kernelPackages.tp_smapi
+    # config.boot.kernelPackages.tp_smapi
   ];
 
   environment.systemPackages = with pkgs; [
@@ -28,10 +28,11 @@
     msr-tools
     networkmanagerapplet
     powertop
-    # neard
+    libqmi
   ];
 
-  # services.neard.enable = true;
+  services.geoclue2.enable = true;
+  services.localtime.enable = true;
 
   hardware.bluetooth = {
     enable = true;
@@ -45,7 +46,9 @@
     sensitivity = 100;
   };
 
-  hardware.pulseaudio.enable = true;
+  services.clight = {
+    enable = true;
+  };
 
   services.tlp = {
     enable = true;
@@ -68,11 +71,10 @@
     };
   };
 
-  sound.mediaKeys.enable = true;
-
   # need networkmanager for wwan
   networking.networkmanager = {
     enable = true;
+    enableFccUnlock = true;
     wifi = {
       backend = "iwd";
       powersave = true;
@@ -97,7 +99,7 @@
     '';
   };
 
-  nix.binaryCaches = lib.mkForce [ "https://cache.nixos.org" ];
+  nix.settings.binary-caches = lib.mkForce [ "https://cache.nixos.org" ];
   services.upower.enable = true;
 
 }

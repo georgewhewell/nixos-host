@@ -5,16 +5,17 @@
     ../common-arm.nix
   ];
 
+  sconfig = {
+    profile = "server";
+  };
+
+  hardware.cpu.intel.updateMicrocode = lib.mkForce false;
+
   nixpkgs.overlays = [
     (self: super: {
 
-      # https://github.com/NixOS/nixpkgs/pull/119590
-      /* gnutls = super.gnutls.overrideAttrs(o: {
-        patches = builtins.filter (f: !lib.hasInfix "fix-gnulib-tests" f) o.patches;
-      }); */
-
       /* should be able to set this null but preBuild unconditionally uses it  */
-      wpa_supplicant = super.wpa_supplicant.overrideAttrs(o: {
+      wpa_supplicant = super.wpa_supplicant.overrideAttrs (o: {
         buildInputs = with self; [ openssl libnl dbus readline ];
         preBuild = ''
           for manpage in wpa_supplicant/doc/docbook/wpa_supplicant.conf* ; do
@@ -35,19 +36,6 @@
       });
 
       /* gtk-doc = null; */
-      rfcomm = self.bluez.overrideAttrs (
-        old: {
-          name = "rfcomm";
-          configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-deprecated" ];
-          makeFlags = [ "tools/rfcomm" ];
-          doCheck = false;
-          outputs = [ "out" ];
-          installPhase = ''
-            install -D tools/rfcomm $out/bin/rfcomm
-          '';
-        }
-      );
-
       rfcomm = self.bluez.overrideAttrs (
         old: {
           name = "rfcomm";

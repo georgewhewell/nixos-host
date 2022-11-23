@@ -19,7 +19,6 @@
 
   hardware.pulseaudio = {
     enable = true;
-    extraModules = [ pkgs.pulseaudio-modules-bt ];
     systemWide = true;
     extraConfig = ''
       # make bluetooth work?
@@ -50,7 +49,7 @@
       ${pkgs.bluez}/bin/bluetoothctl connect 00:0D:44:9D:D4:0F
     '';
     /* wantedBy = [ "multi-user.target" ];
-    after = [ "bluetooth.service" ]; */
+      after = [ "bluetooth.service" ]; */
   };
 
   systemd.services.enable-bluetooth = {
@@ -91,10 +90,10 @@
       "xxx-add-nanopi-r1-and-duo2"
       "general-enable-kernel-dtbs-symbol-generation"
       /* "0001-Revert-leds"
-      "0002-Add-leds"
-      "board-pine64-add-spi-flash"
+        "0002-Add-leds"
+        "board-pine64-add-spi-flash"
 
-      "board-pine-h6" */
+        "board-pine-h6" */
       "check"
       "patch-5.8"
       "AC200"
@@ -121,15 +120,18 @@
       "-disabled"
       ".patch_broken"
     ];
-  in
-    (builtins.filter ({ name, ... }: lib.all
-      (badPatch: ! lib.hasInfix badPatch name) badPatches
-    )
-    (lib.mapAttrsToList (name: _: {
-        name = "${name}";
-        patch = "${pkgs.sources.armbian}/patch/kernel/sunxi-current/${name}";
-    })
-    (builtins.readDir "${pkgs.sources.armbian}/patch/kernel/sunxi-current")));
+    in
+    (builtins.filter
+      ({ name, ... }: lib.all
+        (badPatch: ! lib.hasInfix badPatch name)
+        badPatches
+      )
+      (lib.mapAttrsToList
+        (name: _: {
+          name = "${name}";
+          patch = "${pkgs.sources.armbian}/patch/kernel/sunxi-current/${name}";
+        })
+        (builtins.readDir "${pkgs.sources.armbian}/patch/kernel/sunxi-current")));
 
   imports = [
     ../common.nix

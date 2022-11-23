@@ -14,11 +14,11 @@
       fsType = "zfs";
     };
 
-  fileSystems."/var/cache/nix-cache-cache" =
-    {
-      device = "fpool/root/nix-cache";
-      fsType = "zfs";
-    };
+  # fileSystems."/var/cache/nix-cache-cache" =
+  #   {
+  #     device = "fpool/root/nix-cache";
+  #     fsType = "zfs";
+  #   };
 
   fileSystems."/export/media" = {
     device = "/mnt/Media";
@@ -48,12 +48,12 @@
     interval = "weekly";
   };
 
-  services.nixBinaryCacheCache = {
-    enable = true;
-    virtualHost = "cache.satanic.link";
-    cacheDir = "/var/cache/nix-cache-cache";
-    maxSize = "100g";
-  };
+  # services.nixBinaryCacheCache = {
+  #   enable = true;
+  #   virtualHost = "cache.satanic.link";
+  #   cacheDir = "/var/cache/nix-cache-cache";
+  #   maxSize = "100g";
+  # };
 
   services.nfs.server = {
     enable = true;
@@ -64,63 +64,63 @@
     '';
   };
 
-  networking.firewall.allowedTCPPorts = [
-    111 # nfs?
-    2049 # nfs
-    4000
-    4001
-    4002
-    4003
-    138 # smb
-    139 # smb
-    445 # smb
-    548 # netatalk
-    10809 # nbd
+  # networking.firewall.allowedTCPPorts = [
+  #   # 111 # nfs?
+  #   # 2049 # nfs
+  #   # 4000
+  #   # 4001
+  #   # 4002
+  #   # 4003
+  #   # 138 # smb
+  #   # 139 # smb
+  #   # 445 # smb
+  #   # 548 # netatalk
+  #   # 10809 # nbd
 
-    # nfs
-    20048
-    40531
-    46675
-  ];
+  #   # # nfs
+  #   # 20048
+  #   # 40531
+  #   # 46675
+  # ];
 
-  networking.firewall.allowedUDPPorts = [
-    111 # nfs?
-    2049 # nfs
-    138 # smb
-    445 # smb
+  # networking.firewall.allowedUDPPorts = [
+  #   # 111 # nfs?
+  #   # 2049 # nfs
+  #   # 138 # smb
+  #   # 445 # smb
 
-    # nfs
-    20048
-    37914
-    42074
-  ];
+  #   # # nfs
+  #   # 20048
+  #   # 37914
+  #   # 42074
+  # ];
 
-  systemd.services.nbd-scratch = {
-    wantedBy = [ "multi-user.target" ];
+  # systemd.services.nbd-scratch = {
+  #   wantedBy = [ "multi-user.target" ];
 
-    serviceConfig =
-      let
-        nbdConfig = pkgs.writeText "nbd-config.conf" ''
-          # This is a comment
-          [generic]
-              # The [generic] section is required, even if nothing is specified
-              # there.
-              # When either of these options are specified, nbd-server drops
-              # privileges to the given user and group after opening ports, but
-              # _before_ opening files.
-          [scratch]
-              exportname = scratch
-              timeout = 30
-              temporary = true
-              filesize = ${toString (16 * 1024 * 1024 * 1024)}
-              sparse_cow = true
-        ''; in
-      {
-        ExecStart = ''
-          ${pkgs.nbd}/bin/nbd-server -d -C ${nbdConfig}
-        '';
-      };
-  };
+  #   serviceConfig =
+  #     let
+  #       nbdConfig = pkgs.writeText "nbd-config.conf" ''
+  #         # This is a comment
+  #         [generic]
+  #             # The [generic] section is required, even if nothing is specified
+  #             # there.
+  #             # When either of these options are specified, nbd-server drops
+  #             # privileges to the given user and group after opening ports, but
+  #             # _before_ opening files.
+  #         [scratch]
+  #             exportname = scratch
+  #             timeout = 30
+  #             temporary = true
+  #             filesize = ${toString (16 * 1024 * 1024 * 1024)}
+  #             sparse_cow = true
+  #       ''; in
+  #     {
+  #       ExecStart = ''
+  #         ${pkgs.nbd}/bin/nbd-server -d -C ${nbdConfig}
+  #       '';
+  #     };
+  # };
 
   services.samba = {
     enable = true;

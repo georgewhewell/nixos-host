@@ -7,15 +7,13 @@
     lm_sensors
   ];
 
-  networking.firewall.allowedTCPPorts = [ 9090 9100 ];
+  boot.kernelModules = [ "ipmi_si" "ipmi_devintf" "ipmi_msghandler" ];
+  # networking.firewall.allowedTCPPorts = [ 9090 ];
 
   systemd.services.prometheus-ipmi-exporter = {
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     serviceConfig = {
-      ExecStartPre = ''
-        ${pkgs.kmod}/bin/modprobe ipmi_devintf ipmi_si
-      '';
       ExecStart = ''
         ${pkgs.prometheus-ipmi-exporter}/bin/ipmi_exporter \
           -config.file ${pkgs.prometheus-ipmi-exporter.src}/ipmi.yml \
@@ -24,47 +22,10 @@
     };
   };
 
-  /* services.loki = let
-    configFile = pkgs.writeText "loki-config.yaml" ''
-      ingester:
-        lifecycler:
-          interface_names: ["br0"]
-
-      schema_config:
-        configs:
-          - from: 2020-10-24
-            store: boltdb-shipper
-            object_store: filesystem
-            schema: v11
-            index:
-              prefix: index_
-              period: 24h
-
-      storage_config:
-        boltdb_shipper:
-          active_index_directory: /tmp/loki/boltdb-shipper-active
-          cache_location: /tmp/loki/boltdb-shipper-cache
-          cache_ttl: 24h         # Can be increased for faster performance over longer query periods, uses more disk space
-          shared_store: filesystem
-        filesystem:
-          directory: /tmp/loki/chunks
-    '';
-  in {
-    enable = true;
-    inherit configFile;
-  }; */
-
   services.prometheus = {
     enable = true;
     listenAddress = "0.0.0.0";
     exporters = {
-      unifi = {
-        enable = true;
-        unifiAddress = "https://unifi.lan:8443";
-        unifiInsecure = true;
-        unifiUsername = "readonly";
-        unifiPassword = "&)l_Q4s?f}ai5}k=Q(z=ph;C3";
-      };
       snmp = {
         enable = true;
         configuration = null;
@@ -74,61 +35,78 @@
         enable = true;
         extraFlags = [ "--auto-discover-databases" ];
       };
+      dnsmasq = {
+        enable = true;
+      };
+      smartctl = {
+        enable = true;
+      };
     };
     scrapeConfigs = [
       {
         job_name = "node";
-        consul_sd_configs = [{
-          server = "localhost:8500";
-          datacenter = "dc1";
-          token = null;
-          username = null;
-          password = null;
-          scheme = "http";
-          services = [ "node_exporter" ];
+        static_configs = [{
+          targets = [
+            "nixhost.lan:9100"
+            "fuckup.lan:9100"
+            "ax101.lan:9100"
+          ];
         }];
-        relabel_configs = [
-          {
-            source_labels = [ "__meta_consul_node" ];
-            regex = "(.*)";
-            target_label = "host";
-            replacement = "$1:9100";
-          }
-        ];
       }
       {
         job_name = "nginx";
         static_configs = [{
-          targets = [ "127.0.0.1:9113" ];
-          labels = { };
+          targets = [ "127.0.0.1:9113" "ax101.lan:9113" ];
         }];
       }
       {
         job_name = "unifi";
         static_configs = [{
           targets = [ "127.0.0.1:9130" ];
-          labels = { };
         }];
       }
       {
         job_name = "prometheus";
         static_configs = [{
           targets = [ "127.0.0.1:9090" ];
-          labels = { };
         }];
       }
       {
         job_name = "postgres";
         static_configs = [{
-          targets = [ "127.0.0.1:9187" ];
-          labels = { };
+          targets = [ "127.0.0.1:9187" "ax101.lan:9187" ];
         }];
       }
       {
         job_name = "ipmi";
         static_configs = [{
           targets = [ "127.0.0.1:9290" ];
-          labels = { };
+        }];
+      }
+      {
+        job_name = "dnsmasq";
+        static_configs = [{
+          targets = [ "router.lan:9153" ];
+        }];
+      }
+
+      {
+        job_name = "geth_node";
+        metrics_path = "/debug/metrics/prometheus";
+        static_configs = [{
+          targets = [ "ax101.lan:6060" "ax101.lan:6061" ];
+        }];
+      }
+      {
+        job_name = "nft_bot";
+        static_configs = [{
+          targets = [ "ax101.lan:9099" ];
+        }];
+      }
+      {
+        job_name = "arb_bot";
+        static_configs = [{
+          targets = [ "ax101.lan:9199" ];
         }];
       }
       {

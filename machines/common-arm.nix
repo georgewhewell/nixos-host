@@ -6,13 +6,19 @@
     ../profiles/common.nix
     ../profiles/home.nix
     ../services/buildfarm-slave.nix
-    <nixpkgs/nixos/modules/profiles/minimal.nix>
   ];
+
+  fileSystems = {
+    "/" = {
+      device = "/dev/disk/by-label/NIXOS_SD";
+      fsType = "ext4";
+    };
+  };
 
   boot = {
     cleanTmpDir = true;
     kernelParams = [ "boot.shell_on_fail" "panic=20" ];
-#    supportedFilesystems = lib.mkForce [ "nfs" ];
+    #    supportedFilesystems = lib.mkForce [ "nfs" ];
     initrd.supportedFilesystems = lib.mkForce [ "ext4" ];
     initrd.includeDefaultModules = false;
 

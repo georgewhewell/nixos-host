@@ -6,25 +6,13 @@
     enable = true;
     listeners = [{
       address = "0.0.0.0";
-    users = {
-      "rw" = {
-        acl = [ "readwrite #" ];
-        password = pkgs.secrets.mqtt-password;
+      users = {
+        "rw" = {
+          acl = [ "readwrite #" ];
+          password = "i503Myc3b6wOYKM8fDwypUstI";
+        };
       };
-    };
     }];
   };
-
-  services.home-assistant.config = {
-    mqtt = {
-      broker = "127.0.0.1";
-      username = "rw";
-      password = pkgs.secrets.mqtt-password;
-      discovery = true;
-    };
-  };
-
-  networking.firewall.allowedTCPPorts = [ 1883 8081 ];
-  networking.firewall.allowedUDPPorts = [ 1883 ];
 
 }

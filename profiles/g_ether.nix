@@ -47,13 +47,13 @@ in
     42074
   ];
   /*# Create an empty bridge
-networking.bridges.${bridgeName} = {
-  interfaces = [];
-};
+    networking.bridges.${bridgeName} = {
+    interfaces = [];
+    };
 
-networking.interfaces.${bridgeName} = {
-  ipAddress = "10.0.10.1/24";
-};*/
+    networking.interfaces.${bridgeName} = {
+    ipAddress = "10.0.10.1/24";
+    };*/
 
   # Auto-chmod pre-boot devices and trigger bridge job for new interfaces
   services.udev.extraRules = ''
@@ -84,7 +84,7 @@ networking.interfaces.${bridgeName} = {
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "${pkgs.bridge-utils}/bin/brctl setfd ${bridgeName} 0";
-      ExecStart = "${pkgs.stdenv.shell} -c '${pkgs.bridge-utils}/bin/brctl addif ${bridgeName} %I && ${pkgs.iproute}/bin/ip addr add 0.0.0.0 dev %I'";
+      ExecStart = "${pkgs.stdenv.shell} -c '${pkgs.bridge-utils}/bin/brctl addif ${bridgeName} %I && ${pkgs.iproute2}/bin/ip addr add 0.0.0.0 dev %I'";
       ExecStartPost = "${pkgs.stdenv.shell} -c '${pkgs.inetutils}/bin/ifconfig %I up'";
     };
   };

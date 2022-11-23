@@ -3,17 +3,30 @@
 {
 
   imports = [
+    ./btop.nix
     ./hostid.nix
-    ./vim.nix
+    ./vim/default.nix
     ./git.nix
+    ./starship.nix
     ./zsh.nix
   ];
 
+  home.stateVersion = "22.05";
   nixpkgs.config.allowUnfree = true;
   xdg.enable = true;
 
   services.lorri.enable = true;
-  programs.direnv.enable = true;
+
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  programs = {
+    bat.enable = true;
+    fzf.enable = true;
+    gpg.enable = true;
+  };
 
   home.packages = with pkgs; [
     bat
@@ -23,6 +36,7 @@
     pwgen
     docker-compose
     tmux
+    btop
   ];
 
   manual.manpages.enable = false;
@@ -45,14 +59,27 @@
   programs.htop = {
     enable = true;
     settings = {
-      cpu_count_from_zero = true;
-      left_meters = [ "AllCPUs" "Memory" "Swap" ];
-      right_meters = [ "Clock" "Uptime" "Tasks" "LoadAverage" "Battery" ];
-    };
+      delay = 10;
+      show_program_path = false;
+      show_cpu_frequency = true;
+      show_cpu_temperature = true;
+      hide_kernel_threads = true;
+    } // (with config.lib.htop; leftMeters [
+      (bar "AllCPUs2")
+      (bar "Memory")
+      (bar "Swap")
+    ]) // (with config.lib.htop; rightMeters [
+      (text "Hostname")
+      (text "Tasks")
+      (text "LoadAverage")
+      (text "Uptime")
+      (text "Systemd")
+    ]);
   };
 
   programs.tmux = {
     enable = true;
+    # setw -g mouse on
   };
 
   programs.password-store = {

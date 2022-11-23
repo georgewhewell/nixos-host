@@ -5,66 +5,72 @@
   imports = [
     ./alacritty.nix
     ./sway.nix
+    ./vscode.nix
   ];
 
-  programs.firefox = {
-    enable = true;
-    /* package = pkgs.firefox-wayland; */
-    #package = pkgs.firefox-bin-unwrapped;
+  xdg.mimeApps.defaultApplications = {
+    "application/x-extension-htm" = "firefox.desktop";
+    "application/x-extension-html" = "firefox.desktop";
+    "application/x-extension-shtml" = "firefox.desktop";
+    "application/x-extension-xht" = "firefox.desktop";
+    "application/x-extension-xhtml" = "firefox.desktop";
+    "application/xhtml+xml" = "firefox.desktop";
+    "text/html" = "firefox.desktop";
+    "x-scheme-handler/chrome" = "firefox.desktop";
+    "x-scheme-handler/http" = "firefox.desktop";
+    "x-scheme-handler/https" = "firefox.desktop";
   };
 
-  programs.vscode = {
-    package = pkgs.vscode;
+  services.spotifyd = {
     enable = true;
-    extensions = with pkgs.vscode-extensions; [
-      bbenoist.nix
-
-      # vscodevim.vim
-      ms-vscode-remote.remote-ssh
-      matklad.rust-analyzer
-      ms-vsliveshare.vsliveshare
-      golang.go
-      ms-python.python
-      ms-python.vscode-pylance
-      hashicorp.terraform
-      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
-        mktplcRef = {
-          publisher = "JuanBlanco";
-          name = "solidity";
-          version = "0.0.120";
-          sha256 = "1ryxr80sk15dbwsh1hxyq9a7im6f8ma2g2ql0vzdmcwrkrhj65if";
-        };
-      })
-    ];
+    settings.global = {
+      username = "georgerw@gmail.com";
+      password = "STa3dKu1sucxGKhVbbZCk9IZ2";
+      device_name = "fuckup";
+      use_mpris = true;
+      backend = "pulseaudio";
+      device_type = "computer";
+    };
   };
 
   home.packages = with pkgs; [
     wl-clipboard
     wdisplays
 
-
-
     spotify
     vlc
 
     signal-desktop
-    whatsapp-for-linux
-    torbrowser
+    tdesktop
+    element-desktop
+    tor-browser-bundle-bin
     monero-gui
     discord
     zoom-us
-    calibre
+    # calibre
     slack
     xournal
+    xdg-utils
+
+    (wrapFirefox firefox-unwrapped {
+      extraPolicies = {
+        NewTabPage = false;
+        CaptivePortal = false;
+        DisablePocket = true;
+        DisableFirefoxStudies = true;
+        OfferToSaveLogins = false;
+        DisableFormHistory = true;
+        SearchSuggestEnabled = false;
+        Preferences = {
+          "browser.contentblocking.category" = { Status = "locked"; Value = "strict"; };
+          "browser.zoom.siteSpecific" = { Status = "locked"; Value = false; };
+          "extensions.formautofill.available" = { Status = "locked"; Value = "off"; };
+          "media.setsinkid.enabled" = { Status = "locked"; Value = true; };
+          "network.IDN_show_punycode" = { Status = "locked"; Value = true; };
+          "ui.key.menuAccessKeyFocuses" = { Status = "locked"; Value = false; };
+        };
+      };
+    })
   ];
 
-  services.redshift = {
-    enable = true;
-    latitude = "51.5";
-    longitude = "0";
-    /* brightness = {
-      day = "1";
-      night = "0.6";
-    }; */
-  };
 }

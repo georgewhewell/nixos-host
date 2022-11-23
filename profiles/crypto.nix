@@ -1,23 +1,25 @@
 { config, lib, pkgs, ... }:
 
 {
+  /*    
 
-  fileSystems."/var/lib/besu" =
+    fileSystems."/var/lib/besu" =
     {
-      device = "fpool/root/besu";
-      fsType = "zfs";
+    device = "fpool/root/besu";
+    fsType = "zfs";
     };
 
-  fileSystems."/var/lib/geth" =
+    fileSystems."/var/lib/geth" =
     {
-      device = "fpool/root/geth";
-      fsType = "zfs";
+    device = "fpool/root/geth";
+    fsType = "zfs";
     };
 
+  */
   /* services.geth-local = {
     enable = true;
     cacheSize = 1024 * 16;
-  }; */
+    }; */
 
   # services.ipfs = {
   #   enable = true;
@@ -37,48 +39,49 @@
   #   postgresUrl = "postgres://graph-node:graph-node@localhost/graph-node";
   # };
 
-  users.users.uniswap = {
+  /*
+    users.users.uniswap = {
     group = "uniswap";
     description = "uniswap";
     home = "/var/lib/uniswap/";
     createHome = true;
     isNormalUser = true;
-  };
+    };
 
-  users.groups.uniswap = {
+    users.groups.uniswap = {
     name = "uniswap";
-  };
+    };
 
-  systemd.services.uniswap = let
+    systemd.services.uniswap = let
     cmdArgs = [ "uniswap" "watch" ];
-  in {
+    in {
     description = "uniswap Service";
     wantedBy    = [ "multi-user.target" ];
     after       = [ "network-online.target" ];
 
     environment = {
-      RUST_LOG = "info";
-      RUST_BACKTRACE = "1";
-      ETH_URL = "ws://192.168.25.2:8546";
-      BSC_ETH_URL = "ws://192.168.25.2:8576";
-      DATABASE_URL = "postgres://swaps:swaps@127.0.0.1/swaps3";
+    RUST_LOG = "info";
+    RUST_BACKTRACE = "1";
+    ETH_URL = "ws://192.168.25.2:8546";
+    BSC_ETH_URL = "ws://192.168.25.2:8576";
+    DATABASE_URL = "postgres://swaps:swaps@127.0.0.1/swaps3";
     };
 
     script = ''
-      ${pkgs.uniswap}/bin/uniswap-data uniswap load-tokens
-      ${pkgs.uniswap}/bin/uniswap-data uniswap load-pairs
-      ${pkgs.uniswap}/bin/uniswap-data uniswap ${lib.escapeShellArgs cmdArgs}
+    ${pkgs.uniswap}/bin/uniswap-data uniswap load-tokens
+    ${pkgs.uniswap}/bin/uniswap-data uniswap load-pairs
+    ${pkgs.uniswap}/bin/uniswap-data uniswap ${lib.escapeShellArgs cmdArgs}
     '';
 
     startLimitIntervalSec = 5;
     startLimitBurst = 1;
 
     serviceConfig = {
-      User = "uniswap";
-      Group = "uniswap";
-      Restart = "on-failure";
-      RestartSec = 1;
+    User = "uniswap";
+    Group = "uniswap";
+    Restart = "on-failure";
+    RestartSec = 1;
     };
-  };
-
+    };
+  */
 }

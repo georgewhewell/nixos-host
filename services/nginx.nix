@@ -34,8 +34,11 @@
     forceSSL = true;
     enableACME = true;
     locations."/" = {
-        proxyPass = "http://fuckup.lan:8096";
-        proxyWebsockets = true;
+      extraConfig = ''
+        resolver 192.168.23.1;
+      '';
+      proxyPass = "http://192.168.23.98:8096";
+      proxyWebsockets = true;
     };
   };
 

@@ -2,11 +2,14 @@
 
 {
 
+  sconfig.pipewire = true;
+
   # for yubikey
   services.pcscd.enable = true;
 
   # enable sway
-  security.pam.services.swaylock = {};
+  security.pam.services.swaylock = { };
+  services.gnome.gnome-keyring.enable = true;
 
   environment.loginShellInit = ''
     [[ "$(tty)" == /dev/tty1 ]] && startsway
@@ -17,11 +20,16 @@
   };
 
   services.flatpak.enable = true;
-  xdg.portal.enable = true;
+  xdg.portal = {
+    enable = true;
+    # extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
+    # gtkUsePortal = true;
+    wlr.enable = true;
+  };
 
   environment.systemPackages = with pkgs; [
     # save settings
-    gnome3.dconf
+    dconf
 
     # ios tethering
     ifuse
@@ -81,10 +89,25 @@
     };
   };
 
-  environment.sessionVariables = {
-    _JAVA_AWT_WM_NONREPARENTING = "1";
-    MOZ_ENABLE_WAYLAND = "1";
-  };
+  # gtk = {
+  #   enable = true;
+  #   font.name = "sans";
+  #   gtk2.extraConfig = "gtk-application-prefer-dark-theme = true";
+  #   gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
+  #   theme = {
+  #     package = pkgs.ayu-theme-gtk;
+  #     name = "Ayu-Dark";
+  #   };
+  # };
+
+  # home.qt = {
+  #   enable = true;
+  #   platformTheme = "gnome";
+  #   style = {
+  #     name = "adwaita";
+  #     package = pkgs.adwaita-qt;
+  #   };
+  # };
 
   services.upower = {
     enable = true;
@@ -101,17 +124,6 @@
   };
 
   services.blueman.enable = true;
-  hardware.pulseaudio = {
-    enable = true;
-    support32Bit = true;
-    extraModules = [ pkgs.pulseaudio-modules-bt ];
-    package = pkgs.pulseaudioFull;
-    extraConfig = ''
-      # make bluetooth work?
-      # load-module module-bluetooth-policy auto_switch=2
-      unload-module module-switch-on-port-available
-    '';
-  };
 
   hardware.sane = {
     enable = true;
@@ -130,28 +142,52 @@
   services.openssh.forwardX11 = true;
 
   fonts = {
+    enableDefaultFonts = false;
+    enableGhostscriptFonts = false;
+    fontDir.enable = false;
     fontconfig = {
-      useEmbeddedBitmaps = true;
-      # defaultFonts = {
-      #   monospace = [ "Source Code Pro" ];
-      #   sansSerif = [ "Source Sans Pro" ];
-      #   serif = [ "Source Serif Pro" ];
-      # };
+      enable = true;
+      defaultFonts = {
+        sansSerif = [ "IBM Plex Sans" ];
+        serif = [ "IBM Plex Sans" ];
+        monospace = [ "Hack Nerd Font" ];
+        emoji = [ "Noto Color Emoji" ];
+      };
+      localConf = ''
+        <?xml version="1.0"?>
+        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+        <fontconfig>
+            <alias binding="weak">
+                <family>monospace</family>
+                <prefer>
+                    <family>emoji</family>
+                </prefer>
+            </alias>
+            <alias binding="weak">
+                <family>sans-serif</family>
+                <prefer>
+                    <family>emoji</family>
+                </prefer>
+            </alias>
+            <alias binding="weak">
+                <family>serif</family>
+                <prefer>
+                    <family>emoji</family>
+                </prefer>
+            </alias>
+        </fontconfig>
+      '';
     };
     fonts = with pkgs; [
-      corefonts
+      (nerdfonts.override { fonts = [ "Hack" ]; })
+      ibm-plex
       dejavu_fonts
-      ubuntu_font_family
-      hack-font
-      
-      roboto
-      powerline-fonts
-      powerline-symbols
-      font-awesome-ttf
-      source-code-pro
-      source-sans-pro
-      source-serif-pro
-      font-awesome_5
+      unifont
+      noto-fonts
+      noto-fonts-cjk-sans
+      noto-fonts-cjk-serif
+      noto-fonts-emoji
+      noto-fonts-extra
     ];
   };
 

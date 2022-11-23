@@ -6,6 +6,12 @@
     ./waybar.nix
   ];
 
+  home.sessionVariables = {
+    MOZ_DBUS_REMOTE = 1;
+    MOZ_USE_XINPUT2 = 1;
+    _JAVA_OPTIONS = "-Dawt.useSystemAAFontSettings=on -Dswing.aatext=true -Dsun.java2d.xrender=true";
+  };
+
   home.packages = with pkgs; [
     alacritty
     slurp
@@ -13,10 +19,27 @@
     waypipe
   ];
 
-  programs.mako = {
-    enable = true;
-    defaultTimeout = 15000;
-  };
+  programs.mako =
+    let
+      homeIcons = "${config.home.homeDirectory}/.nix-profile/share/icons/hicolor";
+      homePixmaps = "${config.home.homeDirectory}/.nix-profile/share/pixmaps";
+      systemIcons = "/run/current-system/sw/share/icons/hicolor";
+      systemPixmaps = "/run/current-system/sw/share/pixmaps";
+    in
+    {
+      enable = true;
+      backgroundColor = "#0A0E14";
+      borderColor = "#53BDFA";
+      defaultTimeout = 30 * 1000; # millis
+      font = "monospace 10";
+      iconPath = "${homeIcons}:${systemIcons}:${homePixmaps}:${systemPixmaps}";
+      icons = true;
+      maxIconSize = 96;
+      maxVisible = 3;
+      sort = "-time";
+      textColor = "#B3B1AD";
+      width = 500;
+    };
 
   wayland.windowManager.sway = {
     enable = true;
@@ -31,7 +54,7 @@
       terminal = "${pkgs.alacritty}/bin/alacritty";
       keybindings =
         let
-          pactl = "${pkgs.pulseaudioLight}/bin/pactl";
+          pactl = "${pkgs.pulseaudio}/bin/pactl";
           playerctl = "${pkgs.playerctl}/bin/playerctl";
         in
         lib.mkOptionDefault {
@@ -74,45 +97,46 @@
       };
       output = {
         "*" = { scale = "1"; };
-        "DP-1" = { mode = "5120x1440@60Hz"; };
-        "DP-3" = { mode = "5120x1440@239.761002Hz"; };
+        # "DP-1" = { mode = "5120x1440@60Hz"; };
+        "DP-3" = { mode = "5120x1440@239.761Hz"; };
         #"DP-*" = { mode = "5120x1440@239.761002Hz"; };
         "Virtual-1" = { resolution = "1920x1200"; };
         "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
       };
       startup = [
-        { command = "mako"; always = true; }
-        { command = ''
-            ${pkgs.swayidle}/bin/swayidle \
-              timeout 120 "${pkgs.swaylock-effects}/bin/swaylock \
-                --screenshots \
-                --clock \
-                --indicator \
-                --indicator-radius 100 \
-                --indicator-thickness 7 \
-                --effect-blur 7x5 \
-                --effect-vignette 0.5:0.5 \
-                --ring-color bb00cc \
-                --key-hl-color 880033 \
-                --line-color 00000000 \
-                --inside-color 00000088 \
-                --separator-color 00000000 \
-                --grace 30 \
-                --fade-in 0.2" \
-              timeout 120 'swaymsg \
-                "output * dpms off"' \
-              resume 'swaymsg "output * dpms on"'
-          '';
-          always = false;
-        }
-
-        # static workspaces
-        {
+        { command = "${pkgs.mako}/bin/mako"; always = true; }
+        /*
+          {
           command = ''
-            swaymsg "workspace 9; exec alacritty --working-directory /etc/nixos -e sh -c 'while true; do vim .; done'; workspace 1"
+          ${pkgs.swayidle}/bin/swayidle \
+          timeout 600 "${pkgs.swaylock-effects}/bin/swaylock \
+          --screenshots \
+          --clock \
+          --indicator \
+          --indicator-radius 100 \
+          --indicator-thickness 7 \
+          --effect-blur 7x5 \
+          --effect-vignette 0.5:0.5 \
+          --ring-color bb00cc \
+          --key-hl-color 880033 \
+          --line-color 00000000 \
+          --inside-color 00000088 \
+          --separator-color 00000000 \
+          --grace 30 \
+          --fade-in 0.2" \
+          timeout 3600 'swaymsg "output * dpms off"' \
+          resume 'swaymsg "output * dpms on"'
           '';
           always = false;
-        }
+          }
+        */
+        # static workspaces
+        /*{
+          command = ''
+          swaymsg "workspace 9; exec alacritty --working-directory /etc/nixos -e sh -c 'while true; do vim .; done'; workspace 1"
+          '';
+          always = false;
+          }*/
         {
           command = ''
             swaymsg "workspace 8; exec spotify; workspace 1"
@@ -120,8 +144,8 @@
           always = false;
         }
       ]
-      ++ lib.optionals (config.hostId == "yoga") []
-      ++ lib.optionals (config.hostId == "workvm") [ {
+      ++ lib.optionals (config.hostId == "yoga") [ ]
+      ++ lib.optionals (config.hostId == "workvm") [{
         command = ''
           ${pkgs.wayvnc}/bin/wayvnc 0.0.0.0
         '';

@@ -66,7 +66,7 @@ in
             { } ''
             substitute ${script} $out \
               --replace "/bin/bash" "${pkgs.bash}/bin/bash" \
-              --replace "TC=/sbin/tc" "TC=${pkgs.iproute}/bin/tc" \
+              --replace "TC=/sbin/tc" "TC=${pkgs.iproute2}/bin/tc" \
               --replace "WAN_INTERFACE=eth1" "WAN_INTERFACE=${cfg.wanInterface}" \
               --replace "LAN_INTERFACE=eth0" "LAN_INTERFACE=${cfg.lanInterface}" \
               --replace "LAN_NETWORK=192.168.1.0/24" "LAN_NETWORK=${cfg.lanNetwork}" \
