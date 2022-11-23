@@ -2,7 +2,7 @@
 
 {
   boot.kernelParams = [
-#    "maxcpus=1"  # this doesnt lower power, although it does disable cpu :S
+    #    "maxcpus=1"  # this doesnt lower power, although it does disable cpu :S
   ];
 
   hardware.deviceTree.overlays = [

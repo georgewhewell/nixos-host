@@ -22,8 +22,8 @@
 
       services.unifi = {
         enable = true;
-        openPorts = true;
-        unifiPackage = pkgs.unifiStable;
+        openFirewall = true;
+        unifiPackage = pkgs.unifi;
         jrePackage = pkgs.openjdk8_headless;
       };
     };

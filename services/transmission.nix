@@ -5,7 +5,7 @@ in
 {
   fileSystems.${incompleteDir} =
     {
-      device = "bpool/root/downloads";
+      device = "fpool/root/incomplete";
       fsType = "zfs";
       options = [ "nofail" ];
     };
@@ -15,6 +15,7 @@ in
     openFirewall = true;
     settings = {
       download-dir = "/mnt/Media/downloads";
+      download-queue-size = 4;
       incomplete-dir = incompleteDir;
       incomplete-dir-enabled = true;
       rpc-whitelist-enabled = false;
@@ -25,10 +26,14 @@ in
       scrape-paused-torrents-enabled = false;
       seed-queue-enabled = true;
       seed-queue-size = 1000;
-      umask = 0;
+      # speed-limit-up = 500;
+      speed-limit-up-enabled = false;
+      # speed-limit-down = 10000;
+      # speed-limit-down-enabled = true;
+      umask = 2;
     };
   };
 
-  networking.firewall.allowedTCPPorts = [ 9091 51413 ];
+  networking.firewall.allowedTCPPorts = [ 51413 ];
   networking.firewall.allowedUDPPorts = [ 51413 ];
 }

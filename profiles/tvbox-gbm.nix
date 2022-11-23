@@ -20,14 +20,14 @@
   };
   /*
     services.xserver = {
-      enable = true;
-      videoDriver = "modesetting";
-      desktopManager.kodi.enable = true;
-      displayManager.sddm = {
-        enable = true;
-        autoLogin.enable = true;
-        autoLogin.user = "grw";
-      };
+    enable = true;
+    videoDriver = "modesetting";
+    desktopManager.kodi.enable = true;
+    displayManager.sddm = {
+    enable = true;
+    autoLogin.enable = true;
+    autoLogin.user = "grw";
+    };
     }; */
 
   systemd.services.kodi-gbm = {
@@ -54,7 +54,7 @@
   environment.systemPackages = with pkgs; [
     libva-utils
     /* v4l-utils
-    mpv */
+      mpv */
   ];
 
 }

@@ -4,22 +4,14 @@
   boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
 
   environment.systemPackages = with pkgs; [
-    idea.pycharm-community
-    qcachegrind
-
     fswatch
     screen
     wget
     rsync
-    gitAndTools.gitFull
-    mosquitto
-    rustup
-    rls
 
     xz
-    /* unar */
     unzip
-    unrar
+    #unrar
     file
 
     iperf
@@ -41,37 +33,38 @@
     jq
 
     niv
-    morph
     nixpkgs-fmt
     nix-prefetch-git
     nixos-option
     screen
   ];
 
-  users.extraUsers.grw = {
-    shell = pkgs.zsh;
-  };
+  environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
+  nix.nixPath = [
+    "nixpkgs=/etc/nixpkgs"
+  ];
 
   services.postgresql = {
-    package = pkgs.postgresql_13;
+    package = pkgs.postgresql_14;
     enable = true;
     enableTCPIP = true;
-    authentication = ''
-      host all all 0.0.0.0/0 trust
-    '';
-    extraPlugins = with pkgs; [
+    extraPlugins = with pkgs.postgresqlPackages; [
       timescaledb
     ];
   };
 
   services.redis = {
-    enable = true;
     servers.default = {
       enable = true;
     };
   };
 
-  virtualisation.docker.enable = true;
+  virtualisation.docker = {
+    enable = true;
+    autoPrune = {
+      enable = true;
+      flags = [ "--all" ];
+    };
+  };
 
-  programs.wireshark.enable = true;
 }

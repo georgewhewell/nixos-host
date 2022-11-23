@@ -22,14 +22,14 @@ in
   config = mkIf cfg.enable {
 
     systemd.services.radeon-profile-daemon = {
-        description = "radeon-profile-daemon";
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          ExecStart = "${pkgs.radeon-profile-daemon}/bin/radeon-profile-daemon";
-          PrivateTmp = "yes";
-          PrivateDevices = "yes";
-        };
+      description = "radeon-profile-daemon";
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.radeon-profile-daemon}/bin/radeon-profile-daemon";
+        PrivateTmp = "yes";
+        PrivateDevices = "yes";
       };
+    };
 
   };
 

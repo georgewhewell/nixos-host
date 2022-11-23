@@ -30,7 +30,7 @@
   };
 
   environment.systemPackages = [ pkgs.sysinfo ];
-  boot.initrd.availableKernelModules = ["fb_ssd1306"];
+  boot.initrd.availableKernelModules = [ "fb_ssd1306" ];
   systemd.services."getty@tty1".enable = false;
 
   console = {
@@ -44,7 +44,15 @@
   ];
 
   boot.blacklistedKernelModules = [
-    "sun4i_drm" "sun8i_tcon_top" "musb_hdrc" "videodev" "brcmutil" "sun8i_drm_hdmi" "brcmfmac" "bluetooth" "sun8i_codec"
+    "sun4i_drm"
+    "sun8i_tcon_top"
+    "musb_hdrc"
+    "videodev"
+    "brcmutil"
+    "sun8i_drm_hdmi"
+    "brcmfmac"
+    "bluetooth"
+    "sun8i_codec"
   ];
 
 }

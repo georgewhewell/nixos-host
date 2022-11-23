@@ -74,7 +74,7 @@ index fb1dc11e7cc5..8748df0fe1e1 100644
 @@ -192,6 +192,106 @@ static int __init pci_apply_final_quirks(void)
  }
  fs_initcall_sync(pci_apply_final_quirks);
-
+ 
 +static bool acs_on_downstream;
 +static bool acs_on_multifunction;
 +
@@ -186,6 +186,7 @@ index fb1dc11e7cc5..8748df0fe1e1 100644
 +	{ PCI_ANY_ID, PCI_ANY_ID, pcie_acs_overrides },
  	{ 0 }
  };
-
---
+ 
+-- 
 2.30.0
+

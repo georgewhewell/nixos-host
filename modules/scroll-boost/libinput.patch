@@ -1,0 +1,12 @@
+diff --git a/src/xf86libinput.c b/src/xf86libinput.c
+index 620af6d..d1bf974 100644
+--- a/src/xf86libinput.c
++++ b/src/xf86libinput.c
+@@ -1618,6 +1618,7 @@ calculate_axis_value(struct xf86libinput *driver_data,
+ 	source = libinput_event_pointer_get_axis_source(event);
+ 	if (source == LIBINPUT_POINTER_AXIS_SOURCE_WHEEL) {
+ 		value = get_wheel_scroll_value(driver_data, event, axis);
++		value *= 2;
+ 	} else {
+ 		value = libinput_event_pointer_get_axis_value(event, axis);
+ 	}
