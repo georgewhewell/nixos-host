@@ -1,11 +1,14 @@
 {
   inputs = {
-    # nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable-small";
-    nixpkgs.url = "path:/home/grw/src/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable-small";
+    # nixpkgs.url = "path:/home/grw/src/nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    
+    darwin.url = "github:lnl7/nix-darwin/master";
+    darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
@@ -20,7 +23,7 @@
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, nixos-hardware, home-manager, colmena, rust-overlay, foundry, vscode-server, ... }:
+  outputs = { self, nixpkgs, darwin, nixos-hardware, home-manager, colmena, rust-overlay, foundry, vscode-server, ... }:
     let
       mypkgs = import ./packages;
       deploy = import lib/deploy.nix;
@@ -125,6 +128,11 @@
           imports = value._module.args.modules;
         })
         (self.nixosConfigurations);
+
+      darwinConfigurations."air" = darwin.lib.darwinSystem {
+        system = "x86_64-darwin";
+        modules = [ ./machines/darwin-aarch64/darwin-configuration.nix home-manager.darwinModules.home-manager ];
+      };
 
       nixosModules =
         {

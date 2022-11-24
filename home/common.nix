@@ -13,9 +13,6 @@
 
   home.stateVersion = "22.05";
   nixpkgs.config.allowUnfree = true;
-  xdg.enable = true;
-
-  services.lorri.enable = true;
 
   programs.direnv = {
     enable = true;
@@ -25,7 +22,6 @@
   programs = {
     bat.enable = true;
     fzf.enable = true;
-    gpg.enable = true;
   };
 
   home.packages = with pkgs; [
