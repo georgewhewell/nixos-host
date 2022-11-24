@@ -24,6 +24,27 @@
         "type": "github"
       }
     },
+    "darwin": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1668784520,
+        "narHash": "sha256-gGgVAMwYPPmrfnvnoRi6OkEB5KRsNTb9uYzEceLdO/g=",
+        "owner": "lnl7",
+        "repo": "nix-darwin",
+        "rev": "6349b99bc2b96ded34d068a88c7c5ced406b7f7f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "lnl7",
+        "ref": "master",
+        "repo": "nix-darwin",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -93,11 +114,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1669133410,
-        "narHash": "sha256-bBkiX2wcQQyCHKJsltbFWCvvFIMaoTtM49uN/kP0QMU=",
+        "lastModified": 1669281207,
+        "narHash": "sha256-cj33iK+NkooviHiPbY+262JZI6RExQZ0driPsqfaxQ0=",
         "owner": "shazow",
         "repo": "foundry.nix",
-        "rev": "13edb756349177f1c34e1ea6cb6869623761b61f",
+        "rev": "3fd3fabdb091c048b5a66103fa965b353164f514",
         "type": "github"
       },
       "original": {
@@ -170,19 +191,24 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1669154988,
-        "narHash": "sha256-oaxur0hYNyl1Oryrdvbgw+PZFjt1PLUXCSBNK+dMOHQ=",
-        "path": "/home/grw/src/nixpkgs",
-        "type": "path"
+        "lastModified": 1669261230,
+        "narHash": "sha256-AjddxRPd5y5jge77281P3O8+Cnafj842Xg59rwV4x+0=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "8e8b5f3b1e899bf5d250279578c0283705b8cdb4",
+        "type": "github"
       },
       "original": {
-        "path": "/home/grw/src/nixpkgs",
-        "type": "path"
+        "owner": "nixos",
+        "ref": "nixos-unstable-small",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
         "colmena": "colmena",
+        "darwin": "darwin",
         "foundry": "foundry",
         "home-manager": "home-manager",
         "nixos-hardware": "nixos-hardware",
@@ -199,11 +225,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1669084742,
-        "narHash": "sha256-aLYwYVnrmEE1LVqd17v99CuqVmAZQrlgi2DVTAs4wFg=",
+        "lastModified": 1669257187,
+        "narHash": "sha256-NURtNyepbHLrJs2kwsQ9u2SUKhuGU1T9mPkXasG9hpk=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "9652ef34c7439eca9f86cee11e94dbef5c9adb09",
+        "rev": "018df6d3f900fc53d567045bd86208f5c00d8956",
         "type": "github"
       },
       "original": {
