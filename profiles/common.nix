@@ -6,6 +6,11 @@
     ./users.nix
   ];
 
+  environment.systemPackages = with pkgs; [
+    kitty.terminfo
+    alacritty.terminfo
+  ];
+
   hardware.enableAllFirmware = true;
 
   services.fwupd.enable = true;
