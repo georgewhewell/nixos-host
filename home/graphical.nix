@@ -21,18 +21,6 @@
     "x-scheme-handler/https" = "firefox.desktop";
   };
 
-  services.spotifyd = {
-    enable = true;
-    settings.global = {
-      username = "georgerw@gmail.com";
-      password = "STa3dKu1sucxGKhVbbZCk9IZ2";
-      device_name = "fuckup";
-      use_mpris = true;
-      backend = "pulseaudio";
-      device_type = "computer";
-    };
-  };
-
   home.packages = with pkgs; [
     wl-clipboard
     wdisplays
