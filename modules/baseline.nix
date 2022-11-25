@@ -14,12 +14,6 @@
 
   networking.hostId = builtins.substring 0 8 (builtins.hashString "md5" config.networking.hostName);
 
-  # # lower ipv4 DNS priority for networkmanager
-  # networking.networkmanager.extraConfig = ''
-  #   [connection]
-  #   ipv4.dns-priority=101
-  # '';
-
   nix = {
     daemonCPUSchedPolicy = "idle";
     extraOptions = ''
