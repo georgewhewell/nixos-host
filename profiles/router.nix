@@ -18,6 +18,19 @@ in
     wirelesstools
   ];
 
+  services.igmpproxy = {
+    enable = true;
+    config = ''
+      quickleave
+      defaultdown
+
+      phyint ${wanInterface} upstream ratelimit 0 threshold 1
+          altnet 0.0.0.0/0
+      phyint ${lanBridge} downstream ratelimit 0 threshold 1
+          altnet 192.168.23.0/24
+    '';
+  };
+
   networking = {
     enableIPv6 = false;
 

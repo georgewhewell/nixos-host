@@ -15,7 +15,7 @@
 
   services.fwupd.enable = true;
   programs.mosh.enable = true;
-
+  networking.firewall.allowedUDPPorts = [ 5000 ];
   nix.extraOptions = ''
     auto-optimise-store = true
     experimental-features = nix-command flakes
