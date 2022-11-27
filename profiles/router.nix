@@ -138,20 +138,6 @@ in
   # systemd.services."network-addresses-wg0-cloud.service".wants = [ "wg-router.secret-key.service" ];
   # systemd.services."network-addresses-wg0-cloud.service".requires = [ "wg-router.secret-key.service" ];
 
-  # HACK: failing wg stuff (above) will cause network setup to fail, force retries?
-  # systemd.services."network-addresses-${lanBridge}".serviceConfig = {
-  #   Restart = "on-failure";
-  #   RestartSec = 5;
-  # };
-  # systemd.services."${lanBridge}-netdev".serviceConfig = {
-  #   Restart = "on-failure";
-  #   RestartSec = 5;
-  # };
-  # systemd.services.dnsmasq.serviceConfig = {
-  #   Restart = "on-failure";
-  #   RestartSec = 5;
-  # };
-
   deployment.keys =
     {
       "wg-router.secret" = {
