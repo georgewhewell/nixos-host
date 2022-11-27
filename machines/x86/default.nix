@@ -6,9 +6,7 @@ let
     "nixhost"
     "installer"
     "workvm"
-    "router"
     "hetzner"
   ];
 in
-lib.genAttrs machines (name:
-  import (./. + "/${name}/configuration.nix"))
+lib.genAttrs machines (name: import (./. + "/${name}/configuration.nix"))
