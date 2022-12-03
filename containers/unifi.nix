@@ -2,6 +2,13 @@
 
 {
 
+  fileSystems."/var/lib/unifi" =
+    {
+      device = "fpool/root/configs/unifi";
+      fsType = "zfs";
+      options = [ "nofail" ];
+    };
+
   containers.unifi = {
     autoStart = true;
     privateNetwork = true;

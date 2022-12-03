@@ -6,18 +6,23 @@
   */
   sconfig = {
     profile = "server";
-    home-manager.enable = true;
+    home-manager = {
+      enable = true;
+      enableVscodeServer = true;
+    };
   };
-  deployment.targetHost = "nixhost.lan";
+
+  deployment.targetHost = "192.168.23.1";
+
   imports =
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-      # ../../../containers/unifi.nix
+      ../../../containers/unifi.nix
 
       ../../../profiles/bridge-interfaces.nix
       ../../../profiles/common.nix
-      ../../../profiles/development.nix
+      #    ../../../profiles/development.nix
       ../../../profiles/headless.nix
       ../../../profiles/home.nix
       ../../../profiles/logserver.nix
