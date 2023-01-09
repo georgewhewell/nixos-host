@@ -3,8 +3,10 @@
 {
 
   imports = [
+    ./lights.nix
     ./mqtt.nix
     ./vacuum.nix
+    ./homekit.nix
   ];
 
   services.nginx.virtualHosts."home.satanic.link" = {
@@ -36,8 +38,8 @@
           python-miio
           netdisco
           aiounifi
+          aiohomekit
           async-upnp-client
-          # pkgs.python3.pkgs.spotify_token
         ];
       };
     in
@@ -57,6 +59,7 @@
       config = {
         homeassistant = {
           name = "Home";
+          country = "CH";
           # latitude = pkgs.secrets.home-lat;
           # longitude = pkgs.secrets.home-lng;
           elevation = "20";
@@ -74,40 +77,18 @@
           use_x_forwarded_for = true;
           trusted_proxies = [ "127.0.0.1" ];
         };
-        circadian_lighting = { };
-        switch = [{ platform = "circadian_lighting"; lights_ct = [ "light.bedroom_ceiling_light" "light.hallway_ceiling_light" "light.office_ceiling_light" ]; }];
         mobile_app = { };
         frontend = { };
         history = { };
         config = { };
         unifi = { };
         influxdb = { };
-        cover = { };
         esphome = { };
-        zha = { };
+        zha = {
+          zigpy_config.ota.ikea_provider = true;
+        };
         system_health = { };
-        binary_sensor = [{
-          name = "George Presence";
-          platform = "bayesian";
-          prior = 0.5;
-          probability_threshold = 0.9;
-          observations = [
-            {
-              entity_id = "device_tracker.georgesplewatch";
-              prob_given_true = "0.8";
-              prob_given_false = "0.2";
-              platform = "state";
-              to_state = "home";
-            }
-            {
-              entity_id = "device_tracker.iphone_2";
-              prob_given_true = "0.8";
-              prob_given_false = "0.2";
-              platform = "state";
-              to_state = "home";
-            }
-          ];
-        }];
+        withings = { use_webhook = true; };
       };
     };
 

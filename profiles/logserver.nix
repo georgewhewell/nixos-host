@@ -8,7 +8,6 @@
   ];
 
   boot.kernelModules = [ "ipmi_si" "ipmi_devintf" "ipmi_msghandler" ];
-  # networking.firewall.allowedTCPPorts = [ 9090 ];
 
   systemd.services.prometheus-ipmi-exporter = {
     wantedBy = [ "multi-user.target" ];
@@ -16,8 +15,8 @@
     serviceConfig = {
       ExecStart = ''
         ${pkgs.prometheus-ipmi-exporter}/bin/ipmi_exporter \
-          -config.file ${pkgs.prometheus-ipmi-exporter.src}/ipmi.yml \
-          -path ${pkgs.freeipmi}/bin/
+          --config.file ${pkgs.prometheus-ipmi-exporter.src}/ipmi_local.yml \
+          --freeipmi.path ${pkgs.freeipmi}/bin/
       '';
     };
   };
@@ -42,6 +41,7 @@
         enable = true;
       };
     };
+
     scrapeConfigs = [
       {
         job_name = "node";
@@ -86,7 +86,7 @@
       {
         job_name = "dnsmasq";
         static_configs = [{
-          targets = [ "router.lan:9153" ];
+          targets = [ "127.0.0.1:9153" ];
         }];
       }
 
@@ -94,21 +94,28 @@
         job_name = "geth_node";
         metrics_path = "/debug/metrics/prometheus";
         static_configs = [{
-          targets = [ "ax101.lan:6060" "ax101.lan:6061" ];
+          targets = [ "ax101.lan:6060" "127.0.0.1:6060" ];
         }];
       }
+
       {
-        job_name = "nft_bot";
+        job_name = "lighthouse";
         static_configs = [{
-          targets = [ "ax101.lan:9099" ];
+          targets = [ "127.0.0.1:5054" ];
         }];
       }
-      {
-        job_name = "arb_bot";
-        static_configs = [{
-          targets = [ "ax101.lan:9199" ];
-        }];
-      }
+      # {
+      #   job_name = "nft_bot";
+      #   static_configs = [{
+      #     targets = [ "ax101.lan:9099" ];
+      #   }];
+      # }
+      # {
+      #   job_name = "arb_bot";
+      #   static_configs = [{
+      #     targets = [ "ax101.lan:9199" ];
+      #   }];
+      # }
       {
         job_name = "snmp";
         metrics_path = "/snmp";

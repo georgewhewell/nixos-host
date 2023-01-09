@@ -9,6 +9,7 @@
   environment.systemPackages = with pkgs; [
     kitty.terminfo
     alacritty.terminfo
+    ethtool
   ];
 
   hardware.enableAllFirmware = true;

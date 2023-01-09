@@ -1,12 +1,12 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable-small";
-    # nixpkgs.url = "path:/home/grw/src/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    #nixpkgs.url = "path:/home/grw/src/nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    
+
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -91,6 +91,9 @@
       hm =
         home-manager.nixosModules.home-manager;
 
+      vscode-server =
+        vscode-server.nixosModules.home;
+
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
         [ "x86_64-linux" "aarch64-linux" ]);
@@ -131,12 +134,14 @@
 
       darwinConfigurations."air" = darwin.lib.darwinSystem {
         system = "x86_64-darwin";
-        modules = [ ./machines/darwin-aarch64/darwin-configuration.nix home-manager.darwinModules.home-manager ];
+        modules = [
+          ./machines/darwin-aarch64/darwin-configuration.nix
+          home-manager.darwinModules.home-manager
+        ];
       };
 
       nixosModules =
         {
-          # inherit pins;
           inherit hm;
           inherit overlayCompat;
         } //
@@ -148,7 +153,7 @@
           (builtins.readDir ./modules);
 
       nixosModule = {
-        imports = builtins.attrValues self.nixosModules ++ [ vscode-server.nixosModules.home ];
+        imports = builtins.attrValues self.nixosModules;
         nixpkgs.overlays = [
           (composeManyExtensions localOverlays)
           (_: _: { nixpkgs_src = toString nixpkgs; })
@@ -168,14 +173,6 @@
             cat ${path}/pkgs/desktops/gnome/extensions/extensions.json |
             ${jq}/bin/jq -c '.[]|{name,ver:(.shell_version_map|keys)}'
           '';
-
-          jupyterlab =
-            let
-              jupy = python3.withPackages (p: with p; [ jupyterlab ipython ]);
-            in
-            writeShellScriptBin "jupyterlab" ''
-              exec ${jupy}/bin/python -m jupyterlab "$@"
-            '';
         }
       );
     };

@@ -15,28 +15,6 @@
     ];
   };
 
-  services.consul = {
-    enable = false;
-    leaveOnStop = true;
-    interface.bind = lib.mkDefault "eth0";
-    extraConfig = {
-      retry_join = [ "nixhost.lan" ];
-    };
-  };
-
-  # systemd.services.register-consul-node-exporter = {
-  #   wantedBy = [ "multi-user.target" ];
-  #   wants = [ "consul.service" ];
-  #   serviceConfig = {
-  #     RemainAfterExit = "true";
-  #     Restart = "on-failure";
-  #     RestartSec = "5s";
-  #     ExecStart = ''
-  #       ${pkgs.consul}/bin/consul services register -name node_exporter -port 9100
-  #     '';
-  #   };
-  # };
-
   # networking.firewall.allowedTCPPorts = [ 8500 8300 8301 8302 8300 8602 8600 ];
   # networking.firewall.allowedUDPPorts = [ 8500 8301 8302 8300 8602 8600 ];
 

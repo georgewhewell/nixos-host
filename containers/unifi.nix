@@ -31,7 +31,7 @@
         enable = true;
         openFirewall = true;
         unifiPackage = pkgs.unifi;
-        jrePackage = pkgs.openjdk8_headless;
+        jrePackage = pkgs.openjdk11_headless;
       };
     };
   };

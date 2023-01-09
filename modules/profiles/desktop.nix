@@ -13,7 +13,7 @@ with lib;
     environment.variables.MOZ_USE_XINPUT2 = "1";
 
     boot = rec {
-      extraModulePackages = with config.boot.kernelPackages; [ ddcci-driver ];
+      # extraModulePackages = with config.boot.kernelPackages; [ ddcci-driver ];
       kernel.sysctl = { "vm.swappiness" = 1; };
       kernelModules = [ "acpi_call" "i2c_dev" "ddcci-backlight" "tcp_bbr" ];
     };
