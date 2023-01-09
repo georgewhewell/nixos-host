@@ -29,6 +29,7 @@
       ../../../profiles/nas.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/router.nix
+      ../../../profiles/fastlan.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/docker.nix
@@ -36,28 +37,51 @@
       ../../../services/home-assistant/default.nix
       ../../../services/nginx.nix
       ../../../services/transmission.nix
+      ../../../services/virt/host.nix
     ];
 
-  # some incompatibility with sata controller and samsung 870 qvo?
-  systemd.services.disable-sata-ssd-ncq = {
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      Restart = "no";
-      ExecStart = ''
-        ${pkgs.bash}/bin/bash -c "echo 1 > /sys/block/sde/device/queue_depth && echo 1 > /sys/block/sdf/device/queue_depth"
-      '';
+  services.tor = {
+    enable = true;
+    openFirewall = true;
+
+    client = {
+      enable = true;
+      transparentProxy.enable = true;
+    };
+
+    relay = {
+      enable = true;
+      role = "bridge";
+    };
+
+    settings = {
+      ORPort = 9999;
     };
   };
 
-  # boot.kernelPackages = pkgs.linuxPackages_latest_lto_broadwell;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_latest_lto_broadwell;
+  # boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
+
 
   fileSystems."/var/lib/lighthouse" =
     {
       device = "fpool/root/lighthouse-mainnet";
       fsType = "zfs";
       options = [ "nofail" ];
+    };
+
+  deployment.keys =
+    {
+      "LIGHTHOUSE_JWT" = {
+        keyCommand = [ "pass" "erigon-gpg" ];
+        destDir = "/run/keys";
+        uploadAt = "pre-activation";
+      };
     };
 
   services.lighthouse = {
@@ -69,34 +93,88 @@
         port = 8551;
         jwtPath = "/run/keys/LIGHTHOUSE_JWT";
       };
+      metrics = {
+        enable = true;
+        port = 5054;
+      };
     };
     extraArgs = ''--checkpoint-sync-url="https://mainnet.checkpoint.sigp.io"'';
   };
 
-  deployment.keys =
-    {
-      "LIGHTHOUSE_JWT" = {
-        keyCommand = [ "pass" "erigon-gpg" ];
-        destDir = "/run/keys";
-        uploadAt = "pre-activation";
-      };
-    };
 
-  fileSystems."/var/lib/akula-mainnet" =
+
+  fileSystems."/var/lib/private/goethereum" =
     {
-      device = "fpool/root/akula-mainnet";
+      device = "fpool/root/go-ethereum";
       fsType = "zfs";
       options = [ "nofail" ];
     };
 
-  services.akula = {
-    enable = true;
-    openFirewall = true;
-    jwtPath = "/run/keys/LIGHTHOUSE_JWT";
-    dataDir = "/var/lib/akula-mainnet";
+  services.geth =
+    let
+      apis = [ "net" "eth" "txpool" ];
+      mainnet = {
+        metrics = 6060;
+        p2p = 30030;
+        http = 8545;
+        ws = 8546;
+      };
+    in
+    {
+      mainnet = with mainnet; {
+        enable = true;
+        maxpeers = 128;
+        syncmode = "snap";
+        gcmode = "full";
+        metrics = {
+          enable = true;
+          address = "0.0.0.0";
+          port = metrics;
+        };
+        port = p2p;
+        http = {
+          enable = true;
+          port = http;
+          address = "0.0.0.0"; # firewalled
+          inherit apis;
+        };
+        websocket = {
+          enable = true;
+          port = ws;
+          address = "0.0.0.0"; # firewalled
+          inherit apis;
+        };
+        authrpc = {
+          enable = true;
+          address = "localhost";
+          port = 8551;
+        };
+        extraArgs = [
+          "--cache=16000"
+          "--http.vhosts=eth-mainnet.satanic.link,eth-mainnet-ws.satanic.link,localhost,127.0.0.1"
+        ];
+      };
+    };
+
+  services.nginx.virtualHosts = {
+    "eth-mainnet.satanic.link" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        proxyPass = "http://localhost:${toString config.services.geth.mainnet.http.port}";
+      };
+    };
+
+    "eth-mainnet-ws.satanic.link" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        proxyPass = "http://localhost:${toString config.services.geth.mainnet.websocket.port}";
+        proxyWebsockets = true;
+      };
+    };
   };
 
-  # boot.kernelPackages = pkgs.linuxPackages_latest_lto_broadwell;
   boot.kernelModules = [
     "ipmi_devintf"
     "ipmi_si"
@@ -105,6 +183,11 @@
   boot.supportedFilesystems = [ "zfs" ];
   boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
   boot.kernelParams = [
+    # https://bugzilla.kernel.org/show_bug.cgi?id=203475#c61
+    "libata.force=5:3.0Gbps"
+    "libata.force=6:3.0Gbps"
+    "libata.force=5:noncq,noncqtrim"
+    "libata.force=6:noncq,noncqtrim"
 
     # optane zil/l2arc
     "zfs.zfs_immediate_write_sz=${toString (128 * 1024 * 1024)}"
@@ -118,16 +201,10 @@
   networking = {
     hostName = "nixhost";
     hostId = lib.mkForce "deadbeef";
-    firewall.allowedTCPPorts = [ 30303 ];
+    firewall = {
+      checkReversePath = false;
+    };
   };
-
-  # services.consul.extraConfig = { server = true; bootstrap_expect = 1; };
-  # services.consul.interface =
-  #   let interface = "br0"; in
-  #   {
-  #     advertise = interface;
-  #     bind = interface;
-  #   };
 
   fileSystems."/" =
     {
@@ -140,55 +217,6 @@
       device = "/dev/disk/by-label/EFI";
       fsType = "vfat";
     };
-
-  # fileSystems."/mnt/scratch" =
-  #   {
-  #     device = "/dev/mapper/vg0-scratch";
-  #     fsType = "f2fs";
-  #   };
-
-  # fileSystems."/var/lib/docker" =
-  #   {
-  #     device = "fpool/root/docker";
-  #     fsType = "zfs";
-  #   };
-
-  # fileSystems."/var/lib/postgresql" =
-  #   {
-  #     device = "/dev/nvme1n1p2";
-  #     fsType = "ext4";
-  #     options = [ "noatime" "discard" "nobarrier" ];
-  #   };
-
-  # virtualisation.docker.storageDriver = "zfs";
-  # system.activationScripts = {
-  #   mnt = {
-  #     text = ''
-  #       if [ ! -d /mnt/scratch/postgresql/13 ] ; then
-  #         mkdir -p /mnt/scratch/postgresql/13
-  #         chown -R postgres:postgres /mnt/scratch/postgresql
-  #       fi
-  #     '';
-  #     deps = [ ];
-  #   };
-  # };
-  # services.postgresql = {
-  #   # dataDir = "/mnt/scratch/postgresql/14";
-  #   enable = true;
-  #   enableTCPIP = true;
-  #   authentication = ''
-  #     local all all trust
-  #     host all all 192.168.23.0/24 trust
-  #   '';
-  #   settings = {
-  #     max_wal_size = "4GB";
-  #   };
-  # };
-
-  networking.firewall = {
-    checkReversePath = false;
-    # allowedTCPPorts = [ 5432 6789 9001 8080 8085 8880 51413 ];
-  };
 
   nix.settings.build-cores = lib.mkDefault 24;
 

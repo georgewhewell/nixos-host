@@ -6,7 +6,7 @@
     let
       valetudo-map-card = pkgs.fetchurl {
         url = "https://raw.githubusercontent.com/TheLastProject/lovelace-valetudo-map-card/master/valetudo-map-card.js";
-        sha256 = "sha256-72bev9gvPN8ftIExJS/0EEXWz2kjYCVo42ce0eDdbnY=";
+        sha256 = "sha256-DMQK9v+u5DWzvxjpfFAYtLgHHYma9Ttes1Aw4lTJOa0=";
       };
     in
     [
@@ -22,7 +22,7 @@
         alias = "Start ROBOROCK";
         trigger = {
           platform = "time";
-          at = "08:00:00";
+          at = "12:00:00";
           /* entity_id = "person.george";
             from = "home";
             to = "not_home";
@@ -34,7 +34,7 @@
           data = { };
           entity_id = "vacuum.valetudo_roborock";
         };
-        /* mode = "single"; */
+        mode = "single";
       }
     ];
   };

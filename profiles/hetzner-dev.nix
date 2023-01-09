@@ -1,6 +1,7 @@
 { config, pkgs, lib, ... }: {
 
-  boot.kernelPackages = pkgs.linuxPackages_latest_lto_zen3;
+  #boot.kernelPackages = pkgs.linuxPackages_latest_lto_zen3;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   services.postgresql = {
     enable = true;

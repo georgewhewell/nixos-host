@@ -32,8 +32,6 @@
     };
   };
 
-  services.consul.enable = lib.mkForce false;
-
   boot.loader.grub.device = "/dev/sda";
   boot.loader.systemd-boot.enable = false;
   boot.kernelPackages = pkgs.linuxPackages_latest;

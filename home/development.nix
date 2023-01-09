@@ -1,6 +1,11 @@
 { config, lib, pkgs, ... }: {
 
   home.packages = with pkgs; [
+
+    # for vscode-server..
+    openssl
+    pkg-config
+
     # platforms
     gh
     doctl
@@ -14,7 +19,7 @@
     foundry-bin
 
     # rust tooling
-    (rust-bin.beta.latest.default.override
+    (rust-bin.nightly.latest.default.override
       {
         extensions = [
           "rust-src"

@@ -5,7 +5,7 @@
   programs.vscode = {
     package = pkgs.vscode;
     enable = true;
-    mutableExtensionsDir = false;
+    mutableExtensionsDir = true;
     userSettings = {
       "update.mode" = "none";
       "extensions.autoUpdate" = false;
@@ -14,10 +14,15 @@
       "editor.formatOnSave" = true;
       "editor.formatOnType" = true;
       "rust-analyzer.runnables.command" = "/etc/profiles/per-user/grw/bin/cargo";
+      "rust-analyzer.server.path" = "/etc/profiles/per-user/grw/bin/rust-analyzer";
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
       };
+      "rust-analyzer.checkOnSave.extraArgs" = [
+        "--target-dir"
+        "\${workspaceFolder}/target/check"
+      ];
       "remote.SSH.enableX11Forwarding" = false;
     };
     extensions = with pkgs.vscode-extensions; [

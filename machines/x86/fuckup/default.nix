@@ -9,7 +9,7 @@
     home-manager = {
       enable = true;
       enableGraphical = true;
-      enableVscodeServer = true;
+      #      enableVscodeServer = true;
     };
   };
 
@@ -21,21 +21,27 @@
       ../../../profiles/home.nix
       ../../../profiles/nas-mounts.nix
       ../../../profiles/uefi-boot.nix
-      ../../../profiles/g_ether.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
       ../../../profiles/intel-gfx.nix
+      ../../../profiles/fastlan.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
       ../../../services/jellyfin.nix
 
-      # ../../../services/virt/host.nix
+      ../../../services/virt/host.nix
       # ../../../services/virt/vfio.nix
     ];
 
-  #boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelParams = [
+    "libata.force=4.00:noncq"
+    "libata.force=4.00:3.0Gbps"
+    "libata.force=5.00:noncq"
+    "libata.force=5.00:3.0Gbps"
+  ];
 
   system.stateVersion = "22.11";
 
@@ -71,13 +77,6 @@
   nix.settings.max-jobs = lib.mkDefault 8;
   powerManagement.cpuFreqGovernor = "performance";
 
-  services.consul.interface =
-    let interface = "br0"; in
-    {
-      advertise = interface;
-      bind = interface;
-    };
-
   networking = {
     hostName = "fuckup";
     wireless.enable = false;
@@ -100,6 +99,9 @@
         8096 # jellyfin
       ];
       checkReversePath = false;
+      extraCommands = ''
+        ${pkgs.iptables}/bin/iptables -I INPUT -p igmp -j ACCEPT
+      '';
     };
 
     interfaces.br0 = {
@@ -109,40 +111,16 @@
     bridges.br0 = {
       interfaces = [
         "enp0s31f6" # onboard ethernet
-        "enp4s0f0" # sfp+
-        "enp4s0f1" # sfp+
+        "enp4s0f0np0" # sfp28
+        "enp4s0f1np1" # sfp28
       ];
     };
   };
 
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
-  # services.zfs.enable = true;
+  # boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
   boot.supportedFilesystems = [ "zfs" ];
   boot.zfs.enableUnstable = true;
 
-  # nixpkgs.overlays = [
-  #   (self: super: {
-  #     linuxPackages_latest_lto_skylake_zfs = super.linuxPackages_latest_lto_skylake.extend
-  #       (lpSelf: lpSuper: {
-  #         zfsUnstable = lpSuper.zfsUnstable.overrideAttrs (attrs: {
-  #           version = "2.1.5";
-  #           name = "zfs-patched";
-  #           src = self.fetchFromGitHub {
-  #             owner = "tonyhutter";
-  #             repo = "zfs";
-  #             sha256 = "sha256-zHwcZ6fNg0XHpEGoA0My6ItEV7R/OBiMQVrvlZwuHEg=";
-  #             rev = "338188562bdc1500ea8775084260c5f2f1d8e2be"; #zfs-2.1.5-hutter
-  #           };
-  #           meta.broken = false;
-  #           postPatch = ''
-  #             substituteInPlace 'config/always-compiler-options.m4' \
-  #               --replace "-Werror" ""
-  #             echo 'CFLAGS="$CFLAGS -Wno-error=unused-result"' >> config/always-compiler-options.m4
-  #           '' + attrs.postPatch;
-  #         });
-  #       });
-  #   })
-  # ];
   /*
     environment.systemPackages = with pkgs; [ openrgb ];
     services.udev.extraRules = let

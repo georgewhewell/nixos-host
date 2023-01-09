@@ -1,6 +1,7 @@
 { config, pkgs, options, ... }:
 
 let
+  apis = [ "net" "eth" "txpool" ];
   mainnet = {
     metrics = 6060;
     p2p = 30030;
@@ -82,52 +83,63 @@ in
         enable = true;
         port = http;
         address = "0.0.0.0"; # firewalled
+        inherit apis;
       };
       websocket = {
         enable = true;
         port = ws;
         address = "0.0.0.0"; # firewalled
+        inherit apis;
+      };
+      authrpc = {
+        enable = true;
+        address = "localhost";
+        port = 8551;
       };
       extraArgs = [
         "--cache=16000"
-        "--http.vhosts=eth-mainnet.ax101.satanic.link,eth-mainnet-ws.ax101.satanic.link,localhost"
+        "--http.vhosts=eth-mainnet.ax101.satanic.link,eth-mainnet-ws.ax101.satanic.link,localhost,127.0.0.1"
       ];
     };
   };
 
-  services.erigon = {
+  /*
+    services.erigon = {
     mainnet = with erigon; {
-      enable = true;
-      maxpeers = 128;
-      syncmode = "snap";
-      gcmode = "full";
-      metrics = {
-        enable = true;
-        address = "0.0.0.0";
-        port = metrics;
-      };
-      port = p2p;
-      http = {
-        enable = true;
-        port = http;
-        address = "0.0.0.0"; # firewalled
-      };
-      websocket = {
-        enable = true;
-        port = ws;
-        address = "0.0.0.0"; # firewalled
-      };
-      extraArgs = [
-        "--http.api=eth,erigon,web3,net"
-        # "--cache=16000"
-        # "--http.vhosts=eth-mainnet-erigon.ax101.satanic.link,eth-mainnet-erigon-ws.ax101.satanic.link,localhost"
-      ];
-    };
-  };
-
-  sconfig.optimism = {
     enable = true;
-  };
+    maxpeers = 128;
+    syncmode = "snap";
+    gcmode = "full";
+    metrics = {
+    enable = true;
+    address = "0.0.0.0";
+    port = metrics;
+    };
+    port = p2p;
+    http = {
+    enable = true;
+    port = http;
+    address = "0.0.0.0"; # firewalled
+    };
+    websocket = {
+    enable = true;
+    port = ws;
+    address = "0.0.0.0"; # firewalled
+    };
+    extraArgs = [
+    "--http.api=eth,erigon,web3,net"
+    # "--cache=16000"
+    # "--http.vhosts=eth-mainnet-erigon.ax101.satanic.link,eth-mainnet-erigon-ws.ax101.satanic.link,localhost"
+    ];
+    };
+    };
+  */
+
+  /*
+    sconfig.optimism = {
+    enable = true;
+    };
+  */
 
   networking = {
     firewall.allowedTCPPorts = [ mainnet.p2p matic.p2p optimism.p2p 80 443 ];
@@ -139,12 +151,33 @@ in
     defaults.email = "georgerw@gmail.com";
   };
 
-  services.uniswap = {
+  /*
+    services.uniswap = {
     enable = false;
     databaseDsn = "postgresql:///uniswap";
     gethDsn = "ws://localhost:8546";
     bscGethDsn = "ws://localhost:8546";
+    };
+  */
+  services.lighthouse = {
+    beacon = {
+      enable = true;
+      execution = {
+        address = "localhost";
+        port = 8551;
+        jwtPath = "/run/keys/LIGHTHOUSE_JWT";
+      };
+    };
+    extraArgs = ''--checkpoint-sync-url="https://mainnet-checkpoint-sync.stakely.io"'';
   };
+  deployment.keys =
+    {
+      "LIGHTHOUSE_JWT" = {
+        keyCommand = [ "pass" "erigon-gpg" ];
+        destDir = "/run/keys";
+        uploadAt = "pre-activation";
+      };
+    };
 
   # environment.systemPackages = [ pkgs.optimism-dtl.contracts ];
   services.nginx = {

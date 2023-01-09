@@ -22,6 +22,7 @@ in
       in {
         description = "igmpproxy";
         wantedBy = [ "multi-user.target" ];
+        after = [ "br0.lan-netdev.service" ];
         serviceConfig = {
           ExecStart = "${pkgs.igmpproxy}/bin/igmpproxy ${cfgFile} -n -v";
         };

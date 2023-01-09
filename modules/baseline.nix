@@ -2,7 +2,7 @@
 
 {
   boot = {
-    kernelParams = [ "amdgpu.gpu_recovery=1" "panic=30" ];
+    kernelParams = [ "amdgpu.gpu_recovery=1" "panic=30" "ixgbe.allow_unsupported_sfp=1,1" ];
   };
 
   nixpkgs.config.allowUnfree = true;

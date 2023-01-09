@@ -3,10 +3,8 @@
 let
   wanInterface = "enp5s0f0np0";
   lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" ];
-  wlanInterface = "wlan-private";
-  cloudVPNInterface = "wg0-cloud";
-  swapsVPNInterface = "wg1-swaps";
-  vpnInterfaces = [ cloudVPNInterface swapsVPNInterface ];
+  vpnInterface = "wg0-vpn";
+  vpnInterfaces = [ vpnInterface ];
   lanBridge = "br0.lan";
 in
 {
@@ -18,16 +16,19 @@ in
     wirelesstools
   ];
 
-  services.igmpproxy = {
+  virtualisation.vswitch = {
     enable = true;
+  };
+
+  services.igmpproxy = {
+    enable = false;
     config = ''
       quickleave
-      defaultdown
 
       phyint ${wanInterface} upstream ratelimit 0 threshold 1
-          altnet 0.0.0.0/0
+        altnet 0.0.0.0/0
       phyint ${lanBridge} downstream ratelimit 0 threshold 1
-          altnet 192.168.23.0/24
+        altnet 0.0.0.0/0
     '';
   };
 
@@ -45,23 +46,31 @@ in
       enable = true;
       internalIPs = [
         "192.168.23.0/24"
+        "192.168.24.0/24"
       ];
-      internalInterfaces = [ lanBridge ];
+      internalInterfaces = [ lanBridge vpnInterface "enp5s0f1np1" ];
       externalInterface = wanInterface; # port 1
       forwardPorts = [
         { sourcePort = 3074; destination = "192.168.23.92:3074"; proto = "udp"; } /* bo2 */
         { sourcePort = 3074; destination = "192.168.23.92:3074"; proto = "tcp"; } /* bo2 */
         { sourcePort = 3478; destination = "192.168.23.92:3478"; } /* bo2 */
       ];
+      extraCommands = ''
+        iptables -A INPUT -s 224.0.0.0/4 -j ACCEPT
+        iptables -A INPUT -d 224.0.0.0/4 -j ACCEPT
+        iptables -A INPUT -s 240.0.0.0/5 -j ACCEPT
+        iptables -A INPUT -m pkttype --pkt-type multicast -j ACCEPT
+        iptables -A INPUT -m pkttype --pkt-type broadcast -j ACCEPT
+      '';
     };
 
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge wlanInterface ];
+      trustedInterfaces = [ lanBridge vpnInterface ];
       logRefusedConnections = false;
       logRefusedPackets = false;
-      logReversePathDrops = false;
+      logReversePathDrops = true;
       interfaces = {
         "${wanInterface}" = {
           allowedTCPPorts = [
@@ -70,20 +79,33 @@ in
             443 # https
             51413 # transmission
             32400 # plex
-            30303 # geth
             3074 # bo2
+
+            9000 # lighthouse
+            30303 # geth
+
+            42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
             35947 # wireguard
             51820 # wireguard (cloud)
             51821 # wireguard (swaps)
             51413 # transmission
-            30303 # geth
             3074 # bo2
             3478 # bo2
+
+            5000 # (IPTV)
+
+            9000 # lighthouse
+            30303 # geth
+
+            42069 # Snap sync (Bittorrent)
           ];
         };
       };
+      extraCommands = ''
+        ${pkgs.iptables}/bin/iptables -I INPUT -p igmp -j ACCEPT
+      '';
     };
 
     interfaces = {
@@ -99,34 +121,40 @@ in
       }];
 
       # Static VPN IP
-      # "${cloudVPNInterface}".ipv4.addresses = [{
-      #   address = "192.168.24.1";
-      #   prefixLength = 24;
-      # }];
+      "${vpnInterface}".ipv4.addresses = [{
+        address = "192.168.24.1";
+        prefixLength = 24;
+      }];
     };
 
     wireless = {
       enable = false;
     };
 
-    # wireguard = {
-    #   enable = true;
-    #   interfaces = {
-    #     "${cloudVPNInterface}" = {
-    #       ips = [ "192.168.24.1/24" ];
-    #       listenPort = 51820;
-    #       privateKeyFile = "/run/keys/wg-router.secret";
-    #       peers = [
-    #         {
-    #           publicKey = "J2PvJjxRS5hZg/t5ZJk8u0yqy6MAyhzL1wvKZC8By1Y=";
-    #           endpoint = "ax101.satanic.link:51820";
-    #           allowedIPs = [ "192.168.24.2/32" ];
-    #           persistentKeepalive = 25;
-    #         }
-    #       ];
-    #     };
-    #   };
-    # };
+    wireguard = {
+      enable = true;
+      interfaces = {
+        "${vpnInterface}" = {
+          ips = [ "192.168.24.1/24" ];
+          listenPort = 51820;
+          privateKeyFile = "/run/keys/wg-router.secret";
+          peers = [
+            {
+              # mac air
+              publicKey = "T+jpoipZEmmc76Nh72NZYZF3SsngDxoBRZIWVyp5c3A=";
+              allowedIPs = [ "192.168.24.2/32" ];
+              persistentKeepalive = 25;
+            }
+            {
+              # iphone
+              publicKey = "tIxnCBM8di2/TmepKl/RWrit0cj/5YpEiF3hdpYBZno=";
+              allowedIPs = [ "192.168.24.3/32" ];
+              persistentKeepalive = 25;
+            }
+          ];
+        };
+      };
+    };
   };
 
   # wait for keys before doing any wg stuff- doesnt seem to work?
@@ -156,11 +184,6 @@ in
       };
       # blacklist.blacklist_file = "${pkgs.sources.hosts-blocklists}/dnscrypt-proxy/dnscrypt-proxy.blacklist.txt";
     };
-  };
-
-  services.consul.interface = {
-    advertise = lanBridge;
-    bind = lanBridge;
   };
 
   networking.hosts = {

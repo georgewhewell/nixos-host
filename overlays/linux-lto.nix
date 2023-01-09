@@ -52,7 +52,7 @@ let
 
   fullLTO = kernel:
     cfg
-      { LTO_NONE = no; LTO_CLANG_FULL = yes; }
+      { LTO_NONE = no; LTO_CLANG_FULL = yes; LRU_GEN = yes; LRU_GEN_ENABLED = yes; }
       (llvm kernel);
 
   patch = patches: kernel: kernel.override {
@@ -73,7 +73,7 @@ let
 
   inherit (linuxKernel) kernels packagesFor;
 
-  latest = kernels.linux_6_0;
+  latest = kernels.linux_6_1;
 in
 _: {
   linuxPackages_latest_lto = packagesFor (fullLTO latest);
