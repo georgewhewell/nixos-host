@@ -36,6 +36,7 @@
       ms-vscode-remote.remote-ssh
       ms-vsliveshare.vsliveshare
       tamasfe.even-better-toml
+      mkhl.direnv
 
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
