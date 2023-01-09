@@ -33,6 +33,7 @@
     docker-compose
     tmux
     btop
+    mosh
   ];
 
   manual.manpages.enable = false;
