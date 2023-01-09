@@ -111,7 +111,7 @@
     bridges.br0 = {
       interfaces = [
         "enp0s31f6" # onboard ethernet
-        "enp4s0f0np0" # sfp28
+        # "enp4s0f0np0" # sfp28
         "enp4s0f1np1" # sfp28
       ];
     };
