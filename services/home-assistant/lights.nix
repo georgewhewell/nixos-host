@@ -85,7 +85,7 @@
           action = {
             type = "turn_off";
             device_id = "a6a9740d1a1b5212b8ba8ccd41840eed";
-            entity_id = "light.bedroom_ceiling_light";
+            entity_id = "light.bedroom_filament_light";
             domain = "light";
           };
         }
@@ -102,7 +102,7 @@
           action = {
             type = "turn_on";
             device_id = "a6a9740d1a1b5212b8ba8ccd41840eed";
-            entity_id = "light.bedroom_ceiling_light";
+            entity_id = "light.bedroom_filament_light";
             domain = "light";
           };
         }
@@ -115,6 +115,7 @@
             "light.bedroom_ceiling_light" = "off";
             "light.hallway_ceiling_light" = "off";
             "light.office_ceiling_light" = "off";
+            "light.bedroom_filament_light" = "off";
           };
       }
     ];

@@ -60,6 +60,7 @@
   };
 
   boot.kernelPackages = pkgs.linuxPackages_latest_lto_broadwell;
+  boot.zfs.requestEncryptionCredentials = false;
   # boot.kernelPackages = pkgs.linuxPackages_latest;
 
   services.iperf3 = {

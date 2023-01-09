@@ -2,7 +2,7 @@
 
 let
   wanInterface = "enp5s0f0np0";
-  lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" ];
+  lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" "enp5s0f1np1" ];
   vpnInterface = "wg0-vpn";
   vpnInterfaces = [ vpnInterface ];
   lanBridge = "br0.lan";
@@ -14,6 +14,8 @@ in
   environment.systemPackages = with pkgs; [
     btop
     wirelesstools
+    bridge-utils
+    ethtool
   ];
 
   virtualisation.vswitch = {
@@ -26,9 +28,11 @@ in
       quickleave
 
       phyint ${wanInterface} upstream ratelimit 0 threshold 1
-        altnet 0.0.0.0/0
+        altnet 77.109.129.16/32
+        altnet 239.0.0.0/8
+        
       phyint ${lanBridge} downstream ratelimit 0 threshold 1
-        altnet 0.0.0.0/0
+        altnet 192.168.23.0/24
     '';
   };
 
@@ -56,11 +60,12 @@ in
         { sourcePort = 3478; destination = "192.168.23.92:3478"; } /* bo2 */
       ];
       extraCommands = ''
-        iptables -A INPUT -s 224.0.0.0/4 -j ACCEPT
-        iptables -A INPUT -d 224.0.0.0/4 -j ACCEPT
-        iptables -A INPUT -s 240.0.0.0/5 -j ACCEPT
-        iptables -A INPUT -m pkttype --pkt-type multicast -j ACCEPT
-        iptables -A INPUT -m pkttype --pkt-type broadcast -j ACCEPT
+        iptables -A nixos-fw -s 224.0.0.0/4 -j nixos-fw-accept
+        iptables -A nixos-fw -d 224.0.0.0/4 -j nixos-fw-accept
+        iptables -A nixos-fw -s 240.0.0.0/5 -j nixos-fw-accept
+        iptables -A nixos-fw -m pkttype --pkt-type multicast -j nixos-fw-accept
+        iptables -A nixos-fw -m pkttype --pkt-type broadcast -j nixos-fw-accept
+        iptables -A nixos-fw -p igmp -j nixos-fw-accept
       '';
     };
 
@@ -103,9 +108,9 @@ in
           ];
         };
       };
-      extraCommands = ''
-        ${pkgs.iptables}/bin/iptables -I INPUT -p igmp -j ACCEPT
-      '';
+      # extraCommands = ''
+      #   ${pkgs.iptables}/bin/
+      # '';
     };
 
     interfaces = {

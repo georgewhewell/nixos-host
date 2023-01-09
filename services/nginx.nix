@@ -37,7 +37,7 @@
       extraConfig = ''
         resolver 192.168.23.1;
       '';
-      proxyPass = "http://192.168.23.98:8096";
+      proxyPass = "http://192.168.23.129:8096";
       proxyWebsockets = true;
     };
   };

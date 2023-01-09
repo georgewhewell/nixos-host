@@ -142,8 +142,8 @@ in
   */
 
   networking = {
-    firewall.allowedTCPPorts = [ mainnet.p2p matic.p2p optimism.p2p 80 443 ];
-    firewall.allowedUDPPorts = [ mainnet.p2p matic.p2p optimism.p2p ];
+    firewall.allowedTCPPorts = [ mainnet.p2p matic.p2p optimism.p2p 80 443 4133 ];
+    firewall.allowedUDPPorts = [ mainnet.p2p matic.p2p optimism.p2p 4133 ];
   };
 
   security.acme = {

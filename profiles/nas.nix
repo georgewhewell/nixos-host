@@ -6,6 +6,7 @@
     {
       device = "bpool/root/Media";
       fsType = "zfs";
+      neededForBoot = false;
     };
 
   fileSystems."/mnt/Home" =

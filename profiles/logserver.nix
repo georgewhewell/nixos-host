@@ -74,7 +74,7 @@
       {
         job_name = "postgres";
         static_configs = [{
-          targets = [ "127.0.0.1:9187" "ax101.lan:9187" ];
+          targets = [ "127.0.0.1:9187" ];
         }];
       }
       {
@@ -87,6 +87,12 @@
         job_name = "dnsmasq";
         static_configs = [{
           targets = [ "127.0.0.1:9153" ];
+        }];
+      }
+      {
+        job_name = "smart";
+        static_configs = [{
+          targets = [ "127.0.0.1:9633" ];
         }];
       }
 
