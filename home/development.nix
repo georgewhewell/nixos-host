@@ -15,7 +15,7 @@
     gopls
 
     # evm tooling
-    solc
+    # solc
     foundry-bin
 
     # rust tooling

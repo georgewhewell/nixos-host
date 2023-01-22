@@ -19,17 +19,13 @@
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
       };
-      "rust-analyzer.checkOnSave.extraArgs" = [
-        "--target-dir"
-        "\${workspaceFolder}/target/check"
-      ];
       "remote.SSH.enableX11Forwarding" = false;
     };
     extensions = with pkgs.vscode-extensions; [
       jnoortheen.nix-ide
       golang.go
-      ms-python.python
-      ms-python.vscode-pylance
+      # ms-python.python
+      # ms-python.vscode-pylance
       hashicorp.terraform
       viktorqvarfordt.vscode-pitch-black-theme
       rust-lang.rust-analyzer
@@ -37,13 +33,14 @@
       ms-vsliveshare.vsliveshare
       tamasfe.even-better-toml
       mkhl.direnv
+      github.copilot
 
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
           publisher = "JuanBlanco";
           name = "solidity";
-          version = "0.0.139";
-          sha256 = "sha256-hEC6NlEsodWuR04UTyHWOdWc6S+0wsqSWqzCSs6VaB0=";
+          version = "0.0.141";
+          sha256 = "sha256-UWdjVY6+TyIRuIxru4+4YGqqI0HUU/8yV8BKNlIRIUQ=";
         };
       })
     ];
