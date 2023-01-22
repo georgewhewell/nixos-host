@@ -12,7 +12,7 @@
     ignores = [ ".vscode/settings.json" ];
 
     signing = {
-      key = "0x0C414B6F2BA7BB19";
+      key = "2BA7BB19";
       signByDefault = true;
     };
 

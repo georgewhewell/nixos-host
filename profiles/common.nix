@@ -37,7 +37,7 @@
   # Enable the OpenSSH daemon.
   services.openssh = {
     enable = true;
-    gatewayPorts = "yes"; # needed for pgp forward?
+    # gatewayPorts = "yes"; # needed for pgp forward?
     extraConfig = ''
       StreamLocalBindUnlink yes
     '';

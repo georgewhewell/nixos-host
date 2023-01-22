@@ -22,6 +22,7 @@ in
           ../home/linux.nix
         ] ++ lib.optionals cfg.enableGraphical [
           ../home/graphical.nix
+          ../home/gpg.nix
         ] ++ lib.optionals cfg.enableLaptop [
           ../home/laptop.nix
         ] ++ lib.optionals cfg.enableVscodeServer [
