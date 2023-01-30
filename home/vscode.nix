@@ -14,7 +14,7 @@
       "editor.formatOnSave" = true;
       "editor.formatOnType" = true;
       "rust-analyzer.runnables.command" = "/etc/profiles/per-user/grw/bin/cargo";
-      "rust-analyzer.server.path" = "/etc/profiles/per-user/grw/bin/rust-analyzer";
+      # "rust-analyzer.server.path" = "/etc/profiles/per-user/grw/bin/rust-analyzer";
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
@@ -24,7 +24,7 @@
     extensions = with pkgs.vscode-extensions; [
       jnoortheen.nix-ide
       golang.go
-      # ms-python.python
+      #ms-python.python
       # ms-python.vscode-pylance
       hashicorp.terraform
       viktorqvarfordt.vscode-pitch-black-theme
@@ -41,6 +41,15 @@
           name = "solidity";
           version = "0.0.141";
           sha256 = "sha256-UWdjVY6+TyIRuIxru4+4YGqqI0HUU/8yV8BKNlIRIUQ=";
+        };
+      })
+
+      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+        mktplcRef = {
+          publisher = "starkware";
+          name = "cairo";
+          version = "0.10.0";
+          sha256 = "sha256-Jpj6QSLvYI3FbSW07PDlhVj9Gv0ZUrMbK+KVFvmBMvE=";
         };
       })
     ];
