@@ -1,21 +1,23 @@
 local nvim_lsp = require("lspconfig")
+local navic = require("nvim-navic")
+local lsp_signature = require("lsp_signature")
 
 local flags = { debounce_text_changes = 150 }
 
+local capabilities = {}
 -- snippet support
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require("cmp_nvim_lsp").update_capabilities(capabilities)
+capabilities = vim.tbl_extend("keep", capabilities, require("cmp_nvim_lsp").default_capabilities())
 
 -- support crates and LSP
 vim.api.nvim_set_keymap(
   "n",
   "K",
-  [[<cmd>lua require("lovesegfault.utils").show_documentation()<CR>]],
+  [[<cmd>lua require("utils").show_documentation()<CR>]],
   { noremap = true, silent = true }
 )
 
 -- bindings
-local on_attach = function(_, bufnr)
+local on_attach = function(client, bufnr)
   vim.api.nvim_buf_set_option(bufnr, "omnifunc", "v:lua.vim.lsp.omnifunc")
 
   local map = vim.api.nvim_buf_set_keymap
@@ -36,11 +38,12 @@ local on_attach = function(_, bufnr)
   map(bufnr, "n", "]d", "<cmd>lua vim.lsp.diagnostic.goto_next()<CR>", opts)
   map(bufnr, "n", "<leader>q", "<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>", opts)
 
-  require("lsp_signature").on_attach()
+  lsp_signature.on_attach({}, bufnr)
+  navic.attach(client, bufnr)
 end
 
 -- Enable the following language servers
-local servers = { "clangd", "pyright", "texlab", "tsserver", "rnix", "metals" }
+local servers = { "clangd", "pyright", "texlab", "tsserver", "rnix", "metals", "ltex" }
 for _, lsp in ipairs(servers) do
   nvim_lsp[lsp].setup({ on_attach = on_attach, capabilities = capabilities, flags = flags })
 end
@@ -75,7 +78,7 @@ nvim_lsp["sumneko_lua"].setup({
 })
 
 -- Map :Format to vim.lsp.buf.formatting()
-vim.cmd([[ command! Format execute "lua vim.lsp.buf.formatting()" ]])
+vim.cmd([[ command! Format execute "lua vim.lsp.buf.format({ async = true })" ]])
 
 vim.cmd([[autocmd CursorHold,CursorHoldI * lua require'nvim-lightbulb'.update_lightbulb()]])
 

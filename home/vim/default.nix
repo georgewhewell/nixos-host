@@ -1,29 +1,44 @@
-{ config, lib, pkgs, ... }:
-
-{
-  xdg.configFile."nvim/lua".source = ./lua;
+{ lib, pkgs, ... }: {
 
   home = {
-    # packages = with pkgs; [ neovim ];
     sessionVariables = rec {
       EDITOR = "nvim";
       VISUAL = EDITOR;
     };
+    shellAliases = { vi = "nvim"; vim = "nvim"; };
+    packages = with pkgs; [
+      nixpkgs-fmt
+      rnix-lsp
+      statix
+
+      # Lua
+      stylua
+      (luajit.withPackages (p: with p; [ luacheck ]))
+      sumneko-lua-language-server
+
+      # Shell
+      shellcheck
+      shfmt
+
+      # GitHub Actions
+      act
+      actionlint
+      python3Packages.pyflakes
+      shellcheck
+
+      # Misc
+      jq
+      pre-commit
+      rage
+    ];
   };
 
   programs = {
-    git.extraConfig = {
-      core.editor = "nvim";
-      merge.tool = "nvimdiff";
-      "mergetool \"nvimdiff\"".cmd = "nvim -d $LOCAL $REMOTE";
-      diff.tool = "nvimdiff";
-    };
-    zsh.shellAliases = { vi = "nvim"; vim = "nvim"; };
+    git.extraConfig.core.editor = "nvim";
 
     neovim = {
       enable = true;
-      extraPackages = with pkgs; [ nodejs rnix-lsp ];
-      extraConfig = "lua require('init')";
+
       plugins = with pkgs.vimPlugins; [
         # ui
         bufferline-nvim
@@ -34,13 +49,14 @@
         lsp_signature-nvim
         neovim-ayu
         numb-nvim
-        nvim-gps
         nvim-lightbulb
+        nvim-navic
         nvim-treesitter-context
         nvim-web-devicons
         stabilize-nvim
         todo-comments-nvim
         trouble-nvim
+        true-zen-nvim
 
         # tooling
         nvim-bufdel
@@ -56,6 +72,7 @@
         vim-rhubarb
         vim-sleuth
         vim-surround
+        vim-tmux-navigator
         vim-visual-multi
 
         # completion
@@ -68,6 +85,7 @@
         cmp-treesitter
         cmp_luasnip
         crates-nvim
+        null-ls-nvim
         lspkind-nvim
         luasnip
         nvim-autopairs
@@ -85,26 +103,27 @@
                   drv.pname
                   (map (v: "tree-sitter-${v}-grammar") [
                     "agda"
+                    "bash"
                     "fluent"
                     "kotlin"
-                    "markdown"
-                    "supercollider"
-                    "swift"
-                    "verilog"
+                    "ql-dbscheme"
+                    "sql"
                   ])
               )
               pkgs.tree-sitter.allGrammars
           )
         )
-        nvim-treesitter-textobjects
         editorconfig-vim
         gentoo-syntax
         lalrpop-vim
         vim-nix
         vim-polyglot
-      ] ++ lib.optionals (pkgs.hostPlatform.system == "x86_64-linux") [
-        cmp-tabnine
-      ];
+      ]
+      ++ lib.optional (lib.elem pkgs.hostPlatform.system pkgs.tabnine.meta.platforms) cmp-tabnine
+      ;
     };
   };
+
+  xdg.configFile."nvim/lua".source = ./lua;
+  xdg.configFile."nvim/init.lua".source = ./init.lua;
 }
