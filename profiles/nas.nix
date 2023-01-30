@@ -186,4 +186,20 @@
     enable = true;
   };
 
+  services.paperless = {
+    enable = true;
+    package = pkgs.paperless-ngx;
+    extraConfig = {
+      PAPERLESS_URL = "https://paperless.satanic.link";
+    };
+  };
+
+  services.nginx.virtualHosts."paperless.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://localhost:28981";
+      proxyWebsockets = true;
+    };
+  };
 }
