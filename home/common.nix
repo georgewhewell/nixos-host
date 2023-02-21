@@ -51,7 +51,7 @@
         hostname = "ax101.satanic.link";
       };
       "fuckup.satanic.link" = {
-        hostname = "192.168.23.128";
+        hostname = "fuckup.lan";
         proxyJump = "satanic.link";
       };
     };
