@@ -14,10 +14,13 @@
       "editor.formatOnSave" = true;
       "editor.formatOnType" = true;
       "rust-analyzer.runnables.command" = "/etc/profiles/per-user/grw/bin/cargo";
-      # "rust-analyzer.server.path" = "/etc/profiles/per-user/grw/bin/rust-analyzer";
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
+      };
+      "github.copilot-labs.advanced" = {
+        showTestGenerationLenses = true;
+        showBrushesLenses = true;
       };
       "remote.SSH.enableX11Forwarding" = false;
     };
@@ -30,10 +33,27 @@
       viktorqvarfordt.vscode-pitch-black-theme
       rust-lang.rust-analyzer
       ms-vscode-remote.remote-ssh
-      ms-vsliveshare.vsliveshare
+      # ms-vsliveshare.vsliveshare
       tamasfe.even-better-toml
       mkhl.direnv
-      github.copilot
+
+      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+        mktplcRef = {
+          publisher = "GitHub";
+          name = "copilot";
+          version = "1.73.8685";
+          sha256 = "sha256-W1j1VAuSM1sgxHRIahqVncUlknT+MPi7uutY+0NURZQ=";
+        };
+      })
+
+      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+        mktplcRef = {
+          publisher = "GitHub";
+          name = "copilot-labs";
+          version = "0.10.704";
+          sha256 = "sha256-PFAfTAIZ/OMQdZhN5yekllR/QNxbPvNgrLmHmRaDUvY=";
+        };
+      })
 
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {
