@@ -49,35 +49,8 @@
         '';
       };
 
-      flakeOverlay = (final: prev: rec {
+      flakeOverlay = (final: prev: {
         inherit vscode-server;
-        # go-ethereum = let rev = "v1.10.19"; in
-        #   (prev.go-ethereum.overrideAttrs (old:
-        #     let
-        #       version = rev;
-        #       src = prev.fetchFromGitHub
-        #         {
-        #           owner = "ethereum";
-        #           repo = "go-ethereum";
-        #           inherit rev;
-        #           sha256 = "sha256-fMhuE4Oa3uZZkWPAcc9TygCoRZzN7ZSMDTg9HAeOYE4=";
-        #         };
-        #       go = prev.go_1_17;
-
-        #     in
-        #     rec {
-        #       pname = "go-ethereum";
-        #       inherit src;
-        #       inherit (prev.buildGoModule {
-        #         pname = "erigon-vend";
-        #         inherit src version;
-        #         # doVendor = false;
-        #         # runVend = true;
-        #         # go = prev.go_1_17;
-        #         proxyVendor = true;
-        #         vendorSha256 = "sha256-MZCX0Io7dMVas1YDjPli98MdheG3J18g5UYAVCIii3k=";
-        #       }) go-modules;
-        #     }));
       } // mypkgs { });
 
       localOverlays = map
@@ -97,20 +70,6 @@
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
         [ "x86_64-linux" "aarch64-linux" ]);
-
-      # pins = {
-      #   nix.registry.nixpkgs.to = {
-      #     inherit (nixpkgs) rev;
-      #     owner = "NixOS";
-      #     repo = "nixpkgs";
-      #     type = "github";
-      #   };
-      #   # nix.registry.georgewhewell.to = {
-      #   #   owner = "georgewhewell";
-      #   #   repo = "nixos-host";
-      #   #   type = "github";
-      #   # };
-      # };
 
     in
     {
@@ -137,6 +96,9 @@
         modules = [
           ./machines/darwin-aarch64/darwin-configuration.nix
           home-manager.darwinModules.home-manager
+          ({ config, pkgs, ... }: {
+            nixpkgs.overlays = [ rust-overlay.overlays.default ];
+          })
         ];
       };
 

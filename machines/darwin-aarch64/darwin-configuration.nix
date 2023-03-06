@@ -5,6 +5,8 @@
     ./system.nix
   ];
 
+  nixpkgs.config.allowUnfree = true;
+
   users.users."grw" = {
     shell = pkgs.zsh;
     home = "/Users/grw";
@@ -19,6 +21,7 @@
       ../../home/common.nix
       ../../home/development.nix
       ../../home/darwin.nix
+      ../../home/vscode.nix
     ];
   };
 
