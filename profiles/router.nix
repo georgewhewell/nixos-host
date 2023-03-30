@@ -37,7 +37,7 @@ in
   };
 
   networking = {
-    enableIPv6 = false;
+    enableIPv6 = true;
 
     bridges."${lanBridge}" = {
       interfaces = lanInterfaces;
@@ -162,6 +162,35 @@ in
     };
   };
 
+  services.corerad = {
+    enable = true;
+    settings = {
+      debug = {
+        address = "localhost:9430";
+        prometheus = true; # enable prometheus metrics
+      };
+      interfaces = [
+        {
+          name = "enp5s0f0np0";
+          monitor = true; # see the remark below
+        }
+        {
+          name = "br0.lan";
+          advertise = true;
+
+          # Advertise all /64 prefixes on the interface.
+          prefix = [{ }];
+
+          # Automatically use the appropriate interface address as a DNS server.
+          rdnss = [{ }];
+
+          # Automatically propagate routes owned by loopback.
+          route = [{ }];
+        }
+      ];
+    };
+  };
+
   # wait for keys before doing any wg stuff- doesnt seem to work?
   # systemd.services."wireguard-wg0-cloud".after = [ "wg-router.secret-key.service" ];
   # systemd.services."wireguard-wg0-cloud".wants = [ "wg-router.secret-key.service" ];
@@ -183,7 +212,7 @@ in
   services.dnscrypt-proxy2 = {
     enable = true;
     settings = {
-      listen_addresses = [ "127.0.0.1:53" ];
+      listen_addresses = [ "127.0.0.1:54" ];
       static.cloudflare = {
         stamp = "sdns://AgcAAAAAAAAABzEuMC4wLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5";
       };
@@ -212,7 +241,7 @@ in
   services.avahi.interfaces = [ lanBridge ];
   services.dnsmasq = {
     enable = true;
-    servers = [ "127.0.0.1#53" ];
+    servers = [ "127.0.0.1#54" ];
     extraConfig = ''
       domain-needed
       bogus-priv
@@ -221,7 +250,6 @@ in
       log-dhcp
       domain=lan
       bind-interfaces
-      except-interface=lo
       interface=${lanBridge}
       dhcp-range=${lanBridge},192.168.23.10,192.168.23.254,6h
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch

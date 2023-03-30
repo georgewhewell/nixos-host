@@ -1,6 +1,8 @@
 { config, lib, pkgs, ... }: {
 
   home.packages = with pkgs; [
+    # nix deploy
+    colmena
 
     # for vscode-server..
     openssl

@@ -3,7 +3,6 @@
 {
 
   users.users.grw.extraGroups = [ "input" "pulse" ];
-
   sound.enable = true;
 
   # dont need this- interferes with kodi
@@ -18,31 +17,31 @@
   nixpkgs.config.kodi = {
     enablePVRHTS = true;
   };
-  /*
-    services.xserver = {
-    enable = true;
-    videoDriver = "modesetting";
-    desktopManager.kodi.enable = true;
-    displayManager.sddm = {
-    enable = true;
-    autoLogin.enable = true;
-    autoLogin.user = "grw";
-    };
-    }; */
 
-  systemd.services.kodi-gbm = {
-    wants = [ "network-online.target" "polkit.service" ];
-    conflicts = [ "getty@tty1.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      ExecStart = "${pkgs.kodi-gbm}/bin/kodi --standalone";
-      StandardInput = "tty";
-      StandardOutput = "tty";
-      TTYPath = "/dev/tty1";
-      PAMName = "login";
-      User = "grw";
+  systemd.services.kodi-gbm =
+    let
+      kodi = (pkgs.kodi-gbm.passthru.withPackages (kodiPkgs: with kodiPkgs; [
+        jellyfin
+      ]));
+    in
+    {
+      wants = [ "network-online.target" "polkit.service" ];
+      conflicts = [ "getty@tty1.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.kodi}/bin/kodi --standalone";
+        StandardInput = "tty";
+        StandardOutput = "tty";
+        TTYPath = "/dev/tty1";
+        PAMName = "login";
+        User = "root";
+      };
+      environment = {
+        MESA_LOADER_DRIVER_OVERRIDE = "panfrost";
+      };
     };
-  };
+
+  services.avahi.enable = true;
 
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
@@ -52,9 +51,11 @@
   };
 
   environment.systemPackages = with pkgs; [
+    libva1
     libva-utils
-    /* v4l-utils
-      mpv */
+    glxinfo
+    kmscube
+    strace
   ];
 
 }

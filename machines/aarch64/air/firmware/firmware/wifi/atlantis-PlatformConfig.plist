@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>wlan.rx.ring.size</key>
+	<integer>512</integer>
+	<key>wlan.tx.ring.size</key>
+	<integer>768</integer>
+	<key>wlan.tx.submission-queue.size</key>
+	<integer>768</integer>
+	<key>wlan.llw.tx.ring.size</key>
+	<integer>512</integer>
+	<key>wlan.vo.blockack</key>
+	<true/>
+	<key>wlan.listen.interval</key>
+	<data>CgAAAA==</data>
+	<key>bcom.roam.profiles</key>
+	<data>DAD2/7X/AgC4C7QAAgCwBBQAv/8yABAAtf+A/wIAWgAeAAEAHgAMAL//MgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAC1/4D/AgBaAB4AAQAeAAwAgP8KAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAC1/4D/AgBaAB4AAgC0AAwAv/8yAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAC1/4D/AgBaAB4AAgC0AAwAgP8KAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAD2/7X/AgC4C7QAAgCwBBQAv/8yABAAtf+A/wIAWgAeAAIAtAAMAL//MgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAC1/4D/AgBaAB4AAgC0AAwAgP8KAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAD2/87/AgCwBLQAAgBYAhQAxP8yAAwAzv+6/wIAsAS0AAIAaAEPAMT/MgAQALr/gP8CAFoAHgABAB4ADADE/zIAEAC6/4D/AgBaAB4AAQAeAAwAgP8KAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</data>
+	<key>wlan.enhancedTrgDisc</key>
+	<data>AQAAAA==</data>
+	<key>bcom.roam.enabledenhanced</key>
+	<data>AAAAAA==</data>
+	<key>wlan.enhancedlocale.enabled</key>
+	<data>AAAAAA==</data>
+	<key>wlan.autocountry.enabled</key>
+	<data>AAAAAA==</data>
+	<key>bcom.btc.params</key>
+	<data>BgAAAA8AAAAIAAAAyK8AAAkAAACYOgAACgAAACBOAAA=</data>
+	<key>wlan.ocl.enabled</key>
+	<data></data>
+	<key>wlan.sdb.profile</key>
+	<data></data>
+	<key>wlan.mimo_ps.enabled</key>
+	<data></data>
+	<key>wlan.dfrts</key>
+	<data></data>
+	<key>wlan.awdl.params</key>
+	<data>AAAAAAAAAAA=</data>
+	<key>bcom.roam.enterprise</key>
+	<data>AQBaAB4ABwACAAAAuv8MALr/DAA=</data>
+	<key>bcom.roam.default</key>
+	<data>AQBaAB4ABwACAAAAtf8UALX/CgA=</data>
+	<key>wlan.bss.5GHz-preference</key>
+	<data>uv8eAA==</data>
+	<key>bcom.ps.realtime</key>
+	<data>AwDIAAAAAQCgDwAA</data>
+	<key>bcom.ps.default</key>
+	<data>AwDIAAAAAQCgDwAA</data>
+	<key>wlan.tethering.enabled</key>
+	<data>AQAAAA==</data>
+	<key>wlan.fast_enterprise_nw.enabled</key>
+	<data>AAAAAA==</data>
+	<key>wlan.voice_enterprise_nw.enabled</key>
+	<data>AAAAAA==</data>
+	<key>wlan.wnm.enabled</key>
+	<data>AAAAAA==</data>
+	<key>bcom.wow.magic-packet</key>
+	<false/>
+	<key>wlan.dfsproxy.enabled</key>
+	<data>AAAAAAAAAAA=</data>
+</dict>
+</plist>

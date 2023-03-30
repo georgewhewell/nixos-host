@@ -3,7 +3,6 @@
   imports = [ ./development.nix ];
 
   programs.vscode = {
-    package = pkgs.vscode;
     enable = true;
     mutableExtensionsDir = true;
     userSettings = {
@@ -13,6 +12,7 @@
       "workbench.colorTheme" = "Pitch Black";
       "editor.formatOnSave" = true;
       "editor.formatOnType" = true;
+      "editor.inlineSuggest.enabled" = true;
       "rust-analyzer.runnables.command" = "/etc/profiles/per-user/grw/bin/cargo";
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
@@ -27,8 +27,6 @@
     extensions = with pkgs.vscode-extensions; [
       jnoortheen.nix-ide
       golang.go
-      #ms-python.python
-      # ms-python.vscode-pylance
       hashicorp.terraform
       viktorqvarfordt.vscode-pitch-black-theme
       rust-lang.rust-analyzer

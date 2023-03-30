@@ -10,6 +10,7 @@
     kitty.terminfo
     alacritty.terminfo
     ethtool
+    #vpppkgs.x86_64-linux.vppcfg
   ];
 
   hardware.enableAllFirmware = true;

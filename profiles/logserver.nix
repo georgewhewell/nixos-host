@@ -49,6 +49,7 @@
           targets = [
             "nixhost.lan:9100"
             "fuckup.lan:9100"
+            "yoga.lan:9100"
             "ax101.lan:9100"
           ];
         }];

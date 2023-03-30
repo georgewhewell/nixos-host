@@ -73,7 +73,7 @@ let
 
   inherit (linuxKernel) kernels packagesFor;
 
-  latest = kernels.linux_6_1;
+  latest = kernels.linux_6_2;
 in
 _: {
   linuxPackages_latest_lto = packagesFor (fullLTO latest);
@@ -101,6 +101,13 @@ _: {
   linuxPackages_latest_lto_zen3 = packagesFor
     (cfg
       { MZEN3 = yes; }
+      (patch
+        [ patches.graysky ]
+        (fullLTO latest)));
+
+  linuxPackages_latest_lto_icelake = packagesFor
+    (cfg
+      { MICELAKE = yes; }
       (patch
         [ patches.graysky ]
         (fullLTO latest)));

@@ -5,25 +5,36 @@
   imports = [
     ../../../profiles/common.nix
     ../../../profiles/home.nix
-    ../../../profiles/development.nix
-    ../../../profiles/graphical.nix
     ../../../profiles/intel-gfx.nix
+    ../../../profiles/tvbox-gbm.nix
+    ../../../profiles/nas-mounts.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/thinkpad.nix
     ../../../services/docker.nix
   ];
 
   sconfig = {
-    profile = "desktop";
+    profile = "server";
     home-manager = {
       enable = true;
-      enableGraphical = true;
+      enableGraphical = false;
     };
   };
 
-  virtualisation.docker.storageDriver = lib.mkForce null;
-
-  boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
+  # disable builtin screen
+  boot = {
+    kernelParams = [ "video=eDP-1:d" ];
+    kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
+    loader.timeout = 1;
+    blacklistedKernelModules = [
+      "mei"
+      "mei_me"
+      "mei_wdt"
+      "acer_wmi"
+      "applesmc"
+      "intel_backlight"
+    ];
+  };
 
   fileSystems."/" =
     {
@@ -37,21 +48,18 @@
       fsType = "vfat";
     };
 
-  #swapDevices = [{ device = "/dev/mapper/vg0-swap"; }];
-
-  nix.maxJobs = lib.mkDefault 4;
-
-  console.font = lib.mkForce "${pkgs.terminus_font}/share/consolefonts/ter-u28n.psf.gz";
-
-  boot.loader.timeout = 1;
-  boot.blacklistedKernelModules = [
-    "mei"
-    "mei_me"
-    "mei_wdt"
-    "acer_wmi"
-    "applesmc"
-    "intel_backlight"
-  ];
+  # start kodi on boot
+  users.extraUsers.jellyfin.isNormalUser = true;
+  services.greetd = {
+    enable = true;
+    settings = rec {
+      initial_session = {
+        command = "${pkgs.kodi-gbm}/bin/kodi --standalone";
+        user = "jellyfin";
+      };
+      default_session = initial_session;
+    };
+  };
 
   services.undervolt = {
     enable = true;
@@ -64,47 +72,7 @@
   };
 
   networking.hostName = "yoga";
-  networking.wireguard = {
-    interfaces = {
-      # "wg0-cloud" = {
-      #   ips = [ "192.168.24.3/24" ];
-      #   listenPort = 51820;
-      #   privateKey = pkgs.secrets.wg-yoga-priv;
-      #   peers = [
-      #     {
-      #       publicKey = pkgs.secrets.wg-router-pub;
-      #       allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
-      #       endpoint = "home.satanic.link:51820";
-      #       persistentKeepalive = 25;
-      #     }
-      #     {
-      #       publicKey = pkgs.secrets.wg-hetzner-pub;
-      #       allowedIPs = [ "192.168.24.0/24" ];
-      #       endpoint = "cloud.satanic.link:51820";
-      #       persistentKeepalive = 25;
-      #     }
-      #   ];
-      # };
-      # "wg1-swaps" = {
-      #   ips = [ "192.168.25.5/24" ];
-      #   listenPort = 51821;
-      #   privateKey = pkgs.secrets.wg-yoga-priv;
-      #   peers = [
-      #     {
-      #       publicKey = pkgs.secrets.wg-swaps-router-pub;
-      #       allowedIPs = [ "192.168.25.0/24" "192.168.23.0/24" ];
-      #       endpoint = "home.satanic.link:51821";
-      #       persistentKeepalive = 25;
-      #     }
-      #     {
-      #       publicKey = pkgs.secrets.wg-swaps-hetzner-pub;
-      #       allowedIPs = [ "192.168.25.0/24" ];
-      #             endpoint = "116.202.128.94:51821";
-      #       persistentKeepalive = 25;
-      #     }
-      #   ];
-      # };
-    };
-  };
 
+  networking.firewall.allowedTCPPorts = [ 9100 ];
+  services.prometheus.exporters.node.openFirewall = lib.mkForce true;
 }

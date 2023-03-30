@@ -15,9 +15,6 @@
     ];
   };
 
-  # networking.firewall.allowedTCPPorts = [ 8500 8300 8301 8302 8300 8602 8600 ];
-  # networking.firewall.allowedUDPPorts = [ 8500 8301 8302 8300 8602 8600 ];
-
   # Collect metrics for prometheus
   services.prometheus.exporters = {
     node = {

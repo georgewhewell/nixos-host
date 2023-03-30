@@ -40,9 +40,9 @@
   ];
 
   environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
-  nix.nixPath = [
-    "nixpkgs=/etc/nixpkgs"
-  ];
+  # nix.nixPath = [
+  #   "nixpkgs=channel:nixos-unstable"
+  # ];
 
   services.postgresql = {
     package = pkgs.postgresql_14;

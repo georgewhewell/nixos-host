@@ -1,0 +1,35 @@
+From 11125ef30363f574fcccc2354aa9bf0948752eda Mon Sep 17 00:00:00 2001
+From: Samuel Dionne-Riel <samuel@dionne-riel.com>
+Date: Sat, 23 Jul 2022 22:54:40 -0400
+Subject: [PATCH] XXX: rock-5b: disable uart2, won't bind as a console
+
+It seems there's a bug somehwere that makes the ttyS2 console not bind.
+
+The serial interface works, the tty works, but it is not bound to a
+console.
+---
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+index 0425b6bff02320..0f0b85fbb1e12c 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+@@ -1053,6 +1053,9 @@
+ 	};
+ };
+ 
++// Enable for using UART2
++// FIXME: currently the serial interface does not "bind" as a console.
++#if 0
+ &fiq_debugger {
+ 	status = "disabled";
+ };
+@@ -1061,6 +1064,7 @@
+ 	status = "okay";
+ 	pinctrl-0 = <&uart2m0_xfer>;
+ };
++#endif
+ 
+ // Set to FIQ console to 115200, preferred ecosystem baud rate.
+ &fiq_debugger {
