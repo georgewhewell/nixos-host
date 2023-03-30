@@ -2,10 +2,8 @@
 with lib;
 {
   config = mkIf (config.sconfig.profile == "desktop") {
-    services.pcscd.enable = true;
 
     sconfig = {
-      alacritty.enable = true;
       # security-tools = true;
     };
 
@@ -13,25 +11,18 @@ with lib;
     environment.variables.MOZ_USE_XINPUT2 = "1";
 
     boot = rec {
-      # extraModulePackages = with config.boot.kernelPackages; [ ddcci-driver ];
       kernel.sysctl = { "vm.swappiness" = 1; };
-      kernelModules = [ "acpi_call" "i2c_dev" "ddcci-backlight" "tcp_bbr" ];
     };
 
-    hardware = {
-      brillo.enable = true;
-      i2c.enable = true;
-    };
 
-    sound.mediaKeys.enable = true;
-
+/*
     services = {
       fstrim.enable = true;
       fwupd.enable = true;
       hardware.bolt.enable = true;
-      thermald.enable = true;
+      thermald.enable = false;
     };
-
+*/
     #   sconfig.user-settings = ''
     #     ln -sf /etc/vscode-settings.json ~/.config/VSCodium/User/settings.json
     #     ln -sf /etc/vscode-keybindings.json ~/.config/VSCodium/User/keybindings.json

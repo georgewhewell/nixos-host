@@ -1,0 +1,21 @@
+From fd3768c4540814146faee1a684726e9de76c6143 Mon Sep 17 00:00:00 2001
+From: Samuel Dionne-Riel <samuel@dionne-riel.com>
+Date: Fri, 22 Jul 2022 17:51:48 -0400
+Subject: [PATCH] usb: gadget: legacy: webcam: Fix implementation
+
+---
+ drivers/usb/gadget/legacy/webcam.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/gadget/legacy/webcam.c b/drivers/usb/gadget/legacy/webcam.c
+index 71c567be5246c7..c7a2c31f900b64 100644
+--- a/drivers/usb/gadget/legacy/webcam.c
++++ b/drivers/usb/gadget/legacy/webcam.c
+@@ -11,6 +11,7 @@
+ #include <linux/module.h>
+ #include <linux/usb/video.h>
+ 
++#include "uvc.h"
+ #include "u_uvc.h"
+ 
+ USB_GADGET_COMPOSITE_OPTIONS();

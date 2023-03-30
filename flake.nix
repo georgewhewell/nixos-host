@@ -21,9 +21,28 @@
 
     vscode-server.url = "github:msteen/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
+
+    vpp.url = "./vpp-flake";
+    # vpp.inputs.nixpkgs.follows = "nixpkgs";
+
+    rock5b.url = "github:aciceri/rock5b-nixos";
+    # rock5b.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, darwin, nixos-hardware, home-manager, colmena, rust-overlay, foundry, vscode-server, ... }:
+  outputs =
+    { self
+    , nixpkgs
+    , darwin
+    , nixos-hardware
+    , home-manager
+    , colmena
+    , rust-overlay
+    , foundry
+    , vscode-server
+    , vpp
+    , rock5b
+    , ...
+    }:
     let
       mypkgs = import ./packages;
       deploy = import lib/deploy.nix;
@@ -51,6 +70,7 @@
 
       flakeOverlay = (final: prev: {
         inherit vscode-server;
+        vpp = vpp.packages."x86_64-linux".vpp;
       } // mypkgs { });
 
       localOverlays = map
@@ -70,7 +90,6 @@
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
         [ "x86_64-linux" "aarch64-linux" ]);
-
     in
     {
       lib = { inherit forAllSystems hardware deploy; };
@@ -123,7 +142,7 @@
         ];
       };
 
-      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule;
+      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule rock5b;
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});

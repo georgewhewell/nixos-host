@@ -139,7 +139,7 @@
     enable = true;
   };
 
-  services.openssh.forwardX11 = true;
+  services.openssh.settings.X11Forwarding = true;
 
   fonts = {
     enableDefaultFonts = false;
@@ -193,8 +193,8 @@
 
   hardware.opengl = {
     enable = true;
-    driSupport = true;
-    driSupport32Bit = true;
-    extraPackages = with pkgs; [ libva ];
+#    driSupport = true;
+#    driSupport32Bit = true;
+#    extraPackages = with pkgs; [ libva ];
   };
 }

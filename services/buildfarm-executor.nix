@@ -23,6 +23,12 @@
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
         systems = [ "x86_64-linux" "i686-linux" ];
       }
+      {
+        hostName = "rock5b";
+        sshUser = "grw";
+        supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
+        systems = [ "aarch64-linux" ];
+      }
       # {
       #   hostName = "odroid-hc1.lan";
       #   sshUser = "root";

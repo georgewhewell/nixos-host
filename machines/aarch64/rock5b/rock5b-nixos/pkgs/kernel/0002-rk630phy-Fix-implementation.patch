@@ -1,0 +1,22 @@
+From ec0e536ef19c39c50cede78ba2999b5962c8aea7 Mon Sep 17 00:00:00 2001
+From: Samuel Dionne-Riel <samuel@dionne-riel.com>
+Date: Fri, 22 Jul 2022 17:51:21 -0400
+Subject: [PATCH] rk630phy: Fix implementation
+
+---
+ drivers/net/phy/rk630phy.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/phy/rk630phy.c b/drivers/net/phy/rk630phy.c
+index 23ab0b1f9d111b..e49a5979c586b5 100644
+--- a/drivers/net/phy/rk630phy.c
++++ b/drivers/net/phy/rk630phy.c
+@@ -378,7 +378,7 @@ static struct mdio_device_id __maybe_unused rk630_phy_tbl[] = {
+ 	{ }
+ };
+ 
+-MODULE_DEVICE_TABLE(mdio, rockchip_phy_tbl);
++MODULE_DEVICE_TABLE(mdio, rk630_phy_tbl);
+ 
+ module_phy_driver(rk630_phy_driver);
+ 

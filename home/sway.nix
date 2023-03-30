@@ -19,7 +19,21 @@
     waypipe
   ];
 
-  programs.mako =
+  services.gammastep = {
+    enable = true;
+    provider = "manual";
+    dawnTime = "6:00-7:45";
+    duskTime = "18:35-20:15";
+    tray = true;
+    settings = {
+      general = {
+        adjustment-method = "wayland";
+        gamma = 0.8;
+      };
+    };
+  };
+
+  services.mako =
     let
       homeIcons = "${config.home.homeDirectory}/.nix-profile/share/icons/hicolor";
       homePixmaps = "${config.home.homeDirectory}/.nix-profile/share/pixmaps";
@@ -87,6 +101,10 @@
           xkb_layout = "us";
         };
 
+        # "1133:49983:Logitech_G815_RGB_MECHANICAL_GAMING_KEYBOARD" = {
+        #   xkb_layout = "us";
+        # };
+
         # yoga touchpad
         "2:7:SynPS/2_Synaptics_TouchPad" = {
           dwt = "enabled";
@@ -102,6 +120,10 @@
         #"DP-*" = { mode = "5120x1440@239.761002Hz"; };
         "Virtual-1" = { resolution = "1920x1200"; };
         "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
+        "Unknown-1" = {
+          scale = "2";
+          scale_filter = "smart";
+        };
       };
       startup = [
         { command = "${pkgs.mako}/bin/mako"; always = true; }
@@ -129,7 +151,7 @@
           '';
           always = false;
           }
-        */
+          */
         # static workspaces
         /*{
           command = ''
@@ -137,12 +159,6 @@
           '';
           always = false;
           }*/
-        {
-          command = ''
-            swaymsg "workspace 8; exec spotify; workspace 1"
-          '';
-          always = false;
-        }
       ]
       ++ lib.optionals (config.hostId == "yoga") [ ]
       ++ lib.optionals (config.hostId == "workvm") [{

@@ -9,7 +9,7 @@
     home-manager = {
       enable = true;
       enableGraphical = true;
-      #      enableVscodeServer = true;
+      enableVscodeServer = true;
     };
   };
 
@@ -37,6 +37,7 @@
   boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
   #boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [
+    "pci=realloc"
     "libata.force=4.00:noncq"
     "libata.force=4.00:3.0Gbps"
     "libata.force=5.00:noncq"
@@ -44,13 +45,10 @@
   ];
 
   system.stateVersion = "22.11";
-
-  # sconfig.optimism =
-  #   {
-  #     enable = true;
-  #     dataDir = "/var/lib/optimism";
-  #   };
-
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
   fileSystems."/" =
     {
       device = "/dev/mapper/vg1-nixos";

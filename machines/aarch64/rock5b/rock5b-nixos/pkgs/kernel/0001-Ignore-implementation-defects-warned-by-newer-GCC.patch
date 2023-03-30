@@ -1,0 +1,53 @@
+From 62914713fbc7af9ff955a12453b5c8602ae81d29 Mon Sep 17 00:00:00 2001
+From: Samuel Dionne-Riel <samuel@dionne-riel.com>
+Date: Fri, 22 Jul 2022 17:50:42 -0400
+Subject: [PATCH] Ignore implementation defects warned by newer GCC
+
+---
+ drivers/gpu/drm/rcar-du/Makefile | 4 ++++
+ drivers/net/phy/Makefile         | 3 +++
+ drivers/soc/rockchip/Makefile    | 4 ++++
+ 3 files changed, 11 insertions(+)
+
+diff --git a/drivers/gpu/drm/rcar-du/Makefile b/drivers/gpu/drm/rcar-du/Makefile
+index 4d1187ccc3e5c5..7aa52b6de506ac 100644
+--- a/drivers/gpu/drm/rcar-du/Makefile
++++ b/drivers/gpu/drm/rcar-du/Makefile
+@@ -1,4 +1,8 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# ¯\_(ツ)_/¯
++CFLAGS_rcar_dw_hdmi.o += -Wno-error=incompatible-pointer-types
++
+ rcar-du-drm-y := rcar_du_crtc.o \
+ 		 rcar_du_drv.o \
+ 		 rcar_du_encoder.o \
+diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
+index bcc1c1267d0c7c..a89a5339807372 100644
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -1,6 +1,9 @@
+ # SPDX-License-Identifier: GPL-2.0
+ # Makefile for Linux PHY drivers
+ 
++# ¯\_(ツ)_/¯
++CFLAGS_rk630phy.o += -Wno-error=incompatible-pointer-types
++
+ libphy-y			:= phy.o phy-c45.o phy-core.o phy_device.o \
+ 				   linkmode.o
+ mdio-bus-y			+= mdio_bus.o mdio_device.o
+diff --git a/drivers/soc/rockchip/Makefile b/drivers/soc/rockchip/Makefile
+index 8f9439271fc383..07a92dbc90a844 100644
+--- a/drivers/soc/rockchip/Makefile
++++ b/drivers/soc/rockchip/Makefile
+@@ -2,6 +2,10 @@
+ #
+ # Rockchip Soc drivers
+ #
++
++# ¯\_(ツ)_/¯
++CFLAGS_iomux.o += -Wno-error=implicit-int
++
+ obj-$(CONFIG_ROCKCHIP_AMP) += rockchip_amp.o
+ obj-$(CONFIG_ROCKCHIP_CPUINFO) += rockchip-cpuinfo.o
+ obj-$(CONFIG_ROCKCHIP_GRF) += grf.o

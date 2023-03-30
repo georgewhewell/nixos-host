@@ -24,20 +24,6 @@
   home.packages = with pkgs; [
     wl-clipboard
     wdisplays
-
-    spotify
-    vlc
-
-    signal-desktop
-    tdesktop
-    element-desktop
-    tor-browser-bundle-bin
-    monero-gui
-    discord
-    zoom-us
-    # calibre
-    slack
-    xournal
     xdg-utils
 
     (wrapFirefox firefox-unwrapped {

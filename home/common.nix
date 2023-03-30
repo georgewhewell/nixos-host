@@ -34,6 +34,8 @@
     tmux
     btop
     mosh
+    mtr
+    bridge-utils
   ];
 
   manual.manpages.enable = false;
@@ -52,6 +54,10 @@
       };
       "fuckup.satanic.link" = {
         hostname = "fuckup.lan";
+        proxyJump = "satanic.link";
+      };
+      "rock5b.satanic.link" = {
+        hostname = "rock5b.lan";
         proxyJump = "satanic.link";
       };
     };

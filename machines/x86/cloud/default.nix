@@ -90,28 +90,30 @@
     };
   };
 
-  networking.wireguard = {
+  /*
+    networking.wireguard = {
     interfaces = {
-      "wg0" = {
-        ips = [ "192.168.24.2/24" ];
-        listenPort = 51820;
-        privateKey = pkgs.secrets.wg-hetzner-cloud-priv;
-        # postSetup = ''
-        #   ${pkgs.iptables}/bin/iptables -t nat -A POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
-        # '';
-        # postShutdown = ''
-        #   ${pkgs.iptables}/bin/iptables -t nat -D POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
-        # '';
-        peers = [
-          {
-            publicKey = pkgs.secrets.wg-router-pub;
-            allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
-            endpoint = "home.satanic.link:51820";
-            persistentKeepalive = 25;
-          }
-        ];
-      };
+    "wg0" = {
+    ips = [ "192.168.24.2/24" ];
+    listenPort = 51820;
+    privateKey = pkgs.secrets.wg-hetzner-cloud-priv;
+    # postSetup = ''
+    #   ${pkgs.iptables}/bin/iptables -t nat -A POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
+    # '';
+    # postShutdown = ''
+    #   ${pkgs.iptables}/bin/iptables -t nat -D POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
+    # '';
+    peers = [
+    {
+    publicKey = pkgs.secrets.wg-router-pub;
+    allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
+    endpoint = "home.satanic.link:51820";
+    persistentKeepalive = 25;
+    }
+    ];
     };
-  };
+    };
+    };
+  */
 
 }

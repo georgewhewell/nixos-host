@@ -61,13 +61,11 @@
 
   boot.kernelPackages = pkgs.linuxPackages_latest_lto_broadwell;
   boot.zfs.requestEncryptionCredentials = false;
-  # boot.kernelPackages = pkgs.linuxPackages_latest;
 
   services.iperf3 = {
     enable = true;
     openFirewall = true;
   };
-
 
   fileSystems."/var/lib/lighthouse" =
     {
@@ -101,8 +99,6 @@
     };
     extraArgs = ''--checkpoint-sync-url="https://mainnet.checkpoint.sigp.io"'';
   };
-
-
 
   fileSystems."/var/lib/private/goethereum" =
     {
@@ -176,6 +172,71 @@
     };
   };
 
+  fileSystems."/var/lib/monero" =
+    {
+      device = "fpool/root/monero";
+      fsType = "zfs";
+      options = [ "nofail" ];
+    };
+
+  services.monero = {
+    enable = true;
+    dataDir = "/var/lib/monero";
+    rpc = {
+      address = "192.168.23.1";
+    };
+    extraConfig = ''
+      confirm-external-bind=1
+    '';
+  };
+
+  fileSystems."/var/lib/arbitrum" =
+    {
+      device = "fpool/root/arbitrum";
+      fsType = "zfs";
+      options = [ "nofail" ];
+    };
+
+  virtualisation.oci-containers.containers.arbitrum = {
+    image = "offchainlabs/nitro-node:v2.0.11-8e786ec";
+    ports = [ "8547" "8548" ];
+    volumes = [
+      "/var/lib/arbitrum:/home/user/.arbitrum"
+      # "/mnt/Home/images/nitro.tar:/nitro.tar"
+    ];
+    cmd = [
+      # "--init.url=file:///nitro.tar"
+      "--l1.url=http://192.168.23.1:8545"
+      "--l2.chain-id=42161"
+      "--http.api=net,web3,eth,debug"
+      "--http.corsdomain=*"
+      "--http.addr=0.0.0.0"
+      "--http.vhosts=*"
+      "--ws.port=8548"
+      "--ws.addr=0.0.0.0"
+      "--ws.origins=*"
+    ];
+    extraOptions = [ "--network=host" ];
+  };
+
+  services.nginx.virtualHosts = {
+    "arbitrum-mainnet.satanic.link" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        proxyPass = "http://localhost:8547";
+      };
+    };
+    "arbitrum-mainnet-ws.satanic.link" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        proxyPass = "http://localhost:8548";
+        proxyWebsockets = true;
+      };
+    };
+  };
+
   boot.kernelModules = [
     "ipmi_devintf"
     "ipmi_si"
@@ -204,6 +265,12 @@
     hostId = lib.mkForce "deadbeef";
     firewall = {
       checkReversePath = false;
+      allowedTCPPorts = [
+        18080 # monero
+      ];
+      allowedUDPPorts = [
+        18080 # monero
+      ];
     };
   };
 

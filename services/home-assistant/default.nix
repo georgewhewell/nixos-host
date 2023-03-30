@@ -40,6 +40,8 @@
           aiounifi
           aiohomekit
           async-upnp-client
+          pyatv
+          paho-mqtt
         ];
       };
     in
