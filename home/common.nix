@@ -23,11 +23,10 @@
     bat.enable = true;
     fzf.enable = true;
   };
-
   home.packages = with pkgs; [
     bat
     pv
-    exa
+    eza
     ripgrep
     pwgen
     docker-compose
@@ -49,9 +48,6 @@
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
-      "ax101.satanic.link" = {
-        hostname = "ax101.satanic.link";
-      };
       "fuckup.satanic.link" = {
         hostname = "fuckup.lan";
         proxyJump = "satanic.link";
@@ -59,6 +55,17 @@
       "rock5b.satanic.link" = {
         hostname = "rock5b.lan";
         proxyJump = "satanic.link";
+      };
+      "nixhost" = {
+        hostname = "nixhost";
+      };
+      "nixhost.satanic.link" = {
+        hostname = "nixhost.lan";
+        proxyJump = "satanic.link";
+      };
+      "george.kaki.dev" = {
+        hostname = "george.kaki.dev";
+        forwardAgent = false;
       };
     };
   };

@@ -8,4 +8,10 @@
     enable = true;
   };
 
+  home.packages = with pkgs; [
+    ccid
+    yubikey-manager
+    opensc
+    pcsctools
+  ];
 }

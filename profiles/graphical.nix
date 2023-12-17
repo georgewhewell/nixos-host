@@ -2,7 +2,8 @@
 
 {
 
-  sconfig.pipewire = true;
+  sconfig.pipewire = false;
+  hardware.pulseaudio.enable = true;
 
   # for yubikey
   services.pcscd.enable = true;
@@ -19,14 +20,15 @@
     enable = true;
   };
 
-  services.flatpak.enable = true;
-  xdg.portal = {
-    enable = true;
-    # extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
-    # gtkUsePortal = true;
-    wlr.enable = true;
-  };
-
+  # services.flatpak.enable = true;
+  # xdg.portal = {
+  #   enable = true;
+  #   # extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
+  #   # gtkUsePortal = true;
+  #   wlr.enable = true;
+  # };
+  services.xserver.enable = false;
+  xdg.portal.config.common.default = "*";
   environment.systemPackages = with pkgs; [
     # save settings
     dconf
@@ -36,7 +38,7 @@
     libimobiledevice
 
     # PA Systray
-    pasystray
+    # pasystray
     pavucontrol
     pamixer
 
@@ -81,7 +83,7 @@
     serviceConfig = {
       Type = "simple";
       ExecStart = ''
-        ${pkgs.sway}/bin/sway --debug
+        ${pkgs.sway}/bin/sway
       '';
       Restart = "on-failure";
       RestartSec = 1;
@@ -128,12 +130,23 @@
   hardware.sane = {
     enable = true;
     snapshot = true;
+    extraBackends = [ pkgs.hplipWithPlugin ];
   };
 
-  services.printing = {
+  services.avahi = {
     enable = true;
-    drivers = [ pkgs.gutenprint pkgs.hplip ];
+    nssmdns = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      userServices = true;
+    };
   };
+
+  # services.printing = {
+  #   enable = true;
+  #   drivers = [ pkgs.gutenprint pkgs.hplipWithPlugin ];
+  # };
 
   services.usbmuxd = {
     enable = true;
@@ -142,7 +155,8 @@
   services.openssh.settings.X11Forwarding = true;
 
   fonts = {
-    enableDefaultFonts = false;
+
+    enableDefaultPackages = false;
     enableGhostscriptFonts = false;
     fontDir.enable = false;
     fontconfig = {
@@ -178,8 +192,8 @@
         </fontconfig>
       '';
     };
-    fonts = with pkgs; [
-      (nerdfonts.override { fonts = [ "Hack" ]; })
+    packages = with pkgs; [
+      #(nerdfonts.override { fonts = [ "Hack" ]; })
       ibm-plex
       dejavu_fonts
       unifont
@@ -193,8 +207,8 @@
 
   hardware.opengl = {
     enable = true;
-#    driSupport = true;
-#    driSupport32Bit = true;
-#    extraPackages = with pkgs; [ libva ];
+    #    driSupport = true;
+    #    driSupport32Bit = true;
+    #    extraPackages = with pkgs; [ libva ];
   };
 }

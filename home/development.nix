@@ -16,19 +16,12 @@
     go
     gopls
 
-    # evm tooling
-    # solc
-    foundry-bin
-
     # rust tooling
-    (rust-bin.nightly.latest.default.override
-      {
-        extensions = [
-          "rust-src"
-          "rustfmt"
-          "rust-analyzer-preview"
-        ];
-      }
-    )
+    rustup
+  ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
+    # evm tooling
+    solc
+    foundry-bin
   ];
+
 }

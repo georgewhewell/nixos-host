@@ -28,3 +28,5 @@ index 58f95e0..90bd953 100644
 -    return (n > 0) ? n : error;
 +    return (n >= 0) ? n : error;
  }
+
+--

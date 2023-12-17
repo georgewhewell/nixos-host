@@ -49,15 +49,19 @@
           targets = [
             "nixhost.lan:9100"
             "fuckup.lan:9100"
+            "router.lan:9100"
             "yoga.lan:9100"
-            "ax101.lan:9100"
+            "rock5b.lan:9100"
+            "air.lan:9100"
           ];
         }];
       }
       {
         job_name = "nginx";
         static_configs = [{
-          targets = [ "127.0.0.1:9113" "ax101.lan:9113" ];
+          targets = [
+            "127.0.0.1:9113"
+          ];
         }];
       }
       {
@@ -101,28 +105,22 @@
         job_name = "geth_node";
         metrics_path = "/debug/metrics/prometheus";
         static_configs = [{
-          targets = [ "ax101.lan:6060" "127.0.0.1:6060" ];
+          targets = [ "127.0.0.1:6060" ];
         }];
       }
 
       {
         job_name = "lighthouse";
         static_configs = [{
-          targets = [ "127.0.0.1:5054" ];
+          targets = [ "127.0.0.1:5054" "127.0.0.1:5055" ];
         }];
       }
-      # {
-      #   job_name = "nft_bot";
-      #   static_configs = [{
-      #     targets = [ "ax101.lan:9099" ];
-      #   }];
-      # }
-      # {
-      #   job_name = "arb_bot";
-      #   static_configs = [{
-      #     targets = [ "ax101.lan:9199" ];
-      #   }];
-      # }
+      {
+        job_name = "reth";
+        static_configs = [{
+          targets = [ "127.0.0.1:9009" ];
+        }];
+      }
       {
         job_name = "snmp";
         metrics_path = "/snmp";
@@ -136,7 +134,6 @@
           targets = [ "mikrotik.lan" ];
         }];
       }
-
     ];
   };
 

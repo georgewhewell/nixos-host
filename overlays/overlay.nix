@@ -21,19 +21,7 @@ self: super:
     buildInputs = old.buildInputs ++ [ super.mbedtls ];
   });
 
-  /*
-    jellyfin-ffmpeg = super.jellyfin-ffmpeg.overrideAttrs (old: {
-    src = super.fetchFromGitHub {
-    owner = "jellyfin";
-    repo = "jellyfin-ffmpeg";
-    rev = "master";
-    sha256 = "sha256-jMd7tEEfiHqTp4q8c6EvbjL0KyJ6ucj4ZNrKOJLJ1Mc=";
-    };
-    });
-  */
-  foundry-bin = super.foundry-bin.overrideAttrs (o: {
-    installCheckPhase = "";
-  });
+  steam = super.hello;
 
   # Append local packages
 } // (import ../packages { pkgs = super; })

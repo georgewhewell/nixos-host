@@ -11,18 +11,23 @@ in
       default = 4022;
       description = "UDPXY port";
     };
-
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Open ports in firewall";
+    };
   };
 
   config = lib.mkIf cfg.enable {
 
-    # users.optimism = { };
+    networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
+    networking.firewall.allowedUDPPorts = lib.mkIf cfg.openFirewall [ 5000 ];
 
     systemd.services.udpxy = {
       description = "udpxy";
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.udpxy}/bin/udpxy -p ${toString cfg.port} -T -s -n -20";
+        ExecStart = "${pkgs.udpxy}/bin/udpxy -p ${toString cfg.port} -T -n -20";
         Restart = "always";
         RestartSec = "5";
       };

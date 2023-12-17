@@ -6,7 +6,7 @@
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/intel-gfx.nix
-    ../../../profiles/tvbox-gbm.nix
+    # ../../../profiles/tvbox-gbm.nix
     ../../../profiles/nas-mounts.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/thinkpad.nix
@@ -23,7 +23,7 @@
 
   # disable builtin screen
   boot = {
-    kernelParams = [ "video=eDP-1:d" ];
+    # kernelParams = [ "video=eDP-1:d" ];
     kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
     loader.timeout = 1;
     blacklistedKernelModules = [
@@ -49,17 +49,17 @@
     };
 
   # start kodi on boot
-  users.extraUsers.jellyfin.isNormalUser = true;
-  services.greetd = {
-    enable = true;
-    settings = rec {
-      initial_session = {
-        command = "${pkgs.kodi-gbm}/bin/kodi --standalone";
-        user = "jellyfin";
-      };
-      default_session = initial_session;
-    };
-  };
+  # users.extraUsers.jellyfin.isNormalUser = true;
+  # services.greetd = {
+  #   enable = true;
+  #   settings = rec {
+  #     initial_session = {
+  #       command = "${pkgs.kodi-gbm}/bin/kodi --standalone";
+  #       user = "jellyfin";
+  #     };
+  #     default_session = initial_session;
+  #   };
+  # };
 
   services.undervolt = {
     enable = true;

@@ -8,6 +8,7 @@ in
   options.sconfig.home-manager.enableGraphical = lib.mkEnableOption "Enable graphical HM";
   options.sconfig.home-manager.enableLaptop = lib.mkEnableOption "Enable laptop";
   options.sconfig.home-manager.enableVscodeServer = lib.mkEnableOption "Enable vscode";
+  options.sconfig.home-manager.enableDevelopment = lib.mkEnableOption "Enable dev tools";
 
   config = lib.mkIf cfg.enable
     {
@@ -27,6 +28,8 @@ in
           ../home/laptop.nix
         ] ++ lib.optionals cfg.enableVscodeServer [
           ../home/vscode-server.nix
+        ] ++ lib.optionals cfg.enableDevelopment [
+          ../home/development.nix
         ];
       };
     };

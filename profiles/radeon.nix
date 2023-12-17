@@ -22,7 +22,7 @@ in
   # environment.systemPackages = with pkgs; [ radeon-profile rocminfo rocm-opencl-runtime rocm-opencl-icd rocm-smi ];
   environment.systemPackages = with pkgs; [
     radeon-profile
-    corectrl
-    rocm-smi
+    # corectrl
+    # rocm-smi
   ];
 }

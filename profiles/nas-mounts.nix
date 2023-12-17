@@ -6,14 +6,14 @@ in
 
   fileSystems."/mnt/Home" =
     {
-      device = "nixhost.lan:/home";
+      device = "192.168.23.5:/export/home";
       fsType = "nfs";
       inherit options;
     };
 
   fileSystems."/mnt/Media" =
     {
-      device = "nixhost.lan:/media";
+      device = "192.168.23.5:/export/media";
       fsType = "nfs";
       inherit options;
     };

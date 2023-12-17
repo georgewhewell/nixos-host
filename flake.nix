@@ -1,11 +1,13 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    #nixpkgs.url = "path:/home/grw/src/nixpkgs";
+    # nixpkgs.url = "path:/home/grw/src/nixpkgs";
     nixos-hardware.url = "github:NixOS/nixos-hardware";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    ethereum.url = "github:nix-community/ethereum.nix/feat/reth";
 
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
@@ -19,13 +21,16 @@
     foundry.url = "github:shazow/foundry.nix";
     foundry.inputs.nixpkgs.follows = "nixpkgs";
 
-    vscode-server.url = "github:msteen/nixos-vscode-server";
+    vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
-    vpp.url = "./vpp-flake";
+    vpp.url = "github:georgewhewell/vpp-flake";
     # vpp.inputs.nixpkgs.follows = "nixpkgs";
 
     rock5b.url = "github:aciceri/rock5b-nixos";
+    # rock5b.url = "path:/home/grw/src/rock5b-nixos";
+
+    apple-silicon.url = "github:tpwrules/nixos-apple-silicon";
     # rock5b.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -41,6 +46,8 @@
     , vscode-server
     , vpp
     , rock5b
+    , apple-silicon
+    , ethereum
     , ...
     }:
     let
@@ -51,9 +58,9 @@
       inherit (builtins) attrNames readDir;
 
       overlayCompat = { pkgs, lib, ... }: {
-        nix.nixPath = [
-          "nixpkgs-overlays=/etc/overlays-compat/"
-        ];
+        # nix.nixPath = [
+        #   "nixpkgs-overlays=/etc/overlays-compat/"
+        # ];
         environment.etc."overlays-compat/overlays.nix".text = ''
           self: super:
           with super.lib;
@@ -70,12 +77,18 @@
 
       flakeOverlay = (final: prev: {
         inherit vscode-server;
-        vpp = vpp.packages."x86_64-linux".vpp;
+        vppPkgs = vpp.packages."x86_64-linux";
+        ethPkgs = ethereum.packages."x86_64-linux";
       } // mypkgs { });
 
       localOverlays = map
         (f: import (./overlays + "/${f}"))
-        (attrNames (readDir ./overlays)) ++ [ rust-overlay.overlays.default flakeOverlay foundry.overlay ];
+        (attrNames (readDir ./overlays)) ++ [
+        rust-overlay.overlays.default
+        flakeOverlay
+        foundry.overlay
+        # ethereum.overlays.default
+      ];
 
       hardware =
         nixos-hardware.nixosModules //
@@ -142,7 +155,7 @@
         ];
       };
 
-      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule rock5b;
+      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule apple-silicon;
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});

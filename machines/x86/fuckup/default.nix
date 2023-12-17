@@ -13,6 +13,15 @@
     };
   };
 
+  environment.systemPackages = [
+    pkgs.gparted
+  ];
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "nodejs-16.20.1"
+    "nodejs-16.20.2"
+  ];
+
   imports =
     [
       ../../../profiles/common.nix
@@ -28,14 +37,14 @@
 
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
-      ../../../services/jellyfin.nix
 
       ../../../services/virt/host.nix
       # ../../../services/virt/vfio.nix
     ];
 
   boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  # boot.kernelPackages = pkgs.linuxPackages_latest;
+
   boot.kernelParams = [
     "pci=realloc"
     "libata.force=4.00:noncq"
@@ -79,12 +88,13 @@
     hostName = "fuckup";
     wireless.enable = false;
     useDHCP = false;
+    enableIPv6 = true;
 
     firewall = {
       enable = true;
       allowedTCPPortRanges = [{ from = 5000; to = 5005; } { from = 50000; to = 60000; }];
       allowedUDPPortRanges = [{ from = 6000; to = 6005; } { from = 35000; to = 65535; }];
-      allowedUDPPorts = [ 5353 ];
+      allowedUDPPorts = [ 111 5353 40601 ];
       allowedTCPPorts = [
         9100
         10809
@@ -94,7 +104,11 @@
         3689
         5353
 
-        8096 # jellyfin
+        39375 # ?? lol
+        36383
+        41815 # nfs??
+        45085
+        57747 # rpcinfo -p
       ];
       checkReversePath = false;
       extraCommands = ''
@@ -109,47 +123,7 @@
     bridges.br0 = {
       interfaces = [
         "enp0s31f6" # onboard ethernet
-        # "enp4s0f0np0" # sfp28
-        "enp4s0f1np1" # sfp28
       ];
     };
   };
-
-  # boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
-  boot.supportedFilesystems = [ "zfs" ];
-  boot.zfs.enableUnstable = true;
-
-  /*
-    environment.systemPackages = with pkgs; [ openrgb ];
-    services.udev.extraRules = let
-    orig = builtins.fetchurl {
-    url = "https://gitlab.com/CalcProgrammer1/OpenRGB/-/raw/master/60-openrgb.rules";
-    };
-    patched = pkgs.runCommandNoCC "remove-chmod" {} ''
-    sed '/chmod/d' ${orig} > $out
-    '';
-    in builtins.readFile patched;
-  */
-
-  /*
-    virtualisation.kvmgt = {
-    enable = false;
-    vgpus = {
-    "i915-GVTg_V5_4" = {
-    uuid = "a297db4a-f4c2-11e6-90f6-d3b88d6c9525";
-    };
-    };
-    };
-  */
-
-  # nix = {
-  #   # hydra doesnt like /nix/store in buildfarm-executor so add it here
-  #   buildMachines = [{
-  #     hostName = "/nix/store";
-  #     supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-  #     maxJobs = 2;
-  #     speedFactor = 2;
-  #     systems = [ "builtin" "x86_64-linux" "i686-linux" "aarch64-linux" "armv7l-linux" ];
-  #   }];
-  # };
 }
