@@ -28,8 +28,6 @@
 
   users.extraUsers."hass".extraGroups = [ "dialout" ];
 
-  services.influxdb.enable = true;
-
   services.home-assistant =
     let
       package = pkgs.home-assistant.override {
@@ -42,6 +40,12 @@
           async-upnp-client
           pyatv
           paho-mqtt
+          withings-api
+          withings-sync
+          aiowithings
+          python-otbr-api
+          pyipp
+          pysnmp
         ];
       };
     in
@@ -84,13 +88,11 @@
         history = { };
         config = { };
         unifi = { };
-        influxdb = { };
-        esphome = { };
+        # influxdb = { };
         zha = {
           zigpy_config.ota.ikea_provider = true;
         };
         system_health = { };
-        withings = { use_webhook = true; };
       };
     };
 

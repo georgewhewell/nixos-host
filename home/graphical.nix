@@ -25,7 +25,22 @@
     wl-clipboard
     wdisplays
     xdg-utils
+    kitty
 
+    vlc
+    tdesktop
+    element-desktop
+    monero-gui
+    calibre
+    xournal
+  ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
+    spotify
+    signal-desktop
+    tor-browser-bundle-bin
+    discord
+    zoom-us
+    slack
+  ] ++ [
     (wrapFirefox firefox-unwrapped {
       extraPolicies = {
         NewTabPage = false;

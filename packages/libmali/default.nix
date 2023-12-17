@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "JeffyCN";
     repo = "rockchip_mirrors";
-    rev = "libmali";
+    rev = "309268f7a34ca0bba0ab94a0b09feb0191c77fb8";
     sha256 = "sha256-VpHcJUTRZ3aJyfYypjVsYyRNrK0+9ci42mmlZQSkWAk=";
   };
 

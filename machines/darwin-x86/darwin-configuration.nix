@@ -33,7 +33,7 @@ in
   programs.zsh.enable = true;
 
   environment.shellAliases = rec {
-    ll = "exa --long --header --git --git-ignore --sort=created";
+    ll = "eza --long --header --git --git-ignore --sort=created";
     gsp = "git stash && git pull";
     gspp = "${gsp} && git stash pop";
     slugify = "iconv -t ascii//TRANSLIT | sed -E 's/[~\^]+//g' | sed -E 's/[^a-zA-Z0-9]+/-/g' | sed -E 's/^-+\|-+$//g' | tr A-Z a-z";

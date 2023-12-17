@@ -5,9 +5,9 @@
   imports =
     [
       ../../../profiles/common.nix
-      ../../../profiles/nas-mounts.nix
+      # ../../../profiles/nas-mounts.nix
       ../../../services/buildfarm-slave.nix
-      ../../../profiles/tvbox-gbm.nix
+      #  ../../../profiles/tvbox-gbm.nix
     ];
 
   sconfig = {
@@ -15,8 +15,6 @@
     home-manager.enable = true;
     home-manager.enableGraphical = false;
   };
-
-  deployment.targetHost = "rock5b";
 
   services.prometheus.exporters = {
     node = {
@@ -120,12 +118,28 @@
     };
   };
 
-  boot.loader.grub.enable = false;
-  boot.loader.generic-extlinux-compatible.enable = true;
+  # Use the systemd-boot EFI boot loader.
+  boot.loader = {
+    timeout = 5;
+    efi = {
+      efiSysMountPoint = "/boot";
+      canTouchEfiVariables = true;
+    };
+    systemd-boot = {
+      enable = true;
+      configurationLimit = 10;
+    };
+    grub.enable = false;
+  };
 
   boot.initrd.availableKernelModules = lib.mkForce [ "usbhid" "md_mod" "raid0" "raid1" "raid10" "raid456" "ext2" "ext4" "sd_mod" "sr_mod" "mmc_block" "uhci_hcd" "ehci_hcd" "ehci_pci" "ohci_hcd" "ohci_pci" "xhci_hcd" "xhci_pci" "usbhid" "hid_generic" "hid_lenovo" "hid_apple" "hid_roccat" "hid_logitech_hidpp" "hid_logitech_dj" "hid_microsoft" "hid_cherry" ];
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+  system.stateVersion = "23.05";
 
-  system.stateVersion = lib.traceSeq config.boot.initrd.availableKernelModules "23.05";
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/EFI";
+    fsType = "vfat";
+  };
 
   fileSystems."/" = {
     device = "/dev/disk/by-label/NIXOS_ROOTFS";

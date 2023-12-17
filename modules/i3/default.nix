@@ -54,7 +54,7 @@ in
     services.gvfs.enable = true;
     networking.networkmanager.enable = true;
 
-    fonts.fonts = with pkgs; [
+    fonts.packages = with pkgs; [
       font-awesome
       powerline-fonts
     ];

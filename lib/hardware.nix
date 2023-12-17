@@ -2,8 +2,6 @@ modulesPath: {
   physical = { lib, ... }: lib.mkMerge
     [
       (import "${modulesPath}/installer/scan/not-detected.nix" { inherit lib; })
-     # { hardware.cpu.amd.updateMicrocode = true; }
-     # { hardware.cpu.intel.updateMicrocode = true; }
     ];
 
   qemu = { lib, ... }: lib.mkMerge

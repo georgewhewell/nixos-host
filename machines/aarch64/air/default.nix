@@ -2,25 +2,66 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports =
     [
-      # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      ./apple-silicon-support
-
       ../../../profiles/common.nix
       ../../../profiles/graphical.nix
-      #    ../../../services/buildfarm-executor.nix
+      ../../../services/buildfarm-slave.nix
     ];
+
+  boot.initrd.availableKernelModules = [ "usb_storage" ];
+  boot.initrd.kernelModules = [ ];
+  boot.kernelModules = [ ];
+  boot.extraModulePackages = [ ];
+
+  fileSystems."/" =
+    {
+      device = "/dev/disk/by-uuid/12e505b1-6ba5-46e6-b1cb-ae0d42044231";
+      fsType = "ext4";
+    };
+
+  fileSystems."/boot" =
+    {
+      device = "/dev/disk/by-uuid/2A39-1614";
+      fsType = "vfat";
+    };
+
+  services.prometheus.exporters = {
+    node = {
+      enable = true;
+      openFirewall = true;
+      enabledCollectors = [ "systemd" ];
+    };
+  };
+
+  swapDevices = [ ];
+
+  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
+  # (the default) this is the recommended approach. When using systemd-networkd it's
+  # still possible to use this option, but it's recommended to use it in conjunction
+  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
+  networking.useDHCP = lib.mkDefault true;
+  # networking.interfaces.eth0.useDHCP = lib.mkDefault true;
+  # networking.interfaces.wlp1s0f0.useDHCP = lib.mkDefault true;
+
+  nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
+  powerManagement.cpuFreqGovernor = lib.mkDefault "ondemand";
+  # high-resolution display
+  # hardware.video.hidpi.enable = lib.mkDefault true;
 
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = false;
-  hardware.asahi.peripheralFirmwareDirectory = ./firmware/firmware;
 
+  hardware.asahi.peripheralFirmwareDirectory = ./firmware/firmware;
+  # hardware.asahi.extractPeripheralFirmware = false;
+  # hardware.asahi.useExperimentalGPUDriver = true;
+  # hardware.opengl.package = pkgs.mesa-asahi-edge;
+  hardware.asahi.addEdgeKernelConfig = true;
+  services.hardware.bolt.enable = true;
   sconfig = {
     profile = "desktop";
     home-manager.enable = true;

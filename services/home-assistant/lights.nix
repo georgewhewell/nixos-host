@@ -5,7 +5,7 @@
   services.home-assistant.config = {
     adaptive_lighting = {
       lights = [
-        "light.bedroom_filament_light"
+        "light.bedroom_ceiling_light"
         "light.hallway_ceiling_light"
         "light.office_ceiling_light"
       ];
@@ -23,7 +23,7 @@
             };
           in
           {
-            "light.bedroom_filament_light" = state;
+            "light.bedroom_ceiling_light" = state;
             "light.hallway_ceiling_light" = state;
             "light.office_ceiling_light" = state;
             "light.corner_huelight" = state;
@@ -43,7 +43,7 @@
       let
         bigRemote = "6fa8c342c806f9ef3825248cfffb7694";
         cornerLight = "36817c816692e0485acaea87dbfd4e8e";
-        mkMotionLight = { name, motionSensor, lightTarget, condition ? null }:
+        mkMotionLight = { name, motionSensor, lightTarget, no_motion_wait ? 120, condition ? null }:
           {
             alias = "${name} Lights";
             use_blueprint = {
@@ -51,6 +51,7 @@
               input = {
                 motion_entity = motionSensor;
                 light_target.area_id = lightTarget;
+                no_motion_wait = no_motion_wait;
               };
             };
             condition = condition;
@@ -88,6 +89,7 @@
             name = "Office";
             motionSensor = "binary_sensor.office_motion_sensor_motion";
             lightTarget = "office";
+            no_motion_wait = 1800;
           })
 
         (mkMotionLight
@@ -96,7 +98,7 @@
             motionSensor = "binary_sensor.bedroom_motion_sensor_motion";
             lightTarget = "605ca1bb58e342d6b7aeb66364977d62";
             condition = [
-              # Dont activate during nighttime
+              # Don't activate when george in bed
               {
                 alias = "Not in bed";
                 condition = "state";
@@ -106,10 +108,24 @@
             ];
           })
 
+        (mkMotionLight
+          {
+            name = "Kitchen";
+            motionSensor = "binary_sensor.kitchen_motion_motion";
+            lightTarget = "7ae2ad8521d84fcd83e91a93c365b217";
+          })
+
+        (mkMotionLight
+          {
+            name = "Living Room";
+            motionSensor = "binary_sensor.living_room_motion_motion";
+            lightTarget = "6951e68390ee4c70bdf0a1096d5748cc";
+          })
+
         # Turn on and off with small remote
         (mkRemoteToggle
           {
-            name = "bedroom_filament_light";
+            name = "bedroom_ceiling_light";
             remote = "ee6328afcb13fd25142e3745ea7697b5";
             lightTarget = "a6a9740d1a1b5212b8ba8ccd41840eed";
             action = "on";
@@ -117,7 +133,7 @@
 
         (mkRemoteToggle
           {
-            name = "bedroom_filament_light";
+            name = "bedroom_ceiling_light";
             remote = "ee6328afcb13fd25142e3745ea7697b5";
             lightTarget = "a6a9740d1a1b5212b8ba8ccd41840eed";
             action = "off";
@@ -146,7 +162,7 @@
 
         # Turn on corner light with big remote
         {
-          alias = "Turn on living room light";
+          alias = "Increase living room lights";
           mode = "single";
           trigger = {
             device_id = bigRemote;
@@ -156,16 +172,16 @@
             subtype = "turn_on";
           };
           action = {
-            device_id = cornerLight;
-            type = "brightness_increase";
-            entity_id = "light.corner_huelight";
-            domain = "light";
+            service = "light.turn_on";
+            target = {
+              area_id = "{{ area_id('Living Room') }}";
+            };
+            data = { brightness_step_pct = 10; };
           };
         }
 
-        # Turn off corner light with big remote
         {
-          alias = "Turn off living room light";
+          alias = "Dim living room lights";
           mode = "single";
           trigger = {
             device_id = bigRemote;
@@ -175,16 +191,16 @@
             subtype = "turn_off";
           };
           action = {
-            type = "brightness_decrease";
-            device_id = cornerLight;
-            entity_id = "light.corner_huelight";
-            domain = "light";
+            service = "light.turn_on";
+            target = {
+              area_id = "{{ area_id('Living Room') }}";
+            };
+            data = { brightness_step_pct = -10; };
           };
         }
 
-        # Lower brightness corner light with big remote
         {
-          alias = "Lower brightness living room";
+          alias = "Turn off living room lights";
           mode = "single";
           trigger = {
             device_id = bigRemote;
@@ -194,16 +210,15 @@
             subtype = "dim_down";
           };
           action = {
-            device_id = cornerLight;
-            type = "turn_off";
-            entity_id = "light.corner_huelight";
-            domain = "light";
+            service = "light.turn_off";
+            target = {
+              area_id = "{{ area_id('Living Room') }}";
+            };
           };
         }
 
-        # Increase brightness corner light with big remote
         {
-          alias = "Increase brightness living room";
+          alias = "Turn on living room lights";
           mode = "single";
           trigger = {
             device_id = bigRemote;
@@ -213,29 +228,29 @@
             subtype = "dim_up";
           };
           action = {
-            device_id = cornerLight;
-            type = "turn_on";
-            entity_id = "light.corner_huelight";
-            domain = "light";
+            service = "light.turn_on";
+            target = {
+              area_id = "{{ area_id('Living Room') }}";
+            };
           };
         }
 
         # Set random colour on corner light
         {
-          alias = "Lower brightness living room";
+          alias = "Living Room Random Colour";
           mode = "single";
           trigger = {
             device_id = bigRemote;
             domain = "zha";
             platform = "device";
-            type = "remote_button_long_press";
-            subtype = "dim_up";
+            type = "remote_button_short_press";
+            subtype = "right";
           };
           action = {
-            device_id = cornerLight;
-            type = "turn_on";
-            entity_id = "light.corner_huelight";
-            domain = "light";
+            service = "light.turn_on";
+            target = {
+              area_id = "{{ area_id('Living Room') }}";
+            };
             data = {
               hs_color = [
                 "{{ range(360)|random }}"
@@ -250,7 +265,7 @@
           mode = "single";
           trigger = {
             platform = "time";
-            at = "20:00:00";
+            at = "18:00:00";
           };
           action = [
             {

@@ -73,7 +73,8 @@ let
 
   inherit (linuxKernel) kernels packagesFor;
 
-  latest = kernels.linux_6_2;
+  latest = kernels.linux_6_6;
+  latest_zfs = kernels.linux_6_6;
 in
 _: {
   linuxPackages_latest_lto = packagesFor (fullLTO latest);
@@ -84,12 +85,12 @@ _: {
         [ patches.graysky ]
         (fullLTO latest)));
 
-  linuxPackages_latest_lto_broadwell = packagesFor
+  linuxPackages_lto_broadwell = packagesFor
     (cfg
       { MBROADWELL = yes; }
       (patch
         [ patches.graysky ]
-        (fullLTO latest)));
+        (fullLTO latest_zfs)));
 
   linuxPackages_latest_lto_silvermont = packagesFor
     (cfg

@@ -1,26 +1,22 @@
 { config, lib, pkgs, ... }:
 
 let
-  wanInterface = "enp5s0f0np0";
-  lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" "enp5s0f1np1" ];
+  wanInterface = "enp133s0f2np2";
+  lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" "eno5" "eno6" "enp133s0f0np0" ];
   vpnInterface = "wg0-vpn";
-  vpnInterfaces = [ vpnInterface ];
+  # vpnInterfaces = [ vpnInterface ];
   lanBridge = "br0.lan";
 in
 {
 
   services.usbmuxd.enable = true;
-
   environment.systemPackages = with pkgs; [
     btop
     wirelesstools
     bridge-utils
     ethtool
+    tcpdump
   ];
-
-  virtualisation.vswitch = {
-    enable = true;
-  };
 
   services.igmpproxy = {
     enable = false;
@@ -28,12 +24,22 @@ in
       quickleave
 
       phyint ${wanInterface} upstream ratelimit 0 threshold 1
-        altnet 77.109.129.16/32
+        altnet 77.109.128.0/19
+        altnet 224.0.0.0/8
         altnet 239.0.0.0/8
-        
+
       phyint ${lanBridge} downstream ratelimit 0 threshold 1
         altnet 192.168.23.0/24
     '';
+  };
+
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.all.forwarding" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+    # "net.ipv6.conf.all.accept_ra" = 1;
+    # "net.ipv6.conf.all.request_prefix" = 1;
+    # "net.ipv6.conf.all.autoconf" = 1;
+    # "net.ipv6.conf.all.use_tempaddr" = 0;
   };
 
   networking = {
@@ -52,30 +58,49 @@ in
         "192.168.23.0/24"
         "192.168.24.0/24"
       ];
-      internalInterfaces = [ lanBridge vpnInterface "enp5s0f1np1" ];
+      internalInterfaces = [
+        lanBridge
+      ];
       externalInterface = wanInterface; # port 1
       forwardPorts = [
-        { sourcePort = 3074; destination = "192.168.23.92:3074"; proto = "udp"; } /* bo2 */
-        { sourcePort = 3074; destination = "192.168.23.92:3074"; proto = "tcp"; } /* bo2 */
-        { sourcePort = 3478; destination = "192.168.23.92:3478"; } /* bo2 */
+        { sourcePort = 80; destination = "192.168.23.5:80"; proto = "tcp"; } /* nginx */
+        { sourcePort = 443; destination = "192.168.23.5:443"; proto = "tcp"; } /* nginx */
+        { sourcePort = 51413; destination = "192.168.23.1:51413"; proto = "tcp"; } /* transmission */
+        { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; } /* transmission */
+        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "tcp"; } /* monero */
+        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "udp"; } /* monero */
+        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "tcp"; } /* geth */
+        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "udp"; } /* geth */
+        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "tcp"; } /* reth */
+        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "udp"; } /* reth */
+        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "tcp"; } /* geth */
+        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "udp"; } /* geth */
       ];
-      extraCommands = ''
-        iptables -A nixos-fw -s 224.0.0.0/4 -j nixos-fw-accept
-        iptables -A nixos-fw -d 224.0.0.0/4 -j nixos-fw-accept
-        iptables -A nixos-fw -s 240.0.0.0/5 -j nixos-fw-accept
-        iptables -A nixos-fw -m pkttype --pkt-type multicast -j nixos-fw-accept
-        iptables -A nixos-fw -m pkttype --pkt-type broadcast -j nixos-fw-accept
-        iptables -A nixos-fw -p igmp -j nixos-fw-accept
+    };
+
+    dhcpcd = {
+      enable = true;
+      allowInterfaces = [ wanInterface ];
+      extraConfig = ''
+        interface ${wanInterface}
+          ia_na 1
+          ia_pd 1 ${lanBridge}/1/64
       '';
     };
 
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge vpnInterface ];
+      trustedInterfaces = [ lanBridge ] ++ lanInterfaces;
       logRefusedConnections = false;
       logRefusedPackets = false;
-      logReversePathDrops = true;
+      logReversePathDrops = false;
       interfaces = {
         "${wanInterface}" = {
           allowedTCPPorts = [
@@ -87,11 +112,18 @@ in
             3074 # bo2
 
             9000 # lighthouse
+            9001 # lighthouse
+            9002 # lighthouse
+
             30303 # geth
+            30304 # reth
+
+            18080 # monero
 
             42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
+            546 # dhcpv6 
             35947 # wireguard
             51820 # wireguard (cloud)
             51821 # wireguard (swaps)
@@ -102,7 +134,13 @@ in
             5000 # (IPTV)
 
             9000 # lighthouse
+            9001 # lighthouse
+            9002 # lighthouse
+
             30303 # geth
+            30304 # reth
+
+            18080 # monero
 
             42069 # Snap sync (Bittorrent)
           ];
@@ -117,6 +155,7 @@ in
       # Use DHCP to acquire IP from modem
       "${wanInterface}" = {
         useDHCP = true;
+        # proxyARP = true;
       };
 
       # Static IP on LAN
@@ -126,70 +165,80 @@ in
       }];
 
       # Static VPN IP
-      "${vpnInterface}".ipv4.addresses = [{
-        address = "192.168.24.1";
-        prefixLength = 24;
-      }];
+      # "${vpnInterface}".ipv4.addresses = [{
+      #   address = "192.168.24.1";
+      #   prefixLength = 24;
+      # }];
     };
 
     wireless = {
       enable = false;
     };
 
-    wireguard = {
+    # wireguard = {
+    #   enable = false;
+    #   interfaces = {
+    #     "${vpnInterface}" = {
+    #       ips = [ "192.168.24.1/24" ];
+    #       listenPort = 51820;
+    #       privateKeyFile = "/run/keys/wg-router.secret";
+    #       peers = [
+    #         {
+    #           # mac air
+    #           publicKey = "T+jpoipZEmmc76Nh72NZYZF3SsngDxoBRZIWVyp5c3A=";
+    #           allowedIPs = [ "192.168.24.2/32" ];
+    #           persistentKeepalive = 25;
+    #         }
+    #         {
+    #           # iphone
+    #           publicKey = "tIxnCBM8di2/TmepKl/RWrit0cj/5YpEiF3hdpYBZno=";
+    #           allowedIPs = [ "192.168.24.3/32" ];
+    #           persistentKeepalive = 25;
+    #         }
+    #       ];
+    #     };
+    #   };
+    # };
+  };
+  services.radvd =
+    {
       enable = true;
-      interfaces = {
-        "${vpnInterface}" = {
-          ips = [ "192.168.24.1/24" ];
-          listenPort = 51820;
-          privateKeyFile = "/run/keys/wg-router.secret";
-          peers = [
-            {
-              # mac air
-              publicKey = "T+jpoipZEmmc76Nh72NZYZF3SsngDxoBRZIWVyp5c3A=";
-              allowedIPs = [ "192.168.24.2/32" ];
-              persistentKeepalive = 25;
-            }
-            {
-              # iphone
-              publicKey = "tIxnCBM8di2/TmepKl/RWrit0cj/5YpEiF3hdpYBZno=";
-              allowedIPs = [ "192.168.24.3/32" ];
-              persistentKeepalive = 25;
-            }
-          ];
+      config = ''
+        interface br0.lan {
+          AdvSendAdvert on;
+          MinRtrAdvInterval 600;
+          MaxRtrAdvInterval 900;
+          prefix ::/64
+          {
+            AdvOnLink on;
+            AdvAutonomous on;
+            AdvRouterAddr on;
+          };	
         };
-      };
+      '';
     };
-  };
-
-  services.corerad = {
-    enable = true;
-    settings = {
-      debug = {
-        address = "localhost:9430";
-        prometheus = true; # enable prometheus metrics
-      };
-      interfaces = [
-        {
-          name = "enp5s0f0np0";
-          monitor = true; # see the remark below
-        }
-        {
-          name = "br0.lan";
-          advertise = true;
-
-          # Advertise all /64 prefixes on the interface.
-          prefix = [{ }];
-
-          # Automatically use the appropriate interface address as a DNS server.
-          rdnss = [{ }];
-
-          # Automatically propagate routes owned by loopback.
-          route = [{ }];
-        }
-      ];
-    };
-  };
+  # services.corerad = {
+  #   enable = true;
+  #   settings = {
+  #     debug = {
+  #       address = "localhost:9430";
+  #       prometheus = true; # enable prometheus metrics
+  #     };
+  #     interfaces = [
+  #       # {
+  #       #   name = wanInterface;
+  #       #   monitor = true;
+  #       # }
+  #       {
+  #         name = lanBridge;
+  #         advertise = true;
+  #         prefix = [
+  #           { prefix = "::/64"; }
+  #         ];
+  #       }
+  #     ];
+  #   };
+  # };
 
   # wait for keys before doing any wg stuff- doesnt seem to work?
   # systemd.services."wireguard-wg0-cloud".after = [ "wg-router.secret-key.service" ];
@@ -200,14 +249,14 @@ in
   # systemd.services."network-addresses-wg0-cloud.service".wants = [ "wg-router.secret-key.service" ];
   # systemd.services."network-addresses-wg0-cloud.service".requires = [ "wg-router.secret-key.service" ];
 
-  deployment.keys =
-    {
-      "wg-router.secret" = {
-        keyCommand = [ "pass" "wg-router" ];
-        destDir = "/run/keys";
-        uploadAt = "pre-activation";
-      };
-    };
+  # deployment.keys =
+  #   {
+  #     "wg-router.secret" = {
+  #       keyCommand = [ "pass" "wg-router" ];
+  #       destDir = "/run/keys";
+  #       uploadAt = "pre-activation";
+  #     };
+  #   };
 
   services.dnscrypt-proxy2 = {
     enable = true;
@@ -221,7 +270,8 @@ in
   };
 
   networking.hosts = {
-    "192.168.23.1" = [ "nixhost" "nixhost.lan" ];
+    "192.168.23.1" = [ "router" "router.lan" ];
+    "192.168.23.5" = [ "nixhost" "nixhost.lan" ];
   };
 
   services.miniupnpd = {
@@ -255,37 +305,29 @@ in
       dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
       dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
       dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
-      # dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
+      dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
       dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
       dhcp-host=f0:99:b6:42:49:05,192.168.23.48  # phone
 
       # hosted names
       address=/router.lan/192.168.23.1
-      address=/nixhost.lan/192.168.23.1
+      address=/nixhost.lan/192.168.23.5
       address=/cloud.lan/192.168.24.2
-      address=/cache.satanic.link/192.168.23.1
-      address=/grafana.satanic.link/192.168.23.1
-      address=/home.satanic.link/192.168.23.1
-      address=/jellyfin.satanic.link/192.168.23.1
-      address=/ax101.lan/192.168.24.2
+      address=/grafana.satanic.link/192.168.23.5
+      address=/home.satanic.link/192.168.23.5
+      address=/jellyfin.satanic.link/192.168.23.5
+      address=/paperless.satanic.link/192.168.23.5
+      address=/radarr.satanic.link/192.168.23.5
+      address=/sonarr.satanic.link/192.168.23.5
+      address=/eth-mainnet.satanic.link/192.168.23.5
+      address=/eth-mainnet-ws.satanic.link/192.168.23.5
+      address=/reth-mainnet.satanic.link/192.168.23.5
+      address=/reth-mainnet-ws.satanic.link/192.168.23.5
     '';
   };
 
   services.fail2ban = {
     enable = true;
-    jails.DEFAULT =
-      ''
-        bantime  = 3600
-      '';
-
-    jails.sshd =
-      ''
-        filter = sshd
-        maxretry = 4
-        action   = iptables[name=ssh, port=ssh, protocol=tcp]
-        enabled  = true
-      '';
-
     jails.sshd-ddos =
       ''
         filter = sshd-ddos
@@ -298,35 +340,4 @@ in
   services.prometheus.exporters = {
     dnsmasq.enable = true;
   };
-
-  # systemd.services.public-ip-sync-google-clouddns =
-  #   let
-  #     gcloud-json = pkgs.writeText "credentials.json" pkgs.secrets.domain-owner-terraformer;
-  #   in
-  #   {
-  #     environment = {
-  #       CLOUDSDK_CORE_PROJECT = "domain-owner";
-  #       CLOUDSDK_COMPUTE_ZONE = "eu-west-1";
-  #       GCLOUD_SERVICE_ACCOUNT_KEY_FILE = gcloud-json;
-  #       GCLOUD_DNS_ZONE_ID = "satanic-link";
-  #     };
-  #     script = ''
-  #       ${pkgs.public-ip-sync-google-clouddns}/bin/public-ip-sync-google-clouddns.sh -name "satanic.link."
-  #       ${pkgs.public-ip-sync-google-clouddns}/bin/public-ip-sync-google-clouddns.sh -name "*.satanic.link."
-  #     '';
-  #     wantedBy = [ "multi-user.target" ];
-  #     serviceConfig = {
-  #       Type = "oneshot";
-  #       Restart = "no";
-  #     };
-  #   };
-
-  # systemd.timers.public-ip-sync-google-clouddns = {
-  #   partOf = [ "public-ip-sync-google-clouddns.service" ];
-  #   wantedBy = [ "multi-user.target" ];
-  #   timerConfig = {
-  #     OnBootSec = "2min";
-  #     OnUnitActiveSec = "3600";
-  #   };
-  # };
 }

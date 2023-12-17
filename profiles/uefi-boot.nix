@@ -3,7 +3,7 @@
 {
 
   boot = {
-    tmpOnTmpfs = true;
+    tmp.useTmpfs = true;
     kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
 
     kernelParams = [

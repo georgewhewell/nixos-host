@@ -94,27 +94,7 @@
         snippets-nvim
 
         # syntax
-        (nvim-treesitter.withPlugins
-          (_:
-            with builtins;
-            filter
-              (drv:
-                !elem
-                  drv.pname
-                  (map (v: "tree-sitter-${v}-grammar") [
-                    "agda"
-                    "bash"
-                    "fluent"
-                    "kotlin"
-                    "ql-dbscheme"
-                    "sql"
-                  ])
-              )
-              pkgs.tree-sitter.allGrammars
-          )
-        )
         editorconfig-vim
-        gentoo-syntax
         lalrpop-vim
         vim-nix
         vim-polyglot
@@ -124,6 +104,6 @@
     };
   };
 
-  xdg.configFile."nvim/lua".source = ./lua;
-  xdg.configFile."nvim/init.lua".source = ./init.lua;
+  # xdg.configFile."nvim/lua".source = ./lua;
+  # xdg.configFile."nvim/init.lua".source = ./init.lua;
 }

@@ -14,7 +14,7 @@
   };
 
   environment.systemPackages = with pkgs; [
-    virtmanager
+    virt-manager
     virt-viewer
     spice-gtk # fix usb redirect
     mstflint # mlx firmware

@@ -34,10 +34,7 @@
     forceSSL = true;
     enableACME = true;
     locations."/" = {
-      extraConfig = ''
-        resolver 192.168.23.1;
-      '';
-      proxyPass = "http://192.168.23.129:8096";
+      proxyPass = "http://127.0.0.1:8096";
       proxyWebsockets = true;
     };
   };

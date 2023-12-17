@@ -6,11 +6,17 @@
     ./users.nix
   ];
 
+  # environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "nodejs-16.20.0"
+  ];
+
   environment.systemPackages = with pkgs; [
     kitty.terminfo
     alacritty.terminfo
     ethtool
-    #vpppkgs.x86_64-linux.vppcfg
+    iotop
   ];
 
   hardware.enableAllFirmware = true;

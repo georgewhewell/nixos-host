@@ -1,23 +1,22 @@
 { config, pkgs, ... }:
 
 {
-      services.avahi = {
-        enable = true;
-        reflector = true;
-      };
+  services.avahi = {
+    enable = true;
+    reflector = true;
+  };
 
   networking.firewall.allowedUDPPorts = [ 5353 ];
   networking.firewall.allowedTCPPorts = [ 21063 ];
 
-  services.home-assistant.config.zeroconf = {};
+  services.home-assistant.config.zeroconf = { };
   services.home-assistant.config.homekit = {
     filter = {
-        include_domains = [ "lights" ];
+      include_domains = [ "light" ];
     };
   };
 
-    services.home-assistant.config.logger = {
-        default = "info";
-        logs."homeassistant.components.homekit" = "debug";
-    };
+  services.home-assistant.config.logger = {
+    default = "info";
+  };
 }

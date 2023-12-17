@@ -13,7 +13,6 @@ in
         data root
       '';
     };
-
   };
 
   config = lib.mkIf cfg.enable {
@@ -44,7 +43,7 @@ in
           DATA_TRANSPORT_LAYER__DB_PATH = "/db";
           DATA_TRANSPORT_LAYER__DEFAULT_BACKEND = "l1";
           DATA_TRANSPORT_LAYER__L1_GAS_PRICE_BACKEND = "l1";
-          DATA_TRANSPORT_LAYER__L1_RPC_ENDPOINT = "https://eth-mainnet.ax101.satanic.link";
+          DATA_TRANSPORT_LAYER__L1_RPC_ENDPOINT = "https://eth-mainnet.satanic.link";
           DATA_TRANSPORT_LAYER__ENABLE_METRICS = "true";
           DATA_TRANSPORT_LAYER__ETH_NETWORK_NAME = "mainnet";
           DATA_TRANSPORT_LAYER__L2_CHAIN_ID = "10";

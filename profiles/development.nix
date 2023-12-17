@@ -39,10 +39,11 @@
     screen
   ];
 
-  environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
-  # nix.nixPath = [
-  #   "nixpkgs=channel:nixos-unstable"
-  # ];
+  nix.nixPath = [
+    "nixpkgs=${pkgs.nixpkgs_src}"
+  ];
+
+  services.udev.packages = [ pkgs.platformio ];
 
   services.postgresql = {
     package = pkgs.postgresql_14;
