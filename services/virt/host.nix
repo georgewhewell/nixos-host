@@ -28,10 +28,6 @@
     # Needed by OS X
     "kvm.ignore_msrs=1"
     "vfio_iommu_type1.allow_unsafe_interrupts=1"
-
-    # SR-IOV
-    "pci_pt_e820_access=on"
-    "pci=realloc"
   ];
 
   environment.etc."qemu-ifup" = rec {
