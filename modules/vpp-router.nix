@@ -11,7 +11,7 @@ in
     package = lib.mkOption
       {
         type = lib.types.package;
-        default = pkgs.vppPkgs.vpp;
+        default = config.services.vpp.package;
         description = ''
           vpp package
         '';
@@ -64,11 +64,11 @@ in
 
   config =
     let
-      setup =
+      bootstrap =
         let
           hostname = "gateway";
           inherit (cfg) trunk downstream inside_subnet;
-          trunk_mac = "3c:ec:df:d1:0e:cc";
+          trunk_mac = "3c:ec:ef:d1:0e:f3";
           bvi_mac = "48:f8:b4:01:01:02";
           features = {
             adl = false;
@@ -81,7 +81,7 @@ in
             dns = false;
           };
         in
-        pkgs.writeText "setup.conf" ''
+        ''
           show macro
           set int mac address ${trunk} ${trunk_mac}
           set dhcp client intfc ${trunk} hostname ${hostname}
@@ -190,92 +190,121 @@ in
 
           # $(FEATURE_MODEM_ROUTE) { ip route add 192.168.100.1/32 via ${trunk} }
         '';
-      startup = pkgs.writeText "startup.conf" ''
-        unix {
-          nodaemon
-          log /var/log/vpp/vpp.log
-          full-coredump
-          cli-listen /run/vpp/cli.sock
-          startup-config ${setup}
-          gid vpp
-          poll-sleep-usec 100
-        }
+      # startup = pkgs.writeText "startup.conf" ''
+      #   unix {
+      #     nodaemon
+      #     log /var/log/vpp/vpp.log
+      #     full-coredump
+      #     cli-listen /run/vpp/cli.sock
+      #     startup-config ${setup}
+      #     gid vpp
+      #     poll-sleep-usec 100
+      #   }
 
-        cpu {
-          skip-cores 2
-          main-core 3
-          workers 2
-        }
+      #   cpu {
+      #     skip-cores 2
+      #     main-core 3
+      #     workers 2
+      #   }
 
-        api-segment {
-          gid vpp
-        }
+      #   api-segment {
+      #     gid vpp
+      #   }
 
-        logging {
-          default-log-level debug
-          default-syslog-log-level info
-        }
+      #   logging {
+      #     default-log-level debug
+      #     default-syslog-log-level info
+      #   }
 
-        plugins {
-          plugin default { disable }
-          
-          add-path ${cfg.package}/lib/vpp_plugins
+      #   plugins {
+      #     plugin default { disable }
 
-          plugin linux_cp_plugin.so { enable }
-          plugin linux_nl_plugin.so { enable }
-          plugin acl_plugin.so { enable }
-          plugin dhcp_plugin.so { enable }
-          plugin dpdk_plugin.so { enable }
-          plugin nat_plugin.so { enable }
-          plugin ping_plugin.so { enable }
-        }
+      #     add-path ${cfg.package}/lib/vpp_plugins
 
-        dpdk {
-          dev default {
-            devargs safe-mode-support=1
-          }
-          ${builtins.concatStringsSep "\n" (map (port: ''
-          dev ${port}
-          '') cfg.dpdks)}
-        }
+      #     plugin linux_cp_plugin.so { enable }
+      #     plugin linux_nl_plugin.so { enable }
+      #     plugin acl_plugin.so { enable }
+      #     plugin dhcp_plugin.so { enable }
+      #     plugin dpdk_plugin.so { enable }
+      #     plugin nat_plugin.so { enable }
+      #     plugin ping_plugin.so { enable }
+      #   }
 
-        linux-cp {
-          lcp-sync
-          lcp-auto-subint
-        }
-      '';
+      #   dpdk {
+      #     dev default {
+      #       devargs safe-mode-support=1
+      #     }
+      #     ${builtins.concatStringsSep "\n" (map (port: ''
+      #     dev ${port}
+      #     '') cfg.dpdks)}
+      #   }
+
+      #   linux-cp {
+      #     lcp-sync
+      #     lcp-auto-subint
+      #   }
+      # '';
     in
     lib.mkIf cfg.enable {
 
-      users.users.vpp = {
-        group = "vpp";
-        isSystemUser = true;
-      };
-      users.groups.vpp = { };
+      # users.users.vpp = {
+      #   group = "vpp";
+      #   isSystemUser = true;
+      # };
+      # users.groups.vpp = { };
 
-      environment.systemPackages = [ cfg.package pkgs.dpdk ];
+      environment.systemPackages = [ cfg.package pkgs.dpdk pkgs.pciutils ];
 
       boot.extraModulePackages = [
         config.boot.kernelPackages.dpdk-kmods
       ];
 
-      boot.kernel.sysctl =
-        {
-          # Set netlink buffer size.
-          "net.core.rmem_default" = lib.mkDefault (cfg.netlinkBufferSize * MB);
-          "net.core.wmem_default" = lib.mkDefault (cfg.netlinkBufferSize * MB);
-          "net.core.rmem_max" = lib.mkDefault (cfg.netlinkBufferSize * MB);
-          "net.core.wmem_max" = lib.mkDefault (cfg.netlinkBufferSize * MB);
-        };
+      # boot.kernel.sysctl =
+      #   {
+      #     # Set netlink buffer size.
+      #     "net.core.rmem_default" = lib.mkDefault (cfg.netlinkBufferSize * MB);
+      #     "net.core.wmem_default" = lib.mkDefault (cfg.netlinkBufferSize * MB);
+      #     "net.core.rmem_max" = lib.mkDefault (cfg.netlinkBufferSize * MB);
+      #     "net.core.wmem_max" = lib.mkDefault (cfg.netlinkBufferSize * MB);
+      #   };
 
-      networking.firewall.enable = false;
+      networking = {
+        useNetworkd = true;
+        useDHCP = false;
+
+        # No local firewall.
+        nat.enable = false;
+        firewall.enable = false;
+      };
+
+      systemd.network = {
+        enable = true;
+        wait-online.anyInterface = true;
+        networks = {
+          "10-lstack" = {
+            matchConfig.Name = "lstack";
+            linkConfig.RequiredForOnline = "enslaved";
+            address = [
+              # configure addresses including subnet mask
+              "192.168.23.1/24"
+            ];
+            dhcpV4Config.RouteMetric = 1;
+            networkConfig = {
+              ConfigureWithoutCarrier = true;
+              IPv6AcceptRA = true;
+            };
+          };
+        };
+      };
       networking.nameservers = [ "1.1.1.1" ];
+
       boot.kernelParams = [
         "default_hugepagesz=1G"
         "hugepagesz=1G"
         "hugepages=16"
         "isolcpus=2,3,4,5,6,7"
         "intel_iommu=on"
+        "vfio-pci.ids=8086:188c,8086:1521,8086:1563"
       ];
 
       services.dnsmasq = {
@@ -309,56 +338,75 @@ in
         };
       };
 
-      systemd.services.bind-vpp-gbe = {
-        description = "bind vpp gbe";
-        wantedBy = [ "multi-user.target" ];
-        path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:01:00.\*";
-          Restart = "on-failure";
-          RestartSec = 1;
-        };
-      };
+      # systemd.services.bind-vpp-gbe = {
+      #   description = "bind vpp gbe";
+      #   wantedBy = [ "multi-user.target" ];
+      #   path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
+      #   serviceConfig = {
+      #     Type = "oneshot";
+      #     ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:01:00.\*";
+      #     Restart = "on-failure";
+      #     RestartSec = 1;
+      #   };
+      # };
 
-      systemd.services.bind-vpp-10gbe = {
-        description = "bind vpp 10gbe";
-        wantedBy = [ "multi-user.target" ];
-        path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:03:00.\*";
-          Restart = "on-failure";
-          RestartSec = 1;
-        };
-      };
+      # systemd.services.bind-vpp-10gbe = {
+      #   description = "bind vpp 10gbe";
+      #   wantedBy = [ "multi-user.target" ];
+      #   path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
+      #   serviceConfig = {
+      #     Type = "oneshot";
+      #     ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:03:00.\*";
+      #     Restart = "on-failure";
+      #     RestartSec = 1;
+      #   };
+      # };
 
-      systemd.services.bind-vpp-25gbe = {
-        description = "bind vpp 25gbe";
-        wantedBy = [ "multi-user.target" ];
-        path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:85:00.\*";
-          Restart = "on-failure";
-          RestartSec = 1;
-        };
-      };
+      # systemd.services.bind-vpp-25gbe = {
+      #   description = "bind vpp 25gbe";
+      #   wantedBy = [ "multi-user.target" ];
+      #   path = [ pkgs.which pkgs.dpdk pkgs.iproute2 ];
+      #   serviceConfig = {
+      #     Type = "oneshot";
+      #     ExecStart = "${pkgs.dpdk}/bin/dpdk-devbind.py --bind=vfio-pci 0000:85:00.\*";
+      #     Restart = "on-failure";
+      #     RestartSec = 1;
+      #   };
+      # };
 
-      systemd.services.vpp = {
-        description = "run vpp";
-        wantedBy = [ "multi-user.target" ];
-        after = [
-          "bind-vpp-gbe.service"
-          "bind-vpp-10gbe.service"
-          "bind-vpp-25gbe.service"
-        ];
-        serviceConfig = {
-          ExecStartPre = "${pkgs.bash}/bin/bash -c 'mkdir -p /var/log/vpp/ /run/vpp'";
-          ExecStart = "${cfg.package}/bin/vpp -c ${startup}";
-          Restart = "on-failure";
-          RestartSec = 1;
-        };
+      services.vpp = {
+        enable = cfg.enable;
+        inherit bootstrap;
+        statsegSize = 1024;
+        mainHeapSize = 14;
+        extraConfig =
+          let
+            dpdks = [
+              # 10G
+              # "0000:01:00.0"
+              # "0000:01:00.1"
+
+              # # 1G
+              # "0000:03:00.0"
+              # "0000:03:00.1"
+              # "0000:03:00.2"
+              # "0000:03:00.3"
+
+              # 25G
+              "0000:85:00.0"
+              "0000:85:00.2"
+            ];
+          in
+          ''
+            dpdk {
+              dev default {
+                devargs safe-mode-support=1
+              }
+              ${builtins.concatStringsSep "\n" (map (port: ''
+              dev ${port}
+              '') dpdks)}
+            }
+          '';
       };
     };
 }

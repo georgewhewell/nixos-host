@@ -114,16 +114,7 @@
         };
       };
       output = {
-        "*" = { scale = "1"; };
-        # "DP-1" = { mode = "5120x1440@60Hz"; };
-        "DP-3" = { mode = "5120x1440@239.761Hz"; };
-        #"DP-*" = { mode = "5120x1440@239.761002Hz"; };
-        "Virtual-1" = { resolution = "1920x1200"; };
-        "HDMI-A-3" = { mode = "800x480@65.681Hz"; };
-        "Unknown-1" = {
-          scale = "2";
-          scale_filter = "smart";
-        };
+        "DP-1" = { mode = "3840x2160@239.991Hz"; };
       };
       startup = [
         { command = "${pkgs.mako}/bin/mako"; always = true; }

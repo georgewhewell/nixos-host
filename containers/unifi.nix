@@ -30,8 +30,8 @@
       services.unifi = {
         enable = true;
         openFirewall = true;
-        unifiPackage = pkgs.unifi7;
-        mongodbPackage = pkgs.mongodb-4_4;
+        unifiPackage = pkgs.unifi8;
+        mongodbPackage = pkgs.mongodb-5_0;
         # jrePackage = pkgs.openjdk11_headless;
       };
     };

@@ -1,13 +1,21 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # nixpkgs.url = "path:/home/grw/src/nixpkgs";
+
+    rose-pine-hyprcursor.url = "github:ndom91/rose-pine-hyprcursor";
+    rose-pine-hyprcursor.inputs.nixpkgs.follows = "nixpkgs";
+
     nixos-hardware.url = "github:NixOS/nixos-hardware";
+    # nixos-hardware.inputs.nixpkgs.follows = "nixpkgs";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
-    ethereum.url = "github:nix-community/ethereum.nix/feat/reth";
+    ethereum.url = "github:nix-community/ethereum.nix";
+    ethereum.inputs.nixpkgs.follows = "nixpkgs";
+
+    nix-bitcoin.url = "github:fort-nix/nix-bitcoin/release";
+    nix-bitcoin.inputs.nixpkgs.follows = "nixpkgs";
 
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
@@ -24,14 +32,17 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
-    vpp.url = "github:georgewhewell/vpp-flake";
-    # vpp.inputs.nixpkgs.follows = "nixpkgs";
+    vifino.url = "github:vifino/nix-geht";
+    vifino.inputs.nixpkgs.follows = "nixpkgs";
 
     rock5b.url = "github:aciceri/rock5b-nixos";
-    # rock5b.url = "path:/home/grw/src/rock5b-nixos";
+    rock5b.inputs.nixpkgs.follows = "nixpkgs";
 
     apple-silicon.url = "github:tpwrules/nixos-apple-silicon";
-    # rock5b.inputs.nixpkgs.follows = "nixpkgs";
+    apple-silicon.inputs.nixpkgs.follows = "nixpkgs";
+
+    radicle.url = "github:radicle-dev/heartwood";
+    radicle.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -44,17 +55,17 @@
     , rust-overlay
     , foundry
     , vscode-server
-    , vpp
+    , vifino
     , rock5b
     , apple-silicon
     , ethereum
     , ...
-    }:
+    } @ inputs:
     let
       mypkgs = import ./packages;
       deploy = import lib/deploy.nix;
 
-      inherit (nixpkgs.lib) composeManyExtensions;
+      inherit (inputs.nixpkgs.lib) composeManyExtensions;
       inherit (builtins) attrNames readDir;
 
       overlayCompat = { pkgs, lib, ... }: {
@@ -77,13 +88,13 @@
 
       flakeOverlay = (final: prev: {
         inherit vscode-server;
-        vppPkgs = vpp.packages."x86_64-linux";
         ethPkgs = ethereum.packages."x86_64-linux";
       } // mypkgs { });
 
       localOverlays = map
         (f: import (./overlays + "/${f}"))
         (attrNames (readDir ./overlays)) ++ [
+        vifino.overlays.dpdk
         rust-overlay.overlays.default
         flakeOverlay
         foundry.overlay
@@ -114,6 +125,7 @@
             system = "x86_64-linux";
             overlays = [ (composeManyExtensions localOverlays) ];
           };
+          specialArgs.inputs = inputs;
         };
 
       } // builtins.mapAttrs
@@ -155,19 +167,9 @@
         ];
       };
 
-      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule apple-silicon;
+      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule inputs;
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});
-
-      apps = forAllSystems (system:
-        with nixpkgs.legacyPackages.${system};
-        {
-          gnome-extensions = writeShellScriptBin "gnome-extensions" ''
-            cat ${path}/pkgs/desktops/gnome/extensions/extensions.json |
-            ${jq}/bin/jq -c '.[]|{name,ver:(.shell_version_map|keys)}'
-          '';
-        }
-      );
     };
 }

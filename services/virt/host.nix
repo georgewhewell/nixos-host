@@ -13,6 +13,7 @@
     '';
   };
 
+  /*
   environment.systemPackages = with pkgs; [
     virt-manager
     virt-viewer
@@ -20,7 +21,7 @@
     mstflint # mlx firmware
     pciutils
   ];
-
+  */
   boot.kernelParams = [
     # Use IOMMU
     "intel_iommu=on"

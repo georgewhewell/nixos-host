@@ -4,7 +4,8 @@
 
   imports = [
     ./alacritty.nix
-    ./sway.nix
+    # ./sway.nix
+    ./hyprland.nix
     ./vscode.nix
   ];
 

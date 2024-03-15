@@ -11,12 +11,13 @@
   nixpkgs.config.permittedInsecurePackages = [
     "nodejs-16.20.0"
   ];
-
+  services.dbus.packages = [ pkgs.gcr ];
   environment.systemPackages = with pkgs; [
-    kitty.terminfo
-    alacritty.terminfo
+    #kitty.terminfo
+    #alacritty.terminfo
     ethtool
     iotop
+    rsync
   ];
 
   hardware.enableAllFirmware = true;

@@ -8,7 +8,6 @@
     shellAliases = { vi = "nvim"; vim = "nvim"; };
     packages = with pkgs; [
       nixpkgs-fmt
-      rnix-lsp
       statix
 
       # Lua
