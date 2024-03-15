@@ -7,13 +7,39 @@
       ../../../profiles/common.nix
       # ../../../profiles/nas-mounts.nix
       ../../../services/buildfarm-slave.nix
-      #  ../../../profiles/tvbox-gbm.nix
     ];
 
   sconfig = {
-    profile = "desktop";
+    profile = "server";
     home-manager.enable = true;
     home-manager.enableGraphical = false;
+  };
+
+  fileSystems."/boot" =
+    {
+      device = "/dev/nvme0n1p1";
+      fsType = "vfat";
+      options = [ "iocharset=iso8859-1" ];
+    };
+
+  fileSystems."/" =
+    {
+      device = "/dev/nvme0n1p2";
+      fsType = "ext4";
+      options = [ "noatime" "discard" ];
+    };
+
+  boot = {
+    loader = {
+      efi = {
+        efiSysMountPoint = "/boot";
+        canTouchEfiVariables = true;
+      };
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 10;
+      };
+    };
   };
 
   services.prometheus.exporters = {
@@ -33,126 +59,101 @@
     memoryMax = 4 * 1024 * 1024;
   };
 
-  # hardware.opengl.extraPackages =
-  #   [
-  #     ((pkgs.mesa.overrideAttrs (old: {
-  #       src = pkgs.fetchFromGitLab {
-  #         owner = "panfork";
-  #         repo = "mesa";
-  #         rev = "120202c675749c5ef81ae4c8cdc30019b4de08f4";
-  #         sha256 = "sha256-4eZHMiYS+sRDHNBtLZTA8ELZnLns7yT3USU5YQswxQ0=";
-  #       };
-  #       # postPatch = ''
-  #       #   cp src/panfrost/base/pan_base.h src/panfrost/lib/
-  #       # '';
-  #     })).override
-  #       ({
-  #         galliumDrivers = [ "swrast" "panfrost" ];
-  #         vulkanDrivers = [ "swrast" ];
-  #         # enableGalliumNine = false;
-  #       }))
-  #   ];
-
-  nixpkgs.overlays = [
-    # (self: super: {
-    #   mesa = (super.mesa.overrideAttrs (old: {
-    #     src = super.fetchFromGitLab {
-    #       owner = "panfork";
-    #       repo = "mesa";
-    #       rev = "120202c675749c5ef81ae4c8cdc30019b4de08f4";
-    #       sha256 = "sha256-4eZHMiYS+sRDHNBtLZTA8ELZnLns7yT3USU5YQswxQ0=";
-    #     };
-    #     # postPatch = ''
-    #     #   cp src/panfrost/base/pan_base.h src/panfrost/lib/
-    #     # '';
-    #   })).override
-    #     ({
-    #       galliumDrivers = [ "swrast" "panfrost" ];
-    #       vulkanDrivers = [ "swrast" ];
-    #       # enableGalliumNine = false;
-    #     });
-
-    #   rockchip-mpp = super.callPackage ./mpp.nix { };
-
-    #   ffmpeg_5 = (super.ffmpeg_5.overrideAttrs
-    #     (old: {
-    #       src = pkgs.fetchFromGitHub
-    #         {
-    #           owner = "JeffyCN";
-    #           repo = "FFmpeg";
-    #           rev = "master";
-    #           sha256 = "sha256-LEP8pTo9u3woQxPlQzbLgezxD6EdLqfW6nrMQgP8dw0=";
-    #         };
-    #       buildInputs = old.buildInputs ++ [ self.rockchip-mpp ];
-    #       configureFlags = old.configureFlags ++ [ "--enable-rkmpp" ];
-    #     })).override ({
-    #     withV4l2M2m = false;
-    #     withVaapi = false;
-    #     withVdpau = false;
-    #   });
-    # })
-  ];
-
-  # hardware.firmware = [
-  #   (pkgs.stdenv.mkDerivation {
-  #     pname = "libmali-fw";
-  #     version = "dirty";
-  #     src = ./mali_csffw.bin;
-  #     buildCommand = ''
-  #       install -D $src $out/lib/firmware/mali_csffw.bin
-  #     '';
-  #   })
-  # ];
-
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = true;
-    settings = {
-      General = {
-        JustWorksRepairing = "always";
-        FastConnectable = "true";
-      };
-      GATT = {
-        AutoEnable = true;
-      };
-    };
-  };
-
-  # Use the systemd-boot EFI boot loader.
-  boot.loader = {
-    timeout = 5;
-    efi = {
-      efiSysMountPoint = "/boot";
-      canTouchEfiVariables = true;
-    };
-    systemd-boot = {
-      enable = true;
-      configurationLimit = 10;
-    };
-    grub.enable = false;
-  };
-
-  boot.initrd.availableKernelModules = lib.mkForce [ "usbhid" "md_mod" "raid0" "raid1" "raid10" "raid456" "ext2" "ext4" "sd_mod" "sr_mod" "mmc_block" "uhci_hcd" "ehci_hcd" "ehci_pci" "ohci_hcd" "ohci_pci" "xhci_hcd" "xhci_pci" "usbhid" "hid_generic" "hid_lenovo" "hid_apple" "hid_roccat" "hid_logitech_hidpp" "hid_logitech_dj" "hid_microsoft" "hid_cherry" ];
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
-  system.stateVersion = "23.05";
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/EFI";
-    fsType = "vfat";
-  };
-
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/NIXOS_ROOTFS";
-    fsType = "ext4";
-  };
+  boot.initrd.availableKernelModules = [ "usbhid" "md_mod" "raid0" "raid1" "raid10" "raid456" "ext2" "ext4" "sd_mod" "sr_mod" "mmc_block" "uhci_hcd" "ehci_hcd" "ehci_pci" "ohci_hcd" "ohci_pci" "xhci_hcd" "xhci_pci" "usbhid" "hid_generic" "hid_lenovo" "hid_apple" "hid_roccat" "hid_logitech_hidpp" "hid_logitech_dj" "hid_microsoft" "hid_cherry" ];
+  system.stateVersion = "23.09";
 
   swapDevices = [ ];
 
-  networking = {
-    hostName = "rock5b";
+  nixpkgs.overlays = [
+    (self: _: {
+      linuxPackages-rock5b = self.linuxPackagesFor (self.linux-rock5b.override (o: {
+        argsOverride = old: {
+          kernelPatches = old.kernelPatches ++ [{ patch = ./faster-pd.patch; }];
+        };
+      }));
+    })
+  ];
+
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.all.forwarding" = true;
+    "net.ipv6.conf.all.forwarding" = false;
   };
 
-  powerManagement.cpuFreqGovernor = lib.mkDefault "ondemand";
+  networking = {
+    hostName = "rock-5b";
+    useNetworkd = true;
+    useDHCP = false;
+
+    # No local firewall.
+    nat.enable = false;
+    firewall.enable = false;
+  };
+
+  systemd.network = {
+    enable = true;
+    wait-online.anyInterface = true;
+    networks = {
+      "10-lan" = {
+        matchConfig.Name = "enP4p65s0";
+        linkConfig.RequiredForOnline = "enslaved";
+        dhcpV4Config.RouteMetric = 1;
+        networkConfig = {
+          DHCP = "ipv4";
+          ConfigureWithoutCarrier = true;
+          IPv6AcceptRA = true;
+        };
+      };
+      "20-rescue" = {
+        matchConfig.Name = "enu*";
+        address = [
+          # configure addresses including subnet mask
+          "192.168.22.1/24"
+        ];
+        networkConfig = {
+          IPv6AcceptRA = true;
+        };
+      };
+      "30-wifi" = {
+        matchConfig.Name = "wlu*";
+        address = [
+          "192.168.23.250/24"
+        ];
+        networkConfig = {
+          ConfigureWithoutCarrier = true;
+          IPv6AcceptRA = true;
+        };
+      };
+    };
+  };
+
+  networking.wireless = {
+    enable = true;
+    networks = {
+      VM4588425 = {
+        psk = "Jd6qrtjwnqrj";
+      };
+    };
+  };
+
+  services.dnsmasq = {
+    enable = true;
+    alwaysKeepRunning = true;
+    settings = {
+      interface = "enu1u1";
+      dhcp-range = "192.168.22.2,192.168.22.254,24h";
+    };
+    extraConfig = ''
+      bind-interfaces
+    '';
+  };
+
+  # require interfaces to be up before starting dnsmasq
+  systemd.services.dnsmasq.serviceConfig.Requires = [ "systemd-networkd.service" ];
+
+  services.irqbalance.enable = lib.mkDefault true;
+
+  powerManagement.enable = false;
+  # powerManagement.cpuFreqGovernor = lib.mkDefault " ondemand ";
 
   services.openssh.enable = true;
   services.openssh.permitRootLogin = "yes";

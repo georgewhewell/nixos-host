@@ -2,6 +2,7 @@
 
 {
   boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
+  programs.nix-ld.enable = true;
 
   environment.systemPackages = with pkgs; [
     fswatch

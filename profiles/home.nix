@@ -24,6 +24,14 @@
     };
   };
 
+  services.cadvisor = {
+    enable = true;
+    listenAddress = "0.0.0.0";
+    port = 58080;
+  };
+
+  networking.firewall.allowedTCPPorts = [ 58080 ];
+
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
   '';

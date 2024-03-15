@@ -10,8 +10,8 @@
         decorations = "none";
         dynamic_padding = false;
         padding = {
-          columns = 0;
-          lines = 0;
+          # columns = 0;
+          # lines = 0;
         };
 
       };
@@ -24,7 +24,7 @@
         size = if config.hostId == "yoga" then 18 else 12;
       };
 
-      mouse_bindings = [
+      mouse.bindings = [
         { mouse = "Middle"; action = "PasteSelection"; }
       ];
 

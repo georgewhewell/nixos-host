@@ -61,20 +61,29 @@ let
   };
 
   patches = {
-    graysky = {
-      name = "more-uarches-for-kernel-5.17";
+    graysky_lt_6_8 = {
+      name = "more-uarches-for-kernel-6.1.79-6.8-rc3";
       patch = final.fetchpatch {
-        name = "more-uarches-for-kernel-5.17";
-        url = "https://raw.githubusercontent.com/graysky2/kernel_compiler_patch/e73759c808f500f412dedfd77ca6c1ade43675c9/more-uarches-for-kernel-5.17%2B.patch";
-        hash = "sha256-XOLR4MpyUWIy6ee1uDXGV/f483JjH1Sny+AQpC+baZc=";
+        name = "more-uarches-for-kernel-6.1.79-6.8-rc3";
+        url = "https://raw.githubusercontent.com/graysky2/kernel_compiler_patch/master/more-uarches-for-kernel-6.1.79-6.8-rc3.patch";
+        hash = "sha256-ZEeeQViUZWunzZzeJ6z9/RwoNaQzzJK7q1yBUh4weXE=";
+      };
+    };
+    graysky = {
+      name = "more-uarches-for-kernel-6.8-rc4+.patch";
+      patch = final.fetchpatch {
+        name = "more-uarches-for-kernel-6.8-rc4+.patch";
+        url = "https://raw.githubusercontent.com/graysky2/kernel_compiler_patch/master/more-uarches-for-kernel-6.8-rc4%2B.patch";
+        hash = "sha256-VjdF4DC/midcNGcYGrquLwCpkZKeghVbWI3S9++RTV8=";
       };
     };
   };
 
   inherit (linuxKernel) kernels packagesFor;
 
-  latest = kernels.linux_6_6;
-  latest_zfs = kernels.linux_6_6;
+  latest = kernels.linux_6_8;
+  latest_zfs = kernels.linux_6_7;
+
 in
 _: {
   linuxPackages_latest_lto = packagesFor (fullLTO latest);
@@ -89,7 +98,7 @@ _: {
     (cfg
       { MBROADWELL = yes; }
       (patch
-        [ patches.graysky ]
+        [ patches.graysky_lt_6_8 ]
         (fullLTO latest_zfs)));
 
   linuxPackages_latest_lto_silvermont = packagesFor

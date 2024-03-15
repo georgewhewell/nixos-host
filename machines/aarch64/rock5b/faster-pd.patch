@@ -1,0 +1,81 @@
+From a78042c6314ff69c7c8508c97db61cbd88c3b7e4 Mon Sep 17 00:00:00 2001
+From: amazingfate <liujianfeng1994@gmail.com>
+Date: Mon, 22 May 2023 14:57:46 +0800
+Subject: [PATCH 1/2] usb: typec: tcpm: add devicetree property
+ faster-pd-negotiation to make pd negotiation faster
+
+---
+ drivers/usb/typec/tcpm/tcpm.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
+index a088c6e91e371..f524c4c7290fa 100644
+--- a/drivers/usb/typec/tcpm/tcpm.c
++++ b/drivers/usb/typec/tcpm/tcpm.c
+@@ -486,6 +486,7 @@ struct tcpm_port {
+ 	int logbuffer_tail;
+ 	u8 *logbuffer[LOG_BUFFER_ENTRIES];
+ #endif
++	bool faster_pd_negotiation;
+ };
+ 
+ struct pd_rx_event {
+@@ -4159,7 +4160,7 @@ static void run_state_machine(struct tcpm_port *port)
+ 		break;
+ 	case SNK_ATTACH_WAIT:
+ 		port->debouncing = true;
+-		timer_val_msecs = PD_T_CC_DEBOUNCE;
++		timer_val_msecs = port->faster_pd_negotiation ? 100 : PD_T_CC_DEBOUNCE;
+ 		trace_android_vh_typec_tcpm_get_timer(tcpm_states[SNK_ATTACH_WAIT],
+ 						      CC_DEBOUNCE, &timer_val_msecs);
+ 		if ((port->cc1 == TYPEC_CC_OPEN &&
+@@ -4319,7 +4320,7 @@ static void run_state_machine(struct tcpm_port *port)
+ 		if (port->vbus_never_low) {
+ 			port->vbus_never_low = false;
+ 			tcpm_set_state(port, SNK_SOFT_RESET,
+-				       timer_val_msecs);
++				       port->faster_pd_negotiation ? 100 : timer_val_msecs);
+ 		} else {
+ 			tcpm_set_state(port, hard_reset_state(port),
+ 				       timer_val_msecs);
+@@ -4877,7 +4878,7 @@ static void run_state_machine(struct tcpm_port *port)
+ 			       PD_T_ERROR_RECOVERY);
+ 		break;
+ 	case PORT_RESET_WAIT_OFF:
+-		timer_val_msecs = PD_T_PS_SOURCE_OFF;
++		timer_val_msecs = port->faster_pd_negotiation ? 100 : PD_T_PS_SOURCE_OFF;
+ 		trace_android_vh_typec_tcpm_get_timer(tcpm_states[PORT_RESET_WAIT_OFF],
+ 						      SOURCE_OFF, &timer_val_msecs);
+ 		tcpm_set_state(port,
+@@ -6131,6 +6132,8 @@ static int tcpm_fw_get_caps(struct tcpm_port *port,
+ 
+ 	port->self_powered = fwnode_property_read_bool(fwnode, "self-powered");
+ 
++	port->faster_pd_negotiation = fwnode_property_read_bool(fwnode, "faster-pd-negotiation");
++
+ 	/* FRS can only be supported byb DRP ports */
+ 	if (port->port_type == TYPEC_PORT_DRP) {
+ 		ret = fwnode_property_read_u32(fwnode, "new-source-frs-typec-current",
+
+From 0b90454937c6af60143a87cd5d519862b3df40bf Mon Sep 17 00:00:00 2001
+From: amazingfate <liujianfeng1994@gmail.com>
+Date: Mon, 22 May 2023 14:58:09 +0800
+Subject: [PATCH 2/2] arm64: dts: rock 5b: add property faster-pd-negotiation
+ to make pd negotiation faster
+
+---
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+index ef599a7caa35d..89f000e541d96 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+@@ -886,6 +886,7 @@
+ 			compatible = "usb-c-connector";
+ 			label = "USB-C";
+ 			data-role = "dual";
++			faster-pd-negotiation;
+ 			power-role = "sink";
+ 			try-power-role = "sink";
+ 			op-sink-microwatt = <1000000>;

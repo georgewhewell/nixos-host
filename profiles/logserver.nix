@@ -26,7 +26,7 @@
     listenAddress = "0.0.0.0";
     exporters = {
       snmp = {
-        enable = true;
+        enable = false;
         configuration = null;
         configurationPath = "${pkgs.prometheus-snmp-exporter.src}/snmp.yml";
       };
@@ -50,9 +50,20 @@
             "nixhost.lan:9100"
             "fuckup.lan:9100"
             "router.lan:9100"
-            "yoga.lan:9100"
-            "rock5b.lan:9100"
+            # "yoga.lan:9100"
+            "rock-5b.lan:9100"
             "air.lan:9100"
+          ];
+        }];
+      }
+      {
+        job_name = "cadvisor";
+        static_configs = [{
+          targets = [
+            "nixhost.lan:58080"
+            "fuckup.lan:58080"
+            "router.lan:58080"
+            "rock-5b.lan:58080"
           ];
         }];
       }

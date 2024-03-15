@@ -20,6 +20,7 @@
   nixpkgs.config.permittedInsecurePackages = [
     "nodejs-16.20.1"
     "nodejs-16.20.2"
+    "nix-2.15.3"
   ];
 
   imports =
@@ -82,7 +83,7 @@
   };
 
   nix.settings.max-jobs = lib.mkDefault 8;
-  powerManagement.cpuFreqGovernor = "performance";
+  #powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
     hostName = "fuckup";
@@ -123,6 +124,7 @@
     bridges.br0 = {
       interfaces = [
         "enp0s31f6" # onboard ethernet
+        # "enp5s0u2u1"
       ];
     };
   };

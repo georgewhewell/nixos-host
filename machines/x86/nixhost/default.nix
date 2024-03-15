@@ -15,12 +15,6 @@
   deployment.targetHost = "192.168.23.5";
   deployment.targetUser = "grw";
 
-  nixpkgs.config.permittedInsecurePackages = [
-    "nodejs-16.20.2"
-    "nodejs-16.20.1"
-    "openssl-1.1.1w"
-  ];
-
   imports =
     [
       ../../../containers/radarr.nix
@@ -28,6 +22,7 @@
       ../../../containers/unifi.nix
 
       ../../../profiles/common.nix
+      ../../../profiles/crypto.nix
       ../../../profiles/headless.nix
       ../../../profiles/home.nix
       ../../../profiles/logserver.nix
@@ -66,6 +61,7 @@
 
   # boot.zfs.enableUnstable = true;
   boot.kernelPackages = pkgs.linuxPackages_lto_broadwell;
+  # boot.kernelPackages = pkgs.linuxPackages_latest;
 
   boot.zfs.requestEncryptionCredentials = false;
 
@@ -73,157 +69,6 @@
     enable = true;
     openFirewall = true;
   };
-
-  fileSystems."/var/lib/lighthouse" =
-    {
-      device = "fpool/root/lighthouse-mainnet";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
-
-  fileSystems."/var/lib/private/goethereum" =
-    {
-      device = "fpool/root/go-ethereum";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
-
-  fileSystems."/var/lib/monero" =
-    {
-      device = "fpool/root/monero";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
-
-  deployment.keys =
-    {
-      "LIGHTHOUSE_JWT" = {
-        keyCommand = [ "pass" "erigon-gpg" ];
-        destDir = "/run/keys";
-        uploadAt = "pre-activation";
-      };
-    };
-
-  services.lighthouse = {
-    beacon = {
-      enable = true;
-      dataDir = "/var/lib/lighthouse";
-      address = "192.168.23.5";
-      execution = {
-        address = "127.0.0.1";
-        port = 8551;
-        jwtPath = "/run/keys/LIGHTHOUSE_JWT";
-      };
-      metrics = {
-        enable = true;
-        port = 5054;
-      };
-    };
-    extraArgs = ''
-      --checkpoint-sync-url=https://mainnet.checkpoint.sigp.io \
-      --disable-deposit-contract-sync
-    '';
-  };
-
-  services.geth =
-    let
-      apis = [ "net" "eth" "txpool" "debug" ];
-      mainnet = {
-        metrics = 6060;
-        p2p = 30030;
-        http = 8545;
-        ws = 8546;
-      };
-    in
-    {
-      mainnet = with mainnet; {
-        enable = true;
-        maxpeers = 128;
-        syncmode = "snap";
-        gcmode = "full";
-        metrics = {
-          enable = true;
-          address = "0.0.0.0";
-          port = metrics;
-        };
-        port = p2p;
-        http = {
-          enable = true;
-          port = http;
-          address = "0.0.0.0"; # firewalled
-          inherit apis;
-        };
-        websocket = {
-          enable = true;
-          port = ws;
-          address = "0.0.0.0"; # firewalled
-          inherit apis;
-        };
-        authrpc = {
-          enable = true;
-          address = "localhost";
-          port = 8551;
-        };
-        extraArgs = [
-          "--cache=16000"
-          "--http.vhosts=eth-mainnet.satanic.link,eth-mainnet-ws.satanic.link,localhost,127.0.0.1"
-        ];
-      };
-    };
-
-  services.nginx.virtualHosts = {
-    "eth-mainnet.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString config.services.geth.mainnet.http.port}";
-      };
-    };
-
-    "eth-mainnet-ws.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString config.services.geth.mainnet.websocket.port}";
-        proxyWebsockets = true;
-      };
-    };
-    "reth-mainnet.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString 8549}";
-      };
-    };
-    "reth-mainnet-ws.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString 8549}";
-        proxyWebsockets = true;
-      };
-    };
-  };
-
-  services.monero = {
-    enable = true;
-    dataDir = "/var/lib/monero";
-    rpc = {
-      address = "192.168.23.5";
-    };
-    extraConfig = ''
-      confirm-external-bind=1
-    '';
-  };
-
-
-  # fileSystems."/mnt/nvraid" =
-  #   {
-  #     device = "/dev/md0";
-  #     fsType = "f2fs";
-  #     options = [ "nofail" "sync=disabled" ];
-  #   };
-
   # virtualisation.oci-containers.containers.reth = {
   #   image = "ghcr.io/paradigmxyz/reth:v0.1.0-alpha.13";
   #   volumes = [
@@ -269,7 +114,6 @@
       description = "Lighthouse beacon node (connect to P2P nodes and verify blocks)";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
-
       script = ''
         # make sure the chain data directory is created on first run
         mkdir -p ${dataDir}/${network}
@@ -346,8 +190,8 @@
     firewall = {
       enable = true;
       interfaces."br0.lan" = {
-        allowedTCPPorts = [ 8085 9091 9000 9001 9002 18081 30030 30303 30304 38483 ];
-        allowedUDPPorts = [ 9000 9001 9002 30030 30303 30304 ];
+        allowedTCPPorts = [ 8085 9091 9000 9001 9002 18081 30030 30303 30304 38483 18080 ];
+        allowedUDPPorts = [ 9000 9001 9002 30030 30303 30304 18080 ];
       };
     };
     defaultGateway = "192.168.23.1";

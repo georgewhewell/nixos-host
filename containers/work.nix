@@ -28,7 +28,6 @@
         ../profiles/home.nix
         ../profiles/development.nix
         ../profiles/graphical.nix
-        ../profiles/home-manager.nix
       ];
 
       networking = {

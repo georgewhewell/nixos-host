@@ -1,11 +1,22 @@
-colmena: nixpkgs: hardware: nixosModule: apple-silicon:
+colmena: nixpkgs: hardware: nixosModule: inputs:
 
 with hardware;
 
 let
   sys = system: mods: nixpkgs.lib.nixosSystem {
     inherit system;
-    modules = [ nixosModule ] ++ mods;
+    modules = [{ _module.args = inputs; } nixosModule inputs.vifino.nixosModules.vpp] ++ mods;
+    extraModules = [ colmena.nixosModules.deploymentOptions ];
+    specialArgs = { inherit inputs; };
+  };
+  rocksys = system: mods: nixpkgs.lib.nixosSystem {
+    inherit system;
+    modules = [
+      nixosModule
+      rock5b.nixosModules.apply-overlay
+      rock5b.nixosModules.kernel
+    ] ++ mods;
+
     extraModules = [ colmena.nixosModules.deploymentOptions ];
   };
   applesys = apple-silicon: system: mods: nixpkgs.lib.nixosSystem {
@@ -27,7 +38,7 @@ in
 
   cloud = sys "x86_64-linux" [ physical ./x86/cloud ];
 
-  rock-5b = sys "aarch64-linux" [ physical ./aarch64/rock5b ];
-  air = applesys apple-silicon "aarch64-linux" [ physical ./aarch64/air ];
+  rock-5b = rocksys "aarch64-linux" [ physical ./aarch64/rock5b ];
+  #  air = applesys apple-silicon "aarch64-linux" [ physical ./aarch64/air ];
 
 }
