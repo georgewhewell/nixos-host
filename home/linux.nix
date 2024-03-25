@@ -18,5 +18,6 @@
     yubikey-manager
     opensc
     pcsctools
+    bridge-utils
   ];
 }

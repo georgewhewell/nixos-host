@@ -135,8 +135,8 @@
         })
         (self.nixosConfigurations);
 
-      darwinConfigurations."air" = darwin.lib.darwinSystem {
-        system = "x86_64-darwin";
+      darwinConfigurations."Georges-MacBook-Air-5" = darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
         modules = [
           ./machines/darwin-aarch64/darwin-configuration.nix
           home-manager.darwinModules.home-manager
