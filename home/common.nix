@@ -34,7 +34,6 @@
     btop
     mosh
     mtr
-    bridge-utils
   ];
 
   manual.manpages.enable = false;
