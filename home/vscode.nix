@@ -13,7 +13,6 @@
       "editor.formatOnSave" = true;
       "editor.formatOnType" = true;
       "editor.inlineSuggest.enabled" = true;
-      "rust-analyzer.runnables.command" = "/etc/profiles/per-user/grw/bin/cargo";
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
