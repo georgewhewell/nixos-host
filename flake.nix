@@ -23,9 +23,6 @@
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
 
-    rust-overlay.url = "github:oxalica/rust-overlay";
-    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-
     foundry.url = "github:shazow/foundry.nix";
     foundry.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -52,7 +49,6 @@
     , nixos-hardware
     , home-manager
     , colmena
-    , rust-overlay
     , foundry
     , vscode-server
     , vifino
@@ -78,7 +74,6 @@
           let
             # Load the system config and get the `nixpkgs.overlays` option
             overlays = [
-              (import ${rust-overlay}/default.nix)
             ];
           in
             # Apply all overlays to the input of the current "main" overlay
@@ -95,10 +90,8 @@
         (f: import (./overlays + "/${f}"))
         (attrNames (readDir ./overlays)) ++ [
         vifino.overlays.dpdk
-        rust-overlay.overlays.default
         flakeOverlay
         foundry.overlay
-        # ethereum.overlays.default
       ];
 
       hardware =
@@ -135,13 +128,15 @@
         })
         (self.nixosConfigurations);
 
-      darwinConfigurations."Georges-MacBook-Air-5" = darwin.lib.darwinSystem {
+      darwinConfigurations."air" = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
           ./machines/darwin-aarch64/darwin-configuration.nix
           home-manager.darwinModules.home-manager
           ({ config, pkgs, ... }: {
-            nixpkgs.overlays = [ rust-overlay.overlays.default ];
+            nixpkgs.overlays = [
+              darwin.overlays.default
+            ];
           })
         ];
       };
