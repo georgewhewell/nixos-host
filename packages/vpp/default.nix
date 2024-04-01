@@ -1,142 +1,96 @@
-{ stdenv
-, pkgs
-, lib
-, runtimeShell
+{ lib
+, stdenv
+, fetchFromGitHub
+, cmake
+, openssl
 , python3
-, enableDpdk ? true
-, enableRdma ? stdenv.isLinux
-, enableAfXdp ? false
-,
+, subunit
+, dpdk
+, mbedtls_2
+, rdma-core
+, libnl
+, libmnl
+, libpcap
+, check
+, fetchpatch
 }:
-assert (lib.asserts.assertMsg (!enableRdma || stdenv.isLinux) "Can't enable rdma_plugin - rdma-core only works on Linux");
-assert (lib.asserts.assertMsg (!enableAfXdp || stdenv.isLinux) "Can't enable af_xdp_plugin - Only exists on Linux"); let
-  version = "23.06-rc0";
-  src = pkgs.fetchFromGitHub {
+
+stdenv.mkDerivation rec {
+  pname = "vpp";
+  version = "23.10";
+
+  src = fetchFromGitHub {
     owner = "FDio";
     repo = "vpp";
     rev = "v${version}";
-    hash = "sha256-W3OxYQ9zQOWSEjW9aHe1dA1+Z72ylwHxofMpeSe0J8Q=";
-  };
-  getMeta = description:
-    with lib; {
-      homepage = "https://fd.io/";
-      inherit description;
-      license = with licenses; [ asl20 ];
-      maintainers = with maintainers; [ vifino ];
-      platforms = [
-        "i686-linux"
-        "x86_64-linux"
-        "aarch64-linux"
-        "i686-freebsd"
-        "x86_64-freebsd"
-        "aarch64-freebsd"
-      ];
-    };
-in
-rec {
-  vpp = stdenv.mkDerivation rec {
-    pname = "vpp";
-    inherit version;
-    meta = getMeta "Vector Packet Processor Engine";
-    inherit src;
-    sourceRoot = "source/src";
-
-    nativeBuildInputs = with pkgs; [ pkg-config cmake ninja nasm coreutils ];
-    buildInputs = with pkgs;
-      [
-        libconfuse
-        numactl
-        libuuid
-        libffi
-        openssl
-        zlib
-
-        python3.pkgs.wrapPython
-        (python3.withPackages (pp:
-          with pp; [
-            ply # for vppapigen
-          ]))
-
-        # linux-cp deps
-        libnl
-        libmnl
-      ]
-      # dpdk plugin
-      ++ lib.optionals enableDpdk [ dpdk libpcap jansson ]
-      # rdma plugin - Mellanox/NVIDIA ConnectX-4+ device driver. Needs overridden rdma-core with static libs.
-      ++ lib.optionals enableRdma [
-        (rdma-core.overrideAttrs (x: {
-          cmakeFlags = x.cmakeFlags ++ [ "-DENABLE_STATIC=1" "-DBUILD_SHARED_LIBS:BOOL=false" ];
-        }))
-      ]
-      # af_xdp deps - broken: af_xdp plugins - no working libbpf found - af_xdp plugin disabled
-      ++ lib.optionals enableAfXdp [ libbpf xdp-tools ]
-      # Shared deps for DPDK and AF_XDP
-      ++ lib.optionals (enableDpdk || enableAfXdp) [ elfutils ];
-
-    # Needs a few patches.
-    patches = [ ] ++
-      # Make AF_XDP use libxdp/xdp-tools instead of the stone age libbpf Debian ships.
-      lib.optionals enableAfXdp [ ./vpp-af_xdp-use-libxdp.patch ];
-
-    postPatch = ''
-      # This attempts to use git to fetch the version, but we already know it.
-      printf "#!${runtimeShell}\necho '${version}'\n" > scripts/version
-      chmod +x scripts/version
-
-      # Nix has no /etc/os-release.
-      substituteInPlace pkg/CMakeLists.txt --replace 'file(READ "/etc/os-release" os_release)' 'set(os_release "NAME=NIX; ID=nix")'
-
-      patchShebangs .
-    '';
-
-    enableParallelBuilding = true;
-    cmakeFlags =
-      [
-        "-DCMAKE_INSTALL_LIBDIR=lib" # wants a relative path
-
-        # For debugging CMake:
-        #"--trace-source=CMakeLists.txt"
-        #"--trace-expand"
-        "-DDPDK_MLX5_PMD=y"
-      ]
-      # Link against system DPDK. Note that this is actually statically linked as well.
-      ++ lib.optional enableDpdk "-DVPP_USE_SYSTEM_DPDK=true";
+    hash = "sha256-YcDMDHvKIL2tOD98hTcuyQrL5pk80olYKNWiN+BA49U=";
   };
 
-  vpp_papi = python3.pkgs.buildPythonPackage rec {
-    pname = "vpp_papi";
-    version = "2.0.0";
-    meta = getMeta "Vector Packet Processor Engine - Python API";
-    inherit src;
-    sourceRoot = "source/src/vpp-api/python";
+  patches = [
+    # Important fix part of 24.02 for the Linux Control Plane.
+    (fetchpatch {
+      name = "fix-looping-netlink-messages.patch";
+      url = "https://gerrit.fd.io/r/changes/vpp~39622/revisions/9/patch?download";
+      decode = "base64 -d";
+      stripLen = 1;
+      hash = "sha256-0ZDKJgXrmTzlVSSapdEoP27znKuWUrnjTXZZ4JrximA=";
+    })
+    # Does not apply cleanly.
+    #    (fetchpatch {
+    #      name = "fix-optional-labels-for-prometheus.patch";
+    #      url = "https://gerrit.fd.io/r/changes/vpp~40199/revisions/4/patch?download";
+    #      decode = "base64 -d";
+    #      stripLen = 1;
+    #      hash = "sha256-exuR4DucNtER2t1ecsjuNxzmhfZkhx6ABeeXmf/qQ4U=";
+    #    })
+  ];
 
-    propagatedBuildInputs = with pkgs.python3Packages; [ setuptools ];
-    nativeBuildInputs = [
-      # Only needed if we'd actually build the JSON API Schemas, but instead we just depend on vpp.
-      #ply
-      vpp
-    ];
+  postPatch = ''
+    patchShebangs scripts/
+    substituteInPlace CMakeLists.txt \
+      --replace "plugins tools/vppapigen tools/g2 tools/perftool cmake pkg" "plugins tools/vppapigen tools/g2 tools/perftool cmake"
+  '';
 
-    checkInputs = with python3.pkgs.pythonPackages; [ parameterized ];
+  preConfigure = ''
+    echo "${version}-nixos" > scripts/.version
+    scripts/version
+  '';
 
-    patches = [
-      # Replaces VPPApiJSONFiles.find_api_dir with placeholder variable vpp
-      ./vpp_papi-replace-find_api_dir.patch
-    ];
+  postConfigure = ''
+    patchShebangs ../tools/
+    patchShebangs ../vpp-api/
+  '';
 
-    postPatch = ''
-      # Replace the placeholder with the nix store path of our dependency.
-      substituteInPlace vpp_papi/vpp_papi.py --subst-var-by vppApiSchemas $out/share/vpp/api
+  sourceRoot = "source/src";
 
-      # Remove broken tests.
-      rm vpp_papi/tests/test_vpp_papi.py # References old shmem transport, doesn't work with new variant. Ugh.
-      rm vpp_papi/tests/test_vpp_serializer.py # Test wants logs DEBUG or higher, but none are triggered?
-    '';
+  cmakeFlags = [ "-DVPP_PLATFORM=default" ];
 
-    postInstall = ''
-      mkdir -p $out/share/vpp/
-      cp -r ${vpp}/share/vpp/api $out/share/vpp
-    '';
+  # A bunch of GCC13 warnings I suppose.
+  env.NIX_CFLAGS_COMPILE = "-Wno-array-bounds -Wno-error";
+
+  nativeBuildInputs = [
+    cmake
+  ];
+
+  buildInputs = [
+    openssl
+    subunit
+    dpdk
+    rdma-core
+    mbedtls_2
+    check
+    libnl
+    libmnl
+    libpcap
+    (python3.withPackages (ps: [ ps.ply ]))
+  ];
+
+  meta = with lib; {
+    description = "";
+    homepage = "https://github.com/FDio/vpp";
+    license = licenses.asl20;
+    maintainers = with maintainers; [ raitobezarius ];
+    mainProgram = "vpp";
+    platforms = platforms.all;
   };
 }
