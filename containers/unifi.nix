@@ -32,7 +32,6 @@
         openFirewall = true;
         unifiPackage = pkgs.unifi8;
         mongodbPackage = pkgs.mongodb-5_0;
-        # jrePackage = pkgs.openjdk11_headless;
       };
     };
   };
