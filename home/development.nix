@@ -23,6 +23,9 @@
 
     # rust tooling
     rustup
+
+    # saas crap
+    runpodctl
   ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
     # evm tooling
     solc
