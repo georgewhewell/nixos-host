@@ -53,6 +53,7 @@
     settings = {
       max-jobs = 4;
       build-cores = 0;
+      trusted-users = [ "grw" ];
     };
   };
 }
