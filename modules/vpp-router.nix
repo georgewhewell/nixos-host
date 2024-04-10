@@ -299,10 +299,6 @@ in
       networking.nameservers = [ "1.1.1.1" ];
 
       boot.kernelParams = [
-        "default_hugepagesz=1G"
-        "hugepagesz=1G"
-        "hugepages=16"
-        "isolcpus=2,3,4,5,6,7"
         "intel_iommu=on"
         "vfio-pci.ids=8086:188c,8086:1521,8086:1563"
       ];
