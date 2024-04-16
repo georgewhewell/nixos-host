@@ -18,6 +18,9 @@
       enable = true;
       enableGraphical = true;
     };
+    wireguard = {
+      enable = true;
+    };
   };
 
   boot = {
@@ -85,7 +88,26 @@
     analogioOffset = -50;
   };
 
-  networking.hostName = "yoga";
+  systemd.network = {
+    enable = true;
+    # wait-online.anyInterface = true;
+    networks = {
+      "10-wlan" = {
+        matchConfig.Name = "wlp4s0";
+        networkConfig.DHCP = "ipv4";
+      };
+    };
+  };
+
+  networking = {
+    hostName = "yoga";
+    useNetworkd = true;
+    firewall = {
+      interfaces.wg0 = {
+        allowedTCPPorts = [ 22 9090 ];
+      };
+    };
+  };
 
   networking.firewall.allowedTCPPorts = [ 9100 ];
   services.prometheus.exporters.node.openFirewall = lib.mkForce true;

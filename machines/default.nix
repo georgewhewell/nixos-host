@@ -1,4 +1,4 @@
-colmena: nixpkgs: hardware: nixosModule: inputs:
+colmena: nixpkgs: hardware: nixosModule: inputs: consts:
 
 with hardware;
 
@@ -7,27 +7,7 @@ let
     inherit system;
     modules = [{ _module.args = inputs; } nixosModule inputs.vifino.nixosModules.vpp] ++ mods;
     extraModules = [ colmena.nixosModules.deploymentOptions ];
-    specialArgs = { inherit inputs; };
-  };
-  rocksys = system: mods: nixpkgs.lib.nixosSystem {
-    inherit system;
-    modules = [
-      nixosModule
-      rock5b.nixosModules.apply-overlay
-      rock5b.nixosModules.kernel
-    ] ++ mods;
-
-    extraModules = [ colmena.nixosModules.deploymentOptions ];
-  };
-  applesys = apple-silicon: system: mods: nixpkgs.lib.nixosSystem {
-    inherit system;
-    modules = [
-      nixosModule
-      apple-silicon.nixosModules.default
-    ] ++ mods;
-    extraModules = [
-      colmena.nixosModules.deploymentOptions
-    ];
+    specialArgs = { inherit inputs; inherit consts; };
   };
 in
 {
