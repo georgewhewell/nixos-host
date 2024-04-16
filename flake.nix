@@ -107,6 +107,7 @@
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
         [ "x86_64-linux" "aarch64-linux" ]);
+      consts = import ./consts.nix { inherit (inputs.nixpkgs) lib; };
     in
     {
       lib = { inherit forAllSystems hardware deploy; };
@@ -118,7 +119,10 @@
             system = "x86_64-linux";
             overlays = [ (composeManyExtensions localOverlays) ];
           };
-          specialArgs.inputs = inputs;
+          specialArgs = {
+            inherit inputs;
+            inherit consts;
+          };
         };
 
       } // builtins.mapAttrs
@@ -162,7 +166,7 @@
         ];
       };
 
-      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule inputs;
+      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule inputs consts;
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});

@@ -2,7 +2,9 @@
 
 {
 
-  boot.initrd.kernelModules = [ "acpi" "thinkpad-acpi" "acpi-call" ];
+  networking.wireless.enable = true;
+
+  boot.initrd.kernelModules = [ "thinkpad-acpi" "acpi-call" ];
   boot.kernelParams = [
     "msr.allow_writes=on"
     "cpuidle.governor=teo"
@@ -72,23 +74,23 @@
   };
 
   # need networkmanager for wwan
-  networking.networkmanager = {
-    enable = true;
-    enableFccUnlock = true;
-    wifi = {
-      backend = "iwd";
-      powersave = true;
-    };
-    unmanaged = [
-      "docker0"
-      "rndis0"
-    ];
-  };
+  # networking.networkmanager = {
+  #   enable = true;
+  #   #enableFccUnlock = true;
+  #   #wifi = {
+  #   #  backend = "iwd";
+  #   #  powersave = true;
+  #   #};
+  #   unmanaged = [
+  #     "docker0"
+  #     "rndis0"
+  #   ];
+  # };
 
-  systemd.services.modem-manager.enable = true;
-  systemd.services.ModemManager = {
-    wantedBy = [ "multi-user.target" ];
-  };
+  # systemd.services.modem-manager.enable = true;
+  # systemd.services.ModemManager = {
+  #   wantedBy = [ "multi-user.target" ];
+  # };
 
   services.logind = {
     lidSwitch = "suspend-then-hibernate";

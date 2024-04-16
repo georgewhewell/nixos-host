@@ -1,4 +1,4 @@
-{ config, pkgs, lib, modulesPath, ... }:
+{ config, pkgs, lib, modulesPath, consts, ... }:
 
 {
 
@@ -15,17 +15,35 @@
       enable = true;
       enableGraphical = false;
     };
+    wireguard = {
+      enable = true;
+    };
   };
 
   deployment.targetHost = "78.47.88.127";
   deployment.targetUser = "grw";
 
+  systemd.network = {
+    enable = true;
+    wait-online.anyInterface = true;
+    networks = {
+      "10-wan" = {
+        matchConfig.Name = "enp1s0";
+        networkConfig.DHCP = "ipv4";
+      };
+    };
+  };
+
   networking = {
     hostName = "cloud";
+    useNetworkd = true;
     firewall = {
-      allowedUDPPorts = [
-        51820
-      ];
+      logRefusedConnections = false;
+      logRefusedPackets = false;
+      logReversePathDrops = true;
+      interfaces.enp1s0 = {
+        allowedUDPPorts = [ 51820 ];
+      };
       interfaces.wg0 = {
         allowedTCPPorts = [ 9090 ];
       };
@@ -84,36 +102,9 @@
       enable = true;
       socksListenAddress = {
         IsolateDestAddr = true;
-        addr = "192.168.24.2";
+        addr = "192.168.33.1";
         port = 9090;
       };
     };
   };
-
-  /*
-    networking.wireguard = {
-    interfaces = {
-    "wg0" = {
-    ips = [ "192.168.24.2/24" ];
-    listenPort = 51820;
-    privateKey = pkgs.secrets.wg-hetzner-cloud-priv;
-    # postSetup = ''
-    #   ${pkgs.iptables}/bin/iptables -t nat -A POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
-    # '';
-    # postShutdown = ''
-    #   ${pkgs.iptables}/bin/iptables -t nat -D POSTROUTING -s 192.168.24.0/24 -o enp1s0 -j MASQUERADE
-    # '';
-    peers = [
-    {
-    publicKey = pkgs.secrets.wg-router-pub;
-    allowedIPs = [ "192.168.23.0/24" "192.168.24.0/24" ];
-    endpoint = "home.satanic.link:51820";
-    persistentKeepalive = 25;
-    }
-    ];
-    };
-    };
-    };
-  */
-
 }
