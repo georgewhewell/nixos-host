@@ -114,35 +114,34 @@
         };
       };
       output = {
-        "DP-1" = { mode = "3840x2160@239.991Hz"; };
+        "eDP-1" = { scale = "1"; };
+        "DP-1" = { mode = "5120x1440@59.977Hz"; };
       };
       startup = [
         { command = "${pkgs.mako}/bin/mako"; always = true; }
-        /*
-          {
+        {
           command = ''
-          ${pkgs.swayidle}/bin/swayidle \
-          timeout 600 "${pkgs.swaylock-effects}/bin/swaylock \
-          --screenshots \
-          --clock \
-          --indicator \
-          --indicator-radius 100 \
-          --indicator-thickness 7 \
-          --effect-blur 7x5 \
-          --effect-vignette 0.5:0.5 \
-          --ring-color bb00cc \
-          --key-hl-color 880033 \
-          --line-color 00000000 \
-          --inside-color 00000088 \
-          --separator-color 00000000 \
-          --grace 30 \
-          --fade-in 0.2" \
-          timeout 3600 'swaymsg "output * dpms off"' \
-          resume 'swaymsg "output * dpms on"'
+            ${pkgs.swayidle}/bin/swayidle \
+              timeout 600 "${pkgs.swaylock-effects}/bin/swaylock \
+              --screenshots \
+              --clock \
+              --indicator \
+              --indicator-radius 100 \
+              --indicator-thickness 7 \
+              --effect-blur 7x5 \
+              --effect-vignette 0.5:0.5 \
+              --ring-color bb00cc \
+              --key-hl-color 880033 \
+              --line-color 00000000 \
+              --inside-color 00000088 \
+              --separator-color 00000000 \
+              --grace 30 \
+              --fade-in 0.2" \
+              timeout 3600 'swaymsg "output * dpms off"' \
+              resume 'swaymsg "output * dpms on"' 
           '';
           always = false;
-          }
-          */
+        }
         # static workspaces
         /*{
           command = ''

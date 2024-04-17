@@ -4,7 +4,9 @@
 
   imports = [
     ./alacritty.nix
-    # ./sway.nix
+    ./sway.nix
+    ./firefox.nix
+    ./thunderbird.nix
     ./hyprland.nix
     ./vscode.nix
   ];
@@ -25,6 +27,7 @@
   home.packages = with pkgs; [
     wl-clipboard
     wdisplays
+    wlr-randr
     xdg-utils
     kitty
 
@@ -41,26 +44,6 @@
     discord
     zoom-us
     slack
-  ] ++ [
-    (wrapFirefox firefox-unwrapped {
-      extraPolicies = {
-        NewTabPage = false;
-        CaptivePortal = false;
-        DisablePocket = true;
-        DisableFirefoxStudies = true;
-        OfferToSaveLogins = false;
-        DisableFormHistory = true;
-        SearchSuggestEnabled = false;
-        Preferences = {
-          "browser.contentblocking.category" = { Status = "locked"; Value = "strict"; };
-          "browser.zoom.siteSpecific" = { Status = "locked"; Value = false; };
-          "extensions.formautofill.available" = { Status = "locked"; Value = "off"; };
-          "media.setsinkid.enabled" = { Status = "locked"; Value = true; };
-          "network.IDN_show_punycode" = { Status = "locked"; Value = true; };
-          "ui.key.menuAccessKeyFocuses" = { Status = "locked"; Value = false; };
-        };
-      };
-    })
   ];
 
 }

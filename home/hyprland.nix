@@ -9,6 +9,7 @@
   home.packages = with pkgs;
     [
       kitty
+      alacritty
       grimblast
       rofi
       inputs.rose-pine-hyprcursor.packages.${pkgs.system}.default
@@ -21,15 +22,17 @@
     ];
 
     settings = {
-      monitor = ",highrr,auto,1";
+      # monitor = ",highrr,auto,1";
+      monitor = ",highres,auto,1";
       env = "HYPRCURSOR_THEME,rose-pine-hyprcursor";
       "$mod" = "ALT";
       bind =
         [
+          "mod SHIFT, Q, exec, exit"
           "$mod, F, exec, firefox"
-          "$mod, T, exec, kitty"
+          "$mod, T, exec, alacritty"
           "$mod, D, exec, rofi -show combi"
-          "$mod, Enter, exec, kitty"
+          "$mod, Enter, exec, alacritty"
           ", Print, exec, grimblast copy area"
         ]
         ++ (
