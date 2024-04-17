@@ -49,7 +49,7 @@
   };
 
   services.clight = {
-    enable = true;
+    enable = false;
   };
 
   services.tlp = {
