@@ -29,6 +29,7 @@
               basicConfig = {
                 PublicKey = v.pubKey;
                 AllowedIPs = [ "${subnet}${toString v.ipAddress}/32" ];
+                PersistentKeepalive = 25;
               };
               endpointConfig = if v ? endPoint then { Endpoint = "${v.endPoint}:${toString port}"; } else { };
             in
