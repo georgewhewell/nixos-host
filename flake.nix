@@ -12,7 +12,7 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     ethereum.url = "github:nix-community/ethereum.nix";
-    ethereum.inputs.nixpkgs.follows = "nixpkgs";
+    #ethereum.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-bitcoin.url = "github:fort-nix/nix-bitcoin/release";
     nix-bitcoin.inputs.nixpkgs.follows = "nixpkgs";
@@ -30,7 +30,7 @@
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
     vifino.url = "github:vifino/nix-geht";
-    vifino.inputs.nixpkgs.follows = "nixpkgs";
+    # vifino.inputs.nixpkgs.follows = "nixpkgs";  # breaks vpp (new dpdk?)
 
     rock5b.url = "github:aciceri/rock5b-nixos";
     rock5b.inputs.nixpkgs.follows = "nixpkgs";
@@ -51,7 +51,6 @@
     , colmena
     , foundry
     , vscode-server
-    , vifino
     , rock5b
     , apple-silicon
     , ethereum
@@ -81,17 +80,10 @@
         '';
       };
 
-      flakeOverlay = (final: prev: {
-        inherit vscode-server;
-        ethPkgs = ethereum.packages."x86_64-linux";
-      } // mypkgs { });
-
       localOverlays = map
         (f: import (./overlays + "/${f}"))
         (attrNames (readDir ./overlays)) ++ [
-        vifino.overlays.dpdk
-        flakeOverlay
-        foundry.overlay
+        # forced
       ];
 
       hardware =
