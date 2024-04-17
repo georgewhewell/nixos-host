@@ -13,28 +13,31 @@
 , libpcap
 , check
 , fetchpatch
+, jansson
+, zstd
+, elfutils
 }:
 
 stdenv.mkDerivation rec {
   pname = "vpp";
-  version = "23.10";
+  version = "24.02";
 
   src = fetchFromGitHub {
     owner = "FDio";
     repo = "vpp";
     rev = "v${version}";
-    hash = "sha256-YcDMDHvKIL2tOD98hTcuyQrL5pk80olYKNWiN+BA49U=";
+    hash = "sha256-Cfm0Xzsx2UgUvIIeq5wBN6tA9ynCUa5bslEQk8wbd6E=";
   };
 
   patches = [
     # Important fix part of 24.02 for the Linux Control Plane.
-    (fetchpatch {
-      name = "fix-looping-netlink-messages.patch";
-      url = "https://gerrit.fd.io/r/changes/vpp~39622/revisions/9/patch?download";
-      decode = "base64 -d";
-      stripLen = 1;
-      hash = "sha256-0ZDKJgXrmTzlVSSapdEoP27znKuWUrnjTXZZ4JrximA=";
-    })
+    # (fetchpatch {
+    #   name = "fix-looping-netlink-messages.patch";
+    #   url = "https://gerrit.fd.io/r/changes/vpp~39622/revisions/9/patch?download";
+    #   decode = "base64 -d";
+    #   stripLen = 1;
+    #   hash = "sha256-0ZDKJgXrmTzlVSSapdEoP27znKuWUrnjTXZZ4JrximA=";
+    # })
     # Does not apply cleanly.
     #    (fetchpatch {
     #      name = "fix-optional-labels-for-prometheus.patch";
@@ -83,6 +86,9 @@ stdenv.mkDerivation rec {
     libmnl
     libpcap
     (python3.withPackages (ps: [ ps.ply ]))
+    jansson
+    zstd
+    elfutils
   ];
 
   meta = with lib; {

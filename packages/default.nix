@@ -8,5 +8,5 @@ with pkgs;
   libmali = callPackage ./libmali { };
   udpxy = callPackage ./udpxy { };
 
-  # vppPkgs = callPackage ./vpp { };
+  my-vpp = callPackage ./vpp { };
 }
