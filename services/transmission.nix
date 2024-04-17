@@ -5,7 +5,7 @@ in
 {
   fileSystems.${incompleteDir} =
     {
-      device = "fpool/root/incomplete";
+      device = "nvpool/root/incomplete";
       fsType = "zfs";
       options = [ "nofail" ];
     };
@@ -15,7 +15,7 @@ in
     openFirewall = true;
     settings = {
       download-dir = "/mnt/Media/downloads";
-      download-queue-size = 4;
+      download-queue-size = 8;
       incomplete-dir = incompleteDir;
       incomplete-dir-enabled = true;
       rpc-whitelist-enabled = false;
@@ -25,11 +25,8 @@ in
       cache-size-mb = 1024;
       scrape-paused-torrents-enabled = false;
       seed-queue-enabled = true;
-      seed-queue-size = 1000;
-      # speed-limit-up = 500;
+      seed-queue-size = 10000;
       speed-limit-up-enabled = false;
-      # speed-limit-down = 10000;
-      # speed-limit-down-enabled = true;
       umask = 2;
     };
   };

@@ -19,7 +19,7 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-      ../../../containers/unifi.nix
+      # ../../../containers/unifi.nix
 
       ../../../profiles/common.nix
       ../../../profiles/crypto.nix
@@ -69,94 +69,11 @@
     enable = true;
     openFirewall = true;
   };
-  # virtualisation.oci-containers.containers.reth = {
-  #   image = "ghcr.io/paradigmxyz/reth:v0.1.0-alpha.13";
-  #   volumes = [
-  #     "/mnt/nvraid/reth:/root/.local/share/reth"
-  #     # re-use geth's jwt
-  #     "/run/keys/LIGHTHOUSE_JWT:/root/.local/share/reth/mainnet/jwt.hex"
-  #   ];
-  #   cmd = [
-  #     "node"
-  #     "--full"
-  #     "--authrpc.port=8552"
-  #     "--port=30304"
-  #     "--http"
-  #     "--http.port=8549"
-  #     "--metrics=9009"
-  #     "--trusted-peers=enode://3c3a08e12a8686b204d2262bb5fdd7ec6babddb2542aa4f06ed951dbd1057ebf865d31d271837ce5fdd3de0c327b65c11eba2335c3bdbfab86cda963ecc18caa@192.18.23.5:30030"
-  #   ];
-  #   extraOptions = [ "--network=host" ];
-  # };
 
-  fileSystems."/var/lib/lighthouse-reth" =
-    {
-      device = "fpool/root/lighthouse-reth";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
-
-  systemd.services.lighthouse-beacon-reth =
-    let
-      dataDir = "/var/lib/lighthouse-reth";
-      network = "mainnet";
-      port = 9002;
-      address = "192.168.23.5";
-      execution_address = "127.0.0.1";
-      execution_port = 8552;
-      http_address = "127.0.0.1";
-      http_port = 8547;
-      metrics_address = "127.0.0.1";
-      metrics_port = 5055;
-      jwtPath = "/run/keys/LIGHTHOUSE_JWT";
-    in
-    {
-      description = "Lighthouse beacon node (connect to P2P nodes and verify blocks)";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
-      script = ''
-        # make sure the chain data directory is created on first run
-        mkdir -p ${dataDir}/${network}
-
-        ${pkgs.lighthouse}/bin/lighthouse beacon_node \
-          --disable-upnp \
-          --port ${toString port} \
-          --listen-address ${address} \
-          --network ${network} \
-          --datadir ${dataDir}/${network} \
-          --execution-endpoint http://${execution_address}:${toString execution_port} \
-          --execution-jwt ''${CREDENTIALS_DIRECTORY}/LIGHTHOUSE_JWT \
-          --http --http-address ${http_address} --http-port ${toString http_port} \
-          --metrics --metrics-address ${metrics_address} --metrics-port ${toString metrics_port} \
-          --checkpoint-sync-url="https://mainnet.checkpoint.sigp.io" \
-          --libp2p-addresses "/ip4/192.168.23.5/tcp/9000" \
-          --disable-deposit-contract-sync
-      '';
-      serviceConfig = {
-        LoadCredential = "LIGHTHOUSE_JWT:${jwtPath}";
-        DynamicUser = true;
-        Restart = "on-failure";
-        StateDirectory = "lighthouse-beacon";
-        ReadWritePaths = [ dataDir ];
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        ProtectHome = true;
-        ProtectClock = true;
-        ProtectProc = "noaccess";
-        ProcSubset = "pid";
-        ProtectKernelLogs = true;
-        ProtectKernelModules = true;
-        ProtectKernelTunables = true;
-        ProtectControlGroups = true;
-        ProtectHostname = true;
-        RestrictSUIDSGID = true;
-        RestrictRealtime = true;
-        RestrictNamespaces = true;
-        LockPersonality = true;
-        RemoveIPC = true;
-        SystemCallFilter = [ "@system-service" "~@privileged" ];
-      };
-    };
+  services.qbittorrent = {
+    enable = true;
+    openFirewall = true;
+  };
 
   boot.kernelModules = [
     "ipmi_devintf"
@@ -182,6 +99,62 @@
     # "zfs.zfs_arc_max=12884901888"
   ];
 
+  services.dnscrypt-proxy2 = {
+    enable = true;
+    settings = {
+      listen_addresses = [ "127.0.0.1:54" ];
+      static.cloudflare = {
+        stamp = "sdns://AgcAAAAAAAAABzEuMC4wLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5";
+      };
+      # blacklist.blacklist_file = "${pkgs.sources.hosts-blocklists}/dnscrypt-proxy/dnscrypt-proxy.blacklist.txt";
+    };
+  };
+
+  services.dnsmasq =
+    let
+      lanBridge = "br0.lan";
+    in
+    {
+      enable = true;
+      servers = [ "127.0.0.1#54" ];
+      extraConfig = ''
+        domain-needed
+        bogus-priv
+        no-resolv
+        no-hosts
+        log-dhcp
+        domain=lan
+        bind-interfaces
+        interface=${lanBridge}
+        dhcp-range=${lanBridge},192.168.23.10,192.168.23.249,6h
+        dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
+        dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
+        dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
+        dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
+        dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
+        dhcp-host=06:f1:3e:03:27:8c,192.168.23.7   # fuckup
+        dhcp-host=50:6b:4b:03:04:cb,192.168.23.8   # trex
+        dhcp-host=c2:be:3b:97:be:27,192.168.23.48  # phone
+
+        # hosted names
+        address=/router.lan/192.168.23.1
+        address=/nixhost.lan/192.168.23.5
+        address=/fuckup.lan/192.168.23.7
+        address=/trex.lan/192.168.23.8
+        address=/cloud.lan/192.168.24.2
+        address=/grafana.satanic.link/192.168.23.5
+        address=/home.satanic.link/192.168.23.5
+        address=/jellyfin.satanic.link/192.168.23.5
+        address=/paperless.satanic.link/192.168.23.5
+        address=/radarr.satanic.link/192.168.23.5
+        address=/sonarr.satanic.link/192.168.23.5
+        address=/eth-mainnet.satanic.link/192.168.23.5
+        address=/eth-mainnet-ws.satanic.link/192.168.23.5
+        address=/reth-mainnet.satanic.link/192.168.23.5
+        address=/reth-mainnet-ws.satanic.link/192.168.23.5
+      '';
+    };
+
   networking = {
     hostName = "nixhost";
     hostId = lib.mkForce "deadbeef";
@@ -189,13 +162,14 @@
     enableIPv6 = true;
     firewall = {
       enable = true;
+      trustedInterfaces = [ "br0.lan" ];
       interfaces."br0.lan" = {
-        allowedTCPPorts = [ 8085 9091 9000 9001 9002 18081 30030 30303 30304 38483 18080 ];
-        allowedUDPPorts = [ 9000 9001 9002 30030 30303 30304 18080 ];
+        allowedTCPPorts = [ 8085 9091 9000 9001 9002 18081 30030 30303 30304 38483 18080 17026 ];
+        allowedUDPPorts = [ 9000 9001 9002 30030 30303 30304 18080 17026 ];
       };
     };
     defaultGateway = "192.168.23.1";
-    nameservers = [ "192.168.23.1" ];
+    nameservers = [ "192.168.23.5" ];
     interfaces."br0.lan" = {
       useDHCP = false;
       ipv4.addresses = [{
@@ -224,6 +198,12 @@
     {
       device = "/dev/disk/by-label/EFI";
       fsType = "vfat";
+    };
+
+  fileSystems."/home/grw" =
+    {
+      device = "pool3d/home/nixos-fuckup-home";
+      fsType = "zfs";
     };
 
   nix.settings.build-cores = lib.mkDefault 24;

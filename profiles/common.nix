@@ -39,7 +39,7 @@
 
   programs.zsh = {
     enable = true;
-    enableGlobalCompInit = false;
+    #   enableGlobalCompInit = false;
   };
 
   # Enable the OpenSSH daemon.

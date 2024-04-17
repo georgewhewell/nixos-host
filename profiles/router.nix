@@ -1,8 +1,8 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 let
-  wanInterface = "enp133s0f2np2";
-  lanInterfaces = [ "eno1" "eno2" "eno3" "eno4" "eno5" "eno6" "enp133s0f0np0" ];
+  wanInterface = "enp22s0f1np1";
+  lanInterfaces = [ "eno1" "eno3" "eno4" "enp22s0f0np0" ];
   vpnInterface = "wg0-vpn";
   # vpnInterfaces = [ vpnInterface ];
   lanBridge = "br0.lan";
@@ -11,8 +11,16 @@ in
 
   services.usbmuxd.enable = true;
 
-  boot.kernelModules = [ "tcp_bbr" ];
-  boot.initrd.kernelModules = [ "nf_tables" "nft_compat" "ice" "ixgbe" "igb" ];
+  boot.initrd.kernelModules = [
+    "nf_tables"
+    "nft_compat"
+  ];
+
+  boot.kernelModules = [
+    "ipmi_devintf"
+    "ipmi_si"
+    "tcp_bbr"
+  ];
 
   environment.systemPackages = with pkgs; [
     btop
@@ -21,6 +29,7 @@ in
     ethtool
     tcpdump
     conntrack-tools
+    pciutils
   ];
 
   # services.igmpproxy = {
@@ -49,8 +58,15 @@ in
     # "net.ipv6.conf.all.use_tempaddr" = 0;
   };
 
+  systemd.services."systemd-networkd-wait-online" = {
+    serviceConfig.ExecStart = [
+      "" # Clear the existing ExecStart
+      "${pkgs.systemd}/lib/systemd/systemd-networkd-wait-online --interface=${lanBridge}"
+    ];
+  };
+
   systemd.network = {
-    wait-online.anyInterface = true;
+    wait-online.enable = false;
     netdevs = {
       # Create the bridge interface
       "20-${lanBridge}" = {
@@ -85,220 +101,234 @@ in
           ];
           networkConfig = {
             ConfigureWithoutCarrier = true;
-          };
-          # Don't wait for it as it also would wait for wlan and DFS which takes around 5 min 
-          linkConfig.RequiredForOnline = "no";
+          }; # Don't wait for it as it also would wait for wlan and DFS which takes around 5 min 
+          linkConfig.RequiredForOnline = "routeable";
         };
-        "10-${wanInterface}" =
-          {
-            matchConfig.Name = wanInterface;
-            networkConfig = {
-              # start a DHCP Client for IPv4 Addressing/Routing
-              DHCP = "ipv4";
-              # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
-              IPv6AcceptRA = true;
-              DNSOverTLS = true;
-              DNSSEC = true;
-              IPv6PrivacyExtensions = false;
-              IPForward = true;
-              IgnoreCarrierLoss = true;
-            };
-            dhcpV4Config = {
-              UseDNS = false;
-              UseDomains = false;
-
-              # Don't release IPv4 address on restart/reboots to avoid churn.
-              SendRelease = false;
-            };
-            # make routing on this interface a dependency for network-online.target
-            linkConfig.RequiredForOnline = "routable";
+        # "30-wlp0s30u4" = {
+        #   matchConfig = {
+        #     Type = "wlan";
+        #     WLANInterfaceType = "station";
+        #   };
+        #   address = [
+        #     "192.168.23.111/24"
+        #   ];
+        # };
+        "10-${wanInterface}" = {
+          matchConfig.Name = wanInterface;
+          networkConfig = {
+            # start a DHCP Client for IPv4 Addressing/Routing
+            DHCP = "ipv4";
+            # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
+            IPv6AcceptRA = true;
+            DNSOverTLS = true;
+            DNSSEC = true;
+            IPv6PrivacyExtensions = false;
+            IPForward = true;
+            IgnoreCarrierLoss = true;
           };
+          dhcpV4Config = {
+            UseDNS = false;
+            UseDomains = false;
+
+            # Don't release IPv4 address on restart/reboots to avoid churn.
+            SendRelease = false;
+          };
+          # make routing on this interface a dependency for network-online.target
+          linkConfig.RequiredForOnline = "routeable";
+        };
       };
   };
 
+  # networking.wireless = {
+  #   enable = true;
+  #   networks = {
+  #     VM4588425 = {
+  #       psk = "Jd6qrtjwnqrj";
+  #     };
+  #   };
+  # };
+
   networking = {
-    # useNetworkd = true;
+    useNetworkd = true;
     useDHCP = false;
 
-    # No local firewall.
-    nat.enable = false;
-    firewall.enable = false;
+    # # No local firewall.
+    # nat.enable = false;
+    # firewall.enable = false;
 
-    # flags offload;
-    # ip protocol { tcp, udp } flow offload @f
-    nftables = {
-      enable = true;
-      checkRuleset = false;
-      ruleset = ''
-        table inet filter {
-           flowtable f {
-             hook ingress priority 0;
-             devices = { ${wanInterface}, enp133s0f0np0 }; 
-           }
+    # # flags offload;
+    # # ip protocol { tcp, udp } flow offload @f
+    # nftables = {
+    #   enable = true;
+    #   checkRuleset = false;
+    #   ruleset = ''
+    #     table inet filter {
+    #        flowtable f {
+    #          hook ingress priority 0;
+    #          devices = { ${wanInterface}, enp133s0f0np0 }; 
+    #        }
 
-          chain input {
-            type filter hook input priority 0; policy drop;
+    #       chain input {
+    #         type filter hook input priority 0; policy drop;
 
-            iifname { "${lanBridge}" } accept comment "Allow local network to access the router"
-            iifname "${wanInterface}" ct state { established, related } accept comment "Allow established traffic"
-            iifname "${wanInterface}" icmp type { echo-request, destination-unreachable, time-exceeded } counter accept comment "Allow select ICMP"
-            iifname "${wanInterface}" counter drop comment "Drop all other unsolicited traffic from wan"
-            iifname "lo" accept comment "Accept everything from loopback interface"
-          }
+    #         iifname { "${lanBridge}" } accept comment "Allow local network to access the router"
+    #         iifname "${wanInterface}" ct state { established, related } accept comment "Allow established traffic"
+    #         iifname "${wanInterface}" icmp type { echo-request, destination-unreachable, time-exceeded } counter accept comment "Allow select ICMP"
+    #         iifname "${wanInterface}" counter drop comment "Drop all other unsolicited traffic from wan"
+    #         iifname "lo" accept comment "Accept everything from loopback interface"
+    #       }
 
-          chain forward {
-            type filter hook forward priority filter; policy drop;
+    #       chain forward {
+    #         type filter hook forward priority filter; policy drop;
 
-            iifname { "${lanBridge}" } oifname { "${wanInterface}" } accept comment "Allow trusted LAN to WAN"
-            iifname { "${wanInterface}" } oifname { "${lanBridge}" } ct state established, related accept comment "Allow established back to LANs"
-          }
-        }
-        
-        table ip nat {
-          chain prerouting {
-            type nat hook prerouting priority filter; policy accept;
-          }
+    #         iifname { "${lanBridge}" } oifname { "${wanInterface}" } accept comment "Allow trusted LAN to WAN"
+    #         iifname { "${wanInterface}" } oifname { "${lanBridge}" } ct state established, related accept comment "Allow established back to LANs"
+    #       }
+    #     }
 
-          chain postrouting {
-            type nat hook postrouting priority 100; policy accept;
-            oifname "${wanInterface}" masquerade
-          } 
-        }
-      '';
-    };
+    #     table ip nat {
+    #       chain prerouting {
+    #         type nat hook prerouting priority filter; policy accept;
+    #       }
+
+    #       chain postrouting {
+    #         type nat hook postrouting priority 100; policy accept;
+    #         oifname "${wanInterface}" masquerade
+    #       } 
+    #     }
+    #   '';
+    # };
 
     # bridges."${lanBridge}" = {
     #   interfaces = lanInterfaces;
     # };
 
-    # domain = "lan";
-    # nameservers = [ "192.168.23.1" ];
+    domain = "lan";
+    nameservers = [ "192.168.23.5" ];
 
-    # nat = {
-    #   enable = true;
-    #   internalIPs = [
-    #     "192.168.23.0/24"
-    #     "192.168.24.0/24"
-    #   ];
-    #   internalInterfaces = [
-    #     lanBridge
-    #   ];
-    #   externalInterface = wanInterface; # port 1
-    #   forwardPorts = [
-    #     { sourcePort = 80; destination = "192.168.23.5:80"; proto = "tcp"; } /* nginx */
-    #     { sourcePort = 443; destination = "192.168.23.5:443"; proto = "tcp"; } /* nginx */
-    #     { sourcePort = 51413; destination = "192.168.23.1:51413"; proto = "tcp"; } /* transmission */
-    #     { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; } /* transmission */
-    #     { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "tcp"; } /* lighthouse */
-    #     { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "udp"; } /* lighthouse */
-    #     { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "tcp"; } /* lighthouse */
-    #     { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "udp"; } /* lighthouse */
-    #     { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "tcp"; } /* lighthouse */
-    #     { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "udp"; } /* lighthouse */
-    #     { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "tcp"; } /* monero */
-    #     { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "udp"; } /* monero */
-    #     { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "tcp"; } /* geth */
-    #     { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "udp"; } /* geth */
-    #     { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "tcp"; } /* reth */
-    #     { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "udp"; } /* reth */
-    #     { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "tcp"; } /* geth */
-    #     { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "udp"; } /* geth */
+    nat = {
+      enable = true;
+      internalIPs = [
+        "192.168.23.0/24"
+        "192.168.24.0/24"
+      ];
+      internalInterfaces = [
+        lanBridge
+      ];
+      externalInterface = wanInterface; # port 1
+      forwardPorts = [
+        { sourcePort = 80; destination = "192.168.23.5:80"; proto = "tcp"; } /* nginx */
+        { sourcePort = 443; destination = "192.168.23.5:443"; proto = "tcp"; } /* nginx */
+        { sourcePort = 51413; destination = "192.168.23.1:51413"; proto = "tcp"; } /* transmission */
+        { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; } /* transmission */
+        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "tcp"; } /* lighthouse */
+        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "udp"; } /* lighthouse */
+        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "tcp"; } /* monero */
+        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "udp"; } /* monero */
+        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "tcp"; } /* geth */
+        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "udp"; } /* geth */
+        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "tcp"; } /* reth */
+        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "udp"; } /* reth */
+        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "tcp"; } /* geth */
+        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "udp"; } /* geth */
 
-    #     { sourcePort = 32400; destination = "192.168.23.5:8776"; } /* radicle */
-    #     { sourcePort = 8333; destination = "192.168.23.5:8333"; } /* bitcoind */
-    #   ];
-    # };
+        { sourcePort = 32400; destination = "192.168.23.5:8776"; } /* radicle */
+        { sourcePort = 8333; destination = "192.168.23.5:8333"; } /* bitcoind */
+      ];
+    };
 
     # dhcpcd = {
     #   enable = true;
     #   allowInterfaces = [ wanInterface ];
-    #   extraConfig = ''
-    #     interface ${wanInterface}
-    #       ia_na 1
-    #       ia_pd 1 ${lanBridge}/1/64
-    #   '';
+    #   # extraConfig = ''
+    #   #   interface ${wanInterface}
+    #   #     ia_na 1
+    #   #     ia_pd 1 ${lanBridge}/1/64
+    #   # '';
     # };
 
-    # firewall = {
-    #   enable = true;
-    #   checkReversePath = false;
-    #   trustedInterfaces = [ lanBridge ] ++ lanInterfaces;
-    #   logRefusedConnections = false;
-    #   logRefusedPackets = false;
-    #   logReversePathDrops = false;
-    #   interfaces = {
-    #     "${wanInterface}" = {
-    #       allowedTCPPorts = [
-    #         22 # ssh
-    #         80 # http
-    #         443 # https
-    #         51413 # transmission
-    #         32400 # plex
-    #         3074 # bo2
+    firewall = {
+      enable = true;
+      checkReversePath = false;
+      trustedInterfaces = [ lanBridge ] ++ lanInterfaces;
+      logRefusedConnections = false;
+      logRefusedPackets = false;
+      logReversePathDrops = false;
+      interfaces = {
+        "${wanInterface}" = {
+          allowedTCPPorts = [
+            22 # ssh
+            80 # http
+            443 # https
+            51413 # transmission
+            32400 # plex
+            3074 # bo2
 
-    #         9000 # lighthouse
-    #         9001 # lighthouse
-    #         9002 # lighthouse
+            9000 # lighthouse
+            9001 # lighthouse
+            9002 # lighthouse
 
-    #         30303 # geth
-    #         30304 # reth
+            30303 # geth
+            30304 # reth
 
-    #         18080 # monero
+            18080 # monero
 
-    #         42069 # Snap sync (Bittorrent)
-    #       ];
-    #       allowedUDPPorts = [
-    #         546 # dhcpv6 
-    #         35947 # wireguard
-    #         51820 # wireguard (cloud)
-    #         51821 # wireguard (swaps)
-    #         51413 # transmission
-    #         3074 # bo2
-    #         3478 # bo2
+            42069 # Snap sync (Bittorrent)
+          ];
+          allowedUDPPorts = [
+            546 # dhcpv6 
+            35947 # wireguard
+            51820 # wireguard (cloud)
+            51821 # wireguard (swaps)
+            51413 # transmission
+            3074 # bo2
+            3478 # bo2
 
-    #         5000 # (IPTV)
+            5000 # (IPTV)
 
-    #         9000 # lighthouse
-    #         9001 # lighthouse
-    #         9002 # lighthouse
+            9000 # lighthouse
+            9001 # lighthouse
+            9002 # lighthouse
 
-    #         30303 # geth
-    #         30304 # reth
+            30303 # geth
+            30304 # reth
 
-    #         18080 # monero
+            18080 # monero
 
-    #         42069 # Snap sync (Bittorrent)
-    #       ];
-    #     };
-    #   };
-    # extraCommands = ''
-    #   ${pkgs.iptables}/bin/
-    # '';
-    # };
+            42069 # Snap sync (Bittorrent)
+          ];
+        };
+      };
+    };
 
-    # interfaces = {
-    #   # Use DHCP to acquire IP from modem
-    #   "${wanInterface}" = {
-    #     useDHCP = true;
-    #     # proxyARP = true;
-    #   };
+    interfaces = {
+      # Use DHCP to acquire IP from modem
+      "${wanInterface}" = {
+        useDHCP = true;
+        # proxyARP = true;
+      };
 
-    #   # Static IP on LAN
-    #   "${lanBridge}".ipv4.addresses = [{
-    #     address = "192.168.23.1";
-    #     prefixLength = 24;
-    #   }];
+      # Static IP on LAN
+      "${lanBridge}".ipv4.addresses = [{
+        address = "192.168.23.1";
+        prefixLength = 24;
+      }];
 
-    #   # Static VPN IP
-    #   # "${vpnInterface}".ipv4.addresses = [{
-    #   #   address = "192.168.24.1";
-    #   #   prefixLength = 24;
-    #   # }];
-    # };
+      "eno2".ipv4.addresses = [{
+        address = "192.168.23.253";
+        prefixLength = 24;
+      }];
 
-    # wireless = {
-    #   enable = false;
-    # };
+      # Static VPN IP
+      # "${vpnInterface}".ipv4.addresses = [{
+      #   address = "192.168.24.1";
+      #   prefixLength = 24;
+      # }];
+    };
 
     # wireguard = {
     #   enable = false;
@@ -396,6 +426,7 @@ in
   };
 
   networking.hosts = {
+    "127.0.0.1" = [ "localhost" ];
     "192.168.23.1" = [ "router" "router.lan" ];
     "192.168.23.5" = [ "nixhost" "nixhost.lan" ];
   };
@@ -416,71 +447,6 @@ in
     ];
   };
 
-  services.dnsmasq = {
-    enable = true;
-    settings = {
-      # upstream DNS servers
-      server = [ "9.9.9.9" "8.8.8.8" "1.1.1.1" ];
-      # sensible behaviours
-      domain-needed = true;
-      bogus-priv = true;
-      no-resolv = true;
-
-      # Cache dns queries.
-      cache-size = 1000;
-
-      bind-interfaces = true;
-      interface = lanBridge;
-      dhcp-host = "192.168.23.1";
-      dhcp-range = [ "${lanBridge},192.168.23.50,192.168.23.254,24h" ];
-
-      # local domains
-      local = "/lan/";
-      domain = "lan";
-      expand-hosts = true;
-
-      # don't use /etc/hosts as this would advertise surfer as localhost
-      no-hosts = true;
-      address = "/router.lan/192.168.23.1";
-    };
-  };
-
-  # services.dnsmasq = {
-  #   enable = true;
-  #   servers = [ "127.0.0.1#54" ];
-  #   extraConfig = ''
-  #     domain-needed
-  #     bogus-priv
-  #     no-resolv
-  #     no-hosts
-  #     log-dhcp
-  #     domain=lan
-  #     bind-interfaces
-  #     interface=${lanBridge}
-  #     dhcp-range=${lanBridge},192.168.23.10,192.168.23.249,6h
-  #     dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
-  #     dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
-  #     dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
-  #     dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
-  #     dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
-  #     dhcp-host=f0:99:b6:42:49:05,192.168.23.48  # phone
-
-  #     # hosted names
-  #     address=/router.lan/192.168.23.1
-  #     address=/nixhost.lan/192.168.23.5
-  #     address=/cloud.lan/192.168.24.2
-  #     address=/grafana.satanic.link/192.168.23.5
-  #     address=/home.satanic.link/192.168.23.5
-  #     address=/jellyfin.satanic.link/192.168.23.5
-  #     address=/paperless.satanic.link/192.168.23.5
-  #     address=/radarr.satanic.link/192.168.23.5
-  #     address=/sonarr.satanic.link/192.168.23.5
-  #     address=/eth-mainnet.satanic.link/192.168.23.5
-  #     address=/eth-mainnet-ws.satanic.link/192.168.23.5
-  #     address=/reth-mainnet.satanic.link/192.168.23.5
-  #     address=/reth-mainnet-ws.satanic.link/192.168.23.5
-  #   '';
-  # };
 
   # services.fail2ban = {
   #   enable = true;

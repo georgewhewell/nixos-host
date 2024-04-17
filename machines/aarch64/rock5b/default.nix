@@ -1,19 +1,23 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
 
-  imports =
-    [
-      ../../../profiles/common.nix
-      # ../../../profiles/nas-mounts.nix
-      ../../../services/buildfarm-slave.nix
-    ];
+  imports = [
+    ../../../profiles/common.nix
+    ../../../profiles/home.nix
+    ../../../profiles/nas-mounts.nix
+    ../../../services/buildfarm-slave.nix
+    inputs.rock5b.nixosModules.apply-overlay
+    inputs.rock5b.nixosModules.kernel
+  ];
 
   sconfig = {
     profile = "server";
     home-manager.enable = true;
     home-manager.enableGraphical = false;
   };
+
+  deployment.targetHost = "rock-5b.lan";
 
   fileSystems."/boot" =
     {
@@ -45,8 +49,7 @@
   services.prometheus.exporters = {
     node = {
       enable = true;
-      openFirewall = true;
-      enabledCollectors = [ "systemd" ];
+      openFirewall = lib.mkForce true;
     };
   };
 
@@ -56,10 +59,36 @@
     algorithm = "lz4";
     swapDevices = 4;
     memoryPercent = 30;
-    memoryMax = 4 * 1024 * 1024;
+    memoryMax = 1024 * 1024 * 1024;
   };
 
-  boot.initrd.availableKernelModules = [ "usbhid" "md_mod" "raid0" "raid1" "raid10" "raid456" "ext2" "ext4" "sd_mod" "sr_mod" "mmc_block" "uhci_hcd" "ehci_hcd" "ehci_pci" "ohci_hcd" "ohci_pci" "xhci_hcd" "xhci_pci" "usbhid" "hid_generic" "hid_lenovo" "hid_apple" "hid_roccat" "hid_logitech_hidpp" "hid_logitech_dj" "hid_microsoft" "hid_cherry" ];
+  # interfaces should exist before stage2
+  boot.initrd.kernelModules = [
+    "r8125"
+    "r8169"
+    "rt2800usb"
+    "r8152"
+  ];
+  boot.initrd.availableKernelModules = [
+    "usbhid"
+    "md_mod"
+    "raid0"
+    "raid1"
+    "raid10"
+    "raid456"
+    "ext2"
+    "ext4"
+    "sd_mod"
+    "sr_mod"
+    "mmc_block"
+    "uhci_hcd"
+    "ehci_hcd"
+    "ehci_pci"
+    "ohci_hcd"
+    "ohci_pci"
+    "xhci_hcd"
+    "xhci_pci"
+  ];
   system.stateVersion = "23.09";
 
   swapDevices = [ ];
@@ -81,6 +110,7 @@
 
   networking = {
     hostName = "rock-5b";
+    nameservers = [ "192.168.23.1" ];
     useNetworkd = true;
     useDHCP = false;
 
@@ -98,10 +128,16 @@
         linkConfig.RequiredForOnline = "enslaved";
         dhcpV4Config.RouteMetric = 1;
         networkConfig = {
-          DHCP = "ipv4";
           ConfigureWithoutCarrier = true;
           IPv6AcceptRA = true;
         };
+        address = [
+          # configure addresses including subnet mask
+          "192.168.23.11/24"
+        ];
+        routes = [
+          { routeConfig.Gateway = "192.168.23.1"; }
+        ];
       };
       "20-rescue" = {
         matchConfig.Name = "enu*";
@@ -114,7 +150,7 @@
         };
       };
       "30-wifi" = {
-        matchConfig.Name = "wlu*";
+        matchConfig.Driver = "rt2800usb";
         address = [
           "192.168.23.250/24"
         ];
@@ -122,6 +158,7 @@
           ConfigureWithoutCarrier = true;
           IPv6AcceptRA = true;
         };
+        linkConfig.RequiredForOnline = "false";
       };
     };
   };
@@ -147,8 +184,10 @@
     '';
   };
 
-  # require interfaces to be up before starting dnsmasq
-  systemd.services.dnsmasq.serviceConfig.Requires = [ "systemd-networkd.service" ];
+  environment.systemPackages = [ pkgs.iperf ];
+
+  # require interface to be up before starting dnsmasq
+  systemd.services.dnsmasq.after = [ "sys-subsystem-net-devices-enu1u1.device" ];
 
   services.irqbalance.enable = lib.mkDefault true;
 
