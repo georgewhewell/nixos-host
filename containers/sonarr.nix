@@ -7,6 +7,21 @@
     after = [ "mnt-Home.mount" "mnt-Media.mount" ];
   };
 
+  services.nginx = {
+    virtualHosts."sonarr.satanic.link" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        extraConfig = ''
+          resolver 192.168.23.1;
+          proxy_buffering off;
+        '';
+        proxyPass = "http://sonarr.lan:8989";
+        proxyWebsockets = true;
+      };
+    };
+  };
+
   containers.sonarr = {
     autoStart = true;
     privateNetwork = true;
