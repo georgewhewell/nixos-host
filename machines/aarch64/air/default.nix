@@ -1,8 +1,4 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
-
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
   imports =
@@ -10,12 +6,9 @@
       ../../../profiles/common.nix
       ../../../profiles/graphical.nix
       ../../../services/buildfarm-slave.nix
+      inputs.apple-silicon.nixosModules.default
     ];
 
-  boot.initrd.availableKernelModules = [ "usb_storage" ];
-  boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ ];
-  boot.extraModulePackages = [ ];
 
   fileSystems."/" =
     {
@@ -33,19 +26,10 @@
     node = {
       enable = true;
       openFirewall = true;
-      enabledCollectors = [ "systemd" ];
     };
   };
 
-  swapDevices = [ ];
-
-  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
-  # (the default) this is the recommended approach. When using systemd-networkd it's
-  # still possible to use this option, but it's recommended to use it in conjunction
-  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
   networking.useDHCP = lib.mkDefault true;
-  # networking.interfaces.eth0.useDHCP = lib.mkDefault true;
-  # networking.interfaces.wlp1s0f0.useDHCP = lib.mkDefault true;
 
   nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
   powerManagement.cpuFreqGovernor = lib.mkDefault "ondemand";
@@ -56,12 +40,21 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = false;
 
-  hardware.asahi.peripheralFirmwareDirectory = ./firmware/firmware;
-  # hardware.asahi.extractPeripheralFirmware = false;
-  # hardware.asahi.useExperimentalGPUDriver = true;
-  # hardware.opengl.package = pkgs.mesa-asahi-edge;
-  hardware.asahi.addEdgeKernelConfig = true;
+  hardware = {
+    asahi = {
+      # peripheralFirmwareDirectory = ./firmware/firmware;
+      withRust = true;
+      useExperimentalGPUDriver = true;
+      experimentalGPUInstallMode = "replace";
+    };
+    opengl = {
+      enable = true;
+      driSupport = true;
+    };
+  };
+
   services.hardware.bolt.enable = true;
+
   sconfig = {
     profile = "desktop";
     home-manager.enable = true;
@@ -83,26 +76,8 @@
     algorithm = "lz4";
     swapDevices = 4;
     memoryPercent = 30;
-    memoryMax = 4 * 1024 * 1024;
+    memoryMax = 1024 * 1024 * 1024;
   };
-  # nixpkgs.overlays = [
-  #   (self: super: {
-  #     mesa = (super.mesa.overrideAttrs (old: {
-  #       src = super.fetchFromGitLab {
-  #         domain = "gitlab.freedesktop.org";
-  #         owner = "asahi";
-  #         repo = "mesa";
-  #         rev = "main";
-  #         sha256 = "sha256-8W+yr/IIJvk3limvJyhly1tTLHRJvVNO8xV0g+d1Mu0=";
-  #       };
-  #     })).override
-  #       ({
-  #         galliumDrivers = [ "swrast" "asahi" ];
-  #         vulkanDrivers = [ "swrast" ];
-  #         enableGalliumNine = false;
-  #       });
-  #   })
-  # ];
 
   # Set your time zone.
   # time.timeZone = "Europe/Amsterdam";
