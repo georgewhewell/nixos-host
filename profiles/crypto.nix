@@ -1,19 +1,10 @@
 { config, lib, pkgs, inputs, ... }:
 
 let
-  dataRoot = "/mnt/nvraid";
   lanAddr = "192.168.23.5";
 in
 {
   imports = [ inputs.nix-bitcoin.nixosModules.default ];
-
-  #nvraid
-  fileSystems.${dataRoot} =
-    {
-      device = "/dev/md0";
-      fsType = "xfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
 
   # radicle
   services.radicle = {
@@ -41,15 +32,21 @@ in
   };
 
   # bitcoind
+  fileSystems."/var/lib/bitcoind" =
+    {
+      device = "nvpool/root/bitcoind";
+      fsType = "zfs";
+      options = [ "nofail" "sync=disabled" ];
+    };
+
   nix-bitcoin = {
     generateSecrets = true;
-    secretsDir = "${dataRoot}/bitcoind";
+    secretsDir = "/var/lib/bitcoind";
   };
 
   services.bitcoind = {
     enable = true;
-    dataDir = "${dataRoot}/bitcoind";
-    # listen = "${lanAddr}:8333";
+    dataDir = "/var/lib/bitcoind";
     disablewallet = true;
     rpc = {
       address = lanAddr;
@@ -74,14 +71,26 @@ in
       options = [ "nofail" "sync=disabled" ];
     };
 
-  deployment.keys =
-    {
-      "LIGHTHOUSE_JWT" = {
-        keyCommand = [ "pass" "erigon-gpg" ];
-        destDir = "/run/keys";
-        uploadAt = "pre-activation";
-      };
+  deployment.keys = {
+    "LIGHTHOUSE_JWT" = {
+      keyCommand = [ "pass" "erigon-gpg" ];
+      destDir = "/run/keys";
+      uploadAt = "pre-activation";
     };
+    "LIGHTHOUSE_JWT_GETH" = {
+      keyCommand = [ "pass" "erigon-gpg" ];
+      destDir = "/var/lib/goethereum/mainnet";
+      uploadAt = "pre-activation";
+      permissions = "0444";
+    };
+  };
+
+  # use lighthouse from nix-ethereum
+  nixpkgs.overlays = [
+    (self: _: {
+      lighthouse = inputs.ethereum.packages.${pkgs.system}.lighthouse;
+    })
+  ];
 
   services.lighthouse = {
     beacon = {
@@ -117,9 +126,10 @@ in
     {
       mainnet = with mainnet; {
         enable = true;
+        package = inputs.ethereum.packages.${pkgs.system}.geth;
         maxpeers = 128;
         syncmode = "snap";
-        gcmode = "full";
+        gcmode = "archive";
         metrics = {
           enable = true;
           address = "0.0.0.0";
@@ -142,6 +152,7 @@ in
           enable = true;
           address = "localhost";
           port = 8551;
+          jwtsecret = "/var/lib/goethereum/mainnet/LIGHTHOUSE_JWT_GETH";
         };
         extraArgs = [
           "--cache=16000"
@@ -149,6 +160,95 @@ in
         ];
       };
     };
+
+  # virtualisation.oci-containers.containers.reth = {
+  #   image = "ghcr.io/paradigmxyz/reth:v0.1.0-alpha.13";
+  #   volumes = [
+  #     "/mnt/nvraid/reth:/root/.local/share/reth"
+  #     # re-use geth's jwt
+  #     "/run/keys/LIGHTHOUSE_JWT:/root/.local/share/reth/mainnet/jwt.hex"
+  #   ];
+  #   cmd = [
+  #     "node"
+  #     "--full"
+  #     "--authrpc.port=8552"
+  #     "--port=30304"
+  #     "--http"
+  #     "--http.port=8549"
+  #     "--metrics=9009"
+  #     "--trusted-peers=enode://3c3a08e12a8686b204d2262bb5fdd7ec6babddb2542aa4f06ed951dbd1057ebf865d31d271837ce5fdd3de0c327b65c11eba2335c3bdbfab86cda963ecc18caa@192.18.23.5:30030"
+  #   ];
+  #   extraOptions = [ "--network=host" ];
+  # };
+
+  # fileSystems."/var/lib/lighthouse-reth" =
+  #   {
+  #     device = "fpool/root/lighthouse-reth";
+  #     fsType = "zfs";
+  #     options = [ "nofail" "sync=disabled" ];
+  #   };
+
+  # systemd.services.lighthouse-beacon-reth =
+  #   let
+  #     dataDir = "/var/lib/lighthouse-reth";
+  #     network = "mainnet";
+  #     port = 9002;
+  #     address = "192.168.23.5";
+  #     execution_address = "127.0.0.1";
+  #     execution_port = 8552;
+  #     http_address = "127.0.0.1";
+  #     http_port = 8547;
+  #     metrics_address = "127.0.0.1";
+  #     metrics_port = 5055;
+  #     jwtPath = "/run/keys/LIGHTHOUSE_JWT";
+  #   in
+  #   {
+  #     description = "Lighthouse beacon node (connect to P2P nodes and verify blocks)";
+  #     wantedBy = [ "multi-user.target" ];
+  #     after = [ "network.target" ];
+  #     script = ''
+  #       # make sure the chain data directory is created on first run
+  #       mkdir -p ${dataDir}/${network}
+
+  #       ${pkgs.lighthouse}/bin/lighthouse beacon_node \
+  #         --disable-upnp \
+  #         --port ${toString port} \
+  #         --listen-address ${address} \
+  #         --network ${network} \
+  #         --datadir ${dataDir}/${network} \
+  #         --execution-endpoint http://${execution_address}:${toString execution_port} \
+  #         --execution-jwt ''${CREDENTIALS_DIRECTORY}/LIGHTHOUSE_JWT \
+  #         --http --http-address ${http_address} --http-port ${toString http_port} \
+  #         --metrics --metrics-address ${metrics_address} --metrics-port ${toString metrics_port} \
+  #         --checkpoint-sync-url="https://mainnet.checkpoint.sigp.io" \
+  #         --libp2p-addresses "/ip4/192.168.23.5/tcp/9000" \
+  #         --disable-deposit-contract-sync
+  #     '';
+  #     serviceConfig = {
+  #       LoadCredential = "LIGHTHOUSE_JWT:${jwtPath}";
+  #       DynamicUser = true;
+  #       Restart = "on-failure";
+  #       StateDirectory = "lighthouse-beacon";
+  #       ReadWritePaths = [ dataDir ];
+  #       NoNewPrivileges = true;
+  #       PrivateTmp = true;
+  #       ProtectHome = true;
+  #       ProtectClock = true;
+  #       ProtectProc = "noaccess";
+  #       ProcSubset = "pid";
+  #       ProtectKernelLogs = true;
+  #       ProtectKernelModules = true;
+  #       ProtectKernelTunables = true;
+  #       ProtectControlGroups = true;
+  #       ProtectHostname = true;
+  #       RestrictSUIDSGID = true;
+  #       RestrictRealtime = true;
+  #       RestrictNamespaces = true;
+  #       LockPersonality = true;
+  #       RemoveIPC = true;
+  #       SystemCallFilter = [ "@system-service" "~@privileged" ];
+  #     };
+  #   };
 
   services.nginx.virtualHosts = {
     "eth-mainnet.satanic.link" = {

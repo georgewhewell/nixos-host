@@ -42,12 +42,22 @@
       logRefusedPackets = false;
       logReversePathDrops = true;
       interfaces.enp1s0 = {
-        allowedUDPPorts = [ 51820 ];
+        allowedUDPPorts = [
+          51820 # wireguard
+        ];
       };
       interfaces.wg0 = {
-        allowedTCPPorts = [ 9090 ];
+        allowedTCPPorts = [
+          5201 # iperf
+          9090 # node exporter
+        ];
       };
     };
+  };
+
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
   };
 
   boot.loader.grub.device = "/dev/sda";

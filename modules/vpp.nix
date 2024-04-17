@@ -217,7 +217,7 @@ in
             main-heap-page-size default-hugepage
           }
           buffers {
-            buffers-per-numa ${toString cfg.buffersPerNuma}
+            # buffers-per-numa ${toString cfg.buffersPerNuma}
             # buffer = 128b header + 128b scratchpad + data-size
             default data-size 2048
             page-size default-hugepage

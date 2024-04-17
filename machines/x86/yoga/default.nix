@@ -23,9 +23,12 @@
     };
   };
 
+  deployment.allowLocalDeployment = true;
+
   boot = {
     #kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
     loader.timeout = 1;
+
     blacklistedKernelModules = [
       "mei"
       "mei_me"
@@ -33,6 +36,10 @@
       "acer_wmi"
       "applesmc"
       "intel_backlight"
+    ];
+
+    kernelParams = [
+      "video=eDP-1:d"
     ];
 
     initrd = {
@@ -82,10 +89,10 @@
     enable = true;
     tempAc = 97;
     tempBat = 75;
-    coreOffset = -105;
-    gpuOffset = -50;
-    uncoreOffset = -50;
-    analogioOffset = -50;
+    #coreOffset = -100;
+    #gpuOffset = -50;
+    #uncoreOffset = -50;
+    #analogioOffset = -50;
   };
 
   systemd.network = {

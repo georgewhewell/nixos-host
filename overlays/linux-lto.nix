@@ -4,13 +4,13 @@ let
   inherit (lib.kernel) yes no;
 
   cfg = config: kernel: kernel.override {
-    argsOverride.kernelPatches = kernel.kernelPatches;
-    argsOverride.structuredExtraConfig = kernel.structuredExtraConfig // config;
+    kernelPatches = kernel.kernelPatches;
+    structuredExtraConfig = kernel.structuredExtraConfig // config;
   };
 
   llvm = kernel:
     let
-      llvmPackages = "llvmPackages_14";
+      llvmPackages = "llvmPackages_17";
       noBintools = { bootBintools = null; bootBintoolsNoLibc = null; };
       hostLLVM = final.pkgsBuildHost.${llvmPackages}.override noBintools;
       buildLLVM = final.pkgsBuildBuild.${llvmPackages}.override noBintools;
@@ -98,8 +98,8 @@ _: {
     (cfg
       { MBROADWELL = yes; }
       (patch
-        [ patches.graysky_lt_6_8 ]
-        (fullLTO latest_zfs)));
+        [ patches.graysky ]
+        (fullLTO latest)));
 
   linuxPackages_latest_lto_silvermont = packagesFor
     (cfg
@@ -108,16 +108,16 @@ _: {
         [ patches.graysky ]
         (fullLTO latest)));
 
-  linuxPackages_latest_lto_zen3 = packagesFor
+  linuxPackages_latest_lto_zen4 = packagesFor
     (cfg
-      { MZEN3 = yes; }
+      { MZEN4 = yes; }
       (patch
         [ patches.graysky ]
         (fullLTO latest)));
 
   linuxPackages_latest_lto_icelake = packagesFor
     (cfg
-      { MICELAKE = yes; }
+      { MICELAKE = yes; NR_CPUS = 4; }
       (patch
         [ patches.graysky ]
         (fullLTO latest)));
