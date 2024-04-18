@@ -13,7 +13,7 @@
       enableACME = true;
       locations."/" = {
         extraConfig = ''
-          resolver 192.168.23.1;
+          resolver 192.168.23.5;
           proxy_buffering off;
         '';
         proxyPass = "http://sonarr.lan:8989";
