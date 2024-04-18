@@ -18,6 +18,10 @@
             ipAddress = 2;
             pubKey = "mNoifcPcs9157BUNj0A5IkJVFJflffyaV2LbgcNjMWA=";
           };
+          router = {
+            ipAddress = 3;
+            pubKey = "9UPRg+xZYCs0hOgGBzMSr0v12eZCOVBSE+BvBASDIS0=";
+          };
         };
 
       makePeerConfig = excludedKey: lib.filter (x: x != null) (lib.attrsets.mapAttrsToList
