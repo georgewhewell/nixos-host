@@ -12,7 +12,7 @@
       enableVscodeServer = true;
     };
     vpp-router = {
-      enable = true;
+      enable = false;
       dpdks = [
         # 1G
         "0000:00:1f.6"
@@ -55,7 +55,7 @@
       ../../../profiles/uefi-boot.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
-      # ../../../profiles/intel-gfx.nix
+      ../../../profiles/intel-gfx.nix
       # ../../../profiles/fastlan.nix
 
       ../../../services/buildfarm-slave.nix
@@ -94,7 +94,8 @@
     source = "/run/opengl-driver/etc/OpenCL/vendors";
   };
 
-  nix.settings.max-jobs = lib.mkDefault 8;
+  nix.settings.max-jobs = lib.mkDefault 4;
+  zramSwap.enable = true;
 
   systemd.network =
     let
@@ -161,23 +162,23 @@
         #   };
         #   linkConfig.RequiredForOnline = "enslaved";
         # };
-        # "10-lan" = {
-        #   matchConfig.Name = "enp0s31f6";
-        #   networkConfig = {
-        #     Bridge = bridgeName;
-        #     ConfigureWithoutCarrier = true;
-        #   };
-        #   linkConfig.RequiredForOnline = "enslaved";
-        # };
+        "10-lan" = {
+          matchConfig.Name = "enp0s31f6";
+          networkConfig = {
+            Bridge = bridgeName;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
       };
     };
 
   networking = {
     hostName = "fuckup";
     wireless.enable = false;
-    # useDHCP = false;
+    useDHCP = false;
     # enableIPv6 = true;
-    # nameservers = [ "192.168.23.5" "1.1.1.1" ];
+    nameservers = [ "192.168.23.5" ];
 
     # firewall = {
     #   enable = true;

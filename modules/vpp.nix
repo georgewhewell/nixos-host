@@ -164,6 +164,8 @@ in
         Type = "simple";
         ExecStart = "${cfg.package}/bin/vpp -c /etc/vpp/startup.conf";
         ExecStartPost = "${pkgs.coreutils}/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api";
+        Restart = "always";
+        RestartSec = "1";
       };
     };
 

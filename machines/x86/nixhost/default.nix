@@ -60,8 +60,9 @@
   };
 
   # boot.zfs.enableUnstable = true;
-  boot.kernelPackages = pkgs.linuxPackages_lto_broadwell;
+  # boot.kernelPackages = pkgs.linuxPackages_lto_broadwell;
   # boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
 
   boot.zfs.requestEncryptionCredentials = false;
 
