@@ -1,8 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
     ./system.nix
+    inputs.home-manager.darwinModules.home-manager
   ];
 
   nixpkgs.config.allowUnfree = true;
