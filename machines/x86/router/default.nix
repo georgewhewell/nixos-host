@@ -53,6 +53,7 @@
           18080 # monero
           17026 # qbittorrent
           30303 # geth
+          51820 # wireguard
           51413 # transmission
         ];
       };

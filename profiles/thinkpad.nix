@@ -93,12 +93,13 @@
   # };
 
   services.logind = {
-    lidSwitch = "suspend-then-hibernate";
+    lidSwitch = "ignore";
     lidSwitchExternalPower = "lock";
-    extraConfig = ''
-      # transition from suspend to hibernate after 1h
-      HibernateDelaySec=3600
-    '';
+    lidSwitchDocked = "lock";
+    # extraConfig = ''
+    #   # transition from suspend to hibernate after 1h
+    #   HibernateDelaySec=3600
+    # '';
   };
 
   nix.settings.binary-caches = lib.mkForce [ "https://cache.nixos.org" ];
