@@ -180,30 +180,27 @@
     # enableIPv6 = true;
     nameservers = [ "192.168.23.5" ];
 
-    # firewall = {
-    #   enable = true;
-    #   allowedTCPPortRanges = [{ from = 5000; to = 5005; } { from = 50000; to = 60000; }];
-    #   allowedUDPPortRanges = [{ from = 6000; to = 6005; } { from = 35000; to = 65535; }];
-    #   allowedUDPPorts = [ 111 5353 40601 ];
-    #   allowedTCPPorts = [
-    #     9100
-    #     10809
-    #     8880
-    #     8080
-    #     /* shairport */
-    #     3689
-    #     5353
+    firewall = {
+      enable = true;
+      allowedTCPPortRanges = [{ from = 5000; to = 5005; } { from = 50000; to = 60000; }];
+      allowedUDPPortRanges = [{ from = 6000; to = 6005; } { from = 35000; to = 65535; }];
+      allowedUDPPorts = [ 111 5353 40601 ];
+      allowedTCPPorts = [
+        9100
+        10809
+        8880
+        8080
+        /* shairport */
+        3689
+        5353
 
-    #     39375 # ?? lol
-    #     36383
-    #     41815 # nfs??
-    #     45085
-    #     57747 # rpcinfo -p
-    #   ];
-    #   checkReversePath = false;
-    #   extraCommands = ''
-    #     ${pkgs.iptables}/bin/iptables -I INPUT -p igmp -j ACCEPT
-    #   '';
-    # };
+        39375 # ?? lol
+        36383
+        41815 # nfs??
+        45085
+        57747 # rpcinfo -p
+      ];
+      checkReversePath = false;
+    };
   };
 }
