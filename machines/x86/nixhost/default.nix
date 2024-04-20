@@ -201,12 +201,6 @@
       fsType = "vfat";
     };
 
-  fileSystems."/home/grw" =
-    {
-      device = "pool3d/home/nixos-fuckup-home";
-      fsType = "zfs";
-    };
-
   nix.settings.build-cores = lib.mkDefault 24;
 
 }
