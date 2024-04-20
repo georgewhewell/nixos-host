@@ -8,7 +8,6 @@
     rootUrl = "https://grafana.satanic.link";
     settings = {
       security = {
-        #  = "admin";
         admin_password = "/var/lib/grafana/grafana-password.secret";
       };
     };
