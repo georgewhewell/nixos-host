@@ -4,6 +4,7 @@
 
   imports = [
     ../../../profiles/common.nix
+    ../../../profiles/development.nix
     ../../../profiles/home.nix
     ../../../profiles/graphical.nix
     ../../../profiles/intel-gfx.nix
@@ -89,7 +90,7 @@
     enable = true;
     tempAc = 97;
     tempBat = 75;
-    #coreOffset = -100;
+    coreOffset = -100;
     #gpuOffset = -50;
     #uncoreOffset = -50;
     #analogioOffset = -50;

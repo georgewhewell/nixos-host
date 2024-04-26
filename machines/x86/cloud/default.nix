@@ -40,7 +40,7 @@
     nftables.enable = true;
 
     firewall = {
-      checkReversePath = true;
+      checkReversePath = "loose";
 
       logRefusedConnections = false;
       logRefusedPackets = false;
@@ -48,16 +48,13 @@
       trustedInterfaces = [ "wg0" ];
 
       interfaces.enp1s0 = {
+        allowedTCPPorts = [
+          22 # ssh
+        ];
         allowedUDPPorts = [
           51820 # wireguard
         ];
       };
-      # interfaces.wg0 = {
-      #   allowedTCPPorts = [
-      #     5201 # iperf
-      #     9090 # node exporter
-      #   ];
-      # };
     };
   };
 
