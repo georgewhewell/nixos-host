@@ -8,6 +8,7 @@
   boot.kernelParams = [
     "msr.allow_writes=on"
     "cpuidle.governor=teo"
+    "thinkpad_acpi.fan_control=1"
   ];
 
   /*
@@ -22,7 +23,7 @@
 
   boot.extraModulePackages = [
     config.boot.kernelPackages.acpi_call
-    # config.boot.kernelPackages.tp_smapi
+    config.boot.kernelPackages.tp_smapi
   ];
 
   environment.systemPackages = with pkgs; [
@@ -34,7 +35,7 @@
   ];
 
   services.geoclue2.enable = true;
-  services.localtime.enable = true;
+  services.localtimed.enable = true;
 
   hardware.bluetooth = {
     enable = true;
@@ -46,10 +47,6 @@
     emulateWheel = true;
     speed = 250;
     sensitivity = 100;
-  };
-
-  services.clight = {
-    enable = false;
   };
 
   services.tlp = {
