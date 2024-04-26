@@ -37,21 +37,27 @@
   networking = {
     hostName = "cloud";
     useNetworkd = true;
+    nftables.enable = true;
+
     firewall = {
+      checkReversePath = true;
+
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = true;
+      trustedInterfaces = [ "wg0" ];
+
       interfaces.enp1s0 = {
         allowedUDPPorts = [
           51820 # wireguard
         ];
       };
-      interfaces.wg0 = {
-        allowedTCPPorts = [
-          5201 # iperf
-          9090 # node exporter
-        ];
-      };
+      # interfaces.wg0 = {
+      #   allowedTCPPorts = [
+      #     5201 # iperf
+      #     9090 # node exporter
+      #   ];
+      # };
     };
   };
 
