@@ -47,8 +47,11 @@
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
+      "fuckup" = {
+        hostname = "192.168.23.7";
+      };
       "fuckup.satanic.link" = {
-        hostname = "fuckup.lan";
+        hostname = "192.168.23.7";
         proxyJump = "satanic.link";
       };
       "rock5b.satanic.link" = {
@@ -59,12 +62,8 @@
         hostname = "nixhost";
       };
       "nixhost.satanic.link" = {
-        hostname = "nixhost.lan";
+        hostname = "192.168.23.5";
         proxyJump = "satanic.link";
-      };
-      "george.kaki.dev" = {
-        hostname = "george.kaki.dev";
-        forwardAgent = false;
       };
     };
   };

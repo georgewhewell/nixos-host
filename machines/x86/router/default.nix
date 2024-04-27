@@ -8,7 +8,7 @@
     profile = "server";
     home-manager = {
       enable = true;
-      enableVscodeServer = true;
+      enableVscodeServer = false;
     };
     wireguard = {
       enable = true;
@@ -27,14 +27,16 @@
         # "0000:03:00.3"
 
         # 25G
-        "0000:85:01.0"
-        "0000:85:11.0"
+        # "0000:85:01.0"
+        # "0000:85:11.0"
       ];
-      trunk = "VirtualFunctionEthernet133/17/0";
+      # trunk = "VirtualFunctionEthernet133/17/0";
+      trunk = "TwentyFiveGigabitEthernet1/0/1";
       downstream = [
-        "VirtualFunctionEthernet133/1/0"
-        "TenGigabitEthernet1/0/0"
-        "TenGigabitEthernet1/0/1"
+        "TwentyFiveGigabitEthernet1/0/0"
+        # "VirtualFunctionEthernet133/1/0"
+        # "TenGigabitEthernet1/0/0"
+        # "TenGigabitEthernet1/0/1"
         # "GigabitEthernet3/0/0"
         # "GigabitEthernet3/0/1"
         # "GigabitEthernet3/0/2"
@@ -61,19 +63,23 @@
   };
 
   environment.systemPackages = with pkgs; [
-    btop
-    wirelesstools
-    bridge-utils
-    ethtool
-    tcpdump
-    conntrack-tools
-    pciutils
+    # btop
+    # wirelesstools
+    # bridge-utils
+    # ethtool
+    # tcpdump
+    # conntrack-tools
+    # pciutils
+    # iperf
   ];
 
   deployment.targetHost = "192.168.23.254";
+  deployment.targetUser = "grw";
 
   imports =
     [
+      ../../../containers/jellyfin.nix
+
       ../../../profiles/common.nix
       ../../../profiles/home.nix
       ../../../profiles/headless.nix
@@ -87,7 +93,11 @@
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
   # boot.kernelPackages = pkgs.linuxPackages_latest_lto_icelake;
-  boot.kernelParams = [ "intel_pstate=active" "isolcpu=2,3" ];
+
+  boot.kernelParams = [
+    "intel_pstate=active"
+    # "isolcpu=2,3"
+  ];
 
   boot.initrd.kernelModules = [
     "nf_tables"
@@ -96,18 +106,20 @@
     "igb"
     "i40e"
     "ice"
+    "mlx5_core"
   ];
 
   fileSystems."/" =
     {
-      device = "/dev/disk/by-uuid/0896549a-c162-4458-a0bb-3f397f91f538";
-      fsType = "ext4";
+      device = "UUID=8b8990d8-15a7-4308-a51c-4e5b7a6898e1";
+      fsType = "bcachefs";
     };
 
   fileSystems."/boot" =
     {
       device = "/dev/disk/by-uuid/2A3E-BFEC";
       fsType = "vfat";
+      options = [ "fmask=0022" "dmask=0022" ];
     };
 
   networking = {

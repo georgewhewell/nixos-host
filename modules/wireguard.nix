@@ -13,8 +13,6 @@ in
 
   config = lib.mkIf cfg.enable {
 
-    # boot.extraModulePackages = [ config.boot.kernelPackages.wireguard ];
-
     # allow systemd-networkd to access keys dir
     users.users."systemd-network".extraGroups = [ "keys" ];
 
@@ -43,23 +41,25 @@ in
             # Don't use a file from the Nix store as these are world readable. Must be readable by the systemd.network user
             PrivateKeyFile = "/run/keys/wg-${config.networking.hostName}.secret";
             ListenPort = 51820;
+            FirewallMark = 34952;
           };
           wireguardPeers = (consts.wireguard.makePeerConfig config.networking.hostName);
         };
       };
-      networks.wg0 = {
+      networks."15-wg0" = {
         matchConfig.Name = "wg0";
         address = [
           (consts.wireguard.getIpForHost config.networking.hostName)
         ];
         DHCP = "no";
-        # dns = [ "fc00::53" ];
+        dns = [ "8.8.8.8" ];
         # ntp = [ "fc00::123" ];
         # gateway = [
-        #   "fc00::1"
-        #   "10.100.0.1"
+        #   # "fc00::1"
+        #   "192.168.33.1"
         # ];
         networkConfig = {
+          IPMasquerade = "ipv4";
           IPv6AcceptRA = false;
         };
         linkConfig.RequiredForOnline = "no";

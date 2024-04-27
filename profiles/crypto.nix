@@ -8,14 +8,14 @@ in
 
   # radicle
   services.radicle = {
-    enable = true;
+    enable = false;
     listen = "127.0.0.1:8089";
   };
 
   # monero
   fileSystems."/var/lib/monero" =
     {
-      device = "fpool/root/monero";
+      device = "nvpool/root/monero";
       fsType = "zfs";
       options = [ "nofail" "sync=disabled" ];
     };
@@ -48,25 +48,25 @@ in
     enable = true;
     dataDir = "/var/lib/bitcoind";
     disablewallet = true;
-    rpc = {
-      address = lanAddr;
-    };
+    # rpc = {
+    #   # address = lanAddr;
+    # };
   };
 
-  networking.firewall.allowedTCPPorts = [ 8333 ];
-  networking.firewall.allowedUDPPorts = [ 8333 ];
+  networking.firewall.allowedTCPPorts = [ 8333 9000 ];
+  networking.firewall.allowedUDPPorts = [ 8333 9000 ];
 
   # ethereum
   fileSystems."/var/lib/lighthouse" =
     {
-      device = "fpool/root/lighthouse-mainnet";
+      device = "nvpool/root/ethereum/lighthouse-geth-mainnet";
       fsType = "zfs";
       options = [ "nofail" "sync=disabled" ];
     };
 
   fileSystems."/var/lib/private/goethereum" =
     {
-      device = "fpool/root/go-ethereum";
+      device = "nvpool/root/ethereum/geth-mainnet";
       fsType = "zfs";
       options = [ "nofail" "sync=disabled" ];
     };
