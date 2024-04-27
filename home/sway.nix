@@ -57,7 +57,8 @@
 
   wayland.windowManager.sway = {
     enable = true;
-    systemdIntegration = true;
+    systemd.enable = true;
+    checkConfig = false;
     extraSessionCommands = ''
       . "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh"
     '';

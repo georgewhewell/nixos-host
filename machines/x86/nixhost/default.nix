@@ -143,6 +143,7 @@
         address=/fuckup.lan/192.168.23.7
         address=/trex.lan/192.168.23.8
         address=/cloud.lan/192.168.24.2
+        address=/satanic.link/192.168.23.254
         address=/grafana.satanic.link/192.168.23.5
         address=/home.satanic.link/192.168.23.5
         address=/jellyfin.satanic.link/192.168.23.5
