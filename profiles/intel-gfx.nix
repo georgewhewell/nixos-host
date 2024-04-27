@@ -14,6 +14,8 @@
   };
 
   environment.systemPackages = with pkgs; [
+    libva
+    clinfo
     intel-gpu-tools
   ];
 
@@ -27,11 +29,13 @@
     driSupport32Bit = true;
     extraPackages = with pkgs; [
       libva
-      # intel-compute-runtime # OpenCL
-      intel-media-driver # LIBVA_DRIVER_NAME=iHD
-      (vaapiIntel.override { enableHybridCodec = true; })
-      libvdpau-va-gl
+      intel-compute-runtime
+      # intel-media-driver # LIBVA_DRIVER_NAME=iHD
+      # (vaapiIntel.override { enableHybridCodec = true; })
+      # libvdpau-va-gl
       intel-media-driver
+      intel-ocl
+      onevpl-intel-gpu
     ];
   };
 }

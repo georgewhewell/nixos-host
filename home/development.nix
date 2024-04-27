@@ -25,11 +25,11 @@
     rustup
 
     # saas crap
-    runpodctl
+    #runpodctl
   ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
     # evm tooling
     solc
-    foundry-bin
+    # foundry-bin
   ];
 
 }

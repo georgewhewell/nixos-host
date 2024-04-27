@@ -107,6 +107,12 @@ in
           set int state tap0 up
           set interface nat44 in tap0
 
+          # ipv6
+          set int ip6 table ${trunk} 0
+          ip6 nd address autoconfig ${trunk} default-route
+          dhcp6 client ${trunk}
+          dhcp6 pd client ${trunk} prefix group hgw
+
           # port forwwarding
           ${builtins.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (ip: ports: map (port: ''
           nat44 add static mapping local ${ip} ${toString port} external ${trunk} ${toString port} tcp
@@ -157,9 +163,15 @@ in
         firewall.enable = false;
       };
 
-      systemd.network = {
+      systemd.network = let bridgeName = "br0.lan"; in {
         enable = true;
         wait-online.anyInterface = true;
+        netdevs."01-${bridgeName}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = bridgeName;
+          };
+        };
         networks = {
           # "50-backup" = {
           #   matchConfig.Name = "eno2";
@@ -177,10 +189,44 @@ in
           # };
           "20-lstack" = {
             matchConfig.Name = "lstack";
+            # address = [
+            #   "192.168.23.253/24"
+            # ];
+            # dhcpV4Config.RouteMetric = 1;
+            networkConfig = {
+              Bridge = bridgeName;
+              ConfigureWithoutCarrier = true;
+              IPv6AcceptRA = true;
+            };
+            linkConfig.RequiredForOnline = "enslaved";
+          };
+          # "10-vf" = {
+          #   matchConfig.Name = "enp133s0f0np0";
+          #   address = [
+          #     "192.168.23.254/24"
+          #   ];
+          #   # routes = [
+          #   #   { routeConfig.Gateway = "192.168.23.1"; }
+          #   # ];
+          #   dhcpV4Config.RouteMetric = 2;
+          #   networkConfig = {
+          #     ConfigureWithoutCarrier = true;
+          #     IPv6AcceptRA = true;
+          #   };
+          # };
+          "01-br0" = {
+            matchConfig.Name = bridgeName;
+            bridgeConfig = { };
             address = [
-              "192.168.23.252/24"
+              "192.168.23.254/24"
             ];
-            dhcpV4Config.RouteMetric = 1;
+            # routes = [
+            #   {
+            #     routeConfig.Destination = "192.168.23.0/24";
+            #     routeConfig.Metric = 88;
+            #     routeConfig.Gateway = "192.168.23.1";
+            #   }
+            # ];
             networkConfig = {
               ConfigureWithoutCarrier = true;
               IPv6AcceptRA = true;
@@ -189,20 +235,29 @@ in
               { routeConfig.Gateway = "192.168.23.1"; }
             ];
           };
-          "10-vf" = {
-            matchConfig.Name = "enp133s0f0np0";
-            address = [
-              "192.168.23.254/24"
-            ];
-            # routes = [
-            #   { routeConfig.Gateway = "192.168.23.1"; }
-            # ];
-            dhcpV4Config.RouteMetric = 2;
+          "10-lan" = {
+            matchConfig.Name = "enp2s0";
             networkConfig = {
+              Bridge = bridgeName;
               ConfigureWithoutCarrier = true;
               IPv6AcceptRA = true;
             };
+            linkConfig.RequiredForOnline = "enslaved";
           };
+          # "10-vf" = {
+          #   matchConfig.Name = "enp133s0f0np0";
+          #   address = [
+          #     "192.168.23.254/24"
+          #   ];
+          #   # routes = [
+          #   #   { routeConfig.Gateway = "192.168.23.1"; }
+          #   # ];
+          #   dhcpV4Config.RouteMetric = 2;
+          #   networkConfig = {
+          #     ConfigureWithoutCarrier = true;
+          #     IPv6AcceptRA = true;
+          #   };
+          # };
         };
       };
 

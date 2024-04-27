@@ -37,7 +37,6 @@
       ../../../services/nginx.nix
       ../../../services/transmission.nix
       ../../../services/virt/host.nix
-      ../../../services/jellyfin.nix
     ];
 
   services.tor = {
@@ -128,6 +127,7 @@
         bind-interfaces
         interface=${lanBridge}
         dhcp-range=${lanBridge},192.168.23.10,192.168.23.249,6h
+        dhcp-option=${lanBridge},3,192.168.23.1    # send default gateway
         dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
         dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
         dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
