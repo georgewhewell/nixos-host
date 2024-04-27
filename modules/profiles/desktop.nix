@@ -14,15 +14,33 @@ with lib;
       kernel.sysctl = { "vm.swappiness" = 1; };
     };
 
+    # Disable suspend and hibernation
+    services.logind.extraConfig = ''
+      HandleSuspendKey=ignore
+      HandleLidSwitch=ignore
+      HandleLidSwitchExternalPower=ignore
+      HandleLidSwitchDocked=ignore
+      HandleHibernateKey=ignore
+      HandlePowerKey=ignore
+    '';
 
-/*
-    services = {
+    # Disable automatic powering off
+    systemd.services.systemd-logind.environment.LOGIND_AUTO_SUSPEND = "no";
+
+    # Disable systemd's suspend, hibernate and hybrid-sleep units
+    systemd.services = {
+      "systemd-suspend.service".enable = false;
+      "systemd-hibernate.service".enable = false;
+      "systemd-hybrid-sleep.service".enable = false;
+    };
+    /*
+      services = {
       fstrim.enable = true;
       fwupd.enable = true;
       hardware.bolt.enable = true;
       thermald.enable = false;
-    };
-*/
+      };
+    */
     #   sconfig.user-settings = ''
     #     ln -sf /etc/vscode-settings.json ~/.config/VSCodium/User/settings.json
     #     ln -sf /etc/vscode-keybindings.json ~/.config/VSCodium/User/keybindings.json
