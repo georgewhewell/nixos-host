@@ -4,7 +4,7 @@
 
   fileSystems."/var/lib/unifi" =
     {
-      device = "fpool/root/configs/unifi";
+      device = "nvpool/root/configs/unifi";
       fsType = "zfs";
       options = [ "nofail" ];
     };
