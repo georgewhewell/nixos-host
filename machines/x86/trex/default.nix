@@ -33,7 +33,8 @@
       "ipmi_devintf"
       "ipmi_si"
     ];
-    kernelPackages = pkgs.linuxPackages_latest_lto_zen4;
+    kernelPackages = pkgs.linuxPackages_latest;
+    # kernelPackages = pkgs.linuxPackages_latest_lto_zen4;
     initrd.kernelModules = [ "mlx5_core" ];
   };
 
