@@ -24,7 +24,7 @@ jobs:
 
   nix-build:
     needs: nix-matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     strategy:
       matrix: ${{fromJSON(needs.nix-matrix.outputs.matrix)}}
     steps:
