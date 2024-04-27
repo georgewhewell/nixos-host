@@ -19,6 +19,8 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
+      ../../../containers/gh-runner.nix
+
       # ../../../containers/unifi.nix
 
       ../../../profiles/common.nix
