@@ -2,6 +2,9 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    nix-github-actions.url = "github:nix-community/nix-github-actions";
+    nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
+
     rose-pine-hyprcursor.url = "github:ndom91/rose-pine-hyprcursor";
     rose-pine-hyprcursor.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -93,7 +96,10 @@
 
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
-        [ "x86_64-linux" "aarch64-linux" ]);
+        [
+          "x86_64-linux"
+          # "aarch64-linux"
+        ]);
       consts = import ./consts.nix { inherit (inputs.nixpkgs) lib; };
     in
     {
@@ -157,5 +163,20 @@
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});
+
+      githubActions =
+        let
+          mkGithubMatrix = nixConf: {
+            matrix = {
+              include = builtins.map
+                (x: {
+                  attr = "nixosConfigurations.${x}.config.system.build.toplevel";
+                  os = [ "ubuntu-22.04" ];
+                })
+                (builtins.attrNames nixConf);
+            };
+          };
+        in
+        mkGithubMatrix self.nixosConfigurations;
     };
 }
