@@ -12,6 +12,7 @@
     "zfs"
     "nfs"
     "f2fs"
+    "bcachefs"
   ];
 
   environment.systemPackages = with pkgs; [
