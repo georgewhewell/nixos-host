@@ -11,4 +11,10 @@
 
   environment.systemPackages = with pkgs; [ ffmpeg libva1 libva-utils ];
 
+  fileSystems."/var/lib/jellyfin/transcodes" = {
+    device = "none";
+    fsType = "tmpfs";
+    options = [ "defaults" "size=16G" "mode=755" ];
+  };
+
 }

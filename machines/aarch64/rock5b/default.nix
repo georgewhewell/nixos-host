@@ -110,7 +110,7 @@
 
   networking = {
     hostName = "rock-5b";
-    nameservers = [ "192.168.23.1" ];
+    nameservers = [ "192.168.23.5" ];
     useNetworkd = true;
     useDHCP = false;
 

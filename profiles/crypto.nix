@@ -48,9 +48,10 @@ in
     enable = true;
     dataDir = "/var/lib/bitcoind";
     disablewallet = true;
-    # rpc = {
-    #   # address = lanAddr;
-    # };
+    rpc = {
+      users = lib.mkForce { };
+      # address = lanAddr;
+    };
   };
 
   networking.firewall.allowedTCPPorts = [ 8333 9000 ];

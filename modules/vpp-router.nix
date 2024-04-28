@@ -261,7 +261,7 @@ in
         };
       };
 
-      networking.nameservers = [ "1.1.1.1" ];
+      networking.nameservers = [ "192.168.23.5" ];
 
       boot.kernelParams = [
         "intel_iommu=on"
