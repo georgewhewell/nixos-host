@@ -8,9 +8,6 @@
 
   # environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
 
-  nixpkgs.config.permittedInsecurePackages = [
-    "nodejs-16.20.0"
-  ];
   services.dbus.packages = [ pkgs.gcr ];
   environment.systemPackages = with pkgs; [
     #kitty.terminfo

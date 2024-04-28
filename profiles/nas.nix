@@ -11,8 +11,9 @@
 
   fileSystems."/mnt/Home" =
     {
-      device = "fpool/root/Home";
+      device = "nvpool/root/Home";
       fsType = "zfs";
+      neededForBoot = false;
     };
 
   fileSystems."/export/media" = {
@@ -28,7 +29,7 @@
   services.zfs.autoScrub = {
     enable = true;
     interval = "monthly";
-    pools = [ "fpool" "bpool" ];
+    pools = [ "bpool" ];
   };
 
   services.zfs.autoSnapshot = {
@@ -46,9 +47,9 @@
   services.nfs.server = {
     enable = true;
     exports = ''
-      /export                192.168.23.0/24(rw,all_squash,fsid=0,no_subtree_check)
-      /export/media          192.168.23.0/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-      /export/home           192.168.23.0/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+      /export                192.168.23.1/24(rw,all_squash,fsid=0,no_subtree_check)
+      /export/media          192.168.23.1/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+      /export/home           192.168.23.1/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
     '';
   };
 

@@ -148,14 +148,12 @@
         address=/satanic.link/192.168.23.254
         address=/grafana.satanic.link/192.168.23.5
         address=/home.satanic.link/192.168.23.5
-        address=/jellyfin.satanic.link/192.168.23.5
+        address=/jellyfin.satanic.link/192.168.23.254
         address=/paperless.satanic.link/192.168.23.5
         address=/radarr.satanic.link/192.168.23.5
         address=/sonarr.satanic.link/192.168.23.5
         address=/eth-mainnet.satanic.link/192.168.23.5
         address=/eth-mainnet-ws.satanic.link/192.168.23.5
-        address=/reth-mainnet.satanic.link/192.168.23.5
-        address=/reth-mainnet-ws.satanic.link/192.168.23.5
       '';
     };
 
