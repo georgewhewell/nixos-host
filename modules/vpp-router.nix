@@ -99,6 +99,7 @@ in
           ${builtins.concatStringsSep "\n" (map (port: ''
           set int l2 bridge ${port} 1
           set int state ${port} up
+          enable ip6 interface ${port}
           set interface nat44 in ${port}
           '') downstream)}
 
@@ -106,12 +107,16 @@ in
           set int l2 bridge tap0 1
           set int state tap0 up
           set interface nat44 in tap0
+          enable ip6 interface tap0
 
           # ipv6
           set int ip6 table ${trunk} 0
           ip6 nd address autoconfig ${trunk} default-route
           dhcp6 client ${trunk}
           dhcp6 pd client ${trunk} prefix group hgw
+          set ip6 address ${trunk} prefix group hgw ::1/64
+          ip6 nd address autoconfig bvi0 default-route
+          ip6 nd bvi0 ra-managed-config-flag ra-other-config-flag ra-interval 5 3 ra-lifetime 180
 
           # port forwwarding
           ${builtins.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (ip: ports: map (port: ''
