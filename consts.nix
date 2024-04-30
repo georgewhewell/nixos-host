@@ -21,7 +21,7 @@
           router = {
             ipAddress = 3;
             endPoint = "satanic.link";
-            pubKey = "9UPRg+xZYCs0hOgGBzMSr0v12eZCOVBSE+BvBASDIS0=";
+            pubKey = "SYHzYVpBDi8annhVGqvroQJLacRLTcmdDgQq4JlSDCs=";
           };
           fuckup = {
             ipAddress = 4;
