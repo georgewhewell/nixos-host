@@ -12,7 +12,7 @@
     };
   };
 
-  deployment.targetHost = "192.168.23.5";
+  deployment.targetHost = "nixhost.satanic.link";
   deployment.targetUser = "grw";
 
   imports =
@@ -20,8 +20,6 @@
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
       ../../../containers/gh-runner.nix
-
-      # ../../../containers/unifi.nix
 
       ../../../profiles/common.nix
       ../../../profiles/crypto.nix
@@ -214,6 +212,9 @@
           #     prefixLength = 24;
           #   }
           # ];
+          routes = [
+            { routeConfig.Gateway = "192.168.23.1"; }
+          ];
           networkConfig = {
             ConfigureWithoutCarrier = true;
             IPv6AcceptRA = true;

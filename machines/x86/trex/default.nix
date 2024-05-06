@@ -26,7 +26,7 @@
       ../../../services/buildfarm-slave.nix
     ];
 
-  deployment.targetHost = "192.168.23.8";
+  deployment.targetHost = "trex.satanic.link";
   deployment.targetUser = "grw";
 
   boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" "bcachefs" ];
@@ -38,7 +38,7 @@
     kernelPackages = pkgs.linuxPackages_latest;
     kernelParams = [
       "amd_iommu=on"
-      "pci=realloc=off"
+      "pci=realloc=off" # fixes: only 7 of 8 downstream work
       "pcie=pcie_bus_perf"
     ];
     initrd.kernelModules = [ "mlx5_core" "lm92" ];
@@ -60,7 +60,7 @@
     {
       device = "pool3d/root/grw-home";
       fsType = "zfs";
-      options = [ "noatime" "discard" "nofail" ];
+      options = [ "noatime" "nofail" ];
     };
 
   services = {

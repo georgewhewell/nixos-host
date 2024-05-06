@@ -47,6 +47,13 @@
     serverAliveCountMax = 5;
     hashKnownHosts = true;
     forwardAgent = true;
+    matchBlocks = {
+      "satanic.link" = { };
+      "fuckup.satanic.link" = { };
+      "rock5b.satanic.link" = { };
+      "trex.satanic.link" = { };
+      "nixhost.satanic.link" = { };
+    };
   };
 
   programs.htop = {

@@ -33,6 +33,7 @@
       # ms-vsliveshare.vsliveshare
       tamasfe.even-better-toml
       mkhl.direnv
+      zxh404.vscode-proto3
 
       (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
         mktplcRef = {

@@ -61,7 +61,9 @@
       StrictHostKeyChecking no
 
     Match host *.satanic.link !localnetwork 192.168.23.0/24
-      ProxyJump satanic.link
+      controlmaster auto
+      controlpath /tmp/ssh-%r@%h:%p
+      ProxyCommand ${pkgs.bash}/bin/bash -c "${pkgs.openssh}/bin/ssh -W $(echo %h | cut -d. -f1):%p grw@satanic.link"
   '';
 
   console = {

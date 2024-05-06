@@ -143,7 +143,7 @@
           { source_labels = [ ]; target_label = "__address__"; replacement = "localhost:9116"; }
         ];
         static_configs = [{
-          targets = [ "mikrotik.lan" ];
+          targets = [ "mikrotik.lan" "mikrotik-100g.lan" ];
         }];
       }
     ];

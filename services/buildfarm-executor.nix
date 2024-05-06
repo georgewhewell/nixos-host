@@ -10,8 +10,9 @@
       {
         hostName = "trex.satanic.link";
         sshUser = "grw";
+        protocol = "ssh-ng";
         maxJobs = 16;
-        speedFactor = 32;
+        speedFactor = 128;
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
         systems = [ "x86_64-linux" "i686-linux" ];
       }
