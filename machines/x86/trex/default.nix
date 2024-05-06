@@ -22,20 +22,26 @@
       ../../../profiles/uefi-boot.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
+      ../../../profiles/nas-mounts.nix
       ../../../services/buildfarm-slave.nix
     ];
 
   deployment.targetHost = "192.168.23.8";
-  boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" ];
+  deployment.targetUser = "grw";
 
+  boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" "bcachefs" ];
   boot = {
     kernelModules = [
       "ipmi_devintf"
       "ipmi_si"
     ];
     kernelPackages = pkgs.linuxPackages_latest;
-    # kernelPackages = pkgs.linuxPackages_latest_lto_zen4;
-    initrd.kernelModules = [ "mlx5_core" ];
+    kernelParams = [
+      "amd_iommu=on"
+      "pci=realloc=off"
+      "pcie=pcie_bus_perf"
+    ];
+    initrd.kernelModules = [ "mlx5_core" "lm92" ];
   };
 
   fileSystems."/" =
@@ -67,14 +73,11 @@
     fwupd.enable = true;
     hardware.bolt.enable = true;
     thermald.enable = true;
-    iperf3 = {
-      enable = true;
-      openFirewall = true;
-    };
+    iperf3.enable = true;
     irqbalance.enable = true;
   };
 
-  environment.systemPackages = with pkgs; [ pciutils fio ];
+  environment.systemPackages = with pkgs; [ pciutils fio lm_sensors ];
 
   networking = {
     hostName = "trex";
@@ -82,6 +85,7 @@
     enableIPv6 = true;
     useNetworkd = true;
     nameservers = [ "192.168.23.5" ];
+    firewall.enable = false;
   };
 
   systemd.network = {
@@ -124,7 +128,6 @@
       };
       "10-lan-25g" = {
         matchConfig.Driver = "mlx5_core";
-
         address = [
           "192.168.23.8/24"
         ];

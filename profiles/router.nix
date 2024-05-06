@@ -425,12 +425,6 @@ in
     };
   };
 
-  networking.hosts = {
-    "127.0.0.1" = [ "localhost" ];
-    "192.168.23.1" = [ "router" "router.lan" ];
-    "192.168.23.5" = [ "nixhost" "nixhost.lan" ];
-  };
-
   # services.miniupnpd = {
   #   enable = true;
   #   externalInterface = wanInterface;

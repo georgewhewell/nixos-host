@@ -50,7 +50,7 @@
             "nixhost.lan:9100"
             "fuckup.lan:9100"
             "router.lan:9100"
-            # "yoga.lan:9100"
+            "trex.lan:9100"
             "rock-5b.lan:9100"
             "air.lan:9100"
           ];
@@ -63,6 +63,7 @@
             "nixhost.lan:58080"
             "fuckup.lan:58080"
             "router.lan:58080"
+            "trex.lan:58080"
             "rock-5b.lan:58080"
           ];
         }];
