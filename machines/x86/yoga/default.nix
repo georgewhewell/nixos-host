@@ -10,6 +10,7 @@
     ../../../profiles/intel-gfx.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/thinkpad.nix
+    ../../../services/buildfarm-executor.nix
     ../../../services/docker.nix
   ];
 
