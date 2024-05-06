@@ -11,52 +11,18 @@
       enableGraphical = true;
       enableVscodeServer = true;
     };
-    vpp-router = {
-      enable = false;
-      dpdks = [
-        # 1G
-        "0000:00:1f.6"
-
-        # 25G
-        "0000:01:00.0"
-        "0000:01:00.1"
-      ];
-      trunk = "TwentyFiveGigabitEthernet1/0/0";
-      downstream = [
-        "TwentyFiveGigabitEthernet1/0/1"
-        # "GigabitEthernet0/31/6"
-      ];
-      inside_subnet = 23;
-      forwardedPorts = {
-        "192.168.23.252" = [
-          22 # ssh
-        ];
-        "192.168.23.5" = [
-          443 # https
-          8333 # bitcoind
-          9000 # lighthouse
-          9001 # tor
-          18080 # monero
-          17026 # qbittorrent
-          30303 # geth
-          51413 # transmission
-        ];
-      };
-    };
   };
 
   imports =
     [
       ../../../profiles/common.nix
       ../../../profiles/development.nix
-      # ../../../profiles/bridge-interfaces.nix
       ../../../profiles/home.nix
       ../../../profiles/nas-mounts.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
       ../../../profiles/intel-gfx.nix
-      # ../../../profiles/fastlan.nix
 
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
@@ -67,10 +33,12 @@
   boot.kernelParams = [ "pci=realloc" "intel_iommu=on" "iommu=pt" ];
 
   system.stateVersion = "22.11";
+
   services.iperf3 = {
     enable = true;
     openFirewall = true;
   };
+
   fileSystems."/" =
     {
       device = "/dev/mapper/vg1-nixos";

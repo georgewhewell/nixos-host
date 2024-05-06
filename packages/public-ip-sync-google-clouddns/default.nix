@@ -1,6 +1,6 @@
-{
-stdenv
-, sources
+{ stdenv
+, lib
+, fetchFromGitHub
 , makeWrapper
 , dnsutils
 , google-cloud-sdk
@@ -11,7 +11,13 @@ stdenv.mkDerivation rec {
   pname = "public-ip-sync-google-clouddns";
   version = "master";
 
-  src = sources.public-ip-sync-google-clouddns;
+  src = fetchFromGitHub
+    {
+      owner = "headcr4sh";
+      repo = "public-ip-sync-google-clouddns";
+      rev = "master";
+      sha256 = "sha256-knxZJClQi1bCIbyokF0o8gmoiCEwWNkAbo3bzUjwv/A=";
+    };
 
   installPhase = ''
     mkdir -p $out/bin

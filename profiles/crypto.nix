@@ -89,6 +89,7 @@ in
   # use lighthouse from nix-ethereum
   nixpkgs.overlays = [
     (self: _: {
+      geth = inputs.ethereum.packages.${pkgs.system}.geth;
       lighthouse = inputs.ethereum.packages.${pkgs.system}.lighthouse;
     })
   ];

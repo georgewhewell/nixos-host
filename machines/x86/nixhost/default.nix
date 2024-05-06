@@ -128,27 +128,28 @@
         domain=lan
         bind-interfaces
         interface=${lanBridge}
-        dhcp-range=${lanBridge},192.168.23.10,192.168.23.249,6h
+        dhcp-range=${lanBridge},192.168.23.20,192.168.23.249,6h
         dhcp-option=${lanBridge},3,192.168.23.1    # send default gateway
-        dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # switch
+        dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # 10gb switch
         dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
-        dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # ipmi
+        dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # x10 ipmi
         dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
         dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
         dhcp-host=06:f1:3e:03:27:8c,192.168.23.7   # fuckup
         dhcp-host=50:6b:4b:03:04:cb,192.168.23.8   # trex
+        dhcp-host=48:A9:8A:93:42:4C,192.168.23.9   # 100gb switch
         dhcp-host=c2:be:3b:97:be:27,192.168.23.48  # phone
 
         # hosted names
-        address=/router.lan/192.168.23.1
-        address=/nixhost.lan/192.168.23.5
-        address=/fuckup.lan/192.168.23.7
-        address=/trex.lan/192.168.23.8
-        address=/cloud.lan/192.168.24.2
-        address=/satanic.link/192.168.23.254
+        address=/router/192.168.23.254
+        address=/nixhost/192.168.23.5
+        address=/fuckup/192.168.23.7
+        address=/trex/192.168.23.8
+        address=/cloud/192.168.24.2
+        address=/^satanic.link/192.168.23.254
         address=/grafana.satanic.link/192.168.23.5
         address=/home.satanic.link/192.168.23.5
-        address=/jellyfin.satanic.link/192.168.23.254
+        address=/jellyfin.satanic.link/192.168.23.5
         address=/paperless.satanic.link/192.168.23.5
         address=/radarr.satanic.link/192.168.23.5
         address=/sonarr.satanic.link/192.168.23.5
@@ -162,33 +163,86 @@
     hostId = lib.mkForce "deadbeef";
     wireless.enable = false;
     enableIPv6 = true;
+    useNetworkd = true;
     firewall = {
       enable = true;
       trustedInterfaces = [ "br0.lan" ];
-      interfaces."br0.lan" = {
-        allowedTCPPorts = [ 8085 9091 9000 9001 9002 18081 30030 30303 30304 38483 18080 17026 ];
-        allowedUDPPorts = [ 9000 9001 9002 30030 30303 30304 18080 17026 ];
+    };
+    defaultGateway = {
+      address = "192.168.23.5";
+      interface = "br0.lan";
+    };
+    nameservers = [ "192.168.23.5" ];
+  };
+
+  systemd.network =
+    let
+      bondName = "bond0";
+      bridgeName = "br0.lan";
+    in
+    {
+      enable = true;
+      wait-online.anyInterface = true;
+      netdevs = {
+        "10-${bondName}" = {
+          netdevConfig = {
+            Kind = "bond";
+            Name = "bond0";
+          };
+          bondConfig = {
+            Mode = "balance-rr";
+            TransmitHashPolicy = "layer3+4";
+          };
+        };
+        "20-${bridgeName}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = bridgeName;
+          };
+        };
+      };
+      networks = {
+        "50-${bridgeName}" = {
+          matchConfig.Name = bridgeName;
+          bridgeConfig = { };
+          address = [
+            "192.168.23.5/24"
+          ];
+          # addresses = [
+          #   {
+          #     address = "192.168.23.5";
+          #     prefixLength = 24;
+          #   }
+          # ];
+          networkConfig = {
+            ConfigureWithoutCarrier = true;
+            IPv6AcceptRA = true;
+          };
+        };
+        "40-${bondName}" = {
+          matchConfig.Name = bondName;
+          linkConfig = {
+            RequiredForOnline = "carrier";
+          };
+          networkConfig = {
+            Bridge = bridgeName;
+            LinkLocalAddressing = "no";
+          };
+        };
+        "20-ixgbe" = {
+          matchConfig.Driver = "ixgbe";
+          networkConfig.Bond = bondName;
+        };
+        "10-gbe" = {
+          matchConfig.Driver = "igb";
+          networkConfig = {
+            Bridge = bridgeName;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
       };
     };
-    defaultGateway = "192.168.23.1";
-    nameservers = [ "192.168.23.5" ];
-    interfaces."br0.lan" = {
-      useDHCP = false;
-      ipv4.addresses = [{
-        address = "192.168.23.5";
-        prefixLength = 24;
-      }];
-    };
-
-    bridges."br0.lan" = {
-      interfaces = [
-        "eno1"
-        "eno2"
-        "eno3"
-        "eno4"
-      ];
-    };
-  };
 
   fileSystems."/" =
     {
@@ -204,4 +258,37 @@
 
   nix.settings.build-cores = lib.mkDefault 24;
 
+
+
+  deployment.keys."google-domain-owner-key" = {
+    keyCommand = [ "pass" "google-domain-owner-key" ];
+    destDir = "/run/keys";
+    uploadAt = "pre-activation";
+  };
+
+  systemd.services.public-ip-sync-google-clouddns = {
+    environment = {
+      CLOUDSDK_CORE_PROJECT = "domain-owner";
+      CLOUDSDK_COMPUTE_ZONE = "eu-west-1";
+      GCLOUD_SERVICE_ACCOUNT_KEY_FILE = "/run/keys/google-domain-owner-key";
+      GCLOUD_DNS_ZONE_ID = "satanic-link";
+    };
+    script = ''
+      ${pkgs.public-ip-sync-google-clouddns}/bin/public-ip-sync-google-clouddns.sh -name "satanic.link."
+    '';
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      Restart = "no";
+    };
+  };
+
+  systemd.timers.public-ip-sync-google-clouddns = {
+    partOf = [ "public-ip-sync-google-clouddns.service" ];
+    wantedBy = [ "multi-user.target" ];
+    timerConfig = {
+      OnBootSec = "2min";
+      OnUnitActiveSec = "3600";
+    };
+  };
 }

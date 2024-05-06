@@ -61,6 +61,9 @@
       "nixhost" = {
         hostname = "nixhost";
       };
+      "trex" = {
+        hostname = "192.168.23.8";
+      };
       "nixhost.satanic.link" = {
         hostname = "192.168.23.5";
         proxyJump = "satanic.link";

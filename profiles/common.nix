@@ -6,6 +6,13 @@
     ./users.nix
   ];
 
+  networking.hosts = {
+    "127.0.0.1" = [ "localhost" ];
+    "192.168.23.254" = [ "router" "router.lan" ];
+    "192.168.23.5" = [ "nixhost" "nixhost.lan" ];
+    "192.168.23.7" = [ "fuckup" "fuckup.lan" ];
+    "192.168.23.8" = [ "trex" "trex.lan" ];
+  };
   # environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
 
   services.dbus.packages = [ pkgs.gcr ];
