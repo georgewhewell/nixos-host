@@ -8,7 +8,7 @@
     '';
     buildMachines = [
       {
-        hostName = "192.168.23.8";
+        hostName = "trex.satanic.link";
         sshUser = "grw";
         maxJobs = 16;
         speedFactor = 32;

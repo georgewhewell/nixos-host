@@ -4,11 +4,13 @@ let
   cfg = config.sconfig.home-manager;
 in
 {
-  options.sconfig.home-manager.enable = lib.mkEnableOption "Enable Home Manager";
-  options.sconfig.home-manager.enableGraphical = lib.mkEnableOption "Enable graphical HM";
-  options.sconfig.home-manager.enableLaptop = lib.mkEnableOption "Enable laptop";
-  options.sconfig.home-manager.enableVscodeServer = lib.mkEnableOption "Enable vscode";
-  options.sconfig.home-manager.enableDevelopment = lib.mkEnableOption "Enable dev tools";
+  options.sconfig.home-manager = {
+    enable = lib.mkEnableOption "Enable Home Manager";
+    enableGraphical = lib.mkEnableOption "Enable graphical HM";
+    enableLaptop = lib.mkEnableOption "Enable laptop";
+    enableVscodeServer = lib.mkEnableOption "Enable vscode";
+    enableDevelopment = lib.mkEnableOption "Enable dev tools";
+  };
 
   config = lib.mkIf cfg.enable
     {

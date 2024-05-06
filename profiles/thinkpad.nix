@@ -2,8 +2,6 @@
 
 {
 
-  networking.wireless.enable = true;
-
   boot.initrd.kernelModules = [ "thinkpad-acpi" "acpi-call" ];
   boot.kernelParams = [
     "msr.allow_writes=on"
@@ -39,7 +37,7 @@
 
   hardware.bluetooth = {
     enable = true;
-    powerOnBoot = false;
+    powerOnBoot = true;
   };
 
   hardware.trackpoint = {

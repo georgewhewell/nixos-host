@@ -59,6 +59,9 @@
     Host *.lan
       # todo..
       StrictHostKeyChecking no
+
+    Match host *.satanic.link !localnetwork 192.168.23.0/24
+      ProxyJump satanic.link
   '';
 
   console = {
