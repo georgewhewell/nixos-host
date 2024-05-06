@@ -23,6 +23,7 @@
     bat.enable = true;
     fzf.enable = true;
   };
+
   home.packages = with pkgs; [
     bat
     pv
@@ -46,29 +47,6 @@
     serverAliveCountMax = 5;
     hashKnownHosts = true;
     forwardAgent = true;
-    matchBlocks = {
-      "fuckup" = {
-        hostname = "192.168.23.7";
-      };
-      "fuckup.satanic.link" = {
-        hostname = "192.168.23.7";
-        proxyJump = "satanic.link";
-      };
-      "rock5b.satanic.link" = {
-        hostname = "rock5b.lan";
-        proxyJump = "satanic.link";
-      };
-      "nixhost" = {
-        hostname = "nixhost";
-      };
-      "trex" = {
-        hostname = "192.168.23.8";
-      };
-      "nixhost.satanic.link" = {
-        hostname = "192.168.23.5";
-        proxyJump = "satanic.link";
-      };
-    };
   };
 
   programs.htop = {

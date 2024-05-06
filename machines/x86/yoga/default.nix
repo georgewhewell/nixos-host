@@ -91,14 +91,13 @@
     tempAc = 97;
     tempBat = 75;
     coreOffset = -100;
-    #gpuOffset = -50;
+    gpuOffset = -30;
     #uncoreOffset = -50;
     #analogioOffset = -50;
   };
 
   systemd.network = {
     enable = true;
-    # wait-online.anyInterface = true;
     networks = {
       "10-wlan" = {
         matchConfig.Name = "wlp4s0";
@@ -109,14 +108,23 @@
 
   networking = {
     hostName = "yoga";
+    nftables.enable = true;
     useNetworkd = true;
     firewall = {
       interfaces.wg0 = {
-        allowedTCPPorts = [ 22 9090 ];
+        allowedTCPPorts = [ 22 9090 9100 ];
+      };
+    };
+    wireless.iwd = {
+      enable = true;
+      settings = {
+        IPv6 = {
+          Enabled = true;
+        };
+        Settings = {
+          AutoConnect = true;
+        };
       };
     };
   };
-
-  networking.firewall.allowedTCPPorts = [ 9100 ];
-  services.prometheus.exporters.node.openFirewall = lib.mkForce true;
 }

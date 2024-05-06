@@ -56,17 +56,12 @@
       fsType = "vfat";
     };
 
-  # fileSystems."/3draid" =
-  #   {
-  #     device = "/dev/md127";
-  #     fsType = "xfs";
-  #     neededForBoot = false;
-  #     options = [ "noatime" "discard" "nofail" ];
-  #   };
-
-  # boot.swraid = {
-  #   enable = true;
-  # };
+  fileSystems."/home/grw" =
+    {
+      device = "pool3d/root/grw-home";
+      fsType = "zfs";
+      options = [ "noatime" "discard" "nofail" ];
+    };
 
   services = {
     fstrim.enable = true;
