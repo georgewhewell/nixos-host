@@ -60,7 +60,7 @@
         # tooling
         nvim-bufdel
         rust-tools-nvim
-        suda-vim
+        vim-suda
         tabular
         telescope-frecency-nvim
         telescope-nvim
