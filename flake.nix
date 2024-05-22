@@ -35,9 +35,6 @@
     vifino.url = "github:vifino/nix-geht";
     # vifino.inputs.nixpkgs.follows = "nixpkgs";  # breaks vpp (new dpdk?)
 
-    rock5b.url = "github:aciceri/rock5b-nixos";
-    rock5b.inputs.nixpkgs.follows = "nixpkgs";
-
     apple-silicon.url = "github:tpwrules/nixos-apple-silicon";
     apple-silicon.inputs.nixpkgs.follows = "nixpkgs";
 
