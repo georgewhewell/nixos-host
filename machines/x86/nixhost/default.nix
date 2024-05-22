@@ -123,7 +123,8 @@
         no-resolv
         no-hosts
         log-dhcp
-        domain=lan
+        domain=satanic.link
+        local=/satanic.link/
         bind-interfaces
         interface=${lanBridge}
         dhcp-range=${lanBridge},192.168.23.20,192.168.23.249,6h
@@ -166,10 +167,6 @@
       enable = true;
       trustedInterfaces = [ "br0.lan" ];
     };
-    defaultGateway = {
-      address = "192.168.23.5";
-      interface = "br0.lan";
-    };
     nameservers = [ "192.168.23.5" ];
   };
 
@@ -206,12 +203,6 @@
           address = [
             "192.168.23.5/24"
           ];
-          # addresses = [
-          #   {
-          #     address = "192.168.23.5";
-          #     prefixLength = 24;
-          #   }
-          # ];
           routes = [
             { routeConfig.Gateway = "192.168.23.1"; }
           ];

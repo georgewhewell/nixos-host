@@ -6,12 +6,17 @@
     ./users.nix
   ];
 
+  boot.kernelParams = [
+    "pcie=pcie_bus_perf"
+  ];
+
   networking.hosts = {
     "127.0.0.1" = [ "localhost" ];
-    "192.168.23.254" = [ "router" "router.lan" ];
-    "192.168.23.5" = [ "nixhost" "nixhost.lan" ];
-    "192.168.23.7" = [ "fuckup" "fuckup.lan" ];
-    "192.168.23.8" = [ "trex" "trex.lan" ];
+    "192.168.23.254" = [ "router" "router.satanic.link" ];
+    "192.168.23.5" = [ "nixhost" "nixhost.satanic.link" ];
+    "192.168.23.7" = [ "fuckup" "fuckup.satanic.link" ];
+    "192.168.23.8" = [ "trex" "trex.satanic.link" ];
+    "192.168.23.11" = [ "rock-5b" "rock-5b.satanic.link" ];
   };
   # environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
 

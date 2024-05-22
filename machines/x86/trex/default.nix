@@ -23,6 +23,7 @@
       ../../../profiles/graphical.nix
       ../../../profiles/radeon.nix
       ../../../profiles/nas-mounts.nix
+      ../../../services/buildfarm-executor.nix
       ../../../services/buildfarm-slave.nix
     ];
 
@@ -43,17 +44,21 @@
     ];
     initrd.kernelModules = [ "mlx5_core" "lm92" ];
   };
-
+  boot.binfmt.emulatedSystems = [
+    "aarch64-linux"
+  ];
   fileSystems."/" =
     {
-      device = "/dev/disk/by-uuid/93f5fe29-1e12-4b84-95da-6b0e5888a53a";
-      fsType = "ext4";
+      device = "pool3d/root/trex-root";
+      fsType = "zfs";
+      options = [ "noatime" ];
     };
 
   fileSystems."/boot" =
     {
-      device = "/dev/disk/by-uuid/4A41-E197";
+      device = "/dev/disk/by-uuid/37D0-505A";
       fsType = "vfat";
+      options = [ "iocharset=iso8859-1" "fmask=0022" "dmask=0022" ];
     };
 
   fileSystems."/home/grw" =
@@ -66,8 +71,10 @@
   services = {
     fstrim.enable = true;
     fwupd.enable = true;
-    hardware.bolt.enable = true;
-    thermald.enable = true;
+    hardware = {
+      bolt.enable = true;
+      openrgb.enable = true;
+    };
     iperf3.enable = true;
     irqbalance.enable = true;
   };
@@ -83,75 +90,116 @@
     firewall.enable = false;
   };
 
-  systemd.network = {
-    enable = true;
-    wait-online.anyInterface = true;
-
-    # netdevs = {
-    #   "20-${bridgeName}" = {
-    #     netdevConfig = {
-    #       Kind = "bridge";
-    #       Name = bridgeName;
-    #     };
-    #   };
-    # };
-
-    networks = {
-      # "99-ipheth" = {
-      #   matchConfig.Driver = "ipheth";
-      #   networkConfig = {
-      #     DHCP = "ipv4";
-      #     IPv6AcceptRA = true;
-      #     DNSOverTLS = true;
-      #     DNSSEC = true;
-      #     IPv6PrivacyExtensions = false;
-      #     IPForward = true;
-      #     IgnoreCarrierLoss = true;
-      #   };
-      #   dhcpV4Config = {
-      #     RouteMetric = 99;
-      #     UseDNS = true;
-      #     UseDomains = false;
-      #     SendRelease = true;
-      #   };
-      #   linkConfig.RequiredForOnline = "no";
-      # };
-      "10-lan-10g" = {
-        matchConfig.Driver = "ixgbe";
-        networkConfig.DHCP = "ipv4";
-        # networkConfig.RequiredForOnline = "routeable";
+  systemd.network =
+    let
+      bridgeName = "br0";
+      bondName = "bond0";
+    in
+    {
+      enable = true;
+      wait-online.anyInterface = true;
+      netdevs = {
+        "20-${bridgeName}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = bridgeName;
+          };
+        };
+        # "10-${bondName}" = {
+        #   netdevConfig = {
+        #     Kind = "bond";
+        #     Name = "bond0";
+        #   };
+        #   bondConfig = {
+        #     Mode = "balance-rr";
+        #     TransmitHashPolicy = "layer3+4";
+        #   };
+        # };
       };
-      "10-lan-25g" = {
-        matchConfig.Driver = "mlx5_core";
-        address = [
-          "192.168.23.8/24"
-        ];
-        routes = [
-          { routeConfig.Gateway = "192.168.23.1"; }
-        ];
-        networkConfig = {
-          ConfigureWithoutCarrier = true;
-          IPv6AcceptRA = true;
+      networks = {
+        "99-ipheth" = {
+          matchConfig.Driver = "ipheth";
+          networkConfig = {
+            DHCP = "ipv4";
+            IPv6AcceptRA = true;
+            DNSOverTLS = true;
+            DNSSEC = true;
+            IPv6PrivacyExtensions = false;
+            IPForward = true;
+            IgnoreCarrierLoss = true;
+          };
+          dhcpV4Config = {
+            RouteMetric = 99;
+            UseDNS = true;
+            UseDomains = false;
+            SendRelease = true;
+          };
+          linkConfig.RequiredForOnline = "no";
+        };
+        "50-usbeth" = {
+          matchConfig.Driver = "r8152";
+          networkConfig = {
+            Bridge = bridgeName;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
+        "20-thunderbolt" = {
+          matchConfig.Driver = "thunderbolt-net";
+          linkConfig = {
+            RequiredForOnline = "carrier";
+          };
+          networkConfig = {
+            Bridge = bridgeName;
+            LinkLocalAddressing = "no";
+          };
+          # networkConfig.RequiredForOnline = "routeable";
+        };
+        "10-lan-10g" = {
+          matchConfig.Driver = "i40e";
+          linkConfig = {
+            RequiredForOnline = "carrier";
+          };
+          networkConfig = {
+            Bridge = bridgeName;
+            LinkLocalAddressing = "no";
+          };
+          # networkConfig.RequiredForOnline = "routeable";
+        };
+        "10-lan-25g" = {
+          matchConfig.Driver = "mlx5_core";
+          networkConfig.Bridge = bridgeName;
         };
 
-        # networkConfig = {
-        #   DHCP = "ipv4";
-        #   IPv6AcceptRA = true;
-        #   DNSOverTLS = true;
-        #   DNSSEC = true;
-        #   IPv6PrivacyExtensions = false;
-        #   IPForward = true;
-        #   IgnoreCarrierLoss = true;
-        #   dhcpV4Config = {
-        #     RouteMetric = 1;
-        #     UseDNS = true;
-        #     UseDomains = false;
-        #     SendRelease = true;
+        # "10-${bondName}" = {
+        #   matchConfig.Name = bondName;
+        #   linkConfig = {
+        #     RequiredForOnline = "carrier";
         #   };
-        #   # ConfigureWithoutCarrier = true;
+        #   networkConfig = {
+        #     Bridge = bridgeName;
+        #     LinkLocalAddressing = "no";
+        #   };
         # };
-        linkConfig.RequiredForOnline = "routable";
+        "05-${bridgeName}" = {
+          matchConfig.Name = bridgeName;
+          bridgeConfig = { };
+          address = [
+            "192.168.23.8/24"
+          ];
+          routes = [
+            { routeConfig.Gateway = "192.168.23.1"; }
+          ];
+          networkConfig = {
+            DNSOverTLS = true;
+            DNSSEC = true;
+            IPv6PrivacyExtensions = false;
+            IPForward = true;
+            IgnoreCarrierLoss = true;
+            ConfigureWithoutCarrier = true;
+            IPv6AcceptRA = true;
+          };
+        };
       };
     };
-  };
 }
