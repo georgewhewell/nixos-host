@@ -16,7 +16,7 @@
           resolver 192.168.23.5;
           proxy_buffering off;
         '';
-        proxyPass = "http://sonarr.lan:8989";
+        proxyPass = "http://sonarr.satanic.link:8989";
         proxyWebsockets = true;
       };
     };
