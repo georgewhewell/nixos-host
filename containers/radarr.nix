@@ -15,7 +15,7 @@
           resolver 192.168.23.5;
           proxy_buffering off;
         '';
-        proxyPass = "http://radarr.lan:7878";
+        proxyPass = "http://radarr.satanic.link:7878";
         proxyWebsockets = true;
       };
     };
