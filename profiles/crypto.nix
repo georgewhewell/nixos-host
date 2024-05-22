@@ -31,6 +31,10 @@ in
     '';
   };
 
+  systemd.services.monero = {
+    requires = [ "var-lib-monero.mount" ];
+  };
+
   # bitcoind
   fileSystems."/var/lib/bitcoind" =
     {
@@ -38,6 +42,10 @@ in
       fsType = "zfs";
       options = [ "nofail" "sync=disabled" ];
     };
+
+  systemd.services.bitcoind = {
+    requires = [ "var-lib-bitcoind.mount" ];
+  };
 
   nix-bitcoin = {
     generateSecrets = true;
@@ -115,6 +123,10 @@ in
     '';
   };
 
+  systemd.services.lighthouse-beacon = {
+    requires = [ "var-lib-lighthouse.mount" "LIGHTHOUSE_JWT-key.path" ];
+  };
+
   services.geth =
     let
       apis = [ "net" "eth" "txpool" "debug" ];
@@ -162,6 +174,10 @@ in
         ];
       };
     };
+
+  systemd.services.geth-mainnet = {
+    requires = [ "var-lib-private-goethereum.mount" "LIGHTHOUSE_JWT_GETH-key.path" ];
+  };
 
   # virtualisation.oci-containers.containers.reth = {
   #   image = "ghcr.io/paradigmxyz/reth:v0.1.0-alpha.13";
@@ -269,21 +285,21 @@ in
         proxyWebsockets = true;
       };
     };
-    "reth-mainnet.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString 8549}";
-      };
-    };
-    "reth-mainnet-ws.satanic.link" = {
-      forceSSL = true;
-      enableACME = true;
-      locations."/" = {
-        proxyPass = "http://localhost:${toString 8549}";
-        proxyWebsockets = true;
-      };
-    };
+    # "reth-mainnet.satanic.link" = {
+    #   forceSSL = true;
+    #   enableACME = true;
+    #   locations."/" = {
+    #     proxyPass = "http://localhost:${toString 8549}";
+    #   };
+    # };
+    # "reth-mainnet-ws.satanic.link" = {
+    #   forceSSL = true;
+    #   enableACME = true;
+    #   locations."/" = {
+    #     proxyPass = "http://localhost:${toString 8549}";
+    #     proxyWebsockets = true;
+    #   };
+    # };
   };
 
 }
