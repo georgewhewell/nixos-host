@@ -15,6 +15,9 @@ let
   yoga-root = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHa3IehyF09gwMwVLCW68xNvxNxNPeRP2DKUgbRv/mpP root@yoga
   '';
+  trex-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEtPi2T/lOR9s64SVS4ETOmJgj//nKJxuGD8A+PZxcLb root@trex
+  '';
 in
 {
 
@@ -51,6 +54,8 @@ in
     mac-pubkey
     fuckup-root
     air-grw
+    yoga-root
+    trex-root
   ];
 
   security.sudo = {

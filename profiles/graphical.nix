@@ -13,9 +13,9 @@
   services.gnome.gnome-keyring.enable = true;
 
   /*
-  environment.loginShellInit = ''
+    environment.loginShellInit = ''
     [[ "$(tty)" == /dev/tty1 ]] && startsway
-  '';
+    '';
   */
 
   # services.ofono = {
@@ -124,6 +124,7 @@
 
   hardware.bluetooth = {
     enable = true;
+    powerOnBoot = true;
     settings = {
       General = {
         ControllerMode = "bredr";
@@ -209,8 +210,8 @@
 
   hardware.opengl = {
     enable = true;
-    #    driSupport = true;
-    #    driSupport32Bit = true;
-    #    extraPackages = with pkgs; [ libva ];
+    driSupport = true;
+    driSupport32Bit = true;
+    extraPackages = with pkgs; [ libva ];
   };
 }
