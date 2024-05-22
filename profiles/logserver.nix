@@ -47,12 +47,12 @@
         job_name = "node";
         static_configs = [{
           targets = [
-            "nixhost.lan:9100"
-            "fuckup.lan:9100"
-            "router.lan:9100"
-            "trex.lan:9100"
-            "rock-5b.lan:9100"
-            "air.lan:9100"
+            "nixhost:9100"
+            "fuckup:9100"
+            "router:9100"
+            "trex:9100"
+            "rock-5b:9100"
+            "air:9100"
           ];
         }];
       }
@@ -60,11 +60,11 @@
         job_name = "cadvisor";
         static_configs = [{
           targets = [
-            "nixhost.lan:58080"
-            "fuckup.lan:58080"
-            "router.lan:58080"
-            "trex.lan:58080"
-            "rock-5b.lan:58080"
+            "nixhost:58080"
+            "fuckup:58080"
+            "router:58080"
+            "trex:58080"
+            "rock-5b:58080"
           ];
         }];
       }
@@ -143,7 +143,7 @@
           { source_labels = [ ]; target_label = "__address__"; replacement = "localhost:9116"; }
         ];
         static_configs = [{
-          targets = [ "mikrotik.lan" "mikrotik-100g.lan" ];
+          targets = [ "mikrotik" "mikrotik-100g" ];
         }];
       }
     ];

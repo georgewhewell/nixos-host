@@ -28,25 +28,35 @@
 
   users.extraUsers."hass".extraGroups = [ "dialout" ];
 
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+  };
+
   services.home-assistant =
     let
       package = pkgs.home-assistant.override {
-        extraPackages = ps: with ps; [
-          defusedxml
-          python-miio
-          netdisco
-          aiounifi
-          aiohomekit
-          async-upnp-client
-          pyatv
-          paho-mqtt
-          withings-api
-          withings-sync
-          aiowithings
-          python-otbr-api
-          pyipp
-          pysnmp
-        ];
+        extraPackages = ps: with ps;
+          [
+            defusedxml
+            python-miio
+            netdisco
+            aiounifi
+            aiohomekit
+            async-upnp-client
+            pyatv
+            paho-mqtt
+            withings-api
+            withings-sync
+            aiowithings
+            python-otbr-api
+            pyipp
+            pysnmp
+            qingping-ble
+            xiaomi-ble
+            pyxiaomigateway
+            brother
+          ];
       };
     in
     {
