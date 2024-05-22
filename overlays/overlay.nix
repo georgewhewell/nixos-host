@@ -14,12 +14,8 @@ self: super:
       '';
     }
   );
-  waybar = super.waybar.override { pulseSupport = true; };
 
-  openrgb = super.openrgb.overrideAttrs (old: rec {
-    src = self.sources.openrgb;
-    buildInputs = old.buildInputs ++ [ super.mbedtls ];
-  });
+  waybar = super.waybar.override { pulseSupport = true; };
 
   steam = super.hello;
 
