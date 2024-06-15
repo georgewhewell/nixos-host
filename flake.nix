@@ -126,7 +126,7 @@
         system = "aarch64-darwin";
         modules = [
           ./machines/darwin-aarch64/darwin-configuration.nix
-
+          inputs.home-manager.darwinModules.home-manager
           ({ config, pkgs, ... }: {
             nixpkgs.overlays = [
               darwin.overlays.default
