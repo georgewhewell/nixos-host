@@ -3,7 +3,6 @@
 {
   imports = [
     ./system.nix
-    inputs.home-manager.darwinModules.home-manager
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -38,8 +37,6 @@
   nix.nixPath = [
     "nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixpkgs"
     "darwin-config=$HOME/.nixpkgs/darwin-configuration.nix"
-    "darwin=$HOME/.nix-defexpr/channels/darwin"
-    "$HOME/.nix-defexpr/channels"
   ];
 
   programs.zsh.enable = true;
