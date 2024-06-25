@@ -8,6 +8,9 @@
     rose-pine-hyprcursor.url = "github:ndom91/rose-pine-hyprcursor";
     rose-pine-hyprcursor.inputs.nixpkgs.follows = "nixpkgs";
 
+    nixpkgs-wayland.url = "github:nix-community/nixpkgs-wayland";
+    # hyprland.inputs.nixpkgs.follows = "nixpkgs";
+
     nixos-hardware.url = "github:NixOS/nixos-hardware";
     # nixos-hardware.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -79,6 +82,22 @@
         (f: import (./overlays + "/${f}"))
         (attrNames (readDir ./overlays)) ++ [
         # forced
+        (_: super:
+          let
+            addPatches = pkg: patches:
+              pkg.overrideAttrs (oldAttrs: {
+                patches = (oldAttrs.patches or [ ]) ++ patches;
+              });
+          in
+          {
+            nixpkgs_src = toString nixpkgs;
+            # hyprland-displaylink = with inputs.hyprland.packages.${super.system};
+            #   hyprland.override {
+            # wlroots = addPatches super.wlroots [ ./displaylink.patch ];
+            # wlroots-hyprland = addPatches wlroots-hyprland [ ./displaylink.patch ];
+            # };
+          })
+
       ];
 
       hardware =
@@ -151,12 +170,49 @@
         imports = builtins.attrValues self.nixosModules;
         nixpkgs.overlays = [
           (composeManyExtensions localOverlays)
-          (_: _: { nixpkgs_src = toString nixpkgs; })
+          (_: super:
+            let
+              addPatches = pkg: patches:
+                pkg.overrideAttrs (oldAttrs: {
+                  patches = (oldAttrs.patches or [ ]) ++ patches;
+                });
+            in
+            {
+              nixpkgs_src = toString nixpkgs;
+              sway-unwrapped = super.sway-unwrapped.override
+                ({
+                  wlroots = super.wlroots.overrideAttrs
+                    (o: {
+                      patches = o.patches or [ ] ++ [
+                        ./packages/patches/displaylink.patch
+                      ];
+                      # src = super.fetchFromGitLab {
+                      #   domain = "gitlab.freedesktop.org";
+                      #   owner = "kennylevinsen";
+                      #   repo = "wlroots";
+                      #   rev = "7e5bf4aef5c61401aaf777bd45cf393c538dac3e";
+                      #   sha256 = "sha256-k61e3tPIRCLo0vlvhbvM/xToX+Va9ahukX5l8eN80DQ=";
+                      # };
+                      # postPatch = ''
+                      #   sed -i 's/0.18.0-dev/0.18.0/' meson.build
+                      # '';
+                    });
+                });
+
+              # wlroots = addPatches super.wlroots [ ./displaylink.patch ];
+            })
           (_: mypkgs)
         ];
       };
 
-      nixosConfigurations = import ./machines colmena nixpkgs hardware self.nixosModule inputs consts;
+      nixosConfigurations = import
+        ./machines
+        colmena
+        nixpkgs
+        hardware
+        self.nixosModule
+        inputs
+        consts;
 
       packages = forAllSystems
         (system: mypkgs nixpkgs.legacyPackages.${system});
@@ -174,6 +230,7 @@
             };
           };
         in
-        mkGithubMatrix self.nixosConfigurations;
+        mkGithubMatrix
+          self.nixosConfigurations;
     };
 }
