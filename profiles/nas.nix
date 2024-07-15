@@ -57,15 +57,16 @@
     111 # nfs?
     2049 # nfs
     4000
-    4001
-    4002
-    4003
+    4001 # ipfs
+    5001 # kubo api
+    5080 # kubo gateway
     138 # smb
     139 # smb
     445 # smb
     548 # netatalk
     10809 # nbd
 
+    999 # tor
     # nfs
     20048
     40531
@@ -81,8 +82,9 @@
     138 # smb
     445 # smb
 
-    # ipfs
-    4001
+    4001 # ipfs
+
+    9999 # tor
 
     # nfs
     20048
@@ -183,6 +185,39 @@
   #     wantedBy = [ "multi-user.target" ];
   #   };
 
+  fileSystems."/var/lib/ipfs" =
+    {
+      device = "nvpool/root/ipfs";
+      fsType = "zfs";
+      neededForBoot = false;
+    };
+
+  services.kubo = {
+    enable = true;
+    dataDir = "/var/lib/ipfs";
+    localDiscovery = true;
+    enableGC = true;
+    extraFlags = [ ];
+    settings = {
+      API.HTTPHeaders."Access-Control-Allow-Origin" = [ "http://192.168.23.5:5001" ];
+      Addresses = {
+        API = [ "/ip4/192.168.23.5/tcp/5001" ];
+        Gateway = [ "/ip4/192.168.23.5/tcp/5080" ];
+      };
+    };
+  };
+
+  systemd.services.ipfs.unitConfig.RequiresMountsFor = [ config.services.kubo.dataDir ];
+
+  services.nginx.virtualHosts."gateway.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://192.168.23.5:5080";
+      proxyWebsockets = true;
+    };
+  };
+
   services.paperless = {
     enable = true;
     package = pkgs.paperless-ngx;
@@ -191,20 +226,13 @@
     };
   };
 
-  services.nginx.virtualHosts."paperless.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://localhost:28981";
-      proxyWebsockets = true;
-    };
-  };
-
-  services.rtorrent = {
-    enable = true;
-    downloadDir = "/mnt/downloads";
-    package = pkgs.jesec-rtorrent;
-    openFirewall = true;
-  };
+  # services.nginx.virtualHosts."paperless.satanic.link" = {
+  #   forceSSL = true;
+  #   enableACME = true;
+  #   locations."/" = {
+  #     proxyPass = "http://localhost:28981";
+  #     proxyWebsockets = true;
+  #   };
+  # };
 
 }

@@ -17,13 +17,16 @@
 
   wayland.windowManager.hyprland = {
     enable = true;
+    # package = pkgs.hyprland.override ({
+    #   wlroots = null;
+    # });
     plugins = [
       # hyprland-plugins.packages.${pkgs.system}.hyprbars
     ];
 
     settings = {
       # monitor = ",highrr,auto,1";
-      monitor = ",highres,auto,1";
+      monitor = "DVI-I-1,3840x2160@60.00Hz,auto,1";
       env = "HYPRCURSOR_THEME,rose-pine-hyprcursor";
       "$mod" = "ALT";
       bind =

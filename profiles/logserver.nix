@@ -21,23 +21,33 @@
     };
   };
 
+  # allow smartctl_exporter
+  services.udev.extraRules = ''
+    SUBSYSTEM=="nvme", KERNEL=="nvme[0-9]*", GROUP="disk"
+  '';
+
   services.prometheus = {
     enable = true;
     listenAddress = "0.0.0.0";
     exporters = {
       snmp = {
-        enable = false;
+        enable = true;
+        enableConfigCheck = false;
         configuration = null;
         configurationPath = "${pkgs.prometheus-snmp-exporter.src}/snmp.yml";
       };
       postgres = {
         enable = true;
+        user = "postgres";
         extraFlags = [ "--auto-discover-databases" ];
       };
       dnsmasq = {
         enable = true;
       };
       smartctl = {
+        enable = true;
+      };
+      tor = {
         enable = true;
       };
     };
@@ -53,6 +63,7 @@
             "trex:9100"
             "rock-5b:9100"
             "air:9100"
+            "jellyfin:9100"
           ];
         }];
       }
@@ -65,6 +76,7 @@
             "router:58080"
             "trex:58080"
             "rock-5b:58080"
+            "jellyfin:9100"
           ];
         }];
       }
@@ -112,7 +124,12 @@
           targets = [ "127.0.0.1:9633" ];
         }];
       }
-
+      {
+        job_name = "tor";
+        static_configs = [{
+          targets = [ "127.0.0.1:9130" ];
+        }];
+      }
       {
         job_name = "geth_node";
         metrics_path = "/debug/metrics/prometheus";
@@ -143,7 +160,7 @@
           { source_labels = [ ]; target_label = "__address__"; replacement = "localhost:9116"; }
         ];
         static_configs = [{
-          targets = [ "mikrotik" "mikrotik-100g" ];
+          targets = [ "mikrotik.satanic.link" "mikrotik-100g.satanic.link" "apc8B3FCB.satanic.link" ];
         }];
       }
     ];

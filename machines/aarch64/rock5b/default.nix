@@ -14,7 +14,7 @@
 
   sconfig = {
     profile = "server";
-    home-manager.enable = true;
+    home-manager.enable = false;
     home-manager.enableGraphical = false;
   };
 
@@ -68,6 +68,7 @@
     options iwlwifi power_save=0
     options iwlwifi uapsd_disable=1
     options iwlmvm power_scheme=1
+    options cfg80211 ieee80211_regdom="CH"
   '';
 
   # fileSystems = lib.mkForce {
@@ -180,11 +181,9 @@
         ];
         routes = [
           {
-            routeConfig = {
-              Gateway = "192.168.23.1";
-              # Table = 1000;
-              Metric = 1;
-            };
+            Gateway = "192.168.23.1";
+            # Table = 1000;
+            Metric = 1;
           }
         ];
         # routingPolicyRules = [
@@ -210,11 +209,9 @@
         ];
         routes = [
           {
-            routeConfig = {
-              Gateway = "192.168.23.1";
-              # Table = 1001;
-              Metric = 10;
-            };
+            Gateway = "192.168.23.1";
+            # Table = 1001;
+            Metric = 10;
           }
         ];
         # routingPolicyRules = [
@@ -263,8 +260,8 @@
   # require interface to be up before starting dnsmasq
   # systemd.services.dnsmasq.after = [ "sys-subsystem-net-devices-enu1u1.device" ];
 
-  services.irqbalance.enable = lib.mkDefault
-    true;
+  services.irqbalance.enable = lib.mkDefault true;
+  hardware.wirelessRegulatoryDatabase = true;
 
   powerManagement.enable = false;
   # powerManagement.cpuFreqGovernor = lib.mkDefault " ondemand ";

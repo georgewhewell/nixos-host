@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
 
@@ -12,15 +12,19 @@
 
   networking.hosts = {
     "127.0.0.1" = [ "localhost" ];
-    "192.168.23.254" = [ "router" "router.satanic.link" ];
+    "192.168.23.1" = [ "router" "router.satanic.link" ];
     "192.168.23.5" = [ "nixhost" "nixhost.satanic.link" ];
     "192.168.23.7" = [ "fuckup" "fuckup.satanic.link" ];
     "192.168.23.8" = [ "trex" "trex.satanic.link" ];
+    "192.168.23.9" = [ "mikrotik-100g" "mikrotik-100.satanic.link" ];
     "192.168.23.11" = [ "rock-5b" "rock-5b.satanic.link" ];
+    "192.168.23.206" = [ "jellyfin" ];
   };
-  # environment.etc.nixpkgs.source = pkgs.nixpkgs_src;
+
+  # environment.etc.nixpkgs.source = toString pkgs.nixpkgs_src;
 
   services.dbus.packages = [ pkgs.gcr ];
+
   environment.systemPackages = with pkgs; [
     #kitty.terminfo
     #alacritty.terminfo
@@ -31,9 +35,10 @@
 
   hardware.enableAllFirmware = true;
 
+  services.irqbalance.enable = lib.mkDefault true;
   services.fwupd.enable = true;
   programs.mosh.enable = true;
-  networking.firewall.allowedUDPPorts = [ 5000 ];
+
   nix.extraOptions = ''
     auto-optimise-store = true
     experimental-features = nix-command flakes
@@ -54,7 +59,6 @@
   # Enable the OpenSSH daemon.
   services.openssh = {
     enable = true;
-    # gatewayPorts = "yes"; # needed for pgp forward?
     extraConfig = ''
       StreamLocalBindUnlink yes
     '';

@@ -12,17 +12,12 @@
   services.nginx.virtualHosts."home.satanic.link" = {
     forceSSL = true;
     enableACME = true;
+    extraConfig = ''
+      proxy_buffering off;
+    '';
     locations."/" = {
       proxyPass = "http://127.0.0.1:8123";
-      extraConfig = ''
-        proxy_http_version 1.1;
-        proxy_redirect http:// https://;
-        proxy_set_header Host $host;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_buffering off;
-      '';
+      proxyWebsockets = true;
     };
   };
 
@@ -55,7 +50,7 @@
             qingping-ble
             xiaomi-ble
             pyxiaomigateway
-            brother
+            # brother
           ];
       };
     in
@@ -97,8 +92,6 @@
         frontend = { };
         history = { };
         config = { };
-        unifi = { };
-        # influxdb = { };
         zha = {
           zigpy_config.ota.ikea_provider = true;
         };

@@ -31,7 +31,7 @@
   };
 
   networking.firewall.allowedTCPPorts = [ 58080 ];
-
+  networking.nameservers = [ "192.168.23.1" ];
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
   '';

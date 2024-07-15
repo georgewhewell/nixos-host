@@ -113,12 +113,18 @@
           natural_scroll = "enabled";
           middle_emulation = "enabled";
         };
+        "10176:2136:WingCoolTouch_WingCoolTouch" = {
+          map_to_output = "DVI-I-1";
+        };
       };
       output = {
+        # disable whatever this is
+        "Virtual-1" = { disable = ""; };
         "eDP-1" = { scale = "1"; };
-        "DP-1" = { mode = "5120x1440@239.991Hz"; position = "1080 0"; };
-        "DP-2" = { mode = "3840x2160@239.991Hz"; };
-        "HDMI-A-1" = { mode = "3840x2160@60.000Hz"; transform = "90"; scale = "2"; position = "0 240"; };
+        "DP-1" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
+        "DP-2" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
+        "DP-3" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
+        "DVI-I-1" = { mode = "3840x2160@60.000Hz"; transform = "270"; scale = "2"; position = "0 240"; };
       };
       startup = [
         { command = "${pkgs.mako}/bin/mako"; always = true; }

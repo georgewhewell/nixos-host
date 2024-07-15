@@ -41,7 +41,7 @@
 
   boot.blacklistedKernelModules = [
     "nouveau"
-    "nvidia"
+    # "nvidia"
     "b43"
     #  "amdgpu"
   ];
