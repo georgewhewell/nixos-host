@@ -1,6 +1,10 @@
 { config, lib, pkgs, boot, networking, containers, ... }:
 
 {
+  systemd.services."container@gh-runner".unitConfig = {
+    ConditionPathExists = "/run/gh-runner-georgewhewell-nixos-host.secret";
+  };
+
   deployment.keys."gh-runner-georgewhewell-nixos-host.secret" =
     {
       keyCommand = [ "pass" "gh-runner/georgewhewell/nixos-host" ];
