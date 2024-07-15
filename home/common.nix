@@ -53,6 +53,9 @@
       "rock5b.satanic.link" = { };
       "trex.satanic.link" = { };
       "nixhost.satanic.link" = { };
+      "*.runpod.io".extraOptions = {
+        PubkeyAcceptedAlgorithms = "+ssh-rsa";
+      };
     };
   };
 
