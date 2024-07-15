@@ -1,10 +1,8 @@
 { config, lib, pkgs, inputs, ... }:
 
 let
-  wanInterface = "enp22s0f1np1";
-  lanInterfaces = [ "eno1" "eno3" "eno4" "enp22s0f0np0" ];
+  wanInterface = "enp1s0f0np0";
   vpnInterface = "wg0-vpn";
-  # vpnInterfaces = [ vpnInterface ];
   lanBridge = "br0.lan";
 in
 {
@@ -14,12 +12,6 @@ in
   boot.initrd.kernelModules = [
     "nf_tables"
     "nft_compat"
-  ];
-
-  boot.kernelModules = [
-    "ipmi_devintf"
-    "ipmi_si"
-    "tcp_bbr"
   ];
 
   environment.systemPackages = with pkgs; [
@@ -50,8 +42,8 @@ in
   boot.kernel.sysctl = {
     "net.ipv4.conf.all.forwarding" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
-    "net.ipv4.tcp_congestion_control" = "bbr";
-    "net.core.default_qdisc" = "fq_codel";
+    # "net.ipv4.tcp_congestion_control" = "bbr";
+    # "net.core.default_qdisc" = "fq_codel";
     # "net.ipv6.conf.all.accept_ra" = 1;
     # "net.ipv6.conf.all.request_prefix" = 1;
     # "net.ipv6.conf.all.autoconf" = 1;
@@ -65,35 +57,29 @@ in
     ];
   };
 
-  systemd.network = {
-    wait-online.enable = false;
-    netdevs = {
-      # Create the bridge interface
-      "20-${lanBridge}" = {
-        netdevConfig = {
-          Kind = "bridge";
-          Name = lanBridge;
-        };
+  systemd.network =
+    let
+      extraLinkConfig = {
+        # ReceiveChecksumOffload = "yes";
+        # TransmitChecksumOffload = true;
+        # TCPSegmentationOffload = true;
+        # GenericSegmentationOffload = true;
+        # GenericReceiveOffload = true;
+        # LargeReceiveOffload = true;
       };
-    };
-    networks =
-      let
-        createLanInterface = iface: {
-          name = "10-${iface}";
-          value = {
-            matchConfig.Name = iface;
-            networkConfig = {
-              Bridge = lanBridge;
-              ConfigureWithoutCarrier = true;
-            };
-            linkConfig.RequiredForOnline = "enslaved";
+    in
+    {
+      wait-online.enable = false;
+      netdevs = {
+        "20-${lanBridge}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = lanBridge;
           };
         };
-      in
-      lib.mkIf (lanInterfaces != null) (builtins.listToAttrs (map createLanInterface lanInterfaces))
-      // {
-        # Configure the bridge for its desired function
-        "40-${lanBridge}" = {
+      };
+      networks = {
+        "10-${lanBridge}" = {
           matchConfig.Name = lanBridge;
           bridgeConfig = { };
           address = [
@@ -101,28 +87,65 @@ in
           ];
           networkConfig = {
             ConfigureWithoutCarrier = true;
-          }; # Don't wait for it as it also would wait for wlan and DFS which takes around 5 min 
-          linkConfig.RequiredForOnline = "routeable";
+            IPv6AcceptRA = false;
+            IPv6SendRA = true;
+          };
+          # dhcpPrefixDelegationConfig = {
+          #   SubnetId = "auto";
+          #   Announce = true;
+          # };
+          # ipv6SendRAConfig = {
+          #   RouterLifetimeSec = 1800;
+          #   EmitDNS = false;
+          #   # DNS = "fd42:23:42:b864::1";
+          #   EmitDomains = false;
+          #   # Domains = [
+          #   #   "lan.lossy.network"
+          #   # ];
+          # };
+          linkConfig.RequiredForOnline = "yes";
         };
-        # "30-wlp0s30u4" = {
-        #   matchConfig = {
-        #     Type = "wlan";
-        #     WLANInterfaceType = "station";
-        #   };
-        #   address = [
-        #     "192.168.23.111/24"
-        #   ];
-        # };
-        "10-${wanInterface}" = {
+        "20-lan-25g" = {
+          matchConfig.Name = "enp1s0f1np1";
+          networkConfig = {
+            Bridge = lanBridge;
+            IPv6AcceptRA = false;
+            IPv6SendRA = true;
+          };
+          dhcpPrefixDelegationConfig = {
+            SubnetId = "auto";
+            Announce = true;
+          };
+          ipv6SendRAConfig = {
+            RouterLifetimeSec = 1800;
+            EmitDNS = false;
+            # DNS = "fd42:23:42:b864::1";
+            EmitDomains = false;
+            # Domains = [
+            #   "lan.lossy.network"
+            # ];
+          };
+          linkConfig = {
+            RequiredForOnline = "enslaved";
+          } // extraLinkConfig;
+        };
+        "20-lan-2-5g" = {
+          matchConfig.Driver = "igc";
+          networkConfig.Bridge = lanBridge;
+          linkConfig = {
+            RequiredForOnline = "enslaved";
+          } // extraLinkConfig;
+        };
+        "20-${wanInterface}" = {
           matchConfig.Name = wanInterface;
           networkConfig = {
             # start a DHCP Client for IPv4 Addressing/Routing
-            DHCP = "ipv4";
+            DHCP = true;
             # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
             IPv6AcceptRA = true;
             DNSOverTLS = true;
             DNSSEC = true;
-            IPv6PrivacyExtensions = false;
+            # IPv6PrivacyExtensions = false;
             IPForward = true;
             IgnoreCarrierLoss = true;
           };
@@ -133,22 +156,31 @@ in
             # Don't release IPv4 address on restart/reboots to avoid churn.
             SendRelease = false;
           };
+          dhcpV6Config = {
+            WithoutRA = "solicit";
+            PrefixDelegationHint = "::/56";
+          };
+          ipv6SendRAConfig = {
+            Managed = true;
+          };
           # make routing on this interface a dependency for network-online.target
-          linkConfig.RequiredForOnline = "routeable";
+          linkConfig = {
+            RequiredForOnline = "routable";
+          } // extraLinkConfig;
         };
       };
+    };
+
+  users.extraUsers.sf = {
+    extraGroups = [ ];
+    isNormalUser = true;
+    openssh.authorizedKeys.keys = [
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDsEs4RIxouNDuknNbiCyGet2xQ/v74eqUmtYILlsDc3XToJqo3S/0bjiwSFUViyns1jecn943tjVEKmsMA0aKjp2KM4lu1fwBD6z3c81H+oPFCmOyFCAierxjNsgSmr9VbZechVF8a5Tk24/kvbkbNysS5k+PpabepJxvE0Zx1Idp95Yw/8jLhYqzIU28MasYdSmGCBXyEJG4LRQmfR0GAsOOsmGTWQ8MT7WIkK0UatOVOG2TKdRvfuHKlKp/ioyByk0DYFeAKbJKI1hdl3Kn2ESArC2duOznrdvIPRgC32U9F9jOWDrl47kgkwJ9Eog3j3VG5vSLdxmLVi9lYs9HTro16K8z+9E85fG30aIYCtd5JgsWUBBI1M6sqNgCfHSECFJeVv/R+fdVWNmxMzb7PbL8GHIJwHuH1LT2LSoU+VycF4DkqNO6MzRuoeQfXmCdfRW+HjWVZQCs0D4YYQCvB6HfTuErRHrBYnvHDS39HWuuYvPDga3X+QlfZYFYUyCW7zZGf0soquSmo0BN2cQOW0Zj3Kq5+CrIisWQhJGwkN+mTkqF5u692ZSyAgo1Ae7npCc0ATf/42ZQrmgCw+BLIDNMwX/X5FN5gxugRNolgcLIgP8dDjesqmQIBka8R2IJx/lSNCuMjP+JNahDVsNW/9o9Mw+wL2UnSv3axQAkN1Q== sf@chaminade"
+    ];
   };
 
-  # networking.wireless = {
-  #   enable = true;
-  #   networks = {
-  #     VM4588425 = {
-  #       psk = "Jd6qrtjwnqrj";
-  #     };
-  #   };
-  # };
-
   networking = {
+    enableIPv6 = true;
     useNetworkd = true;
     useDHCP = false;
 
@@ -197,10 +229,6 @@ in
     #       } 
     #     }
     #   '';
-    # };
-
-    # bridges."${lanBridge}" = {
-    #   interfaces = lanInterfaces;
     # };
 
     domain = "lan";
@@ -254,7 +282,7 @@ in
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge ] ++ lanInterfaces;
+      trustedInterfaces = [ lanBridge ];
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = false;
@@ -303,31 +331,6 @@ in
           ];
         };
       };
-    };
-
-    interfaces = {
-      # Use DHCP to acquire IP from modem
-      "${wanInterface}" = {
-        useDHCP = true;
-        # proxyARP = true;
-      };
-
-      # Static IP on LAN
-      "${lanBridge}".ipv4.addresses = [{
-        address = "192.168.23.1";
-        prefixLength = 24;
-      }];
-
-      "eno2".ipv4.addresses = [{
-        address = "192.168.23.253";
-        prefixLength = 24;
-      }];
-
-      # Static VPN IP
-      # "${vpnInterface}".ipv4.addresses = [{
-      #   address = "192.168.24.1";
-      #   prefixLength = 24;
-      # }];
     };
 
     # wireguard = {
@@ -457,3 +460,4 @@ in
   #   dnsmasq.enable = true;
   # };
 }
+

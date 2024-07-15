@@ -13,6 +13,11 @@
 
   systemd.services.bitcoind.unitConfig.RequiresMountsFor = [ config.services.bitcoind.dataDir ];
 
+  # chown bitcoind data dir
+  systemd.services.bitcoind.preStart = ''
+    chown bitcoind:bitcoin -R /var/lib/bitcoin
+  '';
+
   nix-bitcoin = {
     generateSecrets = true;
     secretsDir = "/var/lib/bitcoind";

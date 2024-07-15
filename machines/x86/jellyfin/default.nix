@@ -7,7 +7,7 @@
   sconfig = {
     profile = "server";
     home-manager = {
-      enable = false;
+      enable = true;
       enableVscodeServer = false;
     };
     wireguard = {
@@ -15,7 +15,7 @@
     };
   };
 
-  deployment.targetHost = "192.168.23.254";
+  deployment.targetHost = "192.168.23.206";
   deployment.targetUser = "grw";
 
   imports =
@@ -24,6 +24,9 @@
       ../../../profiles/home.nix
       ../../../profiles/headless.nix
       ../../../profiles/uefi-boot.nix
+      ../../../profiles/nas-mounts.nix
+      ../../../profiles/intel-gfx.nix
+      ../../../services/jellyfin.nix
     ];
 
   services.iperf3 = {
@@ -50,5 +53,30 @@
     hostName = "jellyfin";
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
+  };
+
+  systemd.network = {
+    enable = true;
+    networks = {
+      "10-eth" = {
+        matchConfig.Driver = "r8169";
+        networkConfig = {
+          DHCP = "ipv4";
+          IPv6AcceptRA = true;
+          DNSOverTLS = true;
+          DNSSEC = true;
+          IPv6PrivacyExtensions = false;
+          IPForward = true;
+          IgnoreCarrierLoss = true;
+        };
+        dhcpV4Config = {
+          RouteMetric = 99;
+          UseDNS = true;
+          UseDomains = false;
+          SendRelease = true;
+        };
+        linkConfig.RequiredForOnline = "yes";
+      };
+    };
   };
 }

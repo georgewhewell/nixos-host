@@ -17,25 +17,27 @@
     libva
     clinfo
     intel-gpu-tools
+    jellyfin
+    jellyfin-web
+    jellyfin-ffmpeg
   ];
 
-  networking.localCommands = ''
-    ${pkgs.procps}/bin/sysctl -w dev.i915.perf_stream_paranoid=0
-  '';
+  nixpkgs.config.packageOverrides = pkgs: {
+    vaapiIntel = pkgs.vaapiIntel.override { enableHybridCodec = true; };
+  };
 
   hardware.opengl = {
     enable = true;
-    driSupport = true;
-    driSupport32Bit = true;
+    # driSupport32Bit = true;
     extraPackages = with pkgs; [
       libva
-      intel-compute-runtime
-      # intel-media-driver # LIBVA_DRIVER_NAME=iHD
-      # (vaapiIntel.override { enableHybridCodec = true; })
-      # libvdpau-va-gl
       intel-media-driver
-      intel-ocl
-      onevpl-intel-gpu
+      intel-vaapi-driver # previously vaapiIntel
+      vaapiVdpau
+      libvdpau-va-gl
+      intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
+      vpl-gpu-rt # QSV on 11th gen or newer
+      intel-media-sdk # QSV up to 11th gen
     ];
   };
 }

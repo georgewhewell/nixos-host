@@ -50,7 +50,6 @@
     opengl = {
       enable = true;
       driSupport32Bit = lib.mkForce false;
-      driSupport = true;
     };
   };
 

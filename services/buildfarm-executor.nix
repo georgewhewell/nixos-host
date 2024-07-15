@@ -14,7 +14,11 @@
         maxJobs = 16;
         speedFactor = 128;
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-        systems = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
+        systems = [
+          "x86_64-linux"
+          "i686-linux"
+          #  "aarch64-linux"
+        ];
       }
       {
         hostName = "rock-5b.satanic.link";

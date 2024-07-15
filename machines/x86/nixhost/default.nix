@@ -19,10 +19,10 @@
     [
       ../../../containers/radarr.nix
       ../../../containers/sonarr.nix
-      ../../../containers/gh-runner.nix
 
       ../../../profiles/common.nix
-      ../../../profiles/crypto.nix
+      ../../../profiles/crypto
+      ../../../profiles/development.nix
       ../../../profiles/headless.nix
       ../../../profiles/home.nix
       ../../../profiles/logserver.nix
@@ -31,7 +31,6 @@
       ../../../profiles/fastlan.nix
 
       ../../../services/buildfarm-slave.nix
-      ../../../services/docker.nix
       ../../../services/grafana.nix
       ../../../services/home-assistant/default.nix
       ../../../services/nginx.nix
@@ -46,6 +45,11 @@
     client = {
       enable = true;
       transparentProxy.enable = true;
+      socksListenAddress = {
+        IsolateDestAddr = true;
+        addr = "0.0.0.0";
+        port = 9050;
+      };
     };
 
     relay = {
@@ -55,13 +59,15 @@
 
     settings = {
       ORPort = 9999;
+      ControlPort = 9051;
+      SocksPolicy = [ "accept *:*" ];
     };
   };
 
   # boot.zfs.enableUnstable = true;
   # boot.kernelPackages = pkgs.linuxPackages_lto_broadwell;
-  # boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # boot.kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
 
   boot.zfs.requestEncryptionCredentials = false;
 
@@ -129,6 +135,7 @@
         interface=${lanBridge}
         dhcp-range=${lanBridge},192.168.23.20,192.168.23.249,6h
         dhcp-option=${lanBridge},3,192.168.23.1    # send default gateway
+
         dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # 10gb switch
         dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
         dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # x10 ipmi
@@ -137,7 +144,10 @@
         dhcp-host=06:f1:3e:03:27:8c,192.168.23.7   # fuckup
         dhcp-host=50:6b:4b:03:04:cb,192.168.23.8   # trex
         dhcp-host=48:A9:8A:93:42:4C,192.168.23.9   # 100gb switch
-        dhcp-host=c2:be:3b:97:be:27,192.168.23.48  # phone
+        dhcp-host=9c:6b:00:57:31:77,192.168.23.10  # trx90bmc
+        dhcp-host=28:29:86:8b:3f:cb,192.168.23.11  # apc ups
+        dhcp-host=b4:22:00:cf:18:63,192.168.23.12  # printer
+        dhcp-host=c8:f0:9e:de:3c:2f,192.168.23.13  # cerberus
 
         # hosted names
         address=/router/192.168.23.254
@@ -145,6 +155,7 @@
         address=/fuckup/192.168.23.7
         address=/trex/192.168.23.8
         address=/cloud/192.168.24.2
+        address=/jellyfin/192.168.23.206
         address=/^satanic.link/192.168.23.254
         address=/grafana.satanic.link/192.168.23.5
         address=/home.satanic.link/192.168.23.5
@@ -154,6 +165,10 @@
         address=/sonarr.satanic.link/192.168.23.5
         address=/eth-mainnet.satanic.link/192.168.23.5
         address=/eth-mainnet-ws.satanic.link/192.168.23.5
+        address=/hellas-mock-rpcserver.satanic.link/192.168.23.5
+        address=/hellas-finetune-api.satanic.link/192.168.23.5
+        address=/static.satanic.link/192.168.23.5
+        address=/gateway.satanic.link/192.168.23.5
       '';
     };
 
@@ -172,24 +187,13 @@
 
   systemd.network =
     let
-      bondName = "bond0";
       bridgeName = "br0.lan";
     in
     {
       enable = true;
-      wait-online.anyInterface = true;
+      # wait-online.anyInterface = true;
       netdevs = {
-        "10-${bondName}" = {
-          netdevConfig = {
-            Kind = "bond";
-            Name = "bond0";
-          };
-          bondConfig = {
-            Mode = "balance-rr";
-            TransmitHashPolicy = "layer3+4";
-          };
-        };
-        "20-${bridgeName}" = {
+        "10-${bridgeName}" = {
           netdevConfig = {
             Kind = "bridge";
             Name = bridgeName;
@@ -197,41 +201,33 @@
         };
       };
       networks = {
-        "50-${bridgeName}" = {
-          matchConfig.Name = bridgeName;
-          bridgeConfig = { };
-          address = [
-            "192.168.23.5/24"
-          ];
-          routes = [
-            { routeConfig.Gateway = "192.168.23.1"; }
-          ];
-          networkConfig = {
-            ConfigureWithoutCarrier = true;
-            IPv6AcceptRA = true;
-          };
-        };
-        "40-${bondName}" = {
-          matchConfig.Name = bondName;
-          linkConfig = {
-            RequiredForOnline = "carrier";
-          };
-          networkConfig = {
-            Bridge = bridgeName;
-            LinkLocalAddressing = "no";
-          };
-        };
         "20-ixgbe" = {
           matchConfig.Driver = "ixgbe";
-          networkConfig.Bond = bondName;
+          networkConfig.Bridge = bridgeName;
+          linkConfig.RequiredForOnline = "enslaved";
         };
-        "10-gbe" = {
+        "20-gbe" = {
           matchConfig.Driver = "igb";
           networkConfig = {
             Bridge = bridgeName;
             ConfigureWithoutCarrier = true;
           };
           linkConfig.RequiredForOnline = "enslaved";
+        };
+        "10-${bridgeName}" = {
+          matchConfig.Name = bridgeName;
+          bridgeConfig = { };
+          address = [
+            "192.168.23.5/24"
+          ];
+          routes = [
+            { Gateway = "192.168.23.1"; }
+          ];
+          networkConfig = {
+            ConfigureWithoutCarrier = true;
+            IPv6AcceptRA = true;
+          };
+          linkConfig.RequiredForOnline = "routable";
         };
       };
     };
@@ -250,37 +246,35 @@
 
   nix.settings.build-cores = lib.mkDefault 24;
 
+  # deployment.keys."google-domain-owner-key" = {
+  #   keyCommand = [ "pass" "google-domain-owner-key" ];
+  #   destDir = "/run/keys";
+  #   uploadAt = "pre-activation";
+  # };
 
+  # systemd.services.public-ip-sync-google-clouddns = {
+  #   environment = {
+  #     CLOUDSDK_CORE_PROJECT = "domain-owner";
+  #     CLOUDSDK_COMPUTE_ZONE = "eu-west-1";
+  #     GCLOUD_SERVICE_ACCOUNT_KEY_FILE = "/run/keys/google-domain-owner-key";
+  #     GCLOUD_DNS_ZONE_ID = "satanic-link";
+  #   };
+  #   script = ''
+  #     ${pkgs.public-ip-sync-google-clouddns}/bin/public-ip-sync-google-clouddns.sh -name "satanic.link."
+  #   '';
+  #   wantedBy = [ "multi-user.target" ];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     Restart = "no";
+  #   };
+  # };
 
-  deployment.keys."google-domain-owner-key" = {
-    keyCommand = [ "pass" "google-domain-owner-key" ];
-    destDir = "/run/keys";
-    uploadAt = "pre-activation";
-  };
-
-  systemd.services.public-ip-sync-google-clouddns = {
-    environment = {
-      CLOUDSDK_CORE_PROJECT = "domain-owner";
-      CLOUDSDK_COMPUTE_ZONE = "eu-west-1";
-      GCLOUD_SERVICE_ACCOUNT_KEY_FILE = "/run/keys/google-domain-owner-key";
-      GCLOUD_DNS_ZONE_ID = "satanic-link";
-    };
-    script = ''
-      ${pkgs.public-ip-sync-google-clouddns}/bin/public-ip-sync-google-clouddns.sh -name "satanic.link."
-    '';
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      Restart = "no";
-    };
-  };
-
-  systemd.timers.public-ip-sync-google-clouddns = {
-    partOf = [ "public-ip-sync-google-clouddns.service" ];
-    wantedBy = [ "multi-user.target" ];
-    timerConfig = {
-      OnBootSec = "2min";
-      OnUnitActiveSec = "3600";
-    };
-  };
+  # systemd.timers.public-ip-sync-google-clouddns = {
+  #   partOf = [ "public-ip-sync-google-clouddns.service" ];
+  #   wantedBy = [ "multi-user.target" ];
+  #   timerConfig = {
+  #     OnBootSec = "2min";
+  #     OnUnitActiveSec = "3600";
+  #   };
+  # };
 }

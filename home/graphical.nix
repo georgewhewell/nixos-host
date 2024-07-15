@@ -30,6 +30,7 @@
     wlr-randr
     xdg-utils
     kitty
+    gimp
 
     vlc
     tdesktop
@@ -44,6 +45,7 @@
     discord
     zoom-us
     slack
+    cool-retro-term
   ];
 
 }

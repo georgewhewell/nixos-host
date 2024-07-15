@@ -41,14 +41,8 @@
 
   fileSystems."/" =
     {
-      device = "/dev/mapper/vg1-nixos";
-      fsType = "f2fs";
-    };
-
-  fileSystems."/home/grw" =
-    {
-      device = "/dev/mapper/vg1-home";
-      fsType = "f2fs";
+      device = "/dev/nvme0n1p2";
+      fsType = "ext4";
     };
 
   fileSystems."/boot" =
@@ -72,14 +66,14 @@
     {
       enable = true;
       wait-online.anyInterface = true;
-      # netdevs = {
-      #   "20-${bridgeName}" = {
-      #     netdevConfig = {
-      #       Kind = "bridge";
-      #       Name = bridgeName;
-      #     };
-      #   };
-      # };
+      netdevs = {
+        "20-${bridgeName}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = bridgeName;
+          };
+        };
+      };
       networks = {
         "99-ipheth" = {
           matchConfig.Driver = "ipheth";
@@ -100,36 +94,30 @@
           };
           linkConfig.RequiredForOnline = "no";
         };
-        # "50-usbeth" = {
-        #   matchConfig.Driver = "r8152";
-        #   networkConfig = {
-        #     Bridge = bridgeName;
-        #     ConfigureWithoutCarrier = true;
-        #   };
-        #   linkConfig.RequiredForOnline = "enslaved";
-        # };
-        # "40-br0" = {
-        #   matchConfig.Name = bridgeName;
-        #   bridgeConfig = { };
-        #   address = [
-        #     "192.168.23.7/24"
-        #   ];
-        #   routes = [
-        #     { routeConfig.Gateway = "192.168.23.1"; }
-        #   ];
-        #   networkConfig = {
-        #     ConfigureWithoutCarrier = true;
-        #     IPv6AcceptRA = true;
-        #   };
-        # };
-        # "10-lan-10g" = {
-        #   matchConfig.Driver = "ixgbe";
-        #   networkConfig = {
-        #     Bridge = bridgeName;
-        #     ConfigureWithoutCarrier = true;
-        #   };
-        #   linkConfig.RequiredForOnline = "enslaved";
-        # };
+        "50-usbeth" = {
+          matchConfig.Driver = "r8152";
+          networkConfig = {
+            Bridge = bridgeName;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
+        "40-br0" = {
+          matchConfig.Name = bridgeName;
+          bridgeConfig = { };
+          address = [
+            "192.168.23.7/24"
+          ];
+          routes = [
+            {
+              Gateway = "192.168.23.1";
+            }
+          ];
+          networkConfig = {
+            ConfigureWithoutCarrier = true;
+            IPv6AcceptRA = false;
+          };
+        };
         "10-lan" = {
           matchConfig.Name = "enp0s31f6";
           networkConfig = {
@@ -141,12 +129,16 @@
       };
     };
 
+  services.mullvad-vpn.enable = true;
+  services.resolved.enable = true;
+
   networking = {
     hostName = "fuckup";
     wireless.enable = false;
     useDHCP = false;
-    # enableIPv6 = true;
+    enableIPv6 = true;
     nameservers = [ "192.168.23.5" ];
+    nftables.enable = true;
 
     firewall = {
       enable = true;
@@ -168,7 +160,7 @@
         45085
         57747 # rpcinfo -p
       ];
-      checkReversePath = false;
+      checkReversePath = "loose";
     };
   };
 }

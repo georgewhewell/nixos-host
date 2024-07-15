@@ -11,9 +11,11 @@
   i18n.supportedLocales = [ (config.i18n.defaultLocale + "/UTF-8") ];
 
   sound.enable = false;
+  services = {
+    irqbalance.enable = lib.mkForce false;
+  };
 
   networking = {
-    enableIPv6 = false;
     interfaces.eth0 = {
       useDHCP = true;
     };

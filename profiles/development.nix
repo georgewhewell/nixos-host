@@ -40,8 +40,9 @@
     screen
   ];
 
+  environment.etc."nixpkgs".source = pkgs.nixpkgs_src;
   nix.nixPath = [
-    "nixpkgs=${pkgs.nixpkgs_src}"
+    "nixpkgs=/etc/nixpkgs"
   ];
 
   services.udev.packages = [ pkgs.platformio ];

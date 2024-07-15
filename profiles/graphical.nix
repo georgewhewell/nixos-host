@@ -29,7 +29,19 @@
   #   # gtkUsePortal = true;
   #   wlr.enable = true;
   # };
-  services.xserver.enable = false;
+  # services.xserver.enable = false;
+
+  # NOTE: Just to try wlroots + displaylink
+  environment.etc."modprobe.d/evdi.conf".text = ''
+    softdep evdi pre: i915 drm_display_helper
+    options evdi initial_device_count=2 initial_loglevel=3
+  '';
+
+  services.xserver.videoDrivers = [ "displaylink" "modesetting" ];
+  boot.extraModulePackages = [
+    config.boot.kernelPackages.evdi
+  ];
+
   xdg.portal.config.common.default = "*";
   environment.systemPackages = with pkgs; [
     # save settings
@@ -98,26 +110,6 @@
     };
   };
 
-  # gtk = {
-  #   enable = true;
-  #   font.name = "sans";
-  #   gtk2.extraConfig = "gtk-application-prefer-dark-theme = true";
-  #   gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
-  #   theme = {
-  #     package = pkgs.ayu-theme-gtk;
-  #     name = "Ayu-Dark";
-  #   };
-  # };
-
-  # home.qt = {
-  #   enable = true;
-  #   platformTheme = "gnome";
-  #   style = {
-  #     name = "adwaita";
-  #     package = pkgs.adwaita-qt;
-  #   };
-  # };
-
   services.upower = {
     enable = true;
   };
@@ -135,11 +127,6 @@
 
   services.blueman.enable = true;
 
-  # hardware.sane = {
-  #   enable = true;
-  #   snapshot = true;
-  #   extraBackends = [ pkgs.hplipWithPlugin ];
-  # };
   zramSwap.enable = true;
 
   services.avahi = {
@@ -170,30 +157,6 @@
         monospace = [ "Hack Nerd Font" ];
         emoji = [ "Noto Color Emoji" ];
       };
-      # localConf = ''
-      #   <?xml version="1.0"?>
-      #   <!DOCTYPE fontconfig SYSTEM q"fonts.dtd">
-      #   <fontconfig>
-      #       <alias binding="weak">
-      #           <family>monospace</family>
-      #           <prefer>
-      #               <family>emoji</family>
-      #           </prefer>
-      #       </alias>
-      #       <alias binding="weak">
-      #           <family>sans-serif</family>
-      #           <prefer>
-      #               <family>emoji</family>
-      #           </prefer>
-      #       </alias>
-      #       <alias binding="weak">
-      #           <family>serif</family>
-      #           <prefer>
-      #               <family>emoji</family>
-      #           </prefer>
-      #       </alias>
-      #   </fontconfig>
-      # '';
     };
     packages = with pkgs; [
       (nerdfonts.override { fonts = [ "Hack" ]; })
@@ -210,7 +173,6 @@
 
   hardware.opengl = {
     enable = true;
-    driSupport = true;
     driSupport32Bit = true;
     extraPackages = with pkgs; [ libva ];
   };

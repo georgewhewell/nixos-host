@@ -1,47 +1,6 @@
 { config, lib, pkgs, ... }:
 
 {
-
-  /*
-    # Use gpg-agent for ssh
-    programs.ssh = {
-    startAgent = false;
-    agentTimeout = "1h";
-    extraConfig = ''
-    #RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra
-    '';
-    };
-
-    programs.gnupg.agent = {
-    enable = true;
-    enableSSHSupport = true;
-    enableExtraSocket = true;
-    };
-
-    # Enable smart card daemon
-    services.pcscd.enable = true;
-
-    # Add pass chrome extension
-    programs.browserpass.enable = true;
-
-    # Enable keybase
-    services.keybase.enable = true;
-    services.kbfs.enable = true;
-
-    # Pass / yubikey utils
-    environment.systemPackages = with pkgs; [
-    pass
-    gnupg
-    #    yubikey-personalization
-    #    yubikey-manager
-    ];
-    # make uf2 give permission on yubikey to users
-    services.udev.packages = with pkgs; [
-    libu2f-host
-    yubikey-personalization
-    ];
-
-  */
   services.udev.extraRules = ''
     # Copyright (C) 2013-2015 Yubico AB
     #

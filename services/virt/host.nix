@@ -4,27 +4,34 @@
   # Turn on virt
   virtualisation.libvirtd = {
     enable = true;
-    qemu.swtpm.enable = true;
-    qemu.verbatimConfig = ''
-      namespaces = []
+    onBoot = "start";
+    allowedBridges = [ "br0" ];
+    qemu = {
+      ovmf.enable = true;
+      swtpm.enable = true;
+      verbatimConfig = ''
+        namespaces = []
 
-      # Whether libvirt should dynamically change file ownership
-      dynamic_ownership = 0
-    '';
+        # Whether libvirt should dynamically change file ownership
+        dynamic_ownership = 0
+      '';
+    };
   };
 
-  /*
+  programs.virt-manager.enable = true;
+
+  # /*
   environment.systemPackages = with pkgs; [
-    virt-manager
-    virt-viewer
+    # virt-manager
+    # virt-viewer
     spice-gtk # fix usb redirect
     mstflint # mlx firmware
     pciutils
   ];
-  */
+  # */
   boot.kernelParams = [
     # Use IOMMU
-    "intel_iommu=on"
+    # "intel_iommu=on"
 
     # Needed by OS X
     "kvm.ignore_msrs=1"
@@ -49,8 +56,6 @@
   boot.kernelModules = [
     "vfio"
     "vfio_pci"
-    "vfio_iommu_type1"
-    "nct6775"
-    "coretemp"
+    # "vfio_iommu_type1"
   ];
 }

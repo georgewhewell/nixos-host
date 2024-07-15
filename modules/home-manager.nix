@@ -24,10 +24,10 @@ in
         imports = [
           ../home/common.nix
           ../home/linux.nix
-        ] ++ lib.optionals cfg.enableGraphical [
+        ] ++ (if cfg.enableGraphical then [
           ../home/graphical.nix
           ../home/gpg.nix
-        ] ++ lib.optionals cfg.enableLaptop [
+        ] else [ ../home/headless.nix ]) ++ lib.optionals cfg.enableLaptop [
           ../home/laptop.nix
         ] ++ lib.optionals cfg.enableVscodeServer [
           ../home/vscode-server.nix

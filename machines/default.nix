@@ -16,6 +16,7 @@ in
   yoga = sys "x86_64-linux" [ physical ./x86/yoga ];
   router = sys "x86_64-linux" [ physical ./x86/router ];
   trex = sys "x86_64-linux" [ physical ./x86/trex ];
+  jellyfin = sys "x86_64-linux" [ physical ./x86/jellyfin ];
 
   cloud = sys "x86_64-linux" [ physical ./x86/cloud ];
 

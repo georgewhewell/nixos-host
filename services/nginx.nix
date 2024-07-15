@@ -14,9 +14,22 @@
     recommendedTlsSettings = true;
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
+    recommendedProxySettings = true;
+  };
 
-    # breaks cache-cache
-    /* recommendedProxySettings = true; */
+  fileSystems."/var/www/static" =
+    {
+      device = "nvpool/root/www";
+      fsType = "zfs";
+      options = [ "nofail" ];
+    };
+
+  services.nginx.virtualHosts."static.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      root = "/var/www/static";
+    };
   };
 
   services.prometheus.exporters = {
@@ -34,9 +47,8 @@
     forceSSL = true;
     enableACME = true;
     locations."/" = {
-      proxyPass = "http://192.168.23.254:8096";
+      proxyPass = "http://192.168.23.206:8096";
       proxyWebsockets = true;
     };
   };
-
 }
