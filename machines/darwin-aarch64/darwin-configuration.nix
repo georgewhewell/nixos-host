@@ -12,10 +12,6 @@
     home = "/Users/grw";
   };
 
-  environment.systemPackages = [
-    pkgs.kitty
-  ];
-
   home-manager.users.grw = { ... }: {
     imports = [
       ../../home/common.nix
