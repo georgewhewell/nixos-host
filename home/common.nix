@@ -14,24 +14,23 @@
   home.stateVersion = "22.05";
   nixpkgs.config.allowUnfree = true;
 
-  programs.direnv = {
-    enable = true;
-    enableZshIntegration = true;
-  };
-
   programs = {
     bat.enable = true;
+    direnv = {
+      enable = true;
+      enableZshIntegration = true;
+    };
     fzf.enable = true;
+    gpg.enable = true;
+    ripgrep.enable = true;
+    tmux.enable = true;
   };
 
   home.packages = with pkgs; [
-    bat
     pv
     eza
-    ripgrep
     pwgen
     docker-compose
-    tmux
     btop
     mosh
     mtr
@@ -78,11 +77,6 @@
       (text "Uptime")
       (text "Systemd")
     ]);
-  };
-
-  programs.tmux = {
-    enable = true;
-    # setw -g mouse on
   };
 
   programs.password-store = {

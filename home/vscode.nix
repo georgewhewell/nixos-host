@@ -14,8 +14,8 @@
       "editor.formatOnType" = true;
       "editor.inlineSuggest.enabled" = true;
       "editor.codeActionsOnSave" = {
-        "source.fixAll" = true;
-        "source.organizeImports" = true;
+        "source.fixAll" = "explicit";
+        "source.organizeImports" = "explicit";
       };
       "[rust]" = {
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
@@ -31,7 +31,7 @@
       jnoortheen.nix-ide
       #golang.go
       hashicorp.terraform
-      # viktorqvarfordt.vscode-pitch-black-theme
+      viktorqvarfordt.vscode-pitch-black-theme
       github.copilot
       rust-lang.rust-analyzer
       ms-vscode-remote.remote-ssh
