@@ -7,7 +7,7 @@ let
 in
 
 {
-  imports = [ inputs.vifino.nixosModules.vpp ];
+  # imports = [ inputs.vifino.nixosModules.vpp ];
 
   options.sconfig.vpp-router = {
     enable = lib.mkEnableOption "VPP router";
@@ -169,7 +169,7 @@ in
         firewall.enable = false;
       };
 
-      networking.nameservers = [ "192.168.23.5" ];
+      networking.nameservers = [ "192.168.23.1" ];
 
       boot.kernelParams = [
         "intel_iommu=on"
@@ -199,40 +199,40 @@ in
       services.irqbalance.enable = lib.mkForce false;
       # nix
       # set num hugepages..
-      services.vpp = {
-        enable = cfg.enable;
-        # package = package.overrideAttrs (o: {
-        #   src = pkgs.fetchFromGitHub {
-        #     owner = "FDio";
-        #     repo = "vpp";
-        #     rev = "v${version}";
-        #     hash = "sha256-Cfm0Xzsx1UgUvIIeq5wBN6tA9ynCUa5bslEQk8wbd6E=";
-        #   };
-        # });
-        uioDriver = "vfio-pci";
-        inherit bootstrap;
-        # statsegSize = 32;
-        # mainHeapSize = 512;
-        numberNumaNodes = 1;
-        # buffersPerNuma = 8;
+    #   services.vpp = {
+    #     enable = cfg.enable;
+    #     # package = package.overrideAttrs (o: {
+    #     #   src = pkgs.fetchFromGitHub {
+    #     #     owner = "FDio";
+    #     #     repo = "vpp";
+    #     #     rev = "v${version}";
+    #     #     hash = "sha256-Cfm0Xzsx1UgUvIIeq5wBN6tA9ynCUa5bslEQk8wbd6E=";
+    #     #   };
+    #     # });
+    #     uioDriver = "vfio-pci";
+    #     inherit bootstrap;
+    #     # statsegSize = 32;
+    #     # mainHeapSize = 512;
+    #     numberNumaNodes = 1;
+    #     # buffersPerNuma = 8;
 
-        workers = 4;
-        pollSleepUsec = 10;
-        # additionalHugePages = 512; #  ??
-        extraConfig = ''
-          dpdk {
-            ${builtins.concatStringsSep "\n" (map (port: ''
-            dev ${port}
-            '') cfg.dpdks)}
-          }
-        '';
-      };
+    #     workers = 4;
+    #     pollSleepUsec = 10;
+    #     # additionalHugePages = 512; #  ??
+    #     extraConfig = ''
+    #       dpdk {
+    #         ${builtins.concatStringsSep "\n" (map (port: ''
+    #         dev ${port}
+    #         '') cfg.dpdks)}
+    #       }
+    #     '';
+    #   };
 
-      # restart automatically
-      systemd.services.vpp.serviceConfig = {
-        Restart = "always";
-        RestartSec = "5";
-      };
+    #   # restart automatically
+    #   systemd.services.vpp.serviceConfig = {
+    #     Restart = "always";
+    #     RestartSec = "5";
+    #   };
 
     };
 }

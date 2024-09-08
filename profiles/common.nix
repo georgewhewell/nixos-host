@@ -12,13 +12,13 @@
 
   networking.hosts = {
     "127.0.0.1" = [ "localhost" ];
-    "192.168.23.1" = [ "router" "router.satanic.link" ];
-    "192.168.23.5" = [ "nixhost" "nixhost.satanic.link" ];
-    "192.168.23.7" = [ "fuckup" "fuckup.satanic.link" ];
-    "192.168.23.8" = [ "trex" "trex.satanic.link" ];
-    "192.168.23.9" = [ "mikrotik-100g" "mikrotik-100.satanic.link" ];
-    "192.168.23.11" = [ "rock-5b" "rock-5b.satanic.link" ];
-    "192.168.23.206" = [ "jellyfin" ];
+    "192.168.23.1" = [ "router" ];
+    "192.168.23.5" = [ "nixhost" ];
+    "192.168.23.7" = [ "fuckup" ];
+    "192.168.23.8" = [ "trex" ];
+    "192.168.23.9" = [ "mikrotik-100g" ];
+    "192.168.23.11" = [ "rock-5b" ];
+    "192.168.23.14" = [ "jellyfin" ];
   };
 
   # environment.etc.nixpkgs.source = toString pkgs.nixpkgs_src;
@@ -31,6 +31,7 @@
     ethtool
     iotop
     rsync
+    ncdu
   ];
 
   hardware.enableAllFirmware = true;

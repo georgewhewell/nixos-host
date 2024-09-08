@@ -1,4 +1,10 @@
-{ config, lib, pkgs, ... }: {
+{ config, lib, pkgs, ... }:
+
+{
+
+  imports = [
+    ./zed.nix
+  ];
 
   programs.direnv = {
     enable = true;

@@ -10,7 +10,6 @@
 
   i18n.supportedLocales = [ (config.i18n.defaultLocale + "/UTF-8") ];
 
-  sound.enable = false;
   services = {
     irqbalance.enable = lib.mkForce false;
   };
@@ -20,6 +19,6 @@
       useDHCP = true;
     };
     useHostResolvConf = false;
-    nameservers = [ "192.168.23.5" ];
+    nameservers = [ "192.168.23.1" ];
   };
 }

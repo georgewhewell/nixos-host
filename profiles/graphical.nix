@@ -9,7 +9,7 @@
   services.pcscd.enable = true;
 
   # enable sway
-  security.pam.services.swaylock = { };
+  # security.pam.services.swaylock = { };
   services.gnome.gnome-keyring.enable = true;
 
   /*
@@ -110,9 +110,9 @@
     };
   };
 
-  services.upower = {
-    enable = true;
-  };
+  # services.upower = {
+  #   enable = true;
+  # };
 
   hardware.bluetooth = {
     enable = true;
@@ -171,9 +171,8 @@
     ];
   };
 
-  hardware.opengl = {
+  hardware.graphics = {
     enable = true;
-    driSupport32Bit = true;
     extraPackages = with pkgs; [ libva ];
   };
 }

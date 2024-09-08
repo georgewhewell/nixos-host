@@ -1,9 +1,10 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
 
   imports = [
     ./alacritty.nix
+    ./cursor.nix
     ./sway.nix
     ./firefox.nix
     ./thunderbird.nix
@@ -38,6 +39,7 @@
     monero-gui
     calibre
     xournal
+    # inputs.zed
   ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
     spotify
     signal-desktop
@@ -46,6 +48,25 @@
     zoom-us
     slack
     cool-retro-term
+    openshot-qt
   ];
+
+  # gtk = {
+  #   enable = true;
+  #   theme = {
+  #     package = pkgs.flat-remix-gtk;
+  #     name = "Flat-Remix-GTK-Grey-Darkest";
+  #   };
+
+  #   iconTheme = {
+  #     package = pkgs.gnome.adwaita-icon-theme;
+  #     name = "Adwaita";
+  #   };
+
+  #   font = {
+  #     name = "Sans";
+  #     size = 11;
+  #   };
+  # };
 
 }

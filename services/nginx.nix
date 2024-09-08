@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
+
   networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   security.acme = {
@@ -17,13 +18,6 @@
     recommendedProxySettings = true;
   };
 
-  fileSystems."/var/www/static" =
-    {
-      device = "nvpool/root/www";
-      fsType = "zfs";
-      options = [ "nofail" ];
-    };
-
   services.nginx.virtualHosts."static.satanic.link" = {
     forceSSL = true;
     enableACME = true;
@@ -32,10 +26,68 @@
     };
   };
 
+  services.nginx.virtualHosts."gateway.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://192.168.23.5:5080";
+      proxyWebsockets = true;
+    };
+  };
+
+  services.nginx.virtualHosts."grafana.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://192.168.23.5:3005";
+      proxyWebsockets = true;
+      # extraConfig = ''
+      #   proxy_set_header Host grafana.satanic.link;
+      # '';
+    };
+  };
+
+  services.nginx.virtualHosts."home.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    extraConfig = ''
+      proxy_buffering off;
+    '';
+    locations."/" = {
+      proxyPass = "http://192.168.23.5:8123";
+      proxyWebsockets = true;
+    };
+  };
+
+
+  services.nginx.virtualHosts."radarr.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      extraConfig = ''
+        proxy_buffering off;
+      '';
+      proxyPass = "http://192.168.23.16:7878";
+      proxyWebsockets = true;
+    };
+  };
+
+  services.nginx.virtualHosts."sonarr.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      extraConfig = ''
+        proxy_buffering off;
+      '';
+      proxyPass = "http://192.168.23.15:8989";
+      proxyWebsockets = true;
+    };
+  };
+
   services.prometheus.exporters = {
     nginx = {
       enable = true;
-      openFirewall = true;
+      openFirewall = false;
     };
   };
 
@@ -47,7 +99,7 @@
     forceSSL = true;
     enableACME = true;
     locations."/" = {
-      proxyPass = "http://192.168.23.206:8096";
+      proxyPass = "http://192.168.23.14:8096";
       proxyWebsockets = true;
     };
   };

@@ -2,18 +2,12 @@
 
 {
 
-  imports = [
-    # inputs.rose-pine-hyprcursor.nixosModules.${pkgs.system}.default
+  home.packages = with pkgs; [
+    kitty
+    alacritty
+    grimblast
+    rofi
   ];
-
-  home.packages = with pkgs;
-    [
-      kitty
-      alacritty
-      grimblast
-      rofi
-      inputs.rose-pine-hyprcursor.packages.${pkgs.system}.default
-    ];
 
   wayland.windowManager.hyprland = {
     enable = true;
@@ -27,7 +21,6 @@
     settings = {
       # monitor = ",highrr,auto,1";
       monitor = "DVI-I-1,3840x2160@60.00Hz,auto,1";
-      env = "HYPRCURSOR_THEME,rose-pine-hyprcursor";
       "$mod" = "ALT";
       bind =
         [
