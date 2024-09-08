@@ -26,7 +26,6 @@
 
       ../../../services/buildfarm-slave.nix
       ../../../services/buildfarm-executor.nix
-
     ];
 
   # boot.kernelPackages = pkgs.linuxPackages_latest_lto_skylake;
@@ -78,12 +77,12 @@
         "99-ipheth" = {
           matchConfig.Driver = "ipheth";
           networkConfig = {
-            DHCP = "ipv4";
+            DHCP = "yes";
             IPv6AcceptRA = true;
+            IPv6Forwarding = true;
             DNSOverTLS = true;
             DNSSEC = true;
             IPv6PrivacyExtensions = false;
-            IPForward = true;
             IgnoreCarrierLoss = true;
           };
           dhcpV4Config = {
@@ -114,8 +113,12 @@
             }
           ];
           networkConfig = {
+            IPv6AcceptRA = true;
+            IPv6Forwarding = true;
+            IPv4Forwarding = true;
+            IPv6PrivacyExtensions = true;
             ConfigureWithoutCarrier = true;
-            IPv6AcceptRA = false;
+            IgnoreCarrierLoss = true;
           };
         };
         "10-lan" = {
@@ -137,7 +140,7 @@
     wireless.enable = false;
     useDHCP = false;
     enableIPv6 = true;
-    nameservers = [ "192.168.23.5" ];
+    nameservers = [ "192.168.23.1" ];
     nftables.enable = true;
 
     firewall = {

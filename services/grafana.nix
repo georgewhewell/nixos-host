@@ -3,7 +3,7 @@
 {
   services.grafana = {
     enable = true;
-    addr = "127.0.0.1";
+    addr = "192.168.23.5";
     port = 3005;
     rootUrl = "https://grafana.satanic.link";
     settings = {
@@ -15,6 +15,7 @@
   };
 
   systemd.services.grafana.after = [ "grafana-password.secret.service" ];
+  
   deployment.keys =
     {
       "grafana-password.secret" = {
@@ -25,17 +26,4 @@
         uploadAt = "pre-activation";
       };
     };
-
-  services.nginx.virtualHosts."grafana.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:3005";
-      proxyWebsockets = true;
-      # extraConfig = ''
-      #   proxy_set_header Host grafana.satanic.link;
-      # '';
-    };
-  };
-
 }

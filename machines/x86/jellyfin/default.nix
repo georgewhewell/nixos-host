@@ -2,7 +2,7 @@
 
 {
   /*
-    router: cwwk 8845hs board 
+    router: cwwk 8845hs board
   */
   sconfig = {
     profile = "server";
@@ -15,11 +15,10 @@
     };
   };
 
-  deployment.targetHost = "192.168.23.206";
+  deployment.targetHost = "192.168.23.14";
   deployment.targetUser = "grw";
 
-  imports =
-    [
+  imports = [
       ../../../profiles/common.nix
       ../../../profiles/home.nix
       ../../../profiles/headless.nix
@@ -34,7 +33,15 @@
     openFirewall = true;
   };
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot = {
+    kernelPackages = pkgs.linuxPackages_latest;
+    initrd.kernelModules = [
+      "bcachefs"
+      "ixgbe"
+      "r8169"
+      "nfsv4"
+    ];
+  };
 
   fileSystems."/" =
     {
@@ -53,20 +60,38 @@
     hostName = "jellyfin";
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
+    useNetworkd = true;
+    useDHCP = false;
   };
 
   systemd.network = {
     enable = true;
+    wait-online.anyInterface = true;
     networks = {
-      "10-eth" = {
+      "10-10g" = {
+        matchConfig.Driver = "ixgbe";
+        networkConfig = {
+          DHCP = "yes";
+          IPv6AcceptRA = true;
+          IPv6PrivacyExtensions = true;
+          IgnoreCarrierLoss = true;
+        };
+        dhcpV4Config = {
+          RouteMetric = 1;
+          UseDNS = true;
+          UseDomains = false;
+          SendRelease = true;
+        };
+        linkConfig.RequiredForOnline = "routable";
+      };
+      "10-gbit" = {
         matchConfig.Driver = "r8169";
         networkConfig = {
-          DHCP = "ipv4";
+          DHCP = "yes";
           IPv6AcceptRA = true;
           DNSOverTLS = true;
           DNSSEC = true;
-          IPv6PrivacyExtensions = false;
-          IPForward = true;
+          IPv6PrivacyExtensions = true;
           IgnoreCarrierLoss = true;
         };
         dhcpV4Config = {
@@ -75,7 +100,7 @@
           UseDomains = false;
           SendRelease = true;
         };
-        linkConfig.RequiredForOnline = "yes";
+        linkConfig.RequiredForOnline = "no";
       };
     };
   };

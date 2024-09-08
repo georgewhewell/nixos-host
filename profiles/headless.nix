@@ -2,7 +2,6 @@
 
 {
 
-  sound.enable = lib.mkDefault false;
   services.xserver.enable = false;
 
 }

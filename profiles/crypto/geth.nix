@@ -118,38 +118,4 @@
     ConditionPathExists = config.services.geth.mainnet.authrpc.jwtsecret;
   };
 
-  # services.nginx.virtualHosts = {
-  #   "eth-mainnet.satanic.link" = {
-  #     forceSSL = true;
-  #     enableACME = true;
-  #     locations."/" = {
-  #       proxyPass = "http://localhost:${toString config.services.geth.mainnet.http.port}";
-  #     };
-  #   };
-
-  #   "eth-mainnet-ws.satanic.link" = {
-  #     forceSSL = true;
-  #     enableACME = true;
-  #     locations."/" = {
-  #       proxyPass = "http://localhost:${toString config.services.geth.mainnet.websocket.port}";
-  #       proxyWebsockets = true;
-  #     };
-  #   };
-  #   # "reth-mainnet.satanic.link" = {
-  #   #   forceSSL = true;
-  #   #   enableACME = true;
-  #   #   locations."/" = {
-  #   #     proxyPass = "http://localhost:${toString 8549}";
-  #   #   };
-  #   # };
-  #   # "reth-mainnet-ws.satanic.link" = {
-  #   #   forceSSL = true;
-  #   #   enableACME = true;
-  #   #   locations."/" = {
-  #   #     proxyPass = "http://localhost:${toString 8549}";
-  #   #     proxyWebsockets = true;
-  #   #   };
-  #   # };
-  # };
-
 }

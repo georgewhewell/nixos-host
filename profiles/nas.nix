@@ -209,15 +209,6 @@
 
   systemd.services.ipfs.unitConfig.RequiresMountsFor = [ config.services.kubo.dataDir ];
 
-  services.nginx.virtualHosts."gateway.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://192.168.23.5:5080";
-      proxyWebsockets = true;
-    };
-  };
-
   services.paperless = {
     enable = true;
     package = pkgs.paperless-ngx;

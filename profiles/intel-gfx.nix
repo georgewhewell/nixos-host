@@ -17,18 +17,15 @@
     libva
     clinfo
     intel-gpu-tools
-    jellyfin
-    jellyfin-web
-    jellyfin-ffmpeg
+    sycl-info
   ];
 
   nixpkgs.config.packageOverrides = pkgs: {
     vaapiIntel = pkgs.vaapiIntel.override { enableHybridCodec = true; };
   };
 
-  hardware.opengl = {
+  hardware.graphics = {
     enable = true;
-    # driSupport32Bit = true;
     extraPackages = with pkgs; [
       libva
       intel-media-driver

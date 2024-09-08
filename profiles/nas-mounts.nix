@@ -1,8 +1,10 @@
 { config, pkgs, ... }:
+
 let
   options = [ "nofail" "rsize=32768" "wsize=32768" "nconnect=4" ];
 in
 {
+  services.rpcbind.enable = true;
 
   fileSystems."/mnt/Home" =
     {

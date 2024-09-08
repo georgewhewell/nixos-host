@@ -9,18 +9,6 @@
     ./homekit.nix
   ];
 
-  services.nginx.virtualHosts."home.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    extraConfig = ''
-      proxy_buffering off;
-    '';
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:8123";
-      proxyWebsockets = true;
-    };
-  };
-
   users.extraUsers."hass".extraGroups = [ "dialout" ];
 
   hardware.bluetooth = {
@@ -86,7 +74,7 @@
           server_host = "0.0.0.0";
           server_port = 8123;
           use_x_forwarded_for = true;
-          trusted_proxies = [ "127.0.0.1" ];
+          trusted_proxies = [ "127.0.0.1" "192.168.23.1" ];
         };
         mobile_app = { };
         frontend = { };

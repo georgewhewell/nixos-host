@@ -117,6 +117,11 @@
           map_to_output = "DVI-I-1";
         };
       };
+      seat = {
+        "*" = {
+          xcursor_theme = "Bibata-Modern-Classic";
+        };
+      };
       output = {
         # disable whatever this is
         "Virtual-1" = { disable = ""; };
@@ -131,7 +136,7 @@
         {
           command = ''
             ${pkgs.swayidle}/bin/swayidle \
-              timeout 600 "${pkgs.swaylock-effects}/bin/swaylock \
+              timeout 600 "${pkgs.swaylock}/bin/swaylock \
               --screenshots \
               --clock \
               --indicator \

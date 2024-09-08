@@ -5,11 +5,8 @@
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
-    rose-pine-hyprcursor.url = "github:ndom91/rose-pine-hyprcursor";
-    rose-pine-hyprcursor.inputs.nixpkgs.follows = "nixpkgs";
-
     nixpkgs-wayland.url = "github:nix-community/nixpkgs-wayland";
-    # hyprland.inputs.nixpkgs.follows = "nixpkgs";
+    nixpkgs-wayland.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-hardware.url = "github:NixOS/nixos-hardware";
     # nixos-hardware.inputs.nixpkgs.follows = "nixpkgs";
@@ -35,14 +32,8 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
-    vifino.url = "github:vifino/nix-geht";
-    # vifino.inputs.nixpkgs.follows = "nixpkgs";  # breaks vpp (new dpdk?)
-
     apple-silicon.url = "github:tpwrules/nixos-apple-silicon";
     apple-silicon.inputs.nixpkgs.follows = "nixpkgs";
-
-    radicle.url = "github:radicle-dev/heartwood";
-    radicle.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -93,7 +84,7 @@
             nixpkgs_src = toString nixpkgs;
             # hyprland-displaylink = with inputs.hyprland.packages.${super.system};
             #   hyprland.override {
-            # wlroots = addPatches super.wlroots [ ./displaylink.patch ];
+            # wlroots = addPatches super.wlroots [ ./displaylink.psatch ];
             # wlroots-hyprland = addPatches wlroots-hyprland [ ./displaylink.patch ];
             # };
           })
@@ -170,7 +161,7 @@
         imports = builtins.attrValues self.nixosModules;
         nixpkgs.overlays = [
           (composeManyExtensions localOverlays)
-          (_: super:
+          (self: super:
             let
               addPatches = pkg: patches:
                 pkg.overrideAttrs (oldAttrs: {
@@ -179,27 +170,13 @@
             in
             {
               nixpkgs_src = toString nixpkgs;
-              sway-unwrapped = super.sway-unwrapped.override
-                ({
-                  wlroots = super.wlroots.overrideAttrs
-                    (o: {
-                      patches = o.patches or [ ] ++ [
-                        ./packages/patches/displaylink.patch
-                      ];
-                      # src = super.fetchFromGitLab {
-                      #   domain = "gitlab.freedesktop.org";
-                      #   owner = "kennylevinsen";
-                      #   repo = "wlroots";
-                      #   rev = "7e5bf4aef5c61401aaf777bd45cf393c538dac3e";
-                      #   sha256 = "sha256-k61e3tPIRCLo0vlvhbvM/xToX+Va9ahukX5l8eN80DQ=";
-                      # };
-                      # postPatch = ''
-                      #   sed -i 's/0.18.0-dev/0.18.0/' meson.build
-                      # '';
-                    });
-                });
-
-              # wlroots = addPatches super.wlroots [ ./displaylink.patch ];
+              # wlroots-patched-1 = super.wlroots_0_17.override {
+              #   enableXWayland = true;
+              # };
+              # wlroots-patched = addPatches self.wlroots-patched-1 [ ./packages/patches/displaylink.patch ];
+              # sway-unwrapped = super.sway-unwrapped.override ({
+              #   wlroots = self.wlroots-patched;
+              # });
             })
           (_: mypkgs)
         ];

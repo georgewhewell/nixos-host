@@ -146,7 +146,7 @@
 
   networking = {
     hostName = "rock-5b";
-    nameservers = [ "192.168.23.5" ];
+    nameservers = [ "192.168.23.1" ];
     useNetworkd = true;
     useDHCP = false;
     nat.enable = false;

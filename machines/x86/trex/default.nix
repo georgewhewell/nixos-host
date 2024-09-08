@@ -18,6 +18,8 @@
       ../../../profiles/common.nix
       ../../../profiles/home.nix
       ../../../profiles/development.nix
+      ../../../profiles/nvidia.nix
+#      ../../../profiles/llmserver.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/nas-mounts.nix
       ../../../services/buildfarm-executor.nix
@@ -40,41 +42,8 @@
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work
       "pcie=pcie_bus_perf"
     ];
-
-    # kernelPatches = [{ patch = ./patches/cppc.patch; } { patch = ./patches/cppc-1.patch; }];
     initrd.kernelModules = [ "mlx5_core" "lm92" ];
     blacklistedKernelModules = [ "nouveau" "amdgpu" "i915" ];
-  };
-
-  hardware.nvidia = {
-    # Modesetting is required.
-    modesetting.enable = true;
-
-    # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
-    # Enable this if you have graphical corruption issues or application crashes after waking
-    # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead 
-    # of just the bare essentials.
-    powerManagement.enable = false;
-
-    # Fine-grained power management. Turns off GPU when not in use.
-    # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-    powerManagement.finegrained = false;
-
-    # Use the NVidia open source kernel module (not to be confused with the
-    # independent third-party "nouveau" open source driver).
-    # Support is limited to the Turing and later architectures. Full list of 
-    # supported GPUs is at: 
-    # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus 
-    # Only available from driver 515.43.04+
-    # Currently alpha-quality/buggy, so false is currently the recommended setting.
-    open = false;
-
-    # Enable the Nvidia settings menu,
-    # accessible via `nvidia-settings`.
-    nvidiaSettings = true;
-
-    # Optionally, you may need to select the appropriate driver version for your specific GPU.
-    package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 
   environment.systemPackages = with pkgs; [ pciutils fio lm_sensors ];
@@ -113,6 +82,35 @@
       options = [ "noatime" "nofail" ];
     };
 
+  fileSystems."/export/jellyfin" =
+    {
+      device = "pool3d/root/state/jellyfin";
+      fsType = "zfs";
+      neededForBoot = false;
+    };
+
+  services.nfs = {
+    settings = {
+      # nfsd.tcp = true;
+      # nfsd.udp = false;
+      nfsd.vers3 = false;
+      nfsd.vers4 = true;
+      nfsd."vers4.0" = false;
+      nfsd."vers4.1" = false;
+      nfsd."vers4.2" = true;
+
+      nfsd.threads = 16;
+      # nfsd.max-read-size = 1048576;
+      # nfsd.max-write-size = 1048576;
+    };
+    server = {
+      enable = true;
+      exports = ''
+        /export/jellyfin          192.168.23.14/32(rw,nohide,no_subtree_check,fsid=0)
+      '';
+    };
+  };
+
   users.extraUsers.sf = {
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
@@ -131,13 +129,12 @@
     iperf3.enable = true;
   };
 
-
   networking = {
     hostName = "trex";
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
     useNetworkd = true;
-    nameservers = [ "192.168.23.5" ];
+    nameservers = [ "192.168.23.1" ];
     firewall.enable = false;
   };
 
@@ -223,7 +220,6 @@
   systemd.network =
     let
       bridgeName = "br0";
-      bondName = "bond0";
     in
     {
       enable = true;
@@ -242,11 +238,11 @@
           networkConfig = {
             DHCP = "ipv4";
             IPv6AcceptRA = true;
-            DNSOverTLS = true;
-            DNSSEC = true;
-            IPv6PrivacyExtensions = false;
-            IPForward = true;
-            IgnoreCarrierLoss = true;
+            # DNSOverTLS = true;
+            # DNSSEC = true;
+            IPv6PrivacyExtensions = true;
+            # IPv4Forward = true;
+            # IgnoreCarrierLoss = true;
           };
           dhcpV4Config = {
             RouteMetric = 99;
@@ -266,34 +262,23 @@
         };
         "20-thunderbolt" = {
           matchConfig.Driver = "thunderbolt-net";
-          linkConfig = {
-            RequiredForOnline = "carrier";
-          };
-          networkConfig = {
-            Bridge = bridgeName;
-            LinkLocalAddressing = "no";
-          };
-          # networkConfig.RequiredForOnline = "routeable";
+          networkConfig.Bridge = bridgeName;
+          linkConfig.RequiredForOnline = "enslaved";
         };
-
         "10-lan-10g" = {
           matchConfig.Driver = "i40e";
-          linkConfig = {
-            RequiredForOnline = "carrier";
-          };
-          networkConfig = {
-            Bridge = bridgeName;
-            LinkLocalAddressing = "no";
-          };
-          # networkConfig.RequiredForOnline = "routeable";
+          networkConfig.Bridge = bridgeName;
+          linkConfig.RequiredForOnline = "enslaved";
         };
         "10-lan-10g-2" = {
           matchConfig.Driver = "ixgbe";
           networkConfig.Bridge = bridgeName;
+          linkConfig.RequiredForOnline = "enslaved";
         };
         "10-lan-25g" = {
           matchConfig.Driver = "mlx5_core";
           networkConfig.Bridge = bridgeName;
+          linkConfig.RequiredForOnline = "enslaved";
         };
         "05-${bridgeName}" = {
           matchConfig.Name = bridgeName;
@@ -305,14 +290,14 @@
             { Gateway = "192.168.23.1"; }
           ];
           networkConfig = {
-            DNSOverTLS = true;
-            DNSSEC = true;
-            IPv6PrivacyExtensions = false;
-            IPForward = true;
-            IgnoreCarrierLoss = true;
-            ConfigureWithoutCarrier = true;
             IPv6AcceptRA = true;
+            IPv6Forwarding = true;
+            IPv4Forwarding = true;
+            IPv6PrivacyExtensions = true;
+            ConfigureWithoutCarrier = true;
+            IgnoreCarrierLoss = true;
           };
+          linkConfig.RequiredForOnline = "routable";
         };
       };
     };
