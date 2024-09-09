@@ -3,6 +3,7 @@
 {
   imports = [
     ./system.nix
+    ../../services/buildfarm-executor.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
