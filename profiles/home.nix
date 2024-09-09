@@ -9,9 +9,7 @@
       https://cache.nixos.org
     ];
     trusted-public-keys = [
-      "hydra.satanic.link-1:dqovbpJdboPkY2O2D4UAh4IgEReKf608IJ7aLl6CAoM="
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "nixos-arm.dezgeg.me-1:xBaUKS3n17BZPKeyxL4JfbTqECsT+ysbDJz29kLFRW0=%"
     ];
   };
 
