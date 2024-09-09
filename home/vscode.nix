@@ -41,7 +41,7 @@
       # tamasfe.even-better-toml
       mkhl.direnv
       # zxh404.vscode-proto3
-      # humao.rest-client
+      humao.rest-client
 
       # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
       #   mktplcRef = {
