@@ -8,7 +8,7 @@
     profile = "desktop";
     home-manager = {
       enable = true;
-      enableGraphical = true;
+      # enableGraphical = true;
       enableVscodeServer = true;
     };
   };
@@ -19,7 +19,7 @@
       ../../../profiles/home.nix
       ../../../profiles/development.nix
       ../../../profiles/nvidia.nix
-#      ../../../profiles/llmserver.nix
+      # ../../../profiles/llmserver.nix
       ../../../profiles/uefi-boot.nix
       ../../../profiles/nas-mounts.nix
       ../../../services/buildfarm-executor.nix
