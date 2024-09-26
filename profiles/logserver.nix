@@ -58,11 +58,9 @@
         static_configs = [{
           targets = [
             "nixhost:9100"
-            "fuckup:9100"
             "router:9100"
             "trex:9100"
             "rock-5b:9100"
-            "air:9100"
             "jellyfin:9100"
           ];
         }];
@@ -72,7 +70,6 @@
         static_configs = [{
           targets = [
             "nixhost:58080"
-            "fuckup:58080"
             "router:58080"
             "trex:58080"
             "rock-5b:58080"

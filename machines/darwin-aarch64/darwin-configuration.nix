@@ -24,7 +24,12 @@
 
   services.postgresql = {
     enable = true;
-    package = pkgs.postgresql_14;
+    package = pkgs.postgresql_16;
+  };
+
+  launchd.user.agents.postgresql.serviceConfig = {
+    StandardErrorPath = "/tmp/postgres.error.log";
+    StandardOutPath = "/tmp/postgres.log";
   };
 
   # Used for backwards compatibility, please read the changelog before changing.

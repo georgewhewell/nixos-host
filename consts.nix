@@ -23,10 +23,6 @@
             endPoint = "satanic.link";
             pubKey = "SYHzYVpBDi8annhVGqvroQJLacRLTcmdDgQq4JlSDCs=";
           };
-          fuckup = {
-            ipAddress = 4;
-            pubKey = "pOLMc3pVzGFe7A5KkCPTKfbov1HLX6R8L3gV/G/+2UA=";
-          };
         };
 
       makePeerConfig = excludedKey: lib.filter (x: x != null) (lib.attrsets.mapAttrsToList
