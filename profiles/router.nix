@@ -357,7 +357,6 @@ in
         dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # x10 ipmi
         dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
         dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
-        dhcp-host=06:f1:3e:03:27:8c,192.168.23.7   # fuckup
         dhcp-host=50:6b:4b:03:04:cb,192.168.23.8   # trex
         dhcp-host=48:A9:8A:93:42:4C,192.168.23.9   # 100gb switch
         dhcp-host=9c:6b:00:57:31:77,192.168.23.10  # trx90bmc
@@ -371,7 +370,6 @@ in
         # hosted names
         address=/router.satanic.link/192.168.23.1
         address=/nixhost.satanic.link/192.168.23.5
-        address=/fuckup.satanic.link/192.168.23.7
         address=/trex.satanic.link/192.168.23.8
         address=/jellyfin.satanic.link/192.168.23.14
 

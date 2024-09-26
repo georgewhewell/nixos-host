@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 
 {
-  users.extraUsers.root.openssh.authorizedKeys.keys = [
-    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDWMxfHgzc9U0+JxOiPwCvnNb9P62wMQrgP6Gzt05+rpt1qwFVUSZhXvcIqT77GErvWQqghRwRZgaVBYxIAHF2fuk/MiSg1p8vfBXXfHY3zP6fylCfXLI+6uUV7XP/DQy1sYEm4GtJ5lqUe1R6365Td8uRHw63lIwECCLLccNcJ4UGmaFyDuD7sHLdmWi+iWr7HvlblffOU551VwGPxeXYwDsc/Wzk279tBPNhlkpUW6tiu1aXWrAAttIJB3N+Xhtwc+hmxsoSSU0eckVQfUwuvdqXMW9nq5HdQfbWLxyWfS0rWkskLhrYPHf0GvWfCaygXD+bVlg+5OYvpd9mlNgaHXnXrcxyjI3hpa3pK5r4PucqqMNpiR1kySL/1LkbrTRY1ooRW2CFRh1QfsZuxhPTScu/FNOcdXwX2KOKLRlNKqipmauIoVDK8E+Dp90+/4b3yNmdkTDKEVP8zF+D6lSHAKDSzkKN7Z5sh5tOpTGIuk0BvKuJ8KLHBN3eCxSDPn00= root@fuckup"
-  ];
+  users.extraUsers.root.openssh.authorizedKeys.keys =
+    config.users.users.grw.openssh.authorizedKeys.keys;
 }

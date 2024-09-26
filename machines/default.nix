@@ -11,7 +11,6 @@ let
   };
 in
 {
-  fuckup = sys "x86_64-linux" [ physical ./x86/fuckup ];
   nixhost = sys "x86_64-linux" [ physical ./x86/nixhost ];
   yoga = sys "x86_64-linux" [ physical ./x86/yoga ];
   router = sys "x86_64-linux" [ physical ./x86/router ];
