@@ -1,6 +1,7 @@
 { config, pkgs, lib, inputs, ... }: {
 
   imports = [
+    ./vscode.nix
     ./development.nix
     inputs.vscode-server.homeModules.default
   ];
