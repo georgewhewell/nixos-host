@@ -39,9 +39,19 @@ in
     ];
   };
 
-  # not sure why this is necessary, should be handled by the networkd config 
   boot.kernel.sysctl = {
+    "net.core.rmem_max" = 16777216;
+    "net.core.wmem_max" = 16777216;
+    "net.ipv4.tcp_rmem" = "4096 87380 16777216";
+    "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+    "net.netfilter.nf_conntrack_max" = 131072;
+    "net.nf_conntrack_max" = 131072;
     "net.ipv6.conf.all.forwarding" = true;
+
+    "net.core.netdev_max_backlog" = "5000";
+    "net.ipv4.route.max_size" = "524288";
+    "net.ipv4.tcp_fastopen" = "3";
   };
 
   systemd.network = {
@@ -60,8 +70,8 @@ in
         linkConfig = {
           ReceiveQueues = 16;
           TransmitQueues = 16;
-          RxBufferSize = 8192;
-          TxBufferSize = 8192;
+          RxBufferSize = 16384;
+          TxBufferSize = 16384;
         };
       };
     };
@@ -135,7 +145,7 @@ in
     enableIPv6 = true;
     useNetworkd = true;
     useDHCP = false;
-
+    nftables.enable = true;
     # # No local firewall.
     # nat.enable = false;
     # firewall.enable = false;
@@ -332,59 +342,55 @@ in
     };
   };
 
-  services.dnsmasq =
-    let
-      lanBridge = "br0.lan";
-    in
-    {
-      enable = true;
-      servers = [ "127.0.0.1#54" ];
-      extraConfig = ''
-        domain-needed
-        bogus-priv
-        no-resolv
-        no-hosts
-        log-dhcp
-        domain=lan.satanic.link
-        local=/lan.satanic.link/
-        bind-interfaces
-        interface=${lanBridge}
-        dhcp-range=${lanBridge},192.168.23.20,192.168.23.249,6h
-        dhcp-option=${lanBridge},3,192.168.23.1    # send default gateway
+  services.dnsmasq = {
+    enable = true;
+    servers = [ "127.0.0.1#54" ];
+    settings = {
+      domain-needed = true;
+      bogus-priv = true;
+      no-resolv = true;
+      no-hosts = true;
+      log-dhcp = true;
+      domain = "lan.satanic.link";
+      local = "/lan.satanic.link/";
+      bind-interfaces = true;
+      interface = lanBridge;
+      "dhcp-range" = "${lanBridge},192.168.23.20,192.168.23.249,6h";
+      "dhcp-option" = "${lanBridge},3,192.168.23.1";
 
-        dhcp-host=e4:8d:8c:a8:de:40,192.168.23.2   # 10gb switch
-        dhcp-host=80:2a:a8:80:96:ef,192.168.23.3   # ap
-        dhcp-host=0c:c4:7a:89:fb:37,192.168.23.4   # x10 ipmi
-        dhcp-host=0c:c4:7a:87:b9:d8,192.168.23.5   # nixhost
-        dhcp-host=78:11:dc:ec:86:ea,192.168.23.6   # vacuum
-        dhcp-host=50:6b:4b:03:04:cb,192.168.23.8   # trex
-        dhcp-host=48:A9:8A:93:42:4C,192.168.23.9   # 100gb switch
-        dhcp-host=9c:6b:00:57:31:77,192.168.23.10  # trx90bmc
-        dhcp-host=28:29:86:8b:3f:cb,192.168.23.11  # apc ups
-        dhcp-host=b4:22:00:cf:18:63,192.168.23.12  # printer
-        dhcp-host=c8:f0:9e:de:3c:2f,192.168.23.13  # cerberus
-        dhcp-host=90:e2:ba:1a:69:d8,192.168.23.14  # jellyfin (10g)
-        dhcp-host=fa:09:ef:0e:74:d7,192.168.23.15  # sonarr
-        dhcp-host=fa:48:90:8d:03:d0,192.168.23.16  # radarr
+      "dhcp-host" = [
+        "e4:8d:8c:a8:de:40,192.168.23.2" # 10gb switch
+        "80:2a:a8:80:96:ef,192.168.23.3" # ap
+        "0c:c4:7a:89:fb:37,192.168.23.4" # x10 ipmi
+        "0c:c4:7a:87:b9:d8,192.168.23.5" # nixhost
+        "78:11:dc:ec:86:ea,192.168.23.6" # vacuum
+        "50:6b:4b:03:04:cb,192.168.23.8" # trex
+        "48:A9:8A:93:42:4C,192.168.23.9" # 100gb switch
+        "9c:6b:00:57:31:77,192.168.23.10" # trx90bmc
+        "28:29:86:8b:3f:cb,192.168.23.11" # apc ups
+        "b4:22:00:cf:18:63,192.168.23.12" # printer
+        "c8:f0:9e:de:3c:2f,192.168.23.13" # cerberus
+        "90:e2:ba:1a:69:d8,192.168.23.14" # jellyfin (10g)
+        "fa:09:ef:0e:74:d7,192.168.23.15" # sonarr
+        "fa:48:90:8d:03:d0,192.168.23.16" # radarr
+      ];
 
-        # hosted names
-        address=/router.satanic.link/192.168.23.1
-        address=/nixhost.satanic.link/192.168.23.5
-        address=/trex.satanic.link/192.168.23.8
-        address=/jellyfin.satanic.link/192.168.23.14
-
-        # https domains
-        address=/grafana.satanic.link/192.168.23.1
-        address=/home.satanic.link/192.168.23.1
-        address=/jellyfin.satanic.link/192.168.23.1
-        address=/radarr.satanic.link/192.168.23.1
-        address=/sonarr.satanic.link/192.168.23.1
-        address=/eth-mainnet.satanic.link/192.168.23.1
-        address=/eth-mainnet-ws.satanic.link/192.168.23.1
-        address=/static.satanic.link/192.168.23.1
-        address=/gateway.satanic.link/192.168.23.1
-      '';
+      "address" = [
+        "/router.satanic.link/192.168.23.1"
+        "/nixhost.satanic.link/192.168.23.5"
+        "/trex.satanic.link/192.168.23.8"
+        "/jellyfin.satanic.link/192.168.23.14"
+        "/grafana.satanic.link/192.168.23.1"
+        "/home.satanic.link/192.168.23.1"
+        "/radarr.satanic.link/192.168.23.1"
+        "/sonarr.satanic.link/192.168.23.1"
+        "/eth-mainnet.satanic.link/192.168.23.1"
+        "/eth-mainnet-ws.satanic.link/192.168.23.1"
+        "/static.satanic.link/192.168.23.1"
+        "/gateway.satanic.link/192.168.23.1"
+      ];
     };
+  };
 
   services.miniupnpd = {
     enable = true;
