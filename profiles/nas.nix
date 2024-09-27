@@ -94,22 +94,22 @@
 
   services.samba = {
     enable = true;
-    extraConfig = ''
-      guest account = nobody
-      map to guest = bad user
+    # extraConfig = ''
+    #   guest account = nobody
+    #   map to guest = bad user
 
-      load printers = no
-      printing = bsd
-      printcap name = /dev/null
-      disable spoolss = yes
+    #   load printers = no
+    #   printing = bsd
+    #   printcap name = /dev/null
+    #   disable spoolss = yes
 
-      dos charset = cp866
-      unix charset = UTF8
+    #   dos charset = cp866
+    #   unix charset = UTF8
 
-      server multi channel support = yes
-      aio read size = 1
-      aio write size = 1
-    '';
+    #   server multi channel support = yes
+    #   aio read size = 1
+    #   aio write size = 1
+    # '';
     shares = {
       Home =
         {

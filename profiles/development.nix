@@ -51,9 +51,9 @@
     package = pkgs.postgresql_14;
     enable = true;
     enableTCPIP = true;
-    extraPlugins = with pkgs.postgresqlPackages; [
-      timescaledb
-    ];
+    # extraPlugins = with pkgs.postgresqlPackages; [
+    #   timescaledb
+    # ];
   };
 
   services.redis = {
