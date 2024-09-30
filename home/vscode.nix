@@ -40,7 +40,7 @@
       # ms-vsliveshare.vsliveshare
       # tamasfe.even-better-toml
       mkhl.direnv
-      # zxh404.vscode-proto3
+      zxh404.vscode-proto3
       humao.rest-client
 
       # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
@@ -52,14 +52,14 @@
       #   };
       # })
 
-      # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
-      #   mktplcRef = {
-      #     publisher = "starkware";
-      #     name = "cairo";
-      #     version = "0.10.0";
-      #     sha256 = "sha256-Jpj6QSLvYI3FbSW07PDlhVj9Gv0ZUrMbK+KVFvmBMvE=";
-      #   };
-      # })
+      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+        mktplcRef = {
+          publisher = "saoudrizwan";
+          name = "claude-dev";
+          version = "1.9.7";
+          sha256 = "sha256-El8b1bkJOkWUijTXd4TKkk+UQcCqk1JKK4miRm8Jizw=";
+        };
+      })
     ];
   };
 
