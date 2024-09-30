@@ -54,6 +54,9 @@
       "*.runpod.io".extraOptions = {
         PubkeyAcceptedAlgorithms = "+ssh-rsa";
       };
+      "*.satanic.link !localnetwork 192.168.23.0/24".extraOptions = {
+        ProxyCommand = "${pkgs.bash}/bin/bash -c \"${pkgs.openssh}/bin/ssh -W $(echo %h | cut -d. -f1):%p grw@satanic.link\"";
+      };
     };
   };
 
