@@ -42,6 +42,7 @@
       mkhl.direnv
       zxh404.vscode-proto3
       humao.rest-client
+      continue.continue
 
       # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
       #   mktplcRef = {
@@ -52,14 +53,6 @@
       #   };
       # })
 
-      (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
-        mktplcRef = {
-          publisher = "saoudrizwan";
-          name = "claude-dev";
-          version = "1.9.7";
-          sha256 = "sha256-El8b1bkJOkWUijTXd4TKkk+UQcCqk1JKK4miRm8Jizw=";
-        };
-      })
     ];
   };
 

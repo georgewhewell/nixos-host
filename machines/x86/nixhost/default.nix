@@ -63,7 +63,6 @@
     };
   };
 
-  boot.kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
   boot.zfs.requestEncryptionCredentials = false;
 
   services.iperf3 = {
@@ -83,14 +82,7 @@
 
   boot.supportedFilesystems = [ "zfs" ];
   boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
-  boot.kernelParams = [
-    "pci=nocrs"
-    # https://bugzilla.kernel.org/show_bug.cgi?id=203475#c61
-    "libata.force=5:3.0Gbps"
-    "libata.force=6:3.0Gbps"
-    "libata.force=5:noncq,noncqtrim"
-    "libata.force=6:noncq,noncqtrim"
-  ];
+  boot.kernelParams = [ "pci=nocrs" ];
 
   networking = {
     hostName = "nixhost";
