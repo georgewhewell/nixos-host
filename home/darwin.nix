@@ -6,6 +6,7 @@
     gnused
     coreutils
     openvpn
+    yt-dlp
   ];
 
   # darwin-specific overlays

@@ -44,7 +44,6 @@
   programs.zsh.enable = true;
 
   nix = {
-    package = pkgs.nixFlakes;
     extraOptions = ''
       system = aarch64-darwin
       experimental-features = nix-command flakes
