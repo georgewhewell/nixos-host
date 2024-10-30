@@ -15,18 +15,20 @@
     };
   };
 
+  system.stateVersion = "24.11";
+
   deployment.targetHost = "192.168.23.14";
   deployment.targetUser = "grw";
 
   imports = [
-      ../../../profiles/common.nix
-      ../../../profiles/home.nix
-      ../../../profiles/headless.nix
-      ../../../profiles/uefi-boot.nix
-      ../../../profiles/nas-mounts.nix
-      ../../../profiles/intel-gfx.nix
-      ../../../services/jellyfin.nix
-    ];
+    ../../../profiles/common.nix
+    ../../../profiles/home.nix
+    ../../../profiles/headless.nix
+    ../../../profiles/uefi-boot.nix
+    ../../../profiles/nas-mounts.nix
+    ../../../profiles/intel-gfx.nix
+    ../../../services/jellyfin.nix
+  ];
 
   services.iperf3 = {
     enable = true;

@@ -36,23 +36,21 @@
   system.stateVersion = 3;
   services.nix-daemon.enable = true;
 
-  nix.nixPath = [
-    "nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixpkgs"
-    "darwin-config=$HOME/.nixpkgs/darwin-configuration.nix"
-  ];
-
   programs.zsh.enable = true;
 
   nix = {
+    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    registry.nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
     extraOptions = ''
       system = aarch64-darwin
       experimental-features = nix-command flakes
-      extra-platforms = aarch64-darwin x86_64-darwin 
+      extra-platforms = aarch64-darwin x86_64-darwin
     '';
     settings = {
       max-jobs = 4;
       build-cores = 0;
       trusted-users = [ "grw" ];
+      auto-optimise-store = true;
     };
   };
 }

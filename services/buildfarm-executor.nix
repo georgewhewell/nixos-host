@@ -6,6 +6,10 @@
     extraOptions = ''
       builders-use-substitutes = true
     '';
+    # settings = {
+    #   extra-substituters = [ "ssh-ng://grw@trex.satanic.link" ];
+    #   trusted-substituters = [ "ssh-ng://grw@trex.satanic.link" ];
+    # };
     buildMachines = [
       {
         hostName = "rock-5b.satanic.link";

@@ -15,6 +15,8 @@
 
   imports =
     [
+      ../../../containers/gh-runner-hellas.nix
+      ../../../containers/gh-runner-grw.nix
       ../../../profiles/common.nix
       ../../../profiles/home.nix
       ../../../profiles/development.nix
@@ -29,6 +31,8 @@
 
   deployment.targetHost = "trex.satanic.link";
   deployment.targetUser = "grw";
+
+  system.stateVersion = "24.11";
 
   boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" "bcachefs" ];
   boot = {
@@ -82,32 +86,14 @@
       options = [ "noatime" "nofail" ];
     };
 
-  fileSystems."/export/jellyfin" =
-    {
-      device = "pool3d/root/state/jellyfin";
-      fsType = "zfs";
-      neededForBoot = false;
-    };
-
   services.nfs = {
     settings = {
-      # nfsd.tcp = true;
-      # nfsd.udp = false;
       nfsd.vers3 = false;
       nfsd.vers4 = true;
       nfsd."vers4.0" = false;
       nfsd."vers4.1" = false;
       nfsd."vers4.2" = true;
-
       nfsd.threads = 16;
-      # nfsd.max-read-size = 1048576;
-      # nfsd.max-write-size = 1048576;
-    };
-    server = {
-      enable = true;
-      exports = ''
-        /export/jellyfin          192.168.23.14/32(rw,nohide,no_subtree_check,fsid=0)
-      '';
     };
   };
 
@@ -136,85 +122,6 @@
     useNetworkd = true;
     nameservers = [ "192.168.23.1" ];
     firewall.enable = false;
-  };
-
-  systemd.services."container@gh-runner-hellas".unitConfig = {
-    ConditionPathExists = "/run/gh-runner-hellas-a.secret";
-  };
-
-  deployment.keys."gh-runner-hellas-a.secret" =
-    {
-      keyCommand = [ "pass" "gh-runner/hellas-ai-a" ];
-      destDir = "/run";
-      uploadAt = "pre-activation";
-      permissions = "0777";
-    };
-
-  deployment.keys."gh-runner-hellas-b.secret" =
-    {
-      keyCommand = [ "pass" "gh-runner/hellas-ai-b" ];
-      destDir = "/run";
-      uploadAt = "pre-activation";
-      permissions = "0777";
-    };
-
-  deployment.keys."gh-runner-hellas-c.secret" =
-    {
-      keyCommand = [ "pass" "gh-runner/hellas-ai-c" ];
-      destDir = "/run";
-      uploadAt = "pre-activation";
-      permissions = "0777";
-    };
-
-  containers.gh-runner-hellas = {
-    autoStart = true;
-    privateNetwork = true;
-    hostBridge = "br0";
-
-    bindMounts = {
-      "/run/gh-runner-hellas-a.secret".hostPath = "/run/gh-runner-hellas-a.secret";
-      "/run/gh-runner-hellas-b.secret".hostPath = "/run/gh-runner-hellas-b.secret";
-      "/run/gh-runner-hellas-c.secret".hostPath = "/run/gh-runner-hellas-c.secret";
-    };
-
-    config =
-      let
-        user = "runner";
-        extraPackages = with pkgs; [ docker ];
-      in
-      {
-        imports = [ ../../../profiles/container.nix ];
-
-        virtualisation.docker.enable = true;
-
-        users.users."${user}" = {
-          isNormalUser = true;
-          extraGroups = [ "docker" ];
-        };
-
-        services.github-runners."hellas-a" = {
-          enable = true;
-          url = "https://github.com/hellas-ai";
-          tokenFile = "/run/gh-runner-hellas-a.secret";
-          inherit extraPackages user;
-        };
-
-        services.github-runners."hellas-b" = {
-          enable = true;
-          url = "https://github.com/hellas-ai";
-          tokenFile = "/run/gh-runner-hellas-b.secret";
-          inherit extraPackages user;
-        };
-
-        services.github-runners."hellas-c" = {
-          enable = true;
-          url = "https://github.com/hellas-ai";
-          tokenFile = "/run/gh-runner-hellas-c.secret";
-          inherit extraPackages user;
-        };
-
-        networking.hostName = "gh-runner-hellas";
-      };
   };
 
   services.ollama = {

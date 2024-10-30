@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
@@ -40,10 +40,10 @@
     screen
   ];
 
-  environment.etc."nixpkgs".source = pkgs.nixpkgs_src;
-  nix.nixPath = [
-    "nixpkgs=/etc/nixpkgs"
-  ];
+  nix = {
+    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    registry.nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
+  };
 
   services.udev.packages = [ pkgs.platformio ];
 

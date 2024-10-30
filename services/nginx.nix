@@ -26,14 +26,14 @@
     };
   };
 
-  services.nginx.virtualHosts."gateway.satanic.link" = {
-    forceSSL = true;
-    enableACME = true;
-    locations."/" = {
-      proxyPass = "http://192.168.23.5:5080";
-      proxyWebsockets = true;
-    };
-  };
+  # services.nginx.virtualHosts."gateway.satanic.link" = {
+  #   forceSSL = true;
+  #   enableACME = true;
+  #   locations."/" = {
+  #     proxyPass = "http://192.168.23.5:5080";
+  #     proxyWebsockets = true;
+  #   };
+  # };
 
   services.nginx.virtualHosts."grafana.satanic.link" = {
     forceSSL = true;
@@ -99,7 +99,7 @@
     forceSSL = true;
     enableACME = true;
     locations."/" = {
-      proxyPass = "http://192.168.23.14:8096";
+      proxyPass = "http://127.0.0.1:8096";
       proxyWebsockets = true;
     };
   };

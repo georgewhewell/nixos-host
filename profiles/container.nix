@@ -5,7 +5,7 @@
 
   boot.isContainer = true;
   time.timeZone = "Europe/London";
-  #  environment.noXlibs = true;
+
   services.fwupd.enable = lib.mkForce false;
 
   i18n.supportedLocales = [ (config.i18n.defaultLocale + "/UTF-8") ];

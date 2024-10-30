@@ -5,7 +5,7 @@
   imports = [
     ./btop.nix
     ./hostid.nix
-    ./vim/default.nix
+    # ./vim/default.nix
     ./git.nix
     ./starship.nix
     ./zsh.nix
@@ -32,7 +32,7 @@
     pwgen
     docker-compose
     btop
-    mosh
+    # mosh
     mtr
   ];
 

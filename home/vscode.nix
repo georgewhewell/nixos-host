@@ -2,6 +2,10 @@
 
   imports = [ ./development.nix ];
 
+  home.packages = with pkgs; [
+    nixpkgs-fmt
+  ];
+
   programs.vscode = {
     enable = true;
     mutableExtensionsDir = false;
@@ -29,7 +33,6 @@
     };
     extensions = with pkgs.vscode-extensions; [
       jnoortheen.nix-ide
-      #golang.go
       hashicorp.terraform
       viktorqvarfordt.vscode-pitch-black-theme
       github.copilot
@@ -37,22 +40,10 @@
       ms-vscode-remote.remote-ssh
       ms-python.python
       charliermarsh.ruff
-      # ms-vsliveshare.vsliveshare
-      # tamasfe.even-better-toml
       mkhl.direnv
       zxh404.vscode-proto3
       humao.rest-client
       continue.continue
-
-      # (pkgs.vscode-utils.buildVscodeMarketplaceExtension {
-      #   mktplcRef = {
-      #     publisher = "JuanBlanco";
-      #     name = "solidity";
-      #     version = "0.0.141";
-      #     sha256 = "sha256-UWdjVY6+TyIRuIxru4+4YGqqI0HUU/8yV8BKNlIRIUQ=";
-      #   };
-      # })
-
     ];
   };
 

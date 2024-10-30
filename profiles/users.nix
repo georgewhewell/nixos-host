@@ -9,8 +9,8 @@ let
   air-grw = ''
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC87LO0rf0HxGpcFViyLH9hJiIHT6ptZgZ7W9d6PfBe8ADVMinvheiZgYHEOv/sQzEIP/3n6qCaLzcQ0vHzTnN+4VIET4APT+3g0yQizWB31qfTGl8qAVneJZVbudKEGTBeHZbfiahpJV1K+YXLg5+ig9ayT1QckBwvk1SW1HUc/tFriYO7Gbl9w2NxNOVMvujhGhUgRPeoY0xpgYdWz4AFS3D+WtzbnHGI7DPBPyxBZajm6zFrEhJBoZe/2NCBFkPckPs4X+su1fFoAab9IX/jI7EVpnVOA8gPVE8WlwvZXZqz8jn9pBwv/V+xGTCWLJgs1GLnrHS4aAgpAZVXIgGl3YXcUVO2VCFUTAM3msHSShLtbocqMDqqTIXLiIsfJQ0lSYr1+MBJ4QSbvxIVRk0/ZgCvlPrLEG7dDJaquJovfVNvQCk46Dr5aTP03EohYNOAstlmzoMyEfxE9ZF+kWWntjELnMNIT/TPdkMHJf7U91rITFy58xaxbL2DNMVmo88= grw@air
   '';
-  yoga-root = ''
-    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHa3IehyF09gwMwVLCW68xNvxNxNPeRP2DKUgbRv/mpP root@yoga
+  air-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEamv7mi9CO/GJWMisaHoEPwBBoMCB5lXWHq0fgzUVAb root@Georges-Air-5.lan.satanic.link
   '';
   trex-root = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEtPi2T/lOR9s64SVS4ETOmJgj//nKJxuGD8A+PZxcLb root@trex
@@ -44,7 +44,7 @@ in
       mac-pubkey
       air-grw
       trex-root
-      yoga-root
+      air-root
     ];
   };
 
@@ -52,7 +52,7 @@ in
     gpg-pubkey
     mac-pubkey
     air-grw
-    yoga-root
+    air-root
     trex-root
   ];
 

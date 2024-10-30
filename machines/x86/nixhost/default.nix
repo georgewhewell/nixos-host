@@ -12,6 +12,8 @@
     };
   };
 
+  system.stateVersion = "24.11";
+
   deployment.targetHost = "nixhost.satanic.link";
   deployment.targetUser = "grw";
 

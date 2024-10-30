@@ -17,7 +17,7 @@
     "192.168.23.8" = [ "trex" ];
     "192.168.23.9" = [ "mikrotik-100g" ];
     "192.168.23.11" = [ "rock-5b" ];
-    "192.168.23.14" = [ "jellyfin" ];
+    # "192.168.23.14" = [ "jellyfin" ];
   };
 
   # environment.etc.nixpkgs.source = toString pkgs.nixpkgs_src;
@@ -37,7 +37,7 @@
 
   services.irqbalance.enable = lib.mkDefault true;
   services.fwupd.enable = true;
-  programs.mosh.enable = true;
+  # programs.mosh.enable = true;
 
   nix.extraOptions = ''
     auto-optimise-store = true
@@ -97,8 +97,16 @@
   };
 
   nix = {
+
     settings = {
       trusted-users = [ "grw" ];
+      substituters = [
+        "https://cuda-maintainers.cachix.org"
+      ];
+      trusted-public-keys = [
+        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+      ];
+      download-buffer-size = 1024 * 1024 * 1024;
     };
     gc = {
       automatic = true;

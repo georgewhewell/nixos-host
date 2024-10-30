@@ -1,10 +1,6 @@
 { config, lib, pkgs, ... }:
 
 {
-  imports = [
-    ./modules/zed.nix
-  ];
-
   programs.zed-editor =
     let
       bins = with pkgs; [
