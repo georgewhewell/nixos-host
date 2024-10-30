@@ -192,22 +192,22 @@
       neededForBoot = false;
     };
 
-  services.kubo = {
-    enable = true;
-    dataDir = "/var/lib/ipfs";
-    localDiscovery = true;
-    enableGC = true;
-    extraFlags = [ ];
-    settings = {
-      API.HTTPHeaders."Access-Control-Allow-Origin" = [ "http://192.168.23.5:5001" ];
-      Addresses = {
-        API = [ "/ip4/192.168.23.5/tcp/5001" ];
-        Gateway = [ "/ip4/192.168.23.5/tcp/5080" ];
-      };
-    };
-  };
+  # services.kubo = {
+  #   enable = true;
+  #   dataDir = "/var/lib/ipfs";
+  #   localDiscovery = true;
+  #   enableGC = true;
+  #   extraFlags = [ ];
+  #   settings = {
+  #     API.HTTPHeaders."Access-Control-Allow-Origin" = [ "http://192.168.23.5:5001" ];
+  #     Addresses = {
+  #       API = [ "/ip4/192.168.23.5/tcp/5001" ];
+  #       Gateway = [ "/ip4/192.168.23.5/tcp/5080" ];
+  #     };
+  #   };
+  # };
 
-  systemd.services.ipfs.unitConfig.RequiresMountsFor = [ config.services.kubo.dataDir ];
+  # systemd.services.ipfs.unitConfig.RequiresMountsFor = [ config.services.kubo.dataDir ];
 
   services.paperless = {
     enable = true;

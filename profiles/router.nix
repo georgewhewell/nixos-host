@@ -22,6 +22,7 @@ in
     tcpdump
     conntrack-tools
     pciutils
+    iperf
   ];
 
   users.extraUsers.sf = {
@@ -110,17 +111,17 @@ in
         networkConfig.Bridge = lanBridge;
         linkConfig.RequiredForOnline = "enslaved";
       };
-      "20-atlantic" = {
-        matchConfig.Driver = "atlantic";
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "enslaved";
-      };
+      # "20-atlantic" = {
+      #   matchConfig.Driver = "atlantic";
+      #   networkConfig.Bridge = lanBridge;
+      #   linkConfig.RequiredForOnline = "enslaved";
+      # };
       "20-${wanInterface}" = {
         matchConfig.Name = wanInterface;
         networkConfig = {
           DHCP = "yes";
           IPv6AcceptRA = true;
-          IPv6PrivacyExtensions = true;
+          IPv6PrivacyExtensions = false;
           IPv6Forwarding = true;
           IgnoreCarrierLoss = true;
         };
@@ -142,56 +143,11 @@ in
   };
 
   networking = {
+    useDHCP = false;
+
     enableIPv6 = true;
     useNetworkd = true;
-    useDHCP = false;
     nftables.enable = true;
-    # # No local firewall.
-    # nat.enable = false;
-    # firewall.enable = false;
-
-    # # flags offload;
-    # # ip protocol { tcp, udp } flow offload @f
-    # nftables = {
-    #   enable = true;
-    #   checkRuleset = false;
-    #   ruleset = ''
-    #     table inet filter {
-    #        flowtable f {
-    #          hook ingress priority 0;
-    #          devices = { ${wanInterface}, enp133s0f0np0 }; 
-    #        }
-
-    #       chain input {
-    #         type filter hook input priority 0; policy drop;
-
-    #         iifname { "${lanBridge}" } accept comment "Allow local network to access the router"
-    #         iifname "${wanInterface}" ct state { established, related } accept comment "Allow established traffic"
-    #         iifname "${wanInterface}" icmp type { echo-request, destination-unreachable, time-exceeded } counter accept comment "Allow select ICMP"
-    #         iifname "${wanInterface}" counter drop comment "Drop all other unsolicited traffic from wan"
-    #         iifname "lo" accept comment "Accept everything from loopback interface"
-    #       }
-
-    #       chain forward {
-    #         type filter hook forward priority filter; policy drop;
-
-    #         iifname { "${lanBridge}" } oifname { "${wanInterface}" } accept comment "Allow trusted LAN to WAN"
-    #         iifname { "${wanInterface}" } oifname { "${lanBridge}" } ct state established, related accept comment "Allow established back to LANs"
-    #       }
-    #     }
-
-    #     table ip nat {
-    #       chain prerouting {
-    #         type nat hook prerouting priority filter; policy accept;
-    #       }
-
-    #       chain postrouting {
-    #         type nat hook postrouting priority 100; policy accept;
-    #         oifname "${wanInterface}" masquerade
-    #       } 
-    #     }
-    #   '';
-    # };
 
     domain = "lan";
     nameservers = [ "192.168.23.1" ];
@@ -379,7 +335,7 @@ in
         "/router.satanic.link/192.168.23.1"
         "/nixhost.satanic.link/192.168.23.5"
         "/trex.satanic.link/192.168.23.8"
-        "/jellyfin.satanic.link/192.168.23.14"
+        "/jellyfin.satanic.link/192.168.23.1"
         "/grafana.satanic.link/192.168.23.1"
         "/home.satanic.link/192.168.23.1"
         "/radarr.satanic.link/192.168.23.1"

@@ -15,55 +15,26 @@
     };
   };
 
-  # systemd.services.create-vfs = {
-  #   description = "Create VFs on Mellanox NIC";
-  #   after = [ "network.target" ];
-  #   wantedBy = [ "multi-user.target" ];
-
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #     ExecStart = "${pkgs.bash}/bin/bash -c 'echo 2 > /sys/class/net/enp1s0f1np1/device/sriov_numvfs'";
-  #     RemainAfterExit = true;
-  #   };
-  # };
-
-  # systemd.services.set-multicast = {
-  #   description = "Set multicast";
-  #   after = [ "network.target" ];
-  #   wantedBy = [ "multi-user.target" ];
-
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #     ExecStart = "${pkgs.iproute}/bin/ip link set enp1s0f1np1 allmulticast on";
-  #     RemainAfterExit = true;
-  #   };
-  # };
-
-  environment.systemPackages = with pkgs; [
-    btop
-    wirelesstools
-    bridge-utils
-    ethtool
-    tcpdump
-    conntrack-tools
-    pciutils
-    iperf
-  ];
-
   deployment.targetHost = "192.168.23.1";
   deployment.targetUser = "grw";
+  system.stateVersion = "24.11";
 
-  imports =
-    [
-      ../../../profiles/common.nix
-      ../../../profiles/home.nix
-      ../../../profiles/headless.nix
-      ../../../profiles/uefi-boot.nix
-      ../../../profiles/nas-mounts.nix
-      ../../../profiles/router.nix
-      ../../../profiles/radeon.nix
-      ../../../services/nginx.nix
-    ];
+  imports = with inputs.nixos-hardware.nixosModules; [
+    common-cpu-amd
+    common-cpu-amd-pstate
+    common-cpu-amd-raphael-igpu
+    common-cpu-amd-zenpower
+    common-gpu-amd
+    ../../../profiles/common.nix
+    ../../../profiles/home.nix
+    ../../../profiles/headless.nix
+    ../../../profiles/uefi-boot.nix
+    ../../../profiles/nas-mounts.nix
+    ../../../profiles/router.nix
+    ../../../profiles/radeon.nix
+    ../../../services/nginx.nix
+    ../../../services/jellyfin.nix
+  ];
 
   services = {
     iperf3 = {

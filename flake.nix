@@ -1,6 +1,20 @@
 {
+  nixConfig = {
+    extra-substituters = [
+      "https://colmena.cachix.org"
+      "https://cuda-maintainers.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "colmena.cachix.org-1:7BzpDnjjH8ki2CT3f6GdOk7QAzPOl+1t3LvTLXqYcSg="
+      "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+
+    colmena.url = "github:zhaofengli/colmena";
+    colmena.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
@@ -23,9 +37,6 @@
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    colmena.url = "github:zhaofengli/colmena";
-    colmena.inputs.nixpkgs.follows = "nixpkgs";
-
     foundry.url = "github:shazow/foundry.nix";
     foundry.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -39,10 +50,10 @@
   outputs =
     { self
     , nixpkgs
+    , colmena
     , darwin
     , nixos-hardware
     , home-manager
-    , colmena
     , ...
     } @ inputs:
     let
@@ -52,44 +63,9 @@
       inherit (inputs.nixpkgs.lib) composeManyExtensions;
       inherit (builtins) attrNames readDir;
 
-      overlayCompat = { pkgs, lib, ... }: {
-        # nix.nixPath = [
-        #   "nixpkgs-overlays=/etc/overlays-compat/"
-        # ];
-        environment.etc."overlays-compat/overlays.nix".text = ''
-          self: super:
-          with super.lib;
-          let
-            # Load the system config and get the `nixpkgs.overlays` option
-            overlays = [
-            ];
-          in
-            # Apply all overlays to the input of the current "main" overlay
-            foldl' (flip extends) (_: super) overlays self
-        '';
-      };
-
       localOverlays = map
         (f: import (./overlays + "/${f}"))
-        (attrNames (readDir ./overlays)) ++ [
-        # forced
-        (_: super:
-          let
-            addPatches = pkg: patches:
-              pkg.overrideAttrs (oldAttrs: {
-                patches = (oldAttrs.patches or [ ]) ++ patches;
-              });
-          in
-          {
-            nixpkgs_src = toString nixpkgs;
-            # hyprland-displaylink = with inputs.hyprland.packages.${super.system};
-            #   hyprland.override {
-            # wlroots = addPatches super.wlroots [ ./displaylink.psatch ];
-            # wlroots-hyprland = addPatches wlroots-hyprland [ ./displaylink.patch ];
-            # };
-          })
-
-      ];
+        (attrNames (readDir ./overlays));
 
       hardware =
         nixos-hardware.nixosModules //
@@ -105,13 +81,12 @@
         (name: { inherit name; value = f name; })
         [
           "x86_64-linux"
-          # "aarch64-linux"
+          "aarch64-darwin"
         ]);
       consts = import ./consts.nix { inherit (inputs.nixpkgs) lib; };
     in
     {
       lib = { inherit forAllSystems hardware deploy; };
-
       colmena = {
         meta = {
           description = "My personal machines";
@@ -134,6 +109,7 @@
 
       darwinConfigurations."air" = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
+        specialArgs = { inherit inputs; };
         modules = [
           ./machines/darwin-aarch64/darwin-configuration.nix
           inputs.home-manager.darwinModules.home-manager
@@ -148,7 +124,6 @@
       nixosModules =
         {
           inherit hm;
-          inherit overlayCompat;
         } //
         nixpkgs.lib.mapAttrs'
           (name: type: {
@@ -161,26 +136,26 @@
         imports = builtins.attrValues self.nixosModules;
         nixpkgs.overlays = [
           (composeManyExtensions localOverlays)
-          (self: super:
-            let
-              addPatches = pkg: patches:
-                pkg.overrideAttrs (oldAttrs: {
-                  patches = (oldAttrs.patches or [ ]) ++ patches;
-                });
-            in
-            {
-              nixpkgs_src = toString nixpkgs;
-              # wlroots-patched-1 = super.wlroots_0_17.override {
-              #   enableXWayland = true;
-              # };
-              # wlroots-patched = addPatches self.wlroots-patched-1 [ ./packages/patches/displaylink.patch ];
-              # sway-unwrapped = super.sway-unwrapped.override ({
-              #   wlroots = self.wlroots-patched;
-              # });
-            })
           (_: mypkgs)
         ];
       };
+
+      devShells = forAllSystems (system: {
+        default =
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          pkgs.mkShell {
+            packages = with pkgs; [
+              nixVersions.nix_2_18
+              colmena.packages.${system}.colmena
+            ];
+
+            shellHook = ''
+              echo "Development shell loaded with colmena"
+            '';
+          };
+      });
 
       nixosConfigurations = import
         ./machines

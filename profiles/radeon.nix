@@ -2,8 +2,6 @@
 
 {
 
-  # nixpkgs.config.rocmSupport = true;
-
   boot.kernelParams = [
     "amdgpu.ppfeaturemask=0xffffffff"
   ];
@@ -11,18 +9,13 @@
   hardware.amdgpu = {
     initrd.enable = true;
     opencl.enable = true;
+    # crashes gpu?!?!
+    # amdvlk.enable = true;
   };
 
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
-    extraPackages = with pkgs; [
-      amdvlk
-      # amf-amdgpu-pro
-    ];
-    extraPackages32 = with pkgs; [
-      driversi686Linux.amdvlk
-    ];
   };
 
   systemd.tmpfiles.rules = [
@@ -30,7 +23,8 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    radeon-profile
+    clinfo
+    radeontop
     rocmPackages.rocm-smi
     rocmPackages.rocminfo
   ];
