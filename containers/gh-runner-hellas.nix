@@ -3,14 +3,30 @@
 
 {
 
-  users.users."gh-runner-hellas" = {
-    isSystemUser = true;
-    group = "gh-runner-hellas";
-    extraGroups = [ "docker" ];
+  users.users = {
+    "gh-runner-hellas-a" = {
+      isSystemUser = true;
+      group = "gh-runner-hellas";
+      extraGroups = [ "docker" ];
+    };
+    "gh-runner-hellas-b" = {
+      isSystemUser = true;
+      group = "gh-runner-hellas";
+      extraGroups = [ "docker" ];
+    };
+    "gh-runner-hellas-c" = {
+      isSystemUser = true;
+      group = "gh-runner-hellas";
+      extraGroups = [ "docker" ];
+    };
   };
   users.groups."gh-runner-hellas" = { };
 
-  nix.settings.trusted-users = [ "gh-runner-hellas" ];
+  nix.settings.trusted-users = [
+    "gh-runner-hellas-a"
+    "gh-runner-hellas-b"
+    "gh-runner-hellas-c"
+  ];
 
   systemd.services."container@gh-runner-hellas".unitConfig = {
     ConditionPathExists = "/run/gh-runner-hellas-a.secret";
@@ -53,7 +69,6 @@
 
     config =
       let
-        user = "gh-runner-hellas";
         extraPackages = with pkgs; [ docker ];
       in
       {
@@ -61,10 +76,22 @@
 
         virtualisation.docker.enable = true;
 
-        users.users."gh-runner-hellas" = {
-          isSystemUser = true;
-          group = "gh-runner-hellas";
-          extraGroups = [ "docker" ];
+        users.users = {
+          "gh-runner-hellas-a" = {
+            isSystemUser = true;
+            group = "gh-runner-hellas";
+            extraGroups = [ "docker" ];
+          };
+          "gh-runner-hellas-b" = {
+            isSystemUser = true;
+            group = "gh-runner-hellas";
+            extraGroups = [ "docker" ];
+          };
+          "gh-runner-hellas-c" = {
+            isSystemUser = true;
+            group = "gh-runner-hellas";
+            extraGroups = [ "docker" ];
+          };
         };
         users.groups."gh-runner-hellas" = { };
 
@@ -72,21 +99,24 @@
           enable = true;
           url = "https://github.com/hellas-ai";
           tokenFile = "/run/gh-runner-hellas-a.secret";
-          inherit extraPackages user;
+          user = "gh-runner-hellas-a";
+          inherit extraPackages;
         };
 
         services.github-runners."hellas-b" = {
           enable = true;
           url = "https://github.com/hellas-ai";
           tokenFile = "/run/gh-runner-hellas-b.secret";
-          inherit extraPackages user;
+          user = "gh-runner-hellas-b";
+          inherit extraPackages;
         };
 
         services.github-runners."hellas-c" = {
           enable = true;
           url = "https://github.com/hellas-ai";
           tokenFile = "/run/gh-runner-hellas-c.secret";
-          inherit extraPackages user;
+          user = "gh-runner-hellas-c";
+          inherit extraPackages;
         };
 
         networking.hostName = "gh-runner-hellas";

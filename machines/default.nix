@@ -15,8 +15,4 @@ in
   router = sys "x86_64-linux" [ physical ./x86/router ];
   trex = sys "x86_64-linux" [ physical ./x86/trex ];
   cloud = sys "x86_64-linux" [ physical ./x86/cloud ];
-
-  # rock-5b = sys "aarch64-linux" [ physical ./aarch64/rock5b ];
-  # air = sys "aarch64-linux" [ physical ./aarch64/air ];
-
 }
