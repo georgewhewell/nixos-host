@@ -27,6 +27,7 @@ in
         ] ++ (if cfg.enableGraphical then [
           ../home/graphical.nix
           ../home/gpg.nix
+          ../home/zed.nix
         ] else [ ../home/headless.nix ]) ++ lib.optionals cfg.enableLaptop [
           ../home/laptop.nix
         ] ++ lib.optionals cfg.enableVscodeServer [

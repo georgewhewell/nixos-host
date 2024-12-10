@@ -39,8 +39,8 @@
   services.fwupd.enable = true;
   # programs.mosh.enable = true;
 
+  nix.optimise.automatic = true;
   nix.extraOptions = ''
-    auto-optimise-store = true
     experimental-features = nix-command flakes
   '';
 
