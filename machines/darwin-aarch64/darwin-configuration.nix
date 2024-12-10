@@ -19,6 +19,7 @@
       ../../home/development.nix
       ../../home/darwin.nix
       ../../home/vscode.nix
+      # ../../home/zed.nix
     ];
   };
 
@@ -46,11 +47,13 @@
       experimental-features = nix-command flakes
       extra-platforms = aarch64-darwin x86_64-darwin
     '';
+
+    optimise.automatic = true;
+
     settings = {
       max-jobs = 4;
       build-cores = 0;
       trusted-users = [ "grw" ];
-      auto-optimise-store = true;
     };
   };
 }
