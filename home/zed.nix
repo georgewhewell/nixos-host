@@ -5,7 +5,7 @@
     let
       bins = with pkgs; [
         nixd
-        nixfmt
+        nixfmt-rfc-style
         prettierd
         nodejs
         nodePackages.prettier
@@ -19,13 +19,13 @@
     in
     {
       enable = true;
-      package = with pkgs; writeShellScriptBin "zed" ''
-        export PATH=${lib.makeBinPath bins}:$PATH
-        export LD_LIBRARY_PATH=${lib.makeLibraryPath libraries}
-        export NIX_LD_LIBRARY_PATH=${lib.makeLibraryPath libraries}
-        export NIX_LD=${stdenv.cc.bintools.dynamicLinker}
-        exec ${zed-editor}/bin/zed "$@"
-      '';
+      # package = with pkgs; writeShellScriptBin "zed" ''
+      #   export PATH=${lib.makeBinPath bins}:$PATH
+      #   export LD_LIBRARY_PATH=${lib.makeLibraryPath libraries}
+      #   export NIX_LD_LIBRARY_PATH=${lib.makeLibraryPath libraries}
+      #   export NIX_LD=${stdenv.cc.bintools.dynamicLinker}
+      #   exec ${zed-editor}/bin/zed "$@"
+      # '';
       userSettings = {
         features = {
           copilot = true;
@@ -35,7 +35,7 @@
           version = "2";
           default_model = {
             provider = "anthropic";
-            model = "claude-3-5-sonnet-20240620";
+            model = "claude-3-5-sonnet-latest";
           };
         };
         lsp = {

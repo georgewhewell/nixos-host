@@ -19,7 +19,7 @@
       ../../home/development.nix
       ../../home/darwin.nix
       ../../home/vscode.nix
-      # ../../home/zed.nix
+      ../../home/zed.nix
     ];
   };
 
