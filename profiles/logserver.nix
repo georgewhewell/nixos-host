@@ -47,9 +47,6 @@
       smartctl = {
         enable = true;
       };
-      tor = {
-        enable = true;
-      };
     };
 
     scrapeConfigs = [

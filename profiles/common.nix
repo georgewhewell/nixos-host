@@ -20,13 +20,16 @@
     # "192.168.23.14" = [ "jellyfin" ];
   };
 
-  # environment.etc.nixpkgs.source = toString pkgs.nixpkgs_src;
+  nixpkgs.config.permittedInsecurePackages = [
+    "aspnetcore-runtime-6.0.36"
+    "aspnetcore-runtime-wrapped-6.0.36"
+    "dotnet-sdk-6.0.428"
+    "dotnet-sdk-wrapped-6.0.428"
+  ];
 
   services.dbus.packages = [ pkgs.gcr ];
 
   environment.systemPackages = with pkgs; [
-    #kitty.terminfo
-    #alacritty.terminfo
     ethtool
     iotop
     rsync
@@ -37,7 +40,6 @@
 
   services.irqbalance.enable = lib.mkDefault true;
   services.fwupd.enable = true;
-  # programs.mosh.enable = true;
 
   nix.optimise.automatic = true;
   nix.extraOptions = ''
@@ -56,7 +58,6 @@
     #   enableGlobalCompInit = false;
   };
 
-  # Enable the OpenSSH daemon.
   services.openssh = {
     enable = true;
     extraConfig = ''
@@ -97,7 +98,6 @@
   };
 
   nix = {
-
     settings = {
       trusted-users = [ "grw" ];
       substituters = [

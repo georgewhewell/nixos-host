@@ -8,9 +8,6 @@
   };
 
   home.packages = with pkgs; [
-    # nix deploy
-    colmena
-
     # for vscode-server..
     openssl
     pkg-config
@@ -27,7 +24,7 @@
     rustup
 
     # saas crap
-    #runpodctl
+    runpodctl
   ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
     # evm tooling
     solc

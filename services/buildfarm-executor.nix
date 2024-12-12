@@ -24,7 +24,7 @@
         hostName = "trex.satanic.link";
         sshUser = "grw";
         protocol = "ssh-ng";
-        maxJobs = 16;
+        maxJobs = 4;
         speedFactor = 128;
         supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
         systems = [

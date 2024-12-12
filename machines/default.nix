@@ -1,14 +1,16 @@
-colmena: nixpkgs: hardware: nixosModule: inputs: consts:
+colmena: pkgs: hardware: nixosModule: inputs: consts:
 
 with hardware;
 
 let
-  sys = system: mods: nixpkgs.lib.nixosSystem {
-    inherit system;
-    modules = [{ _module.args = inputs; } nixosModule] ++ mods;
-    extraModules = [ colmena.nixosModules.deploymentOptions ];
-    specialArgs = { inherit inputs; inherit consts; };
-  };
+  inherit (inputs.nixpkgs) lib;
+  sys = system: mods:
+    lib.nixosSystem {
+      inherit system;
+      modules = [{ _module.args = inputs; } nixosModule] ++ mods;
+      extraModules = [ colmena.nixosModules.deploymentOptions ];
+      specialArgs = { inherit inputs; inherit consts; };
+    };
 in
 {
   nixhost = sys "x86_64-linux" [ physical ./x86/nixhost ];
