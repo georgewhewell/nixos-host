@@ -57,7 +57,7 @@
     , ...
     } @ inputs:
     let
-      mypkgs = import ./packages;
+      pkgs = import nixpkgs { system = "x86_64-linux"; };
       deploy = import lib/deploy.nix;
 
       inherit (inputs.nixpkgs.lib) composeManyExtensions;
@@ -77,6 +77,28 @@
       vscode-server =
         vscode-server.nixosModules.home;
 
+      nixpkgs_patched_src = pkgs.applyPatches {
+        name = "nixpkgs-patched-${nixpkgs.shortRev}";
+        src = nixpkgs;
+        patches = [
+          (pkgs.fetchpatch {
+            url =
+              "https://patch-diff.githubusercontent.com/raw/NixOS/nixpkgs/pull/362454.patch";
+            sha256 = "sha256-31V/s2lWkh7uFeHRm++6pBC3o3kB9O6JJS62NMJJh3k=";
+          })
+        ];
+      };
+
+      patchedPkgs = forAllSystems (system:
+        let
+          pkgs = import nixpkgs_patched_src {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in
+        pkgs // { inherit (nixpkgs) lib; }
+      );
+
       forAllSystems = f: builtins.listToAttrs (map
         (name: { inherit name; value = f name; })
         [
@@ -87,13 +109,11 @@
     in
     {
       lib = { inherit forAllSystems hardware deploy; };
+
       colmena = {
         meta = {
           description = "My personal machines";
-          nixpkgs = import nixpkgs {
-            system = "x86_64-linux";
-            overlays = [ (composeManyExtensions localOverlays) ];
-          };
+          nixpkgs = patchedPkgs.x86_64-linux;
           specialArgs = {
             inherit inputs;
             inherit consts;
@@ -136,7 +156,7 @@
         imports = builtins.attrValues self.nixosModules;
         nixpkgs.overlays = [
           (composeManyExtensions localOverlays)
-          (_: mypkgs)
+          # (_: mypkgs)
         ];
       };
 
@@ -147,7 +167,7 @@
           in
           pkgs.mkShell {
             packages = with pkgs; [
-              nixVersions.nix_2_18
+              nixVersions.nix_2_24
               colmena.packages.${system}.colmena
             ];
 
@@ -160,14 +180,13 @@
       nixosConfigurations = import
         ./machines
         colmena
-        nixpkgs
+        (patchedPkgs.x86_64-linux)
         hardware
         self.nixosModule
         inputs
         consts;
 
-      packages = forAllSystems
-        (system: mypkgs nixpkgs.legacyPackages.${system});
+      packages = (patchedPkgs.x86_64-linux);
 
       githubActions =
         let

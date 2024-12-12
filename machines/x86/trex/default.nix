@@ -34,17 +34,18 @@
 
   system.stateVersion = "24.11";
 
-  boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" "bcachefs" ];
+  boot.supportedFilesystems = [ "ext4" "vfat" "xfs" "zfs" ];
   boot = {
     kernelModules = [
       "ipmi_devintf"
       "ipmi_si"
     ];
-    kernelPackages = pkgs.linuxPackages_latest;
     kernelParams = [
       "amd_iommu=on"
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work
       "pcie=pcie_bus_perf"
+      "zswap.enabled=1"
+      # "zswap.compressor=zstd"
     ];
     initrd.kernelModules = [ "mlx5_core" "lm92" ];
     blacklistedKernelModules = [ "nouveau" "amdgpu" "i915" ];

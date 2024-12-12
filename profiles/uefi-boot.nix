@@ -4,7 +4,7 @@
 
   boot = {
     tmp.useTmpfs = true;
-    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_6_11;
     zfs = {
       package = pkgs.zfs_unstable;
     };
