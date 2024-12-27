@@ -80,13 +80,7 @@
       nixpkgs_patched_src = pkgs.applyPatches {
         name = "nixpkgs-patched-${nixpkgs.shortRev}";
         src = nixpkgs;
-        patches = [
-          (pkgs.fetchpatch {
-            url =
-              "https://patch-diff.githubusercontent.com/raw/NixOS/nixpkgs/pull/362454.patch";
-            sha256 = "sha256-31V/s2lWkh7uFeHRm++6pBC3o3kB9O6JJS62NMJJh3k=";
-          })
-        ];
+        patches = [ ];
       };
 
       patchedPkgs = forAllSystems (system:
