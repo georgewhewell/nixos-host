@@ -16,6 +16,7 @@
     opensc
     pcsctools
     bridge-utils
+    ghostty.terminfo
   ];
 
   services.keybase = {

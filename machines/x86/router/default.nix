@@ -25,6 +25,7 @@
     common-cpu-amd-raphael-igpu
     common-cpu-amd-zenpower
     common-gpu-amd
+    ../../../containers/unifi.nix
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/headless.nix

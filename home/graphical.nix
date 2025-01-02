@@ -10,6 +10,7 @@
     ./thunderbird.nix
     ./hyprland.nix
     ./vscode.nix
+    ./zed.nix
   ];
 
   xdg.mimeApps.defaultApplications = {
