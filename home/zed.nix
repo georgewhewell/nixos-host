@@ -29,7 +29,7 @@
       userSettings = {
         features = {
           copilot = true;
-          inline_completion_provider = "supermaven";
+          inline_completion_provider = "copilot";
         };
         assistant = {
           version = "2";
@@ -54,6 +54,11 @@
           light = "Andromeda";
           dark = "One Dark";
         };
+        ssh_connections = [
+            {
+            host = "trex.satanic.link";
+            }
+        ];
       };
       userKeymaps = [
         { bindings = { up = "menu::SelectPrev"; }; }
