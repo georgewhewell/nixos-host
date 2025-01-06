@@ -9,6 +9,9 @@ let
   air-grw = ''
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC87LO0rf0HxGpcFViyLH9hJiIHT6ptZgZ7W9d6PfBe8ADVMinvheiZgYHEOv/sQzEIP/3n6qCaLzcQ0vHzTnN+4VIET4APT+3g0yQizWB31qfTGl8qAVneJZVbudKEGTBeHZbfiahpJV1K+YXLg5+ig9ayT1QckBwvk1SW1HUc/tFriYO7Gbl9w2NxNOVMvujhGhUgRPeoY0xpgYdWz4AFS3D+WtzbnHGI7DPBPyxBZajm6zFrEhJBoZe/2NCBFkPckPs4X+su1fFoAab9IX/jI7EVpnVOA8gPVE8WlwvZXZqz8jn9pBwv/V+xGTCWLJgs1GLnrHS4aAgpAZVXIgGl3YXcUVO2VCFUTAM3msHSShLtbocqMDqqTIXLiIsfJQ0lSYr1+MBJ4QSbvxIVRk0/ZgCvlPrLEG7dDJaquJovfVNvQCk46Dr5aTP03EohYNOAstlmzoMyEfxE9ZF+kWWntjELnMNIT/TPdkMHJf7U91rITFy58xaxbL2DNMVmo88= grw@air
   '';
+  mbp-grw = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ3UfDQwI0oA+04pmx2d+ekX1wSlTb1jwLDOasLsNesv grw@Georges-MBP
+  '';
   air-root = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEamv7mi9CO/GJWMisaHoEPwBBoMCB5lXWHq0fgzUVAb root@Georges-Air-5.lan.satanic.link
   '';
@@ -43,18 +46,13 @@ in
       gpg-pubkey
       mac-pubkey
       air-grw
+      mbp-grw
       trex-root
       air-root
     ];
   };
 
-  users.users.root.openssh.authorizedKeys.keys = [
-    gpg-pubkey
-    mac-pubkey
-    air-grw
-    air-root
-    trex-root
-  ];
+  users.users.root.openssh.authorizedKeys.keys = users.users.grw.openssh.authorizedKeys.keys;
 
   security.sudo = {
     enable = true;
