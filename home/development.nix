@@ -1,34 +1,50 @@
-{ config, lib, pkgs, ... }:
+{ config
+, lib
+, pkgs
+, ...
+}:
 
 {
 
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
+    enableBashIntegration = true;
+    nix-direnv.enable = true;
   };
 
-  home.packages = with pkgs; [
-    # for vscode-server..
-    openssl
-    pkg-config
+  home.packages =
+    with pkgs;
+    [
+      # for vscode-server..
+      openssl
+      pkg-config
 
-    # platforms
-    gh
-    doctl
+      # platforms
+      gh
+      doctl
 
-    # go tooling
-    go
-    gopls
+      # go tooling
+      go
+      gopls
 
-    # rust tooling
-    rustup
+      # rust tooling
+      rustup
 
-    # saas crap
-    runpodctl
-  ] ++ lib.optionals (pkgs.system == "x86_64-linux") [
-    # evm tooling
-    solc
-    # foundry-bin
-  ];
+      # saas crap
+      runpodctl
+
+      # robot stuff
+      aider-chat
+    ]
+    ++ lib.optionals (pkgs.system == "x86_64-linux") [
+      # evm tooling
+      # solc
+      # foundry-bin
+    ];
+
+  home.sessionVariables = {
+    OLLAMA_API_BASE = "http://localhost:11434";
+  };
 
 }

@@ -1,45 +1,48 @@
-{ config, pkgs, lib, inputs, modulesPath, ... }:
-
 {
-
+  pkgs,
+  lib,
+  modulesPath,
+  ...
+}: {
   imports = [
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/nas-mounts.nix
     ../../../services/buildfarm-slave.nix
-    # inputs.rock5b.nixosModules.apply-overlay
-    # "${modulesPath}/installer/sd-card/sd-image-aarch64-installer.nix"
-    # inputs.rock5b.nixosModules.kernel
+    (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
   sconfig = {
     profile = "server";
-    home-manager.enable = false;
+    home-manager.enable = true;
     home-manager.enableGraphical = false;
   };
 
-  # deployment.targetHost = "rock-5b.satanic.link";
-  deployment.targetHost = "192.168.23.11";
+  deployment.targetHost = "192.168.23.18";
+  deployment.targetUser = "grw";
 
-  boot.supportedFilesystems = [ "vfat" "ext4" "zfs" ];
+  boot.supportedFilesystems = ["vfat" "ext4" "zfs"];
   systemd.services.zfs-mount.enable = false;
 
-  fileSystems."/boot" =
-    {
-      device = "/dev/nvme0n1p1";
-      fsType = "vfat";
-      options = [ "iocharset=iso8859-1" "fmask=0022" "dmask=0022" ];
-    };
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-uuid/9E7A-69DA";
+    fsType = "vfat";
+    options = ["iocharset=iso8859-1" "fmask=0022" "dmask=0022"];
+  };
 
-  fileSystems."/" =
-    {
-      device = "zpool/root/rock5b";
-      fsType = "zfs";
-      # options = [ ];
+  boot.loader = {
+    efi.canTouchEfiVariables = true;
+    systemd-boot = {
+      enable = true;
+      configurationLimit = 10;
     };
+  };
 
-  boot.loader.grub.enable = false;
-  boot.loader.generic-extlinux-compatible.enable = true;
+  fileSystems."/" = {
+    device = "zpool/root/nixos";
+    fsType = "zfs";
+    # options = [ ];
+  };
 
   services.prometheus.exporters = {
     node = {
@@ -53,8 +56,8 @@
     priority = 10;
     algorithm = "lz4";
     swapDevices = 4;
-    memoryPercent = 30;
-    memoryMax = 1024 * 1024 * 1024;
+    memoryPercent = 40;
+    memoryMax = 2 * 1024 * 1024 * 1024;
   };
 
   systemd.extraConfig = ''
@@ -71,86 +74,26 @@
     options cfg80211 ieee80211_regdom="CH"
   '';
 
-  # fileSystems = lib.mkForce {
-  #   "/" = { label = "NIXOS_ROOTFS"; };
-  # };
-  # Builds an (opinionated) rootfs image.
-  # NOTE: *only* the rootfs.
-  #       it is expected the end-user will assemble the image as they need.
-  # boot.supportedFilesystems = lib.mkForce [ "vfat" "ext4" "btrfs" ];
-  boot.kernelParams = [ "console=ttyS2,1500000n8" ];
-  # environment.systemPackages = [  ];
-
-  # system.build.rootfsImage =
-  #   pkgs.callPackage
-  #     (
-  #       { callPackage
-  #       , lib
-  #       , populateCommands
-  #       ,
-  #       }:
-  #       callPackage "${pkgs.path}/nixos/lib/make-ext4-fs.nix" ({
-  #         inherit (config.sdImage) storePaths;
-  #         compressImage = false;
-  #         populateImageCommands = populateCommands;
-  #         volumeLabel = config.fileSystems."/".label;
-  #       }
-  #       // lib.optionalAttrs (config.sdImage.rootPartitionUUID != null) {
-  #         uuid = config.sdImage.rootPartitionUUID;
-  #       })
-  #     )
-  #     {
-  #       populateCommands = ''
-  #         mkdir -p ./files/boot
-  #         ${config.boot.loader.generic-extlinux-compatible.populateCmd} -c ${config.system.build.toplevel} -d ./files/boot
-  #       '';
-  #     };
+  boot.kernelParams = ["console=ttyS2,1500000n8"];
 
   # interfaces should exist before stage2
   boot.initrd.kernelModules = [
-    # "r8125"
     "nvme"
     "r8169"
-    # "iwlwifi"
-    # "bcachefs"
-    # "xhci_pci"
-    # "ehci_pci"
-    # "ahci"
-    # "usb_storage"
   ];
 
   system.stateVersion = "24.03";
 
-  # nixpkgs.overlays = [
-  #   (self: _: {
-  #     linuxPackages_latest = self.linuxPackagesFor (self.linux_latest.override (o: {
-  #       argsOverride = old: {
-  #         kernelPatches = old.kernelPatches ++ [{ patch = ./faster-pd.patch; }];
-  #       };
-  #     }));
-  #   })
-  # ];
-
-  boot.kernelPatches = [
-    { patch = ./save-bar-space.patch; }
-    { patch = ./rk3588-pci.patch; }
-  ];
-
   services.iperf3.enable = true;
-
-  # boot.kernel.sysctl = {
-  #   "net.ipv4.conf.all.arp_filter" = true;
-  #   "net.ipv4.conf.all.forwarding" = false;
-  #   "net.ipv6.conf.all.forwarding" = false;
-  # };
 
   networking = {
     hostName = "rock-5b";
-    nameservers = [ "192.168.23.1" ];
+    nameservers = ["192.168.23.254"];
     useNetworkd = true;
+
     useDHCP = false;
     nat.enable = false;
-    firewall.enable = false;
+    firewall.enable = true;
 
     wireless.iwd = {
       enable = true;
@@ -172,82 +115,20 @@
       "10-lan" = {
         matchConfig.Driver = "r8169";
         networkConfig = {
-          # BindCarrier = "enP4p65s0";
-          ConfigureWithoutCarrier = false;
           IPv6AcceptRA = true;
         };
         address = [
-          "192.168.23.11/24"
+          "192.168.23.18/24"
         ];
         routes = [
           {
             Gateway = "192.168.23.1";
-            # Table = 1000;
             Metric = 1;
           }
         ];
-        # routingPolicyRules = [
-        #   {
-        #     routingPolicyRuleConfig = {
-        #       From = "192.168.23.11";
-        #       Table = 1000;
-        #     };
-        #   }
-        # ];
-        linkConfig = {
-          RequiredForOnline = false;
-          # CarrierLossPolicy = "drop";
-          # ActivationPolicy = "always-up";
-          # ActivationPolicy = "link";
-          # ActivationPolicy = "bound";
-        };
-      };
-      "30-wifi" = {
-        matchConfig.Driver = "iwlwifi";
-        address = [
-          "192.168.23.250/24"
-        ];
-        routes = [
-          {
-            Gateway = "192.168.23.1";
-            # Table = 1001;
-            Metric = 10;
-          }
-        ];
-        # routingPolicyRules = [
-        #   {
-        #     routingPolicyRuleConfig = {
-        #       From = "192.168.23.250";
-        #       Table = 1001;
-        #     };
-        #   }
-        # ];
-        networkConfig = {
-          # BindCarrier = "wlan0";
-          ConfigureWithoutCarrier = false;
-          IPv6AcceptRA = true;
-        };
-        linkConfig = {
-          RequiredForOnline = false;
-          # CarrierLossPolicy = "drop";
-          # BindCarrier = true;
-          # ActivationPolicy = "link";
-        };
       };
     };
   };
-
-  # services.dnsmasq = {
-  #   enable = true;
-  #   alwaysKeepRunning = true;
-  #   settings = {
-  #     interface = "enu1u1";
-  #     dhcp-range = "192.168.22.2,192.168.22.254,24h";
-  #   };
-  #   extraConfig = ''
-  #     bind-interfaces
-  #   '';
-  # };
 
   environment.systemPackages = with pkgs; [
     iperf
@@ -257,16 +138,11 @@
     usbutils
   ];
 
-  # require interface to be up before starting dnsmasq
-  # systemd.services.dnsmasq.after = [ "sys-subsystem-net-devices-enu1u1.device" ];
+  services.ollama.enable = true;
 
   services.irqbalance.enable = lib.mkDefault true;
   hardware.wirelessRegulatoryDatabase = true;
 
   powerManagement.enable = false;
-  # powerManagement.cpuFreqGovernor = lib.mkDefault " ondemand ";
-
-  services.openssh.enable = true;
-  services.openssh.permitRootLogin = "yes";
-
+  powerManagement.cpuFreqGovernor = lib.mkDefault "performance";
 }

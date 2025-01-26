@@ -4,7 +4,7 @@
 
   programs.git = {
     enable = true;
-    package = pkgs.gitAndTools.gitFull;
+    # package = pkgs.gitAndTools.gitFull;
 
     userName = "georgewhewell";
     userEmail = "georgerw@gmail.com";

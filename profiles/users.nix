@@ -1,6 +1,9 @@
-{ config, lib, pkgs, ... }:
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
   mac-pubkey = ''
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDLP7HdNP1K1zgEOiJvAJ/7UjnjbIZ77kfM0IP/M726Vw67AcpVZf7XIfwaz4/I4NeeXKHcAE1sZodbb9efZ6oOFHec0UmfDprmQYqcrTqLNSqdxfyeEV8VdxEM8N4Kp9+7zc38NeCd66B67FDPs/YzEOgWNtyR4UrJpCH60j1cSndeqPF90hDjHMmYVcUn1Pq+R6cRxppcCjOQiOPT7jST48s6pqyJm0x31GAt/bH4WERT5Wzah34tZLlNp3AEGjfZ/8CDLSEkvkkMdjyjQZJ0QJEdYH6u1VD2TOwtBuAHZCmW0yIkj+3m/1kU2AFdsz6r29Ix6azBnThMMTubYCsk6HoH+MBd7A/7tuUs4rphGTfPnMMI9IwhPkhJiWaWPJlrYW6JO/szu1LdWRORtuCyXFIFJJaOAKwkS5uaxGBdx4NXZLNtLMX+0qIkfQWBcwhkKb43TQ2+/bqEQme9U80ILGHMsYb/K8IVSbsgP0tnQPFoVv3HTyLCloIwtoL8Bf8= grw@MacBook-Air.lan'';
   gpg-pubkey = ''
@@ -12,15 +15,16 @@ let
   mbp-grw = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ3UfDQwI0oA+04pmx2d+ekX1wSlTb1jwLDOasLsNesv grw@Georges-MBP
   '';
+  mbp-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICHr083xA9j09SFUzZV6RNYmJDUSviEo5WRnc4ABXuZW root@Georges-MBP.lan.satanic.link
+  '';
   air-root = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEamv7mi9CO/GJWMisaHoEPwBBoMCB5lXWHq0fgzUVAb root@Georges-Air-5.lan.satanic.link
   '';
   trex-root = ''
     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEtPi2T/lOR9s64SVS4ETOmJgj//nKJxuGD8A+PZxcLb root@trex
   '';
-in
-{
-
+in {
   users.extraUsers.grw = {
     shell = pkgs.zsh;
     extraGroups = [
@@ -49,14 +53,14 @@ in
       mbp-grw
       trex-root
       air-root
+      mbp-root
     ];
   };
 
-  users.users.root.openssh.authorizedKeys.keys = users.users.grw.openssh.authorizedKeys.keys;
+  # users.users.root.openssh.authorizedKeys.keys = config.users.users.grw.openssh.authorizedKeys.keys;
 
   security.sudo = {
     enable = true;
     wheelNeedsPassword = false;
   };
-
 }

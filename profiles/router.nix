@@ -1,12 +1,14 @@
-{ config, lib, pkgs, inputs, ... }:
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}: let
   wanInterface = "enp1s0f0np0";
   vpnInterface = "wg0-vpn";
   lanBridge = "br0.lan";
-in
-{
-
+in {
   services.usbmuxd.enable = true;
 
   boot.initrd.kernelModules = [
@@ -26,7 +28,7 @@ in
   ];
 
   users.extraUsers.sf = {
-    extraGroups = [ ];
+    extraGroups = [];
     isNormalUser = true;
     openssh.authorizedKeys.keys = [
       "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDsEs4RIxouNDuknNbiCyGet2xQ/v74eqUmtYILlsDc3XToJqo3S/0bjiwSFUViyns1jecn943tjVEKmsMA0aKjp2KM4lu1fwBD6z3c81H+oPFCmOyFCAierxjNsgSmr9VbZechVF8a5Tk24/kvbkbNysS5k+PpabepJxvE0Zx1Idp95Yw/8jLhYqzIU28MasYdSmGCBXyEJG4LRQmfR0GAsOOsmGTWQ8MT7WIkK0UatOVOG2TKdRvfuHKlKp/ioyByk0DYFeAKbJKI1hdl3Kn2ESArC2duOznrdvIPRgC32U9F9jOWDrl47kgkwJ9Eog3j3VG5vSLdxmLVi9lYs9HTro16K8z+9E85fG30aIYCtd5JgsWUBBI1M6sqNgCfHSECFJeVv/R+fdVWNmxMzb7PbL8GHIJwHuH1LT2LSoU+VycF4DkqNO6MzRuoeQfXmCdfRW+HjWVZQCs0D4YYQCvB6HfTuErRHrBYnvHDS39HWuuYvPDga3X+QlfZYFYUyCW7zZGf0soquSmo0BN2cQOW0Zj3Kq5+CrIisWQhJGwkN+mTkqF5u692ZSyAgo1Ae7npCc0ATf/42ZQrmgCw+BLIDNMwX/X5FN5gxugRNolgcLIgP8dDjesqmQIBka8R2IJx/lSNCuMjP+JNahDVsNW/9o9Mw+wL2UnSv3axQAkN1Q== sf@chaminade"
@@ -79,7 +81,7 @@ in
     networks = {
       "10-${lanBridge}" = {
         matchConfig.Name = lanBridge;
-        bridgeConfig = { };
+        bridgeConfig = {};
         address = [
           "192.168.23.1/24"
         ];
@@ -111,11 +113,6 @@ in
         networkConfig.Bridge = lanBridge;
         linkConfig.RequiredForOnline = "enslaved";
       };
-      # "20-atlantic" = {
-      #   matchConfig.Driver = "atlantic";
-      #   networkConfig.Bridge = lanBridge;
-      #   linkConfig.RequiredForOnline = "enslaved";
-      # };
       "20-${wanInterface}" = {
         matchConfig.Name = wanInterface;
         networkConfig = {
@@ -150,7 +147,7 @@ in
     nftables.enable = true;
 
     domain = "lan";
-    nameservers = [ "192.168.23.1" ];
+    nameservers = ["192.168.23.1"];
 
     nat = {
       enable = true;
@@ -161,36 +158,174 @@ in
       internalInterfaces = [
         lanBridge
       ];
-      externalInterface = wanInterface; # port 1
+      externalInterface = wanInterface;
       forwardPorts = [
-        { sourcePort = 51413; destination = "192.168.23.1:51413"; proto = "tcp"; } /* transmission */
-        { sourcePort = 51413; destination = "192.168.23.5:51413"; proto = "udp"; } /* transmission */
-        { sourcePort = 17026; destination = "192.168.23.5:17026"; proto = "tcp"; } /* qbittorrent */
-        { sourcePort = 17026; destination = "192.168.23.5:17026"; proto = "udp"; } /* qbittorrent */
-        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "tcp"; } /* lighthouse */
-        { sourcePort = 9000; destination = "192.168.23.5:9000"; proto = "udp"; } /* lighthouse */
-        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "tcp"; } /* lighthouse */
-        { sourcePort = 9001; destination = "192.168.23.5:9001"; proto = "udp"; } /* lighthouse */
-        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "tcp"; } /* lighthouse */
-        { sourcePort = 9002; destination = "192.168.23.5:9002"; proto = "udp"; } /* lighthouse */
-        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "tcp"; } /* monero */
-        { sourcePort = 18080; destination = "192.168.23.5:18080"; proto = "udp"; } /* monero */
-        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "tcp"; } /* geth */
-        { sourcePort = 30303; destination = "192.168.23.5:30303"; proto = "udp"; } /* geth */
-        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "tcp"; } /* reth */
-        { sourcePort = 30304; destination = "192.168.23.5:30304"; proto = "udp"; } /* reth */
-        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "tcp"; } /* geth */
-        { sourcePort = 4001; destination = "192.168.23.5:4001"; proto = "udp"; } /* geth */
+        {
+          sourcePort = 51413;
+          destination = "192.168.23.1:51413";
+          proto = "tcp";
+        }
+        /*
+        transmission
+        */
+        {
+          sourcePort = 51413;
+          destination = "192.168.23.5:51413";
+          proto = "udp";
+        }
+        /*
+        transmission
+        */
+        {
+          sourcePort = 17026;
+          destination = "192.168.23.5:17026";
+          proto = "tcp";
+        }
+        /*
+        qbittorrent
+        */
+        {
+          sourcePort = 17026;
+          destination = "192.168.23.5:17026";
+          proto = "udp";
+        }
+        /*
+        qbittorrent
+        */
+        {
+          sourcePort = 9000;
+          destination = "192.168.23.5:9000";
+          proto = "tcp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 9000;
+          destination = "192.168.23.5:9000";
+          proto = "udp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 9001;
+          destination = "192.168.23.5:9001";
+          proto = "tcp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 9001;
+          destination = "192.168.23.5:9001";
+          proto = "udp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 9002;
+          destination = "192.168.23.5:9002";
+          proto = "tcp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 9002;
+          destination = "192.168.23.5:9002";
+          proto = "udp";
+        }
+        /*
+        lighthouse
+        */
+        {
+          sourcePort = 18080;
+          destination = "192.168.23.5:18080";
+          proto = "tcp";
+        }
+        /*
+        monero
+        */
+        {
+          sourcePort = 18080;
+          destination = "192.168.23.5:18080";
+          proto = "udp";
+        }
+        /*
+        monero
+        */
+        {
+          sourcePort = 30303;
+          destination = "192.168.23.5:30303";
+          proto = "tcp";
+        }
+        /*
+        geth
+        */
+        {
+          sourcePort = 30303;
+          destination = "192.168.23.5:30303";
+          proto = "udp";
+        }
+        /*
+        geth
+        */
+        {
+          sourcePort = 30304;
+          destination = "192.168.23.5:30304";
+          proto = "tcp";
+        }
+        /*
+        reth
+        */
+        {
+          sourcePort = 30304;
+          destination = "192.168.23.5:30304";
+          proto = "udp";
+        }
+        /*
+        reth
+        */
+        {
+          sourcePort = 4001;
+          destination = "192.168.23.5:4001";
+          proto = "tcp";
+        }
+        /*
+        geth
+        */
+        {
+          sourcePort = 4001;
+          destination = "192.168.23.5:4001";
+          proto = "udp";
+        }
+        /*
+        geth
+        */
 
-        { sourcePort = 32400; destination = "192.168.23.5:8776"; } /* radicle */
-        { sourcePort = 8333; destination = "192.168.23.5:8333"; } /* bitcoind */
+        {
+          sourcePort = 32400;
+          destination = "192.168.23.5:8776";
+        }
+        /*
+        radicle
+        */
+        {
+          sourcePort = 8333;
+          destination = "192.168.23.5:8333";
+        }
+        /*
+        bitcoind
+        */
       ];
     };
 
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [ lanBridge ];
+      trustedInterfaces = [lanBridge];
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = false;
@@ -216,7 +351,7 @@ in
             42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
-            546 # dhcpv6 (client) 
+            546 # dhcpv6 (client)
             547 # dhcpv6 (server)
             35947 # wireguard
             51820 # wireguard (cloud)
@@ -241,66 +376,21 @@ in
         };
       };
     };
-
-    # wireguard = {
-    #   enable = false;
-    #   interfaces = {
-    #     "${vpnInterface}" = {
-    #       ips = [ "192.168.24.1/24" ];
-    #       listenPort = 51820;
-    #       privateKeyFile = "/run/keys/wg-router.secret";
-    #       peers = [
-    #         {
-    #           # mac air
-    #           publicKey = "T+jpoipZEmmc76Nh72NZYZF3SsngDxoBRZIWVyp5c3A=";
-    #           allowedIPs = [ "192.168.24.2/32" ];
-    #           persistentKeepalive = 25;
-    #         }
-    #         {
-    #           # iphone
-    #           publicKey = "tIxnCBM8di2/TmepKl/RWrit0cj/5YpEiF3hdpYBZno=";
-    #           allowedIPs = [ "192.168.24.3/32" ];
-    #           persistentKeepalive = 25;
-    #         }
-    #       ];
-    #     };
-    #   };
-    # };
-    # };
-
-    # wait for keys before doing any wg stuff- doesnt seem to work?
-    # systemd.services."wireguard-wg0-cloud".after = [ "wg-router.secret-key.service" ];
-    # systemd.services."wireguard-wg0-cloud".wants = [ "wg-router.secret-key.service" ];
-    # systemd.services."wireguard-wg0-cloud".requires = [ "wg-router.secret-key.service" ];
-
-    # systemd.services."network-addresses-wg0-cloud.service".after = [ "wg-router.secret-key.service" ];
-    # systemd.services."network-addresses-wg0-cloud.service".wants = [ "wg-router.secret-key.service" ];
-    # systemd.services."network-addresses-wg0-cloud.service".requires = [ "wg-router.secret-key.service" ];
-
-    # deployment.keys =
-    #   {
-    #     "wg-router.secret" = {
-    #       keyCommand = [ "pass" "wg-router" ];
-    #       destDir = "/run/keys";
-    #       uploadAt = "pre-activation";
-    #     };
-    #   };
   };
 
   services.dnscrypt-proxy2 = {
     enable = true;
     settings = {
-      listen_addresses = [ "127.0.0.1:54" ];
+      listen_addresses = ["127.0.0.1:54"];
       static.cloudflare = {
         stamp = "sdns://AgcAAAAAAAAABzEuMC4wLjEAEmRucy5jbG91ZGZsYXJlLmNvbQovZG5zLXF1ZXJ5";
       };
-      # blacklist.blacklist_file = "${pkgs.sources.hosts-blocklists}/dnscrypt-proxy/dnscrypt-proxy.blacklist.txt";
     };
   };
 
   services.dnsmasq = {
     enable = true;
-    servers = [ "127.0.0.1#54" ];
+    servers = ["127.0.0.1#54"];
     settings = {
       domain-needed = true;
       bogus-priv = true;
@@ -329,6 +419,8 @@ in
         "90:e2:ba:1a:69:d8,192.168.23.14" # jellyfin (10g)
         "fa:09:ef:0e:74:d7,192.168.23.15" # sonarr
         "fa:48:90:8d:03:d0,192.168.23.16" # radarr
+        "fa:48:90:8d:03:d0,192.168.23.17" # nanokvm (router)
+        "00:e0:4c:68:02:e7,192.168.23.18" # rock-5b (router)
       ];
 
       "address" = [
@@ -351,7 +443,7 @@ in
   services.miniupnpd = {
     enable = true;
     externalInterface = wanInterface;
-    internalIPs = [ lanBridge ];
+    internalIPs = [lanBridge];
     natpmp = true;
     upnp = true;
   };
@@ -370,4 +462,3 @@ in
     dnsmasq.enable = true;
   };
 }
-

@@ -1,7 +1,4 @@
 self: super:
-
 {
-
-
-  # Append local packages
-} // (import ../packages { pkgs = super; })
+}
+// (import ../packages {pkgs = super;})

@@ -1,7 +1,4 @@
-{ config, lib, pkgs, ... }:
-
-{
-
+{pkgs, ...}: {
   boot.kernelParams = [
     "amdgpu.ppfeaturemask=0xffffffff"
   ];
@@ -12,6 +9,8 @@
     # crashes gpu?!?!
     # amdvlk.enable = true;
   };
+
+  nixpkgs.config.rocmSupport = true;
 
   hardware.graphics = {
     enable = true;
