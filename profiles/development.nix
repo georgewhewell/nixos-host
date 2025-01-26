@@ -1,6 +1,9 @@
-{ config, pkgs, inputs, ... }:
-
 {
+  config,
+  pkgs,
+  inputs,
+  ...
+}: {
   boot.kernel.sysctl."fs.inotify.max_user_watches" = "1048576";
   programs.nix-ld.enable = true;
 
@@ -20,7 +23,7 @@
     iotop
     nethogs
     ncdu
-    dstat
+    dool
     arp-scan
     libpcap
 
@@ -41,19 +44,16 @@
   ];
 
   nix = {
-    nixPath = [ "nixpkgs=${inputs.nixpkgs}" ]; # Enables use of `nix-shell -p ...` etc
+    nixPath = ["nixpkgs=${inputs.nixpkgs}"]; # Enables use of `nix-shell -p ...` etc
     registry.nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
   };
 
-  services.udev.packages = [ pkgs.platformio ];
+  services.udev.packages = [pkgs.platformio];
 
   services.postgresql = {
-    package = pkgs.postgresql_14;
+    package = pkgs.postgresql_17;
     enable = true;
     enableTCPIP = true;
-    # extraPlugins = with pkgs.postgresqlPackages; [
-    #   timescaledb
-    # ];
   };
 
   services.redis = {
@@ -66,8 +66,7 @@
     enable = true;
     autoPrune = {
       enable = true;
-      flags = [ "--all" ];
+      flags = ["--all"];
     };
   };
-
 }

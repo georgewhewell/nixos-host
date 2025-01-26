@@ -8,3 +8,5 @@
 *.pyo
 .mypy_cache
 *.idea
+.aider*
+.direnv

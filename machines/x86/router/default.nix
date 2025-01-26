@@ -1,8 +1,11 @@
-{ config, pkgs, lib, inputs, ... }:
-
 {
+  pkgs,
+  lib,
+  inputs,
+  ...
+}: {
   /*
-    router: cwwk 8845hs board
+  router: cwwk 8845hs board
   */
   sconfig = {
     profile = "server";
@@ -10,12 +13,10 @@
       enable = true;
       enableVscodeServer = false;
     };
-    wireguard = {
-      enable = false;
-    };
   };
 
-  deployment.targetHost = "192.168.23.1";
+  deployment.targetHost = "10.86.167.2";
+  # deployment.targetHost = "192.168.23.254";
   deployment.targetUser = "grw";
   system.stateVersion = "24.11";
 
@@ -30,12 +31,28 @@
     ../../../profiles/home.nix
     ../../../profiles/headless.nix
     ../../../profiles/uefi-boot.nix
-    ../../../profiles/nas-mounts.nix
-    ../../../profiles/router.nix
+    # ../../../profiles/nas-mounts.nix
+    ../../../profiles/vpp-router.nix
     ../../../profiles/radeon.nix
     ../../../services/nginx.nix
-    ../../../services/jellyfin.nix
+    # ../../../services/jellyfin.nix
   ];
+
+  systemd.network.networks."20-rndis" = {
+    # nanokvm
+    matchConfig.Driver = "rndis_host";
+    # separate 10.86.167.1/24 network
+    address = [
+      "10.86.167.2/24"
+    ];
+    networkConfig = {
+      DHCP = "no";
+      IPv6AcceptRA = false;
+      IPv6PrivacyExtensions = false;
+      IPv6Forwarding = false;
+      IgnoreCarrierLoss = true;
+    };
+  };
 
   services = {
     iperf3 = {
@@ -56,21 +73,19 @@
     "nf_tables"
     "nft_compat"
     "igc"
-    "mlx5_core"
+    "vfio"
   ];
 
-  fileSystems."/" =
-    {
-      device = "zpool/root/nixos-router";
-      fsType = "zfs";
-    };
+  fileSystems."/" = {
+    device = "zpool/root/nixos-router";
+    fsType = "zfs";
+  };
 
-  fileSystems."/boot" =
-    {
-      device = "/dev/disk/by-uuid/5826-D605";
-      fsType = "vfat";
-      options = [ "fmask=0022" "dmask=0022" ];
-    };
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-uuid/5826-D605";
+    fsType = "vfat";
+    options = ["fmask=0022" "dmask=0022"];
+  };
 
   networking = {
     hostName = "router";

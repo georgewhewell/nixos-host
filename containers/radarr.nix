@@ -1,9 +1,7 @@
-{ config, lib, pkgs, boot, networking, containers, ... }:
-
-{
+{...}: {
   systemd.services."container@radarr" = {
-    bindsTo = [ "mnt-Home.mount" "mnt-Media.mount" ];
-    after = [ "mnt-Home.mount" "mnt-Media.mount" ];
+    bindsTo = ["mnt-Home.mount" "mnt-Media.mount"];
+    after = ["mnt-Home.mount" "mnt-Media.mount"];
   };
 
   containers.radarr = {
@@ -23,7 +21,7 @@
     };
 
     config = {
-      imports = [ ../profiles/container.nix ];
+      imports = [../profiles/container.nix];
 
       networking.hostName = "radarr";
 
@@ -31,8 +29,6 @@
         enable = true;
         openFirewall = true;
       };
-
     };
-
   };
 }

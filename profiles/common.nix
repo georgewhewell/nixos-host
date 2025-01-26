@@ -1,7 +1,10 @@
-{ config, pkgs, lib, inputs, ... }:
-
 {
-
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}: {
   imports = [
     ./users.nix
   ];
@@ -11,13 +14,13 @@
   ];
 
   networking.hosts = {
-    "127.0.0.1" = [ "localhost" ];
-    "192.168.23.1" = [ "router" ];
-    "192.168.23.5" = [ "nixhost" ];
-    "192.168.23.8" = [ "trex" ];
-    "192.168.23.9" = [ "mikrotik-100g" ];
-    "192.168.23.11" = [ "rock-5b" ];
-    # "192.168.23.14" = [ "jellyfin" ];
+    "127.0.0.1" = ["localhost"];
+    "192.168.23.1" = ["gateway"];
+    "192.168.23.5" = ["nixhost"];
+    "192.168.23.8" = ["trex"];
+    "192.168.23.9" = ["mikrotik-100g"];
+    "192.168.23.18" = ["rock-5b"];
+    "192.168.23.254" = ["router"];
   };
 
   nixpkgs.config.permittedInsecurePackages = [
@@ -27,7 +30,7 @@
     "dotnet-sdk-wrapped-6.0.428"
   ];
 
-  services.dbus.packages = [ pkgs.gcr ];
+  services.dbus.packages = [pkgs.gcr];
 
   environment.systemPackages = with pkgs; [
     ethtool
@@ -51,22 +54,25 @@
     longitude = 0.0;
   };
 
-  environment.pathsToLink = [ "/share/zsh" ];
+  environment.pathsToLink = ["/share/zsh"];
 
   programs.zsh = {
     enable = true;
-    #   enableGlobalCompInit = false;
+    # enableGlobalCompInit = false;
   };
 
   services.openssh = {
     enable = true;
     extraConfig = ''
+      MaxStartups 100:30:200
+      MaxAuthTries 20
+      MaxSessions 100
       StreamLocalBindUnlink yes
     '';
   };
 
   programs.ssh.extraConfig = ''
-    Host *.lan
+    Host *.lan.satanic.link
       # todo..
       StrictHostKeyChecking no
 
@@ -83,12 +89,14 @@
 
   i18n.defaultLocale = "en_GB.UTF-8";
 
-  security.pam.loginLimits = [{
-    domain = "*";
-    type = "soft";
-    item = "nofile";
-    value = "262144";
-  }];
+  security.pam.loginLimits = [
+    {
+      domain = "*";
+      type = "soft";
+      item = "nofile";
+      value = "262144";
+    }
+  ];
 
   systemd.services.nix-daemon.serviceConfig.LimitNOFILE = lib.mkForce 262144;
 
@@ -99,7 +107,7 @@
 
   nix = {
     settings = {
-      trusted-users = [ "grw" ];
+      trusted-users = ["grw"];
       substituters = [
         "https://cuda-maintainers.cachix.org"
       ];
@@ -113,5 +121,4 @@
       dates = pkgs.lib.mkDefault "weekly";
     };
   };
-
 }

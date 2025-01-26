@@ -1,8 +1,10 @@
-{ config, lib, pkgs, ... }:
-
 {
-
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
+  networking.firewall.allowedTCPPorts = [80 443];
 
   security.acme = {
     acceptTerms = true;
@@ -59,7 +61,6 @@
     };
   };
 
-
   services.nginx.virtualHosts."radarr.satanic.link" = {
     forceSSL = true;
     enableACME = true;
@@ -92,7 +93,7 @@
   };
 
   users.users.nginx = {
-    extraGroups = [ "acme" ];
+    extraGroups = ["acme"];
   };
 
   services.nginx.virtualHosts."jellyfin.satanic.link" = {

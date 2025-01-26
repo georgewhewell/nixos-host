@@ -1,11 +1,12 @@
-{ pkgs, config, ... }:
-
 {
-
+  pkgs,
+  config,
+  ...
+}: {
   imports = [
     ./btop.nix
     ./hostid.nix
-    # ./vim/default.nix
+    ./vim/default.nix
     ./git.nix
     ./starship.nix
     ./zsh.nix
@@ -16,12 +17,13 @@
 
   programs = {
     bat.enable = true;
-    direnv = {
-      enable = true;
-      enableZshIntegration = true;
-    };
     fzf.enable = true;
-    gpg.enable = true;
+    gpg = {
+      enable = true;
+      # settings = {
+      #   use-agent = true;
+      # };
+    };
     ripgrep.enable = true;
     tmux.enable = true;
   };
@@ -47,38 +49,47 @@
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
-      "satanic.link" = { };
-      "rock5b.satanic.link" = { };
-      "trex.satanic.link" = { };
-      "nixhost.satanic.link" = { };
+      "satanic.link" = {};
+      "rock5b.satanic.link" = {};
+      "trex.satanic.link" = {};
+      "nixhost.satanic.link" = {};
       "*.runpod.io".extraOptions = {
         PubkeyAcceptedAlgorithms = "+ssh-rsa";
       };
-      "*.satanic.link !localnetwork 192.168.23.0/24".extraOptions = {
+      "*.satanic.link !192.168.23.0/24".extraOptions = {
         ProxyCommand = "${pkgs.bash}/bin/bash -c \"${pkgs.openssh}/bin/ssh -W $(echo %h | cut -d. -f1):%p grw@satanic.link\"";
+      };
+      "10.86.167.2".extraOptions = {
+        # jump via 192.168.23.17
+        ProxyJump = "root@192.168.23.17";
       };
     };
   };
 
   programs.htop = {
     enable = true;
-    settings = {
-      delay = 10;
-      show_program_path = false;
-      show_cpu_frequency = true;
-      show_cpu_temperature = true;
-      hide_kernel_threads = true;
-    } // (with config.lib.htop; leftMeters [
-      (bar "AllCPUs2")
-      (bar "Memory")
-      (bar "Swap")
-    ]) // (with config.lib.htop; rightMeters [
-      (text "Hostname")
-      (text "Tasks")
-      (text "LoadAverage")
-      (text "Uptime")
-      (text "Systemd")
-    ]);
+    settings =
+      {
+        delay = 10;
+        show_program_path = false;
+        show_cpu_frequency = true;
+        show_cpu_temperature = true;
+        hide_kernel_threads = true;
+      }
+      // (with config.lib.htop;
+        leftMeters [
+          (bar "AllCPUs2")
+          (bar "Memory")
+          (bar "Swap")
+        ])
+      // (with config.lib.htop;
+        rightMeters [
+          (text "Hostname")
+          (text "Tasks")
+          (text "LoadAverage")
+          (text "Uptime")
+          (text "Systemd")
+        ]);
   };
 
   programs.password-store = {

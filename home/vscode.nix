@@ -1,5 +1,4 @@
-{ config, pkgs, lib, ... }: {
-
+{ pkgs, ... }: {
   imports = [ ./development.nix ];
 
   home.packages = with pkgs; [
@@ -44,7 +43,7 @@
       zxh404.vscode-proto3
       humao.rest-client
       continue.continue
+      saoudrizwan.claude-dev
     ];
   };
-
 }

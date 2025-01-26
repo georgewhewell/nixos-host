@@ -1,20 +1,18 @@
-{ config, pkgs, lib, ... }:
-
-{
-
+{pkgs, ...}: {
   services.jellyfin = {
     enable = true;
-    openFirewall = false;
+    openFirewall = true;
   };
 
   systemd.services."jellyfin" = {
-    bindsTo = [ "mnt-Media.mount" "var-cache-jellyfin.mount" ];
-    after = [ "mnt-Media.mount" "var-cache-jellyfin.mount" ];
+    bindsTo = ["mnt-Media.mount" "var-cache-jellyfin.mount"];
+    after = ["mnt-Media.mount" "var-cache-jellyfin.mount"];
+    serviceConfig.MemoryDenyWriteExecute = false;
   };
 
-  users.users.jellyfin.extraGroups = [ "video" "render" ];
+  users.users.jellyfin.extraGroups = ["video" "render"];
 
-  environment.systemPackages = with pkgs; [ ffmpeg libva1 libva-utils ];
+  environment.systemPackages = with pkgs; [ffmpeg libva1 libva-utils];
 
   fileSystems."/var/cache/jellyfin" = {
     device = "none";
@@ -26,5 +24,4 @@
       "mode=755"
     ];
   };
-
 }
