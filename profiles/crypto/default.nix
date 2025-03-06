@@ -1,10 +1,7 @@
-{ config, lib, pkgs, ... }:
-
-{
-
+{...}: {
   imports = [
     ./bitcoin.nix
-    ./geth.nix
+    # ./geth.nix
     ./monero.nix
   ];
 }
