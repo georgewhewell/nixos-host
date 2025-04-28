@@ -1,5 +1,5 @@
-{ pkgs, ... }: {
-  imports = [ ./development.nix ];
+{pkgs, ...}: {
+  imports = [./development.nix];
 
   home.packages = with pkgs; [
     nixpkgs-fmt
@@ -24,9 +24,21 @@
         "editor.defaultFormatter" = "rust-lang.rust-analyzer";
         "editor.formatOnSave" = true;
       };
+      "[typescript]" = {
+        "editor.codeActionsOnSave"= {
+          "source.organizeImports" = "never";
+        };
+      };
       "[python]" = {
         "editor.defaultFormatter" = "charliermarsh.ruff";
       };
+      "[nix]" = {
+        "editor.defaultFormatter" = "kamadorueda.alejandra";
+        "editor.formatOnPaste" = true;
+        "editor.formatOnSave" = true;
+        "editor.formatOnType" = false;
+      };
+      "alejandra.program" = "alejandra";
       "remote.SSH.enableX11Forwarding" = false;
       "ruff.nativeServer" = true;
     };
@@ -42,8 +54,9 @@
       mkhl.direnv
       zxh404.vscode-proto3
       humao.rest-client
-      continue.continue
+      # continue.continue
       saoudrizwan.claude-dev
+      ms-vscode.makefile-tools
     ];
   };
 }

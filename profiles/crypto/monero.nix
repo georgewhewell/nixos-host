@@ -1,25 +1,23 @@
-{ config, pkgs, ... }:
-{
-
+{config, ...}: {
   # monero
-  fileSystems."/var/lib/monero" =
-    {
-      device = "nvpool/root/monero";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
+  fileSystems."/var/lib/monero" = {
+    device = "pool3d/root/monero";
+    fsType = "zfs";
+    options = ["nofail" "sync=disabled"];
+  };
 
   services.monero = {
     enable = true;
     dataDir = "/var/lib/monero";
     rpc = {
-      address = "192.168.23.5";
+      address = "192.168.23.8";
     };
     extraConfig = ''
       confirm-external-bind=1
     '';
   };
 
-  systemd.services.monero.unitConfig.RequiresMountsFor = [ config.services.monero.dataDir ];
+  networking.firewall.allowedTCPPorts = [18080 18081];
 
+  systemd.services.monero.unitConfig.RequiresMountsFor = [config.services.monero.dataDir];
 }

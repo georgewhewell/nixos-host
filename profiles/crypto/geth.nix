@@ -1,41 +1,45 @@
-{ config, lib, pkgs, inputs, ... }:
-
 {
-
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}: {
   # ethereum
-  fileSystems."/var/lib/lighthouse" =
-    {
-      device = "nvpool/root/ethereum/lighthouse-geth-mainnet";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
+  fileSystems."/var/lib/lighthouse" = {
+    device = "pool3d/root/ethereum/lighthouse-geth-mainnet";
+    fsType = "zfs";
+    options = ["nofail" "sync=disabled"];
+  };
 
-  fileSystems."/var/lib/private/goethereum" =
-    {
-      device = "nvpool/root/ethereum/geth-mainnet";
-      fsType = "zfs";
-      options = [ "nofail" "sync=disabled" ];
-    };
+  # fileSystems."/var/lib/private/goethereum" = {
+  #   device = "nvpool/root/ethereum/geth-mainnet";
+  #   fsType = "zfs";
+  #   options = ["nofail" "sync=disabled"];
+  # };
 
   deployment.keys = {
     "LIGHTHOUSE_JWT" = {
-      keyCommand = [ "pass" "erigon-gpg" ];
+      keyCommand = ["pass" "erigon-gpg"];
       destDir = "/run/keys";
       uploadAt = "pre-activation";
     };
-    "LIGHTHOUSE_JWT_GETH" = {
-      keyCommand = [ "pass" "erigon-gpg" ];
-      destDir = "/var/lib/goethereum/mainnet";
-      uploadAt = "pre-activation";
-      permissions = "0444";
-    };
+    # "LIGHTHOUSE_JWT_GETH" = {
+    #   keyCommand = ["pass" "erigon-gpg"];
+    #   destDir = "/var/lib/goethereum/mainnet";
+    #   uploadAt = "pre-activation";
+    #   permissions = "0444";
+    # };
   };
+
+  # imports = [inputs.ethereum.nixosModules.default];
 
   # use lighthouse from nix-ethereum
   nixpkgs.overlays = [
     (self: _: {
       geth = inputs.ethereum.packages.${pkgs.system}.geth;
       lighthouse = inputs.ethereum.packages.${pkgs.system}.lighthouse;
+      reth = inputs.ethereum.packages.${pkgs.system}.reth;
     })
   ];
 
@@ -43,7 +47,7 @@
     beacon = {
       enable = true;
       dataDir = "/var/lib/lighthouse";
-      address = "192.168.23.5";
+      address = "192.168.23.8";
       execution = {
         address = "127.0.0.1";
         port = 8551;
@@ -51,6 +55,7 @@
       };
       metrics = {
         enable = true;
+        address = "0.0.0.0";
         port = 5054;
       };
     };
@@ -60,62 +65,65 @@
     '';
   };
 
+  networking.firewall.allowedTCPPorts = [9000 6060 5054 30303];
+  networking.firewall.allowedUDPPorts = [9000 9001 30303];
+
   systemd.services.lighthouse-beacon.unitConfig = {
-    RequiresMountsFor = [ config.services.lighthouse.beacon.dataDir ];
+    RequiresMountsFor = [config.services.lighthouse.beacon.dataDir];
     ConditionPathExists = config.services.lighthouse.beacon.execution.jwtPath;
   };
 
-  services.geth =
-    let
-      apis = [ "net" "eth" "txpool" "debug" ];
-      mainnet = {
-        metrics = 6060;
-        p2p = 30030;
-        http = 8545;
-        ws = 8546;
-      };
-    in
-    {
-      mainnet = with mainnet; {
+  services.reth.mainnet = {
+    enable = true;
+    args = {
+      datadir = "/var/lib/reth"; # You'll need to create a ZFS dataset for this
+
+      # Network settings
+      port = 30303;
+      chain = "mainnet";
+
+      # HTTP RPC settings
+      http = {
         enable = true;
-        package = inputs.ethereum.packages.${pkgs.system}.geth;
-        maxpeers = 128;
-        syncmode = "snap";
-        gcmode = "archive";
-        metrics = {
-          enable = true;
-          address = "0.0.0.0";
-          port = metrics;
-        };
-        port = p2p;
-        http = {
-          enable = true;
-          port = http;
-          address = "0.0.0.0"; # firewalled
-          inherit apis;
-        };
-        websocket = {
-          enable = true;
-          port = ws;
-          address = "0.0.0.0"; # firewalled
-          inherit apis;
-        };
-        authrpc = {
-          enable = true;
-          address = "localhost";
-          port = 8551;
-          jwtsecret = "/var/lib/goethereum/mainnet/LIGHTHOUSE_JWT_GETH";
-        };
-        extraArgs = [
-          "--cache=16000"
-          "--http.vhosts=eth-mainnet.satanic.link,eth-mainnet-ws.satanic.link,localhost,127.0.0.1"
-        ];
+        addr = "127.0.0.1";
+        port = 8545;
+      };
+
+      # WebSocket settings
+      ws = {
+        enable = true;
+        addr = "127.0.0.1";
+        port = 8546;
+      };
+
+      # Engine API settings (for Lighthouse connection)
+      authrpc = {
+        addr = "127.0.0.1";
+        port = 8551;
+        jwtsecret = "/run/keys/LIGHTHOUSE_JWT"; # Use the same JWT as Lighthouse
+      };
+
+      # Metrics (matching your previous setup)
+      metrics = {
+        enable = true;
+        addr = "0.0.0.0";
+        port = 6060;
       };
     };
-
-  systemd.services.geth-mainnet.unitConfig = {
-    RequiresMountsFor = [ "/var/lib/private/goethereum" ];
-    ConditionPathExists = config.services.geth.mainnet.authrpc.jwtsecret;
   };
 
+  # Add ZFS mount for Reth
+  fileSystems."/var/lib/reth" = {
+    device = "pool3d/root/ethereum/geth-mainnet"; # Adjust pool name as needed
+    fsType = "zfs";
+    options = ["nofail" "sync=disabled"];
+  };
+
+  # Add systemd dependencies
+  systemd.services.reth = {
+    unitConfig = {
+      RequiresMountsFor = ["/var/lib/reth"];
+      ConditionPathExists = config.services.reth.authrpc.jwtsecret;
+    };
+  };
 }

@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   environment.systemPackages = with pkgs; [
     ipmitool
     lm_sensors
@@ -17,11 +21,6 @@
       '';
     };
   };
-
-  # allow smartctl_exporter
-  services.udev.extraRules = ''
-    SUBSYSTEM=="nvme", KERNEL=="nvme[0-9]*", GROUP="disk"
-  '';
 
   services.prometheus = {
     enable = true;
@@ -56,6 +55,7 @@
               "router:9100"
               "trex:9100"
               "rock-5b:9100"
+              "n100:9100"
             ];
           }
         ];
@@ -69,6 +69,7 @@
               "router:58080"
               "trex:58080"
               "rock-5b:58080"
+              "n100:58080"
             ];
           }
         ];
@@ -119,15 +120,18 @@
         job_name = "dnsmasq";
         static_configs = [
           {
-            targets = ["127.0.0.1:9153"];
+            targets = ["192.168.23.1:9153"];
           }
         ];
       }
       {
-        job_name = "smart";
+        job_name = "smartctl";
         static_configs = [
           {
-            targets = ["127.0.0.1:9633"];
+            targets = [
+              "trex:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
+              "nixhost:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
+            ];
           }
         ];
       }
@@ -136,6 +140,17 @@
         static_configs = [
           {
             targets = ["127.0.0.1:9130"];
+          }
+        ];
+      }
+      {
+        job_name = "zfs";
+        static_configs = [
+          {
+            targets = [
+              "trex:${builtins.toString config.services.prometheus.exporters.zfs.port}"
+              "router:${builtins.toString config.services.prometheus.exporters.zfs.port}"
+            ];
           }
         ];
       }
@@ -153,7 +168,7 @@
         job_name = "lighthouse";
         static_configs = [
           {
-            targets = ["127.0.0.1:5054" "127.0.0.1:5055"];
+            targets = ["192.168.23.8:5054"];
           }
         ];
       }
@@ -161,7 +176,7 @@
         job_name = "reth";
         static_configs = [
           {
-            targets = ["127.0.0.1:9009"];
+            targets = ["192.168.23.8:6060"];
           }
         ];
       }
@@ -187,9 +202,9 @@
         static_configs = [
           {
             targets = [
-              "mikrotik-10g.lan.satanic.link"
-              "mikrotik-100g.lan.satanic.link"
-              "apc8B3FCB.lan.satanic.link"
+              "mikrotik-10g"
+              "mikrotik-100g"
+              "apc8b3fcb.lan.satanic.link"
             ];
           }
         ];

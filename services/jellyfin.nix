@@ -5,23 +5,12 @@
   };
 
   systemd.services."jellyfin" = {
-    bindsTo = ["mnt-Media.mount" "var-cache-jellyfin.mount"];
-    after = ["mnt-Media.mount" "var-cache-jellyfin.mount"];
+    bindsTo = ["mnt-Media.mount"];
+    after = ["mnt-Media.mount"];
     serviceConfig.MemoryDenyWriteExecute = false;
   };
 
   users.users.jellyfin.extraGroups = ["video" "render"];
 
   environment.systemPackages = with pkgs; [ffmpeg libva1 libva-utils];
-
-  fileSystems."/var/cache/jellyfin" = {
-    device = "none";
-    fsType = "tmpfs";
-    options = [
-      "nofail"
-      "defaults"
-      "size=16G"
-      "mode=755"
-    ];
-  };
 }

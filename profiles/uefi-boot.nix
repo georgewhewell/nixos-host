@@ -1,8 +1,7 @@
 {pkgs, ...}: {
   boot = {
     tmp.useTmpfs = true;
-    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
-    zfs.package = pkgs.zfs_unstable;
+    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_6_13;
     kernelParams = [
       "msr.allow_writes=on"
       "mitigations=off"

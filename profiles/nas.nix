@@ -1,35 +1,34 @@
-{ config, pkgs, ... }:
-
 {
+  config,
+  pkgs,
+  ...
+}: {
+  fileSystems."/mnt/Media" = {
+    device = "bpool/root/Media";
+    fsType = "zfs";
+    neededForBoot = false;
+  };
 
-  fileSystems."/mnt/Media" =
-    {
-      device = "bpool/root/Media";
-      fsType = "zfs";
-      neededForBoot = false;
-    };
-
-  fileSystems."/mnt/Home" =
-    {
-      device = "nvpool/root/Home";
-      fsType = "zfs";
-      neededForBoot = false;
-    };
+  fileSystems."/mnt/Home" = {
+    device = "nvpool/root/Home";
+    fsType = "zfs";
+    neededForBoot = false;
+  };
 
   fileSystems."/export/media" = {
     device = "/mnt/Media";
-    options = [ "bind" ];
+    options = ["bind"];
   };
 
   fileSystems."/export/home" = {
     device = "/mnt/Home";
-    options = [ "bind" ];
+    options = ["bind"];
   };
 
   services.zfs.autoScrub = {
     enable = true;
     interval = "monthly";
-    pools = [ "bpool" ];
+    pools = ["bpool"];
   };
 
   services.zfs.autoSnapshot = {
@@ -94,40 +93,22 @@
 
   services.samba = {
     enable = true;
-    # extraConfig = ''
-    #   guest account = nobody
-    #   map to guest = bad user
-
-    #   load printers = no
-    #   printing = bsd
-    #   printcap name = /dev/null
-    #   disable spoolss = yes
-
-    #   dos charset = cp866
-    #   unix charset = UTF8
-
-    #   server multi channel support = yes
-    #   aio read size = 1
-    #   aio write size = 1
-    # '';
     shares = {
-      Home =
-        {
-          path = "/mnt/Home";
-          "read only" = "no";
-          "valid users" = "grw";
-          "max connections" = "20000";
-        };
-      Media =
-        {
-          path = "/mnt/Media";
-          "read only" = "yes";
-          "writable" = "no";
-          "public" = "yes";
-          "browsable" = "yes";
-          "guest ok" = "yes";
-          "max connections" = "20000";
-        };
+      Home = {
+        path = "/mnt/Home";
+        "read only" = "no";
+        "valid users" = "grw";
+        "max connections" = "20000";
+      };
+      Media = {
+        path = "/mnt/Media";
+        "read only" = "yes";
+        "writable" = "no";
+        "public" = "yes";
+        "browsable" = "yes";
+        "guest ok" = "yes";
+        "max connections" = "20000";
+      };
     };
   };
 
@@ -143,17 +124,17 @@
   };
 
   systemd.timers.fix-media-permissions = {
-    partOf = [ "fix-media-permissions.service" ];
-    wantedBy = [ "multi-user.target" ];
+    partOf = ["fix-media-permissions.service"];
+    wantedBy = ["multi-user.target"];
     timerConfig = {
       OnBootSec = "5min";
       OnUnitActiveSec = "3600";
     };
   };
 
-  services.sabnzbd = {
-    enable = true;
-  };
+  # services.sabnzbd = {
+  #   enable = true;
+  # };
 
   # poll scanimage -d and save to paperless directory
   # systemd.services.scanimage =
@@ -185,12 +166,11 @@
   #     wantedBy = [ "multi-user.target" ];
   #   };
 
-  fileSystems."/var/lib/ipfs" =
-    {
-      device = "nvpool/root/ipfs";
-      fsType = "zfs";
-      neededForBoot = false;
-    };
+  # fileSystems."/var/lib/ipfs" = {
+  #   device = "nvpool/root/ipfs";
+  #   fsType = "zfs";
+  #   neededForBoot = false;
+  # };
 
   # services.kubo = {
   #   enable = true;
@@ -206,8 +186,6 @@
   #     };
   #   };
   # };
-
-  # systemd.services.ipfs.unitConfig.RequiresMountsFor = [ config.services.kubo.dataDir ];
 
   services.paperless = {
     enable = true;
@@ -225,5 +203,4 @@
   #     proxyWebsockets = true;
   #   };
   # };
-
 }

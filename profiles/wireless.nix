@@ -1,7 +1,8 @@
-{ config, lib, pkgs, ... }:
-
 {
-
+  lib,
+  pkgs,
+  ...
+}: {
   hardware.enableAllFirmware = true;
 
   networking.wireless = {
@@ -13,7 +14,7 @@
     };
   };
 
-  systemd.services.wpa_supplicant.wantedBy = pkgs.lib.mkForce [ "multi-user.target" ];
+  systemd.services.wpa_supplicant.wantedBy = pkgs.lib.mkForce ["multi-user.target"];
   systemd.services.wpa_supplicant = {
     startLimitIntervalSec = 5;
     startLimitBurst = 1;
@@ -23,5 +24,4 @@
       RestartSec = "1";
     };
   };
-
 }

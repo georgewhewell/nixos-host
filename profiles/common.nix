@@ -1,8 +1,6 @@
 {
-  config,
   pkgs,
   lib,
-  inputs,
   ...
 }: {
   imports = [
@@ -15,20 +13,14 @@
 
   networking.hosts = {
     "127.0.0.1" = ["localhost"];
-    "192.168.23.1" = ["gateway"];
+    "192.168.23.1" = ["router"];
     "192.168.23.5" = ["nixhost"];
     "192.168.23.8" = ["trex"];
+    "192.168.23.14" = ["n100"];
+    "192.168.23.2" = ["mikrotik-10g"];
     "192.168.23.9" = ["mikrotik-100g"];
     "192.168.23.18" = ["rock-5b"];
-    "192.168.23.254" = ["router"];
   };
-
-  nixpkgs.config.permittedInsecurePackages = [
-    "aspnetcore-runtime-6.0.36"
-    "aspnetcore-runtime-wrapped-6.0.36"
-    "dotnet-sdk-6.0.428"
-    "dotnet-sdk-wrapped-6.0.428"
-  ];
 
   services.dbus.packages = [pkgs.gcr];
 
@@ -37,6 +29,8 @@
     iotop
     rsync
     ncdu
+    usbutils
+    pciutils
   ];
 
   hardware.enableAllFirmware = true;
@@ -72,14 +66,16 @@
   };
 
   programs.ssh.extraConfig = ''
-    Host *.lan.satanic.link
-      # todo..
-      StrictHostKeyChecking no
-
-    Match host *.satanic.link !localnetwork 192.168.23.0/24
-      controlmaster auto
-      controlpath /tmp/ssh-%r@%h:%p
-      ProxyCommand ${pkgs.bash}/bin/bash -c "${pkgs.openssh}/bin/ssh -W $(echo %h | cut -d. -f1):%p grw@satanic.link"
+    Host *.satanic.link !satanic.link
+      ProxyJump grw@satanic.link
+    Host *.satanic.link !satanic.link
+      ProxyJump none
+      Match exec "ifconfig | grep -q '192.168.23.' && echo direct"
+    Host *
+      ControlPath ~/.ssh/control-%r@%h:%p
+      ControlMaster auto
+      ControlPersist 10m
+      ServerAliveInterval 60
   '';
 
   console = {

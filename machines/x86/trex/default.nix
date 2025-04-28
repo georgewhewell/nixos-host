@@ -1,40 +1,93 @@
 {
-  config,
   pkgs,
   lib,
   ...
 }: {
   /*
   trex: trx90 system
+
+  # fans:
+  # CPU_FAN1: AIO Radiator fans
+  # CPU_FAN2/WP: Pump
+  # CHA_FAN1/WP: 140mm intakes
+  # CHA_FAN2/WP: Unsure.. VRAM?
+  # CHA_FAN3/WP: Unsure.. exhaust?
+  # MOS_FAN1/MOS_FAN2: VRM
   */
   sconfig = {
     profile = "desktop";
     home-manager = {
       enable = true;
-      # enableGraphical = true;
       enableVscodeServer = true;
     };
   };
 
+  # RTX 4090
+  nixpkgs.config.cudaCapabilities = ["8.9"];
+
+  # 7985WX
+  nix.settings.system-features = ["gccarch-znver4" "kvm" "big-parallel"];
+
+  hardware.cpu.amd.ryzen-smu.enable = true;
+
+  boot.kernel.sysctl = {
+    "net.core.rmem_default" = 1048576;
+    "net.core.wmem_default" = 1048576;
+    "net.core.rmem_max" = 134217728;
+    "net.core.wmem_max" = 134217728;
+    "net.core.netdev_max_backlog" = 50000;
+    "net.core.netdev_budget" = 1000;
+    "net.ipv4.tcp_congestion_control" = "bbr";
+    "net.ipv4.route.max_size" = 524288;
+    "net.ipv4.tcp_fastopen" = "3";
+    "net.ipv6.conf.all.forwarding" = true;
+    "net.netfilter.nf_conntrack_max" = 131072;
+    "net.nf_conntrack_max" = 131072;
+  };
+
   imports = [
-    ../../../containers/gh-runner-hellas.nix
+    ../../../containers/arr-servers.nix
     ../../../containers/gh-runner-grw.nix
+
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/development.nix
     ../../../profiles/nvidia.nix
-    # ../../../profiles/llmserver.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/nas-mounts.nix
+    ../../../profiles/crypto
+    ../../../profiles/logserver.nix
+
+    ../../../services/nginx.nix
+    ../../../services/grafana.nix
+    ../../../services/jellyfin.nix
+    ../../../services/rtorrent.nix
     ../../../services/buildfarm-executor.nix
     ../../../services/buildfarm-slave.nix
     ../../../services/virt/host.nix
   ];
 
   deployment = {
-    targetHost = "192.168.23.8";
+    targetHost = "trex.satanic.link";
     targetUser = "grw";
     buildOnTarget = true;
+  };
+
+  services.qbittorrent = {
+    enable = true;
+    openFirewall = true;
+  };
+
+  fileSystems."/var/lib/qbittorrent" = {
+    device = "pool3d/root/downloads";
+    fsType = "zfs";
+    options = ["nofail" "sync=disabled"];
+  };
+
+  fileSystems."/mnt/models" = {
+    device = "pool3d/root/models";
+    fsType = "zfs";
+    options = ["nofail"];
   };
 
   system.stateVersion = "24.11";
@@ -49,20 +102,43 @@
       "amd_iommu=on"
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work
       "pcie=pcie_bus_perf"
+      "pcie_acs_override=downstream"
       "zswap.enabled=1"
-      # "zswap.compressor=zstd"
+      "zswap.compressor=zstd"
+      "zswap.max_pool_percent=20"
+      "zswap.zpool=z3fold"
     ];
     initrd.kernelModules = ["mlx5_core" "lm92"];
     blacklistedKernelModules = ["nouveau" "amdgpu" "i915"];
   };
 
-  environment.systemPackages = with pkgs; [pciutils fio lm_sensors];
+  environment.systemPackages = with pkgs; [
+    tbtools
+    pciutils
+    fio
+    lm_sensors
+    # (llama-cpp.override
+    #   {
+    #     cudaSupport = true;
+    #     rpcSupport = true;
+    #   })
+  ];
 
   services.xserver.videoDrivers = ["nvidia"];
   services.xserver.enable = true;
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
   ];
+
+  boot.kernel.sysctl."vm.swappiness" = 10;
+  boot.kernel.sysctl."vm.page-cluster" = 0;
+  boot.kernel.sysctl."vm.max_map_count" = 1048576;
+
+  # swapDevices =
+  #   builtins.genList (
+  #     i: {device = "/dev/nvme${toString i}n1p1";}
+  #   )
+  #   8;
 
   fileSystems."/" = {
     device = "pool3d/root/trex-root";
@@ -122,15 +198,42 @@
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
     useNetworkd = true;
-    nameservers = ["192.168.23.254"];
+    nameservers = ["192.168.23.1"];
     firewall.enable = false;
   };
 
-  services.ollama = {
+  # services.ollama = {
+  #   enable = true;
+  #   acceleration = "cuda";
+  #   host = "0.0.0.0";
+  #   port = 11434;
+  # };
+
+  # services.open-webui = {
+  #   enable = true;
+  #   host = "0.0.0.0";
+  #   port = 11111;
+  #   openFirewall = true;
+  #   environment = {
+  #     ANONYMIZED_TELEMETRY = "False";
+  #     DO_NOT_TRACK = "True";
+  #     SCARF_NO_ANALYTICS = "True";
+  #     OLLAMA_API_BASE_URL = "http://127.0.0.1:11434/api";
+  #     OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+  #   };
+  # };
+  services.gcp-ddns = {
     enable = true;
-    acceleration = "cuda";
-    host = "0.0.0.0";
-    port = 11434;
+    projectId = "domain-owner";
+    zoneName = "satanic-link";
+    records = [
+      {
+        name = "*.satanic.link.";
+        type = "AAAA";
+        ttl = 300;
+      }
+    ];
+    interval = "5m";
   };
 
   services.nix-serve = {
@@ -142,6 +245,19 @@
   in {
     enable = true;
     wait-online.anyInterface = true;
+    links = {
+      "20-mlx5" = {
+        matchConfig.Driver = "mlx5_core";
+        linkConfig = {
+          RxBufferSize = 8192;
+          TxBufferSize = 8192;
+        };
+      };
+      "20-thunderbolt" = {
+        matchConfig.Driver = "thunderbolt-net";
+        linkConfig.MACAddressPolicy = "none";
+      };
+    };
     netdevs = {
       "20-${bridgeName}" = {
         netdevConfig = {

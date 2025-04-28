@@ -1,9 +1,10 @@
 { lib, ... }:
 let
   mkValueString = v: with builtins;
-    let err = t: v: abort
-      ("generators.mkBtopKV: " +
-        "${t} not supported: ${toPretty {} v}");
+    let
+      err = t: v: abort
+        ("generators.mkBtopKV: " +
+          "${t} not supported: ${toPretty {} v}");
     in
     if isInt v then toString v
     else if lib.isDerivation v then toString v
@@ -195,10 +196,10 @@ in
     net_upload = 1024;
 
     # Use network graphs auto rescaling mode, ignores any values set above and rescales down to 10 Kibibytes at the lowest.
-    net_auto = false;
+    net_auto = true;
 
     # Sync the auto scaling for download and upload to whichever currently has the highest scale.
-    net_sync = false;
+    net_sync = true;
 
     # Starts with the Network Interface specified here.
     net_iface = "";
