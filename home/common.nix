@@ -49,15 +49,10 @@
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
-      "satanic.link" = {};
-      "rock5b.satanic.link" = {};
+      # put these here for vscode remote
       "trex.satanic.link" = {};
-      "nixhost.satanic.link" = {};
       "*.runpod.io".extraOptions = {
         PubkeyAcceptedAlgorithms = "+ssh-rsa";
-      };
-      "*.satanic.link !192.168.23.0/24".extraOptions = {
-        ProxyCommand = "${pkgs.bash}/bin/bash -c \"${pkgs.openssh}/bin/ssh -W $(echo %h | cut -d. -f1):%p grw@satanic.link\"";
       };
       "10.86.167.2".extraOptions = {
         # jump via 192.168.23.17

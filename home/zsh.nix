@@ -1,7 +1,9 @@
-{ config, lib, pkgs, ... }:
-
 {
-
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   programs.zsh = {
     enable = true;
     # autosuggestion.enable = true;
@@ -33,6 +35,8 @@
       ll = "eza -la";
       pyclean = "find . | grep -E '(__pycache__|\.pyc|\.pyo$)' | xargs rm -rf";
       pc = "pycharm-community . > /dev/null 2>&1 &";
+      claude = "npx @anthropic-ai/claude-code@latest";
+      wrangler = "npx wrangler@latest";
     };
 
     plugins = [
@@ -71,5 +75,4 @@
       }
     ];
   };
-
 }

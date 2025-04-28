@@ -16,26 +16,24 @@
       "sql"
       "rust"
       "proto"
+      "graphql"
+      "lua"
+      "dockerfile"
+      "make"
+      "terraform"
     ];
     userSettings = {
-      format_on_save = true;
       features = {
         copilot = true;
-        inline_completion_provider = "ollama";
+        # inline_completion_provider = "copilot";
+        # edit_prediction_provider = "copilot";
       };
       assistant = {
         version = "2";
-        default_open_ai_model = null;
         default_model = {
-          provider = "ollama";
-          model = "deepseek-r1:70b";
+          provider = "google";
+          model = "gemini-2.5-pro-exp-03-25";
         };
-        inline_alternatives = [
-          {
-            provider = "copilot_chat";
-            model = "o1-preview";
-          }
-        ];
       };
       lsp = {
         rust-analyzer = {
@@ -73,31 +71,17 @@
         }
       ];
       language_models = {
-        anthropic = {
-          available_models = [
-            {
-              name = "claude-3-5-sonnet-latest";
-              display_name = "claude-3-5-sonnet-latest";
-              max_tokens = 128000;
-              max_output_tokens = 2560;
-              cache_configuration = {
-                max_cache_anchors = 10;
-                min_total_token = 10000;
-                should_speculate = false;
-              };
-              # tool_override = "some-model-that-supports-toolcalling";
-            }
-          ];
-        };
+        anthropic = {};
         google = {
           available_models = [
             {
-              name = "gemini-1.5-flash-latest";
-              display_name = "Gemini 1.5 Flash (Latest)";
+              name = "gemini-2.5-pro-exp-03-25";
+              display_name = "Gemini 2.5 Pro Exp";
               max_tokens = 1000000;
             }
           ];
         };
+        lmstudio = {};
         ollama = {
           api_url = "http://localhost:11434";
           available_models = [

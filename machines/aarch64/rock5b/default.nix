@@ -18,7 +18,7 @@
     home-manager.enableGraphical = false;
   };
 
-  deployment.targetHost = "192.168.23.18";
+  deployment.targetHost = "rock-5b.satanic.link";
   deployment.targetUser = "grw";
 
   boot.supportedFilesystems = ["vfat" "ext4" "zfs"];
@@ -65,7 +65,7 @@
     ShutdownWatchdogSec=1m
   '';
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_6_13;
   boot.extraModprobeConfig = ''
     options iwlwifi swcrypto=0
     options iwlwifi power_save=0
@@ -80,29 +80,38 @@
   boot.initrd.kernelModules = [
     "nvme"
     "r8169"
+    "iwlmvm"
+    "iwldvm"
   ];
 
   system.stateVersion = "24.03";
 
   services.iperf3.enable = true;
+  hardware.wirelessRegulatoryDatabase = true;
+
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true;
 
   networking = {
     hostName = "rock-5b";
-    nameservers = ["192.168.23.254"];
+    nameservers = ["192.168.23.1"];
     useNetworkd = true;
 
     useDHCP = false;
     nat.enable = false;
     firewall.enable = true;
 
-    wireless.iwd = {
-      enable = true;
-      settings = {
-        IPv6 = {
-          Enabled = true;
-        };
-        Settings = {
-          AutoConnect = true;
+    wireless = {
+      enable = false; # exclusive with iwd
+      iwd = {
+        enable = true;
+        settings = {
+          IPv6 = {
+            Enabled = true;
+          };
+          # Settings = {
+          #   AutoConnect = true;
+          # };
         };
       };
     };
@@ -111,9 +120,34 @@
   systemd.network = {
     enable = true;
     wait-online.anyInterface = true;
+    netdevs = {
+      # Create the bridge interface
+      "20-br-lan" = {
+        netdevConfig = {
+          Kind = "bridge";
+          Name = "br0.lan";
+        };
+      };
+    };
     networks = {
+      # "20-wifi" = {
+      #   matchConfig.Driver = "iwlwifi";
+      #   networkConfig = {
+      #     Bridge = "br0.lan";
+      #     ConfigureWithoutCarrier = true;
+      #   };
+      #   linkConfig.RequiredForOnline = "enslaved";
+      # };
       "10-lan" = {
         matchConfig.Driver = "r8169";
+        networkConfig = {
+          Bridge = "br0.lan";
+          ConfigureWithoutCarrier = true;
+        };
+        linkConfig.RequiredForOnline = "enslaved";
+      };
+      "40-br" = {
+        matchConfig.Name = "br0.lan";
         networkConfig = {
           IPv6AcceptRA = true;
         };
@@ -136,12 +170,11 @@
     lshw
     pciutils
     usbutils
+    wirelesstools
+    iw
   ];
 
-  services.ollama.enable = true;
-
   services.irqbalance.enable = lib.mkDefault true;
-  hardware.wirelessRegulatoryDatabase = true;
 
   powerManagement.enable = false;
   powerManagement.cpuFreqGovernor = lib.mkDefault "performance";

@@ -1,8 +1,5 @@
-{ config, pkgs, lib, ... }:
-
-{
+{...}: {
   boot.kernel.sysctl = {
-
     "net.core.rmem_max" = 268435456;
     "net.core.wmem_max" = 268435456;
 

@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }: {
   imports = [./common.nix];
@@ -22,6 +21,6 @@
       useDHCP = true;
     };
     useHostResolvConf = false;
-    nameservers = ["192.168.23.254"];
+    nameservers = ["192.168.23.1"];
   };
 }

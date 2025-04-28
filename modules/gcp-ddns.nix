@@ -66,11 +66,12 @@ in {
 
       # Proper ordering with VPP and network
       after = [
-        "vpp-main.service"
+        # "vpp-main.service"
         "network-online.target"
       ];
-      requires = ["vpp-main.service"];
-      bindsTo = ["vpp-main.service"];
+      # requires = ["vpp-main.service"];
+      # bindsTo = ["vpp-main.service"];
+      # depends = ["network-online.target"];
 
       path = with pkgs; [
         curl
@@ -258,8 +259,8 @@ in {
       wantedBy = ["timers.target"];
 
       # Start timer when vpp-main starts
-      after = ["vpp-main.service"];
-      bindsTo = ["vpp-main.service"];
+      # after = ["vpp-main.service"];
+      # bindsTo = ["vpp-main.service"];
 
       timerConfig = {
         OnActiveSec = "30s"; # First run 30s after timer starts

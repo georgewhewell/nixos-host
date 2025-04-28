@@ -1,11 +1,9 @@
-{ config
-, lib
-, pkgs
-, ...
-}:
-
 {
-
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
@@ -13,8 +11,7 @@
     nix-direnv.enable = true;
   };
 
-  home.packages =
-    with pkgs;
+  home.packages = with pkgs;
     [
       # for vscode-server..
       openssl
@@ -36,6 +33,11 @@
 
       # robot stuff
       aider-chat
+      # claude-code
+      # goose-cli
+
+      # fml
+      nodejs
     ]
     ++ lib.optionals (pkgs.system == "x86_64-linux") [
       # evm tooling
@@ -46,5 +48,4 @@
   home.sessionVariables = {
     OLLAMA_API_BASE = "http://localhost:11434";
   };
-
 }

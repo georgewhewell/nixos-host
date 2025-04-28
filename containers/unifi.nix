@@ -1,5 +1,5 @@
 {...}: let
-  lanIp = "192.168.23.254";
+  lanIp = "192.168.23.1";
 in {
   virtualisation = {
     podman = {

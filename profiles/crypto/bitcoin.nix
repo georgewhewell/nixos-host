@@ -1,6 +1,5 @@
 {
   config,
-  pkgs,
   lib,
   inputs,
   ...
@@ -9,7 +8,7 @@
 
   # bitcoind
   fileSystems."/var/lib/bitcoind" = {
-    device = "nvpool/root/bitcoind";
+    device = "pool3d/root/bitcoind";
     fsType = "zfs";
     options = ["nofail" "sync=disabled"];
   };
@@ -32,6 +31,9 @@
 
   services.bitcoind = {
     enable = true;
+    listen = true;
+    address = "0.0.0.0";
+    port = 8333;
     dataDir = "/var/lib/bitcoind";
     # dataDirReadableByGroup = true;
     disablewallet = true;
@@ -45,5 +47,10 @@
       users = lib.mkForce {};
       # address = lanAddr;
     };
+  };
+
+  networking.firewall = {
+    allowedTCPPorts = [config.services.bitcoind.port];
+    allowedUDPPorts = [config.services.bitcoind.port];
   };
 }

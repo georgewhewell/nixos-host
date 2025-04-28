@@ -16,22 +16,34 @@
     buildMachines =
       [
         {
-          hostName = "192.168.23.18";
+          hostName = "rock-5b.satanic.link";
           sshUser = "grw";
           speedFactor = 2;
-          maxJobs = 8;
+          maxJobs = 4;
           supportedFeatures = ["kvm" "nixos-test" "big-parallel"];
           systems = ["aarch64-linux"];
+        }
+        {
+          hostName = "ax102.lsd-ag.ch";
+          sshUser = "grw";
+          protocol = "ssh-ng";
+          maxJobs = 4;
+          speedFactor = 64;
+          supportedFeatures = ["kvm" "nixos-test" "big-parallel" "cuda" "gccarch-znver4"];
+          systems = [
+            "x86_64-linux"
+            "i686-linux"
+          ];
         }
       ]
       ++ lib.optionals (config.networking.hostName != "trex") [
         {
-          hostName = "192.168.23.8";
+          hostName = "trex.satanic.link";
           sshUser = "grw";
           protocol = "ssh-ng";
           maxJobs = 8;
           speedFactor = 128;
-          supportedFeatures = ["kvm" "nixos-test" "big-parallel" "cuda"];
+          supportedFeatures = ["kvm" "nixos-test" "big-parallel" "cuda" "gccarch-znver4"];
           systems = [
             "x86_64-linux"
             "i686-linux"

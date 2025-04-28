@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+{lib, ...}: {
   /*
   nixhost: xeon-d microserver
   */
@@ -17,28 +12,19 @@
 
   system.stateVersion = "24.11";
 
-  deployment.targetHost = "192.168.23.5";
+  deployment.targetHost = "nixhost.satanic.link";
   deployment.targetUser = "grw";
 
   imports = [
-    ../../../containers/radarr.nix
-    ../../../containers/sonarr.nix
-    #  ../../../containers/unifi.nix
-
     ../../../profiles/common.nix
-    ../../../profiles/crypto
     ../../../profiles/development.nix
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
-    ../../../profiles/logserver.nix
     ../../../profiles/nas.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/fastlan.nix
 
     ../../../services/buildfarm-slave.nix
-    ../../../services/grafana.nix
-    ../../../services/home-assistant/default.nix
-    ../../../services/transmission.nix
     ../../../services/virt/host.nix
   ];
 
@@ -75,11 +61,6 @@
     openFirewall = true;
   };
 
-  services.qbittorrent = {
-    enable = true;
-    openFirewall = true;
-  };
-
   boot.kernelModules = [
     "ipmi_devintf"
     "ipmi_si"
@@ -99,7 +80,7 @@
       enable = true;
       trustedInterfaces = ["br0.lan"];
     };
-    nameservers = ["192.168.23.254"];
+    nameservers = ["192.168.23.1"];
   };
 
   systemd.network = let
