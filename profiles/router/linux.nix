@@ -92,7 +92,7 @@ in {
         linkConfig.RequiredForOnline = "enslaved";
       };
       "20-lan-10g" = {
-        matchConfig.Driver = "ixgbe";
+        matchConfig.Driver = "atlantic";
         networkConfig.Bridge = lanBridge;
         linkConfig.RequiredForOnline = "enslaved";
       };

@@ -27,6 +27,7 @@
     autoStart = true;
     privateNetwork = true;
     hostBridge = "br0";
+    localAddress = "192.168.23.50/24";
 
     bindMounts = {
       "/run/gh-runner-georgewhewell-nixos-host.secret" = {

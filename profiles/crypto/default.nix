@@ -1,6 +1,6 @@
 {...}: {
   imports = [
-    ./bitcoin.nix
+    # ./bitcoin.nix
     # ./geth.nix
     ./monero.nix
   ];

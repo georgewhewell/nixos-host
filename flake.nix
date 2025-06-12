@@ -11,7 +11,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/master";
 
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
@@ -49,6 +49,7 @@
     self,
     nixpkgs,
     darwin,
+    colmena,
     ...
   } @ inputs: let
     inherit inputs;
@@ -77,34 +78,35 @@
       localSystem = zen4localSystem;
 
       # sphinx tests need clear network namespace
-      overlays =
-        localOverlays
-        ++ [
-          (self: super: {
-            # vpp = super.vpp.override {
-            #   doCheck = false;
-            # };
-            haskellPackages = super.haskellPackages.override {
-              overrides = hself: hsuper: {
-                # flaky tests
-                tls = super.haskell.lib.dontCheck hsuper.tls;
-                crypton = super.haskell.lib.dontCheck hsuper.crypton;
-                crypton-x509 = super.haskell.lib.dontCheck hsuper.crypton-x509;
-                crypton-x509-validation = super.haskell.lib.dontCheck hsuper.crypton-x509-validation;
-              };
-            };
-            python312 = super.python312.override {
-              packageOverrides = pyself: pysuper: {
-                # flaky tests
-                sphinx = pysuper.sphinx.overridePythonAttrs {
-                  doCheck = false;
-                };
-              };
-            };
-          })
-        ];
+      # overlays =
+      #   localOverlays
+      #   ++ [
+      #     (self: super: {
+      #       # vpp = super.vpp.override {
+      #       #   doCheck = false;
+      #       # };
+      #       haskellPackages = super.haskellPackages.override {
+      #         overrides = hself: hsuper: {
+      #           # flaky tests
+      #           tls = super.haskell.lib.dontCheck hsuper.tls;
+      #           crypton = super.haskell.lib.dontCheck hsuper.crypton;
+      #           crypton-x509 = super.haskell.lib.dontCheck hsuper.crypton-x509;
+      #           crypton-x509-validation = super.haskell.lib.dontCheck hsuper.crypton-x509-validation;
+      #         };
+      #       };
+      #       python312 = super.python312.override {
+      #         packageOverrides = pyself: pysuper: {
+      #           # flaky tests
+      #           sphinx = pysuper.sphinx.overridePythonAttrs {
+      #             doCheck = false;
+      #           };
+      #         };
+      #       };
+      #     })
+      #   ];
     };
   in rec {
+    colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
     colmena =
       {
         meta = {
@@ -122,29 +124,16 @@
       })
       (self.nixosConfigurations);
 
-    darwinConfigurations."air" =
-      darwin.lib.darwinSystem
-      {
-        system = "aarch64-darwin";
-        specialArgs = {inherit inputs;};
-        modules = [
-          ./machines/darwin-aarch64/darwin-configuration.nix
-          inputs.home-manager.darwinModules.home-manager
-          inputs.mac-app-util.darwinModules.default
-          (
-            {...}: {
-              # nixpkgs.pkgs = patchedPkgs;
-              nixpkgs.config.allowUnfree = true;
-              nixpkgs.overlays =
-                [
-                  darwin.overlays.default
-                ]
-                ++ localOverlays;
-            }
-          )
-        ];
-      };
-    darwinConfigurations."Georges-MacBook-Pro" = darwinConfigurations.air;
+    darwinConfigurations."air" = darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      specialArgs = {inherit inputs localOverlays;};
+      modules = [./machines/darwin-aarch64/air.nix];
+    };
+    darwinConfigurations."Georges-MacBook-Pro" = darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      specialArgs = {inherit inputs localOverlays;};
+      modules = [./machines/darwin-aarch64/mbp.nix];
+    };
 
     nixosModules =
       nixpkgs.lib.mapAttrs'

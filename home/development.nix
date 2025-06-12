@@ -26,13 +26,13 @@
       gopls
 
       # rust tooling
-      rustup
+      # rustup
 
       # saas crap
       runpodctl
 
       # robot stuff
-      aider-chat
+      # aider-chat
       # claude-code
       # goose-cli
 

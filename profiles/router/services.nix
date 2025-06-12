@@ -47,7 +47,7 @@ in {
       interface = lanName;
       except-interface = "lo";
       "dhcp-range" = [
-        "${lanName},192.168.23.20,192.168.23.249,6h"
+        "${lanName},192.168.23.32,192.168.23.249,6h"
         "::,constructor:${lanName},ra-stateless,ra-names"
       ];
       "dhcp-option" = [
@@ -76,10 +76,23 @@ in {
       "address" = [
         # machines
         "/router.satanic.link/192.168.23.1"
+        "/mikrotik-10g.satanic.link/192.168.23.2"
+        "/ap.satanic.link/192.168.23.3"
+        "/x10-ipmi.satanic.link/192.168.23.4"
         "/nixhost.satanic.link/192.168.23.5"
+        "/vacuum.satanic.link/192.168.23.6"
         "/trex.satanic.link/192.168.23.8"
-        "/rock-5b.satanic.link/192.168.23.18"
+        "/mikrotik-100g.satanic.link/192.168.23.9"
+        "/trx90bmc.satanic.link/192.168.23.10"
+        "/apc-ups.satanic.link/192.168.23.11"
+        "/printer.satanic.link/192.168.23.12"
+        "/cerberus.satanic.link/192.168.23.13"
         "/n100.satanic.link/192.168.23.14"
+        "/arr-servers.satanic.link/192.168.23.15"
+        "/zigbee-stick.satanic.link/192.168.23.16"
+        "/nanokvm.satanic.link/192.168.23.17"
+        "/rock-5b.satanic.link/192.168.23.18"
+        "/poe-switch-10g.satanic.link/192.168.23.23"
 
         # svc
         "/jellyfin.satanic.link/192.168.23.8"

@@ -18,6 +18,7 @@
     autoStart = true;
     privateNetwork = true;
     hostBridge = "br0";
+    localAddress = "192.168.23.15/24";
 
     bindMounts = {
       "/run/autobrr.secret".hostPath = "/run/autobrr.secret";

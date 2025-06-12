@@ -50,11 +50,12 @@
     ../../../containers/gh-runner-grw.nix
 
     ../../../profiles/common.nix
+    ../../../profiles/headless.nix
     ../../../profiles/home.nix
     ../../../profiles/development.nix
     ../../../profiles/nvidia.nix
     ../../../profiles/uefi-boot.nix
-    ../../../profiles/nas-mounts.nix
+    ../../../profiles/nas.nix
     ../../../profiles/crypto
     ../../../profiles/logserver.nix
 
@@ -66,6 +67,18 @@
     ../../../services/buildfarm-slave.nix
     ../../../services/virt/host.nix
   ];
+
+  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
+    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
+      src = pkgs.fetchFromGitHub {
+        owner = "openzfs";
+        repo = "zfs";
+        rev = "master";
+        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
+      };
+      version = "2.3.3-staging";
+    });
+  });
 
   deployment = {
     targetHost = "trex.satanic.link";
@@ -106,7 +119,6 @@
       "zswap.enabled=1"
       "zswap.compressor=zstd"
       "zswap.max_pool_percent=20"
-      "zswap.zpool=z3fold"
     ];
     initrd.kernelModules = ["mlx5_core" "lm92"];
     blacklistedKernelModules = ["nouveau" "amdgpu" "i915"];
@@ -124,8 +136,6 @@
     #   })
   ];
 
-  services.xserver.videoDrivers = ["nvidia"];
-  services.xserver.enable = true;
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
   ];
@@ -139,6 +149,9 @@
   #     i: {device = "/dev/nvme${toString i}n1p1";}
   #   )
   #   8;
+
+  # otherwise bpool bricks
+  boot.zfs.requestEncryptionCredentials = false;
 
   fileSystems."/" = {
     device = "pool3d/root/trex-root";
@@ -156,31 +169,6 @@
     device = "pool3d/root/grw-home";
     fsType = "zfs";
     options = ["noatime" "nofail"];
-  };
-
-  fileSystems."/home/sf" = {
-    device = "pool3d/root/home/sf";
-    fsType = "zfs";
-    options = ["noatime" "nofail"];
-  };
-
-  services.nfs = {
-    settings = {
-      nfsd.vers3 = false;
-      nfsd.vers4 = true;
-      nfsd."vers4.0" = false;
-      nfsd."vers4.1" = false;
-      nfsd."vers4.2" = true;
-      nfsd.threads = 16;
-    };
-  };
-
-  users.extraUsers.sf = {
-    isNormalUser = true;
-    openssh.authorizedKeys.keys = [
-      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDsEs4RIxouNDuknNbiCyGet2xQ/v74eqUmtYILlsDc3XToJqo3S/0bjiwSFUViyns1jecn943tjVEKmsMA0aKjp2KM4lu1fwBD6z3c81H+oPFCmOyFCAierxjNsgSmr9VbZechVF8a5Tk24/kvbkbNysS5k+PpabepJxvE0Zx1Idp95Yw/8jLhYqzIU28MasYdSmGCBXyEJG4LRQmfR0GAsOOsmGTWQ8MT7WIkK0UatOVOG2TKdRvfuHKlKp/ioyByk0DYFeAKbJKI1hdl3Kn2ESArC2duOznrdvIPRgC32U9F9jOWDrl47kgkwJ9Eog3j3VG5vSLdxmLVi9lYs9HTro16K8z+9E85fG30aIYCtd5JgsWUBBI1M6sqNgCfHSECFJeVv/R+fdVWNmxMzb7PbL8GHIJwHuH1LT2LSoU+VycF4DkqNO6MzRuoeQfXmCdfRW+HjWVZQCs0D4YYQCvB6HfTuErRHrBYnvHDS39HWuuYvPDga3X+QlfZYFYUyCW7zZGf0soquSmo0BN2cQOW0Zj3Kq5+CrIisWQhJGwkN+mTkqF5u692ZSyAgo1Ae7npCc0ATf/42ZQrmgCw+BLIDNMwX/X5FN5gxugRNolgcLIgP8dDjesqmQIBka8R2IJx/lSNCuMjP+JNahDVsNW/9o9Mw+wL2UnSv3axQAkN1Q== sf@chaminade"
-    ];
-    extraGroups = ["video" "docker"];
   };
 
   services = {
@@ -202,12 +190,12 @@
     firewall.enable = false;
   };
 
-  # services.ollama = {
-  #   enable = true;
-  #   acceleration = "cuda";
-  #   host = "0.0.0.0";
-  #   port = 11434;
-  # };
+  services.ollama = {
+    enable = true;
+    acceleration = "cuda";
+    host = "0.0.0.0";
+    port = 11434;
+  };
 
   # services.open-webui = {
   #   enable = true;
@@ -222,6 +210,7 @@
   #     OLLAMA_BASE_URL = "http://127.0.0.1:11434";
   #   };
   # };
+  #
   services.gcp-ddns = {
     enable = true;
     projectId = "domain-owner";

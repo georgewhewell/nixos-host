@@ -14,12 +14,23 @@
   networking.hosts = {
     "127.0.0.1" = ["localhost"];
     "192.168.23.1" = ["router"];
-    "192.168.23.5" = ["nixhost"];
-    "192.168.23.8" = ["trex"];
-    "192.168.23.14" = ["n100"];
     "192.168.23.2" = ["mikrotik-10g"];
+    "192.168.23.3" = ["ap"];
+    "192.168.23.4" = ["x10-ipmi"];
+    "192.168.23.5" = ["nixhost"];
+    "192.168.23.6" = ["vacuum"];
+    "192.168.23.8" = ["trex"];
     "192.168.23.9" = ["mikrotik-100g"];
+    "192.168.23.10" = ["trx90bmc"];
+    "192.168.23.11" = ["apc-ups"];
+    "192.168.23.12" = ["printer"];
+    "192.168.23.13" = ["cerberus"];
+    "192.168.23.14" = ["n100"];
+    "192.168.23.15" = ["arr-servers"];
+    "192.168.23.16" = ["zigbee-stick"];
+    "192.168.23.17" = ["nanokvm"];
     "192.168.23.18" = ["rock-5b"];
+    "192.168.23.23" = ["poe-switch-10g"];
   };
 
   services.dbus.packages = [pkgs.gcr];
@@ -52,7 +63,6 @@
 
   programs.zsh = {
     enable = true;
-    # enableGlobalCompInit = false;
   };
 
   services.openssh = {

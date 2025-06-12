@@ -2,20 +2,27 @@
   config,
   pkgs,
   inputs,
+  localOverlays,
   ...
 }: {
   imports = [
     ./system.nix
     ../../services/buildfarm-executor.nix
+    inputs.home-manager.darwinModules.home-manager
+    inputs.mac-app-util.darwinModules.default
   ];
 
-  # nixpkgs.config.allowUnfree = true;
-  ids.gids.nixbld = 350;
+  nixpkgs.config.allowUnfree = true;
+  nixpkgs.overlays = [
+    inputs.darwin.overlays.default
+  ] ++ localOverlays;
 
   users.users."grw" = {
     shell = pkgs.zsh;
     home = "/Users/grw";
   };
+
+  system.primaryUser = "grw";
 
   home-manager.useGlobalPkgs = true;
   home-manager.users.grw = {...}: {
@@ -51,12 +58,15 @@
 
   programs.ssh = {
     extraConfig = ''
-      Host *.satanic.link !satanic.link
-          Match exec "ifconfig | grep -q '192.168.23.' && echo direct"
-              AddressFamily inet
-              ProxyJump none
-          Match all
-              ProxyJump grw@satanic.link
+      Host github.com *.github.com
+          ProxyJump none
+
+      Match host "*.satanic.link" exec "ifconfig | grep -q '192.168.23.'"
+          ProxyJump none
+
+      Match host "*.satanic.link" exec "! (ifconfig | grep -q '192.168.23.')"
+          ProxyJump grw@satanic.link
+
       Host *
           ControlPath ~/.ssh/control-%r@%h:%p
           ControlPersist 10m

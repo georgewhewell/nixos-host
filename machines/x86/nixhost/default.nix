@@ -1,4 +1,4 @@
-{lib, ...}: {
+{pkgs,lib, ...}: {
   /*
   nixhost: xeon-d microserver
   */
@@ -17,16 +17,28 @@
 
   imports = [
     ../../../profiles/common.nix
-    ../../../profiles/development.nix
+    # ../../../profiles/development.nix
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
-    ../../../profiles/nas.nix
+    # ../../../profiles/nas.nix
     ../../../profiles/uefi-boot.nix
-    ../../../profiles/fastlan.nix
+    # ../../../profiles/fastlan.nix
 
-    ../../../services/buildfarm-slave.nix
-    ../../../services/virt/host.nix
+    # ../../../services/buildfarm-slave.nix
+    # ../../../services/virt/host.nix
   ];
+
+  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
+    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
+      src = pkgs.fetchFromGitHub {
+        owner = "openzfs";
+        repo = "zfs";
+        rev = "master";
+        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
+      };
+      version = "2.3.3-staging";
+    });
+  });
 
   services.tor = {
     enable = true;

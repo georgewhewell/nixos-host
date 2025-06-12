@@ -4,33 +4,12 @@
     config = {
       adaptive_lighting = {
         lights = [
-          "light.bedroom_ceiling_light"
+          "light.bedroom_ceiling_2"
           "light.hallway_ceiling_light"
           "light.office_ceiling_light"
           "light.mirror_light"
         ];
       };
-      scene = [
-        {
-          name = "zzz";
-          entities = let
-            state = {
-              state = "off";
-              attributes = {
-                brightness = 0;
-              };
-            };
-          in {
-            "light.bedroom_ceiling_light" = state;
-            "light.hallway_ceiling_light" = state;
-            "light.office_ceiling_light" = state;
-            "light.corner_huelight" = state;
-            "light.signify_netherlands_b_v_lta005_huelight_2" = state;
-            "light.signify_netherlands_b_v_lta005_huelight" = state;
-            "light.signify_netherlands_b_v_929002376201_light" = state;
-          };
-        }
-      ];
       light = [
         {
           platform = "group";
@@ -79,10 +58,10 @@
             subtype = "turn_${action}";
           };
           action = {
-            type = "turn_${action}";
-            device_id = lightTarget;
-            entity_id = "light.${name}";
-            domain = "light";
+            service = "light.turn_${action}";
+            target = {
+              area_id = lightTarget;
+            };
           };
         };
       in [
@@ -132,26 +111,231 @@
             lightTarget = "{{ area_id('Living Room') }}";
           })
 
-        # Turn on and off with small remote
-        (mkRemoteToggle
-          {
-            name = "bedroom_ceiling_light";
-            remote = "ee6328afcb13fd25142e3745ea7697b5";
-            lightTarget = "{{ area_id('Bedroom') }}";
-            action = "on";
-          })
-
-        (mkRemoteToggle
-          {
-            name = "bedroom_ceiling_light";
-            remote = "ee6328afcb13fd25142e3745ea7697b5";
-            lightTarget = "{{ area_id('Bedroom') }}";
-            action = "off";
-          })
-
-        # Turn off all lights when small remote long pressed
+        # Bedroom remote controls
         {
-          alias = "Turn off all lights";
+          alias = "bedroom lights up";
+          mode = "single";
+          trigger = {
+            device_id = "ee6328afcb13fd25142e3745ea7697b5";
+            domain = "zha";
+            type = "remote_button_short_press";
+            platform = "device";
+            subtype = "turn_on";
+          };
+          action = {
+            choose = [
+              # If all lights off, turn on bedside lights
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "off";
+                  }
+                  {
+                    condition = "or";
+                    conditions = [
+                      {
+                        condition = "state";
+                        entity_id = "light.bedroom_ceiling_2";
+                        state = "off";
+                      }
+                      {
+                        condition = "state";
+                        entity_id = "light.bedroom_ceiling_2";
+                        state = "unavailable";
+                      }
+                    ];
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_on";
+                  target = {
+                    entity_id = "light.bedside_lights";
+                  };
+                  data = {
+                    brightness_pct = 1;
+                    kelvin = 2000;
+                    transition = 3;
+                  };
+                };
+              }
+              # If bedside on but ceiling off/unavailable, turn on ceiling
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "on";
+                  }
+                  {
+                    condition = "or";
+                    conditions = [
+                      {
+                        condition = "state";
+                        entity_id = "light.bedroom_ceiling_2";
+                        state = "off";
+                      }
+                      {
+                        condition = "state";
+                        entity_id = "light.bedroom_ceiling_2";
+                        state = "unavailable";
+                      }
+                    ];
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_on";
+                  target = {
+                    entity_id = "light.bedroom_ceiling_2";
+                  };
+                  data = {
+                    brightness_pct = 1;
+                    kelvin = 2000;
+                    transition = 3;
+                  };
+                };
+              }
+            ];
+            # Fallback: if no conditions match, just turn on bedside lights
+            default = {
+              service = "light.turn_on";
+              target = {
+                entity_id = "light.bedside_lights";
+              };
+              data = {
+                brightness_pct = 1;
+                kelvin = 2000;
+                transition = 3;
+              };
+            };
+          };
+        }
+
+        {
+          alias = "bedroom lights down";
+          mode = "single";
+          trigger = {
+            device_id = "ee6328afcb13fd25142e3745ea7697b5";
+            domain = "zha";
+            type = "remote_button_short_press";
+            platform = "device";
+            subtype = "turn_off";
+          };
+          action = {
+            choose = [
+              # If both on, turn off ceiling first
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "on";
+                  }
+                  {
+                    condition = "state";
+                    entity_id = "light.bedroom_ceiling_2";
+                    state = "on";
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_off";
+                  target = {
+                    entity_id = "light.bedroom_ceiling_2";
+                  };
+                  data = {
+                    transition = 3;
+                  };
+                };
+              }
+              # If only bedside on, turn off bedside
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "on";
+                  }
+                  {
+                    condition = "state";
+                    entity_id = "light.bedroom_ceiling_2";
+                    state = "off";
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_off";
+                  target = {
+                    entity_id = "light.bedside_lights";
+                  };
+                  data = {
+                    transition = 3;
+                  };
+                };
+              }
+            ];
+          };
+        }
+
+        # Long up press increases brightness
+        {
+          alias = "bedroom lights brightness up";
+          mode = "single";
+          trigger = {
+            device_id = "ee6328afcb13fd25142e3745ea7697b5";
+            domain = "zha";
+            type = "remote_button_long_press";
+            platform = "device";
+            subtype = "dim_up";
+          };
+          action = {
+            choose = [
+              # If ceiling light is on, brighten it
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedroom_ceiling_2";
+                    state = "on";
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_on";
+                  target = {
+                    entity_id = "light.bedroom_ceiling_2";
+                  };
+                  data = {
+                    brightness_step_pct = 10;
+                    transition = 1;
+                  };
+                };
+              }
+              # Otherwise brighten bedside lights
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "on";
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_on";
+                  target = {
+                    entity_id = "light.bedside_lights";
+                  };
+                  data = {
+                    brightness_step_pct = 10;
+                    transition = 1;
+                  };
+                };
+              }
+            ];
+          };
+        }
+
+        # Long press down: dim or turn off all lights
+        {
+          alias = "bedroom long press down";
           trigger = {
             device_id = "ee6328afcb13fd25142e3745ea7697b5";
             domain = "zha";
@@ -160,12 +344,43 @@
             platform = "device";
           };
           action = {
-            service = "scene.turn_on";
-            target = {
-              entity_id = "scene.zzz";
-            };
-            data = {
-              transition = "10";
+            choose = [
+              # If bedside lights are on and bright (>1%), run zzz scene
+              {
+                conditions = [
+                  {
+                    condition = "state";
+                    entity_id = "light.bedside_lights";
+                    state = "on";
+                  }
+                  {
+                    condition = "numeric_state";
+                    entity_id = "light.bedside_lights";
+                    attribute = "brightness";
+                    above = 2.55;
+                  }
+                ];
+                sequence = {
+                  service = "light.turn_off";
+                  target = {
+                    entity_id = "all";
+                  };
+                  data = {
+                    transition = 10;
+                  };
+                };
+              }
+            ];
+            # Default: dim the bedside lights
+            default = {
+              service = "light.turn_on";
+              target = {
+                entity_id = "light.bedside_lights";
+              };
+              data = {
+                brightness_step_pct = -10;
+                transition = 1;
+              };
             };
           };
         }
