@@ -33,8 +33,9 @@
 
       # Misc
       jq
-      pre-commit
       rage
+    ] ++ lib.optionals (pkgs.stdenv.isLinux) [
+      pre-commit
     ];
   };
 

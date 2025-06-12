@@ -13,7 +13,6 @@
   ];
 
   home.stateVersion = "22.05";
-  nixpkgs.config.allowUnfree = true;
 
   programs = {
     bat.enable = true;
@@ -42,15 +41,17 @@
 
   programs.ssh = {
     enable = true;
-    controlMaster = "auto";
-    controlPersist = "60m";
-    serverAliveInterval = 60;
-    serverAliveCountMax = 5;
+    # controlMaster = "auto";
+    # controlPersist = "60m";
+    # serverAliveInterval = 60;
+    # serverAliveCountMax = 5;
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
       # put these here for vscode remote
-      "trex.satanic.link" = {};
+      # "trex.satanic.link" = {
+      #   Hos
+      # };
       "*.runpod.io".extraOptions = {
         PubkeyAcceptedAlgorithms = "+ssh-rsa";
       };

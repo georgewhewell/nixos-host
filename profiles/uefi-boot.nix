@@ -1,7 +1,7 @@
 {pkgs, ...}: {
   boot = {
     tmp.useTmpfs = true;
-    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_6_13;
+    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
     kernelParams = [
       "msr.allow_writes=on"
       "mitigations=off"

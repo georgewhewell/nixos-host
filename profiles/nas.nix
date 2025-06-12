@@ -1,29 +1,25 @@
-{
-  config,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   fileSystems."/mnt/Media" = {
     device = "bpool/root/Media";
     fsType = "zfs";
     neededForBoot = false;
   };
 
-  fileSystems."/mnt/Home" = {
-    device = "nvpool/root/Home";
-    fsType = "zfs";
-    neededForBoot = false;
-  };
+  # fileSystems."/mnt/Home" = {
+  #   device = "nvpool/root/Home";
+  #   fsType = "zfs";
+  #   neededForBoot = false;
+  # };
 
   fileSystems."/export/media" = {
     device = "/mnt/Media";
     options = ["bind"];
   };
 
-  fileSystems."/export/home" = {
-    device = "/mnt/Home";
-    options = ["bind"];
-  };
+  # fileSystems."/export/home" = {
+  #   device = "/mnt/Home";
+  #   options = ["bind"];
+  # };
 
   services.zfs.autoScrub = {
     enable = true;
@@ -43,13 +39,23 @@
     interval = "weekly";
   };
 
-  services.nfs.server = {
-    enable = true;
-    exports = ''
-      /export                192.168.23.1/24(rw,all_squash,fsid=0,no_subtree_check)
-      /export/media          192.168.23.1/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-      /export/home           192.168.23.1/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
-    '';
+  services.nfs = {
+    settings = {
+      nfsd.vers3 = false;
+      nfsd.vers4 = true;
+      nfsd."vers4.0" = false;
+      nfsd."vers4.1" = false;
+      nfsd."vers4.2" = true;
+      nfsd.threads = 16;
+    };
+    server = {
+      enable = true;
+      exports = ''
+        /export                192.168.23.1/24(rw,all_squash,fsid=0,no_subtree_check)
+        /export/media          192.168.23.1/24(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+      '';
+      #       /export/home           192.168.23.1/24(rw,async,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
+    };
   };
 
   networking.firewall.allowedTCPPorts = [
@@ -59,9 +65,6 @@
     4001 # ipfs
     5001 # kubo api
     5080 # kubo gateway
-    138 # smb
-    139 # smb
-    445 # smb
     548 # netatalk
     10809 # nbd
 
@@ -78,8 +81,6 @@
   networking.firewall.allowedUDPPorts = [
     111 # nfs?
     2049 # nfs
-    138 # smb
-    445 # smb
 
     4001 # ipfs
 
@@ -91,19 +92,44 @@
     42074
   ];
 
+  # Fix systemd timing race condition - ensure tmpfiles runs before Samba services
+  systemd.services.samba-smbd.wants = ["systemd-tmpfiles-setup.service"];
+  systemd.services.samba-smbd.after = ["systemd-tmpfiles-setup.service"];
+  systemd.services.samba-nmbd.wants = ["systemd-tmpfiles-setup.service"];  
+  systemd.services.samba-nmbd.after = ["systemd-tmpfiles-setup.service"];
+
+  # Ensure Samba directories exist with correct permissions
+  systemd.tmpfiles.rules = [
+    "d /var/lib/samba 0755 root root -"
+    "d /var/lib/samba/private 0755 root root -"
+    "d /var/lib/samba/private/msg.sock 0700 root root -"  # Samba requires 0700 for messaging
+    "d /var/cache/samba 0755 root root -"
+    "d /var/log/samba 0755 root root -"
+    "d /var/lock/samba 0755 root root -"
+  ];
+
   services.samba = {
     enable = true;
-    shares = {
-      Home = {
-        path = "/mnt/Home";
-        "read only" = "no";
-        "valid users" = "grw";
-        "max connections" = "20000";
+    openFirewall = true;
+    winbindd.enable = false; # Disable winbind for now, can enable later for domain auth
+    settings = {
+      global = {
+        "server role" = "standalone server";
+        "map to guest" = "bad user";
+        security = "user";
+        "server string" = "NixOS Media Server";
+        "netbios name" = "nixos";
+        workgroup = "WORKGROUP";
       };
+      # Home = {
+      #   path = "/mnt/Home";
+      #   "read only" = "no";
+      #   "valid users" = "grw";
+      #   "max connections" = "20000";
+      # };
       Media = {
         path = "/mnt/Media";
         "read only" = "yes";
-        "writable" = "no";
         "public" = "yes";
         "browsable" = "yes";
         "guest ok" = "yes";
@@ -187,13 +213,13 @@
   #   };
   # };
 
-  services.paperless = {
-    enable = true;
-    package = pkgs.paperless-ngx;
-    extraConfig = {
-      PAPERLESS_URL = "https://paperless.satanic.link";
-    };
-  };
+  # services.paperless = {
+  #   enable = true;
+  #   package = pkgs.paperless-ngx;
+  #   extraConfig = {
+  #     PAPERLESS_URL = "https://paperless.satanic.link";
+  #   };
+  # };
 
   # services.nginx.virtualHosts."paperless.satanic.link" = {
   #   forceSSL = true;

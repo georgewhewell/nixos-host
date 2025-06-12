@@ -37,7 +37,7 @@
         }
       ]
       ++ lib.optionals (config.networking.hostName != "trex") [
-        {
+/*        {
           hostName = "trex.satanic.link";
           sshUser = "grw";
           protocol = "ssh-ng";
@@ -48,7 +48,8 @@
             "x86_64-linux"
             "i686-linux"
           ];
-        }
+          }
+          */
       ];
   };
 }

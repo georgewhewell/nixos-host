@@ -25,7 +25,7 @@
       export CARGO_HOME="${config.xdg.cacheHome}/cargo"
     '';
 
-    initExtra = ''
+    initContent = ''
       # make nix-shell use zsh
       ${pkgs.any-nix-shell}/bin/any-nix-shell zsh | source /dev/stdin
     '';

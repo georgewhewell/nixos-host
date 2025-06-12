@@ -65,7 +65,18 @@
     ShutdownWatchdogSec=1m
   '';
 
-  boot.kernelPackages = pkgs.linuxPackages_6_13;
+    boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
+    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
+      src = pkgs.fetchFromGitHub {
+        owner = "openzfs";
+        repo = "zfs";
+        rev = "master";
+        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
+      };
+      version = "2.3.3-staging";
+    });
+  });
+
   boot.extraModprobeConfig = ''
     options iwlwifi swcrypto=0
     options iwlwifi power_save=0
@@ -74,7 +85,6 @@
     options cfg80211 ieee80211_regdom="CH"
   '';
 
-  boot.kernelParams = ["console=ttyS2,1500000n8"];
 
   # interfaces should exist before stage2
   boot.initrd.kernelModules = [
@@ -172,10 +182,17 @@
     usbutils
     wirelesstools
     iw
+    powertop
+    stress-ng
   ];
 
   services.irqbalance.enable = lib.mkDefault true;
 
-  powerManagement.enable = false;
-  powerManagement.cpuFreqGovernor = lib.mkDefault "performance";
+  powerManagement.enable = true;
+  powerManagement.cpuFreqGovernor = lib.mkDefault "schedutil";
+  powerManagement.powertop.enable = true;
+  
+  boot.kernelParams = [
+    "console=ttyS2,1500000n8"
+  ];
 }

@@ -19,7 +19,7 @@ in {
 
   hardware.cpu.amd.ryzen-smu.enable = true;
 
-  boot.kernelPackages = pkgs.linuxPackages_6_13;
+  # boot.kernelPackages = pkgs.linuxPackages_latest;
   # deployment.targetHost = "satanic.link";
   deployment.targetHost = "192.168.23.1";
   deployment.targetUser = "grw";
@@ -58,19 +58,20 @@ in {
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-cpu-amd-pstate
-    common-cpu-amd-raphael-igpu
     common-cpu-amd-zenpower
-    common-gpu-amd
-    ../../../containers/unifi.nix
-    ../../../profiles/common.nix
-    ../../../profiles/home.nix
+
     ../../../profiles/headless.nix
     ../../../profiles/uefi-boot.nix
-    ../../../profiles/radeon.nix
+    ../../../profiles/common.nix
+    ../../../profiles/home.nix
 
+    # common-cpu-amd-raphael-igpu
+    # common-gpu-amd
+    #  ../../../profiles/radeon.nix
+    #
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
-
+    ../../../containers/unifi.nix
     ../../../services/buildfarm-slave.nix
   ];
 
@@ -144,4 +145,17 @@ in {
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
   };
+
+  # Override kernel packages to use ZFS staging branch
+  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
+    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
+      src = pkgs.fetchFromGitHub {
+        owner = "openzfs";
+        repo = "zfs";
+        rev = "master";
+        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
+      };
+      version = "2.3.3-staging";
+    });
+  });
 }
