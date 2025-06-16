@@ -61,6 +61,9 @@
       Host github.com *.github.com
           ProxyJump none
 
+      Host ax102.lsd-ag.ch
+          ProxyJump none
+
       Match host "*.satanic.link" exec "ifconfig | grep -q '192.168.23.'"
           ProxyJump none
 

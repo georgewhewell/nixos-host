@@ -33,7 +33,7 @@
     pwgen
     docker-compose
     btop
-    # mosh
+    mosh
     mtr
   ];
 
