@@ -28,18 +28,6 @@
     # ../../../services/virt/host.nix
   ];
 
-  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
-    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
-      src = pkgs.fetchFromGitHub {
-        owner = "openzfs";
-        repo = "zfs";
-        rev = "master";
-        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
-      };
-      version = "2.3.3-staging";
-    });
-  });
-
   services.tor = {
     enable = true;
     openFirewall = true;

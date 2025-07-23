@@ -75,18 +75,7 @@
     '';
   };
 
-  programs.ssh.extraConfig = ''
-    Host *.satanic.link !satanic.link
-      ProxyJump grw@satanic.link
-    Host *.satanic.link !satanic.link
-      ProxyJump none
-      Match exec "ifconfig | grep -q '192.168.23.' && echo direct"
-    Host *
-      ControlPath ~/.ssh/control-%r@%h:%p
-      ControlMaster auto
-      ControlPersist 10m
-      ServerAliveInterval 60
-  '';
+  # SSH common config is now handled by the ssh-common module
 
   console = {
     font = "Lat2-Terminus16";

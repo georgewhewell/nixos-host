@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  lib,
   inputs,
   localOverlays,
   ...
@@ -33,7 +34,7 @@
       ../../home/desktop-apps.nix
       ../../home/darwin.nix
       ../../home/vscode.nix
-      ../../home/zed.nix
+      # ../../home/zed.nix
       inputs.mac-app-util.homeManagerModules.default
     ];
 
@@ -56,25 +57,39 @@
     };
   };
 
+  # SSH common config is handled by ../../modules/ssh-common.nix
+  # But it's a NixOS module, not available in darwin, so we need to duplicate it here
   programs.ssh = {
     extraConfig = ''
+      # ProxyJump logic for satanic.link hosts
+      Match host "*.satanic.link" exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+        ProxyJump grw@satanic.link
+      
+      # Direct connection when on local network  
+      Match host "*.satanic.link" exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+        ProxyJump none
+      
+      # Also handle direct IPs
+      Host 78.47.106.113
+        ProxyJump none
+      
+      # Control master settings
+      Host *
+        ControlMaster auto
+        ControlPath ~/.ssh/control-%r@%h:%p
+        ControlPersist 10m
+        ServerAliveInterval 60
+        ServerAliveCountMax 5
+
+      # Darwin-specific overrides
       Host github.com *.github.com
           ProxyJump none
 
       Host ax102.lsd-ag.ch
           ProxyJump none
 
-      Match host "*.satanic.link" exec "ifconfig | grep -q '192.168.23.'"
+      Host trex.satanic.link
           ProxyJump none
-
-      Match host "*.satanic.link" exec "! (ifconfig | grep -q '192.168.23.')"
-          ProxyJump grw@satanic.link
-
-      Host *
-          ControlPath ~/.ssh/control-%r@%h:%p
-          ControlPersist 10m
-          ControlMaster auto
-          ServerAliveInterval 60
     '';
   };
 

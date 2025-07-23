@@ -251,7 +251,7 @@ in {
             30304 # reth
 
             18080 # monero
-
+            17026 # qBittorrent
             42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
@@ -261,6 +261,7 @@ in {
             51820 # wireguard (cloud)
             51821 # wireguard (swaps)
             51413 # transmission
+            17026 # qBittorrent
             3074 # bo2
             3478 # bo2
 

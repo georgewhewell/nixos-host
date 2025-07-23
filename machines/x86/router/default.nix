@@ -19,7 +19,6 @@ in {
 
   hardware.cpu.amd.ryzen-smu.enable = true;
 
-  # boot.kernelPackages = pkgs.linuxPackages_latest;
   # deployment.targetHost = "satanic.link";
   deployment.targetHost = "192.168.23.1";
   deployment.targetUser = "grw";
@@ -65,10 +64,10 @@ in {
     ../../../profiles/common.nix
     ../../../profiles/home.nix
 
-    # common-cpu-amd-raphael-igpu
-    # common-gpu-amd
-    #  ../../../profiles/radeon.nix
-    #
+    common-cpu-amd-raphael-igpu
+    common-gpu-amd
+    ../../../profiles/radeon.nix
+    
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
     ../../../containers/unifi.nix
@@ -145,17 +144,4 @@ in {
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
   };
-
-  # Override kernel packages to use ZFS staging branch
-  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
-    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
-      src = pkgs.fetchFromGitHub {
-        owner = "openzfs";
-        repo = "zfs";
-        rev = "master";
-        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
-      };
-      version = "2.3.3-staging";
-    });
-  });
 }

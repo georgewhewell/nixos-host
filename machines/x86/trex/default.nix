@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  inputs,
   ...
 }: {
   /*
@@ -28,7 +29,7 @@
   # 7985WX
   nix.settings.system-features = ["gccarch-znver4" "kvm" "big-parallel"];
 
-  hardware.cpu.amd.ryzen-smu.enable = true;
+  # hardware.cpu.amd.ryzen-smu.enable = true;
 
   boot.kernel.sysctl = {
     "net.core.rmem_default" = 1048576;
@@ -45,7 +46,13 @@
     "net.nf_conntrack_max" = 131072;
   };
 
-  imports = [
+  nix.settings.build-cores = lib.mkDefault 128;
+
+  imports = with inputs.nixos-hardware.nixosModules; [
+    common-cpu-amd
+    common-cpu-amd-pstate
+    # common-cpu-amd-zenpower
+
     ../../../containers/arr-servers.nix
     ../../../containers/gh-runner-grw.nix
 
@@ -63,22 +70,9 @@
     ../../../services/grafana.nix
     ../../../services/jellyfin.nix
     ../../../services/rtorrent.nix
-    ../../../services/buildfarm-executor.nix
     ../../../services/buildfarm-slave.nix
     ../../../services/virt/host.nix
   ];
-
-  boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
-    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
-      src = pkgs.fetchFromGitHub {
-        owner = "openzfs";
-        repo = "zfs";
-        rev = "master";
-        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
-      };
-      version = "2.3.3-staging";
-    });
-  });
 
   deployment = {
     targetHost = "trex.satanic.link";
@@ -144,11 +138,17 @@
   boot.kernel.sysctl."vm.page-cluster" = 0;
   boot.kernel.sysctl."vm.max_map_count" = 1048576;
 
-  # swapDevices =
-  #   builtins.genList (
-  #     i: {device = "/dev/nvme${toString i}n1p1";}
-  #   )
-  #   8;
+  swapDevices = [
+    { device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc"; }
+    { device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f"; }
+    { device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895"; }
+    { device = "/dev/disk/by-uuid/ec05a540-9c85-430d-be23-07392ef1e483"; }
+    { device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485"; }
+    { device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5"; }
+    { device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb"; }
+    { device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb"; }
+    { device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81"; }
+  ];
 
   # otherwise bpool bricks
   boot.zfs.requestEncryptionCredentials = false;
@@ -210,7 +210,7 @@
   #     OLLAMA_BASE_URL = "http://127.0.0.1:11434";
   #   };
   # };
-  #
+  
   services.gcp-ddns = {
     enable = true;
     projectId = "domain-owner";
