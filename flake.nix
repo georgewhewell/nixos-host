@@ -11,10 +11,10 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/master";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
     colmena.url = "github:zhaofengli/colmena";
-    colmena.inputs.nixpkgs.follows = "nixpkgs";
+    # colmena.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
@@ -69,42 +69,6 @@
           "aarch64-darwin"
         ]
       );
-    zen4localSystem = {
-      gcc.arch = "znver4";
-      gcc.tune = "znver4";
-      system = "x86_64-linux";
-    };
-    zen4Pkgs = import nixpkgs {
-      localSystem = zen4localSystem;
-
-      # sphinx tests need clear network namespace
-      # overlays =
-      #   localOverlays
-      #   ++ [
-      #     (self: super: {
-      #       # vpp = super.vpp.override {
-      #       #   doCheck = false;
-      #       # };
-      #       haskellPackages = super.haskellPackages.override {
-      #         overrides = hself: hsuper: {
-      #           # flaky tests
-      #           tls = super.haskell.lib.dontCheck hsuper.tls;
-      #           crypton = super.haskell.lib.dontCheck hsuper.crypton;
-      #           crypton-x509 = super.haskell.lib.dontCheck hsuper.crypton-x509;
-      #           crypton-x509-validation = super.haskell.lib.dontCheck hsuper.crypton-x509-validation;
-      #         };
-      #       };
-      #       python312 = super.python312.override {
-      #         packageOverrides = pyself: pysuper: {
-      #           # flaky tests
-      #           sphinx = pysuper.sphinx.overridePythonAttrs {
-      #             doCheck = false;
-      #           };
-      #         };
-      #       };
-      #     })
-      #   ];
-    };
   in rec {
     colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
     colmena =
@@ -113,7 +77,7 @@
           description = "My personal machines";
           nixpkgs = nixpkgs.legacyPackages.x86_64-linux;
           specialArgs = {
-            inherit inputs zen4Pkgs;
+            inherit inputs;
           };
         };
       }
@@ -148,7 +112,6 @@
         builtins.attrValues self.nixosModules;
       nixpkgs.overlays = [
         (composeManyExtensions localOverlays)
-        # (_: mypkgs)
       ];
     };
 
@@ -158,13 +121,10 @@
       in
         pkgs.mkShell {
           packages = [
-            pkgs.nixVersions.nix_2_24
+            # pkgs.colmena
+            # pkgs.nixVersions.nix_2_24
             inputs.colmena.defaultPackage.${system}
           ];
-
-          shellHook = ''
-            echo "Development shell loaded with colmena"
-          '';
         };
     });
 

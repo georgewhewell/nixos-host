@@ -1,6 +1,7 @@
 {
   pkgs,
   config,
+  lib,
   ...
 }: {
   imports = [
@@ -10,6 +11,7 @@
     ./git.nix
     ./starship.nix
     ./zsh.nix
+    ./yubikey-helper.nix
   ];
 
   home.stateVersion = "22.05";
@@ -41,10 +43,10 @@
 
   programs.ssh = {
     enable = true;
-    # controlMaster = "auto";
-    # controlPersist = "60m";
-    # serverAliveInterval = 60;
-    # serverAliveCountMax = 5;
+    controlMaster = "auto";
+    controlPersist = "60m";
+    serverAliveInterval = 60;
+    serverAliveCountMax = 5;
     hashKnownHosts = true;
     forwardAgent = true;
     matchBlocks = {
