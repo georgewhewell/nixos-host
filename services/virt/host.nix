@@ -1,13 +1,15 @@
-{ config, lib, pkgs, ... }:
-
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   # Turn on virt
   virtualisation.libvirtd = {
     enable = true;
     onBoot = "start";
-    allowedBridges = [ "br0" ];
+    allowedBridges = ["br0"];
     qemu = {
-      ovmf.enable = true;
       swtpm.enable = true;
       verbatimConfig = ''
         namespaces = []

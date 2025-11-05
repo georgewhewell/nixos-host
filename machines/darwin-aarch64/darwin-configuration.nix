@@ -13,10 +13,14 @@
     inputs.mac-app-util.darwinModules.default
   ];
 
+  environment.enableAllTerminfo = true;
+
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.overlays = [
-    inputs.darwin.overlays.default
-  ] ++ localOverlays;
+  nixpkgs.overlays =
+    [
+      inputs.darwin.overlays.default
+    ]
+    ++ localOverlays;
 
   users.users."grw" = {
     shell = pkgs.zsh;
@@ -26,6 +30,7 @@
   system.primaryUser = "grw";
 
   home-manager.useGlobalPkgs = true;
+  home-manager.extraSpecialArgs = {inherit inputs;};
   home-manager.users.grw = {...}: {
     imports = [
       ../../home/common.nix
@@ -41,7 +46,7 @@
     xdg.dataFile."postgresql/.keep".text = "";
 
     home.packages = with pkgs; [
-      ollama
+      # ollama
       keybase
       kbfs
     ];
@@ -58,21 +63,16 @@
   };
 
   # SSH common config is handled by ../../modules/ssh-common.nix
-  # But it's a NixOS module, not available in darwin, so we need to duplicate it here
   programs.ssh = {
     extraConfig = ''
       # ProxyJump logic for satanic.link hosts
-      Match host "*.satanic.link" exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+      Match host *.satanic.link exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
         ProxyJump grw@satanic.link
-      
-      # Direct connection when on local network  
-      Match host "*.satanic.link" exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+
+      # Direct connection when on local network
+      Match host *.satanic.link exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
         ProxyJump none
-      
-      # Also handle direct IPs
-      Host 78.47.106.113
-        ProxyJump none
-      
+
       # Control master settings
       Host *
         ControlMaster auto
@@ -80,16 +80,6 @@
         ControlPersist 10m
         ServerAliveInterval 60
         ServerAliveCountMax 5
-
-      # Darwin-specific overrides
-      Host github.com *.github.com
-          ProxyJump none
-
-      Host ax102.lsd-ag.ch
-          ProxyJump none
-
-      Host trex.satanic.link
-          ProxyJump none
     '';
   };
 
@@ -99,19 +89,19 @@
     initdbArgs = ["-U grw" "--auth trust"];
   };
 
-  launchd.user.agents.ollama-serve = {
-    command = "ollama serve";
-    path = with pkgs; [ollama];
-    environment = {
-      OLLAMA_DEBUG = "1";
-    };
-    serviceConfig = {
-      KeepAlive = true;
-      RunAtLoad = true;
-      StandardOutPath = "/tmp/ollama.out.log";
-      StandardErrorPath = "/tmp/ollama.err.log";
-    };
-  };
+  # launchd.user.agents.ollama-serve = {
+  #   command = "ollama serve";
+  #   path = with pkgs; [ollama];
+  #   environment = {
+  #     OLLAMA_DEBUG = "1";
+  #   };
+  #   serviceConfig = {
+  #     KeepAlive = true;
+  #     RunAtLoad = true;
+  #     StandardOutPath = "/tmp/ollama.out.log";
+  #     StandardErrorPath = "/tmp/ollama.err.log";
+  #   };
+  # };
 
   launchd.user.agents.postgresql.serviceConfig = {
     StandardErrorPath = "/tmp/postgres.error.log";
@@ -145,20 +135,30 @@
   # Used for backwards compatibility, please read the changelog before changing.
   system.stateVersion = 3;
 
-  programs.zsh.enable = true;
+  # NFS client configuration
+  environment.etc."nfs.conf".text = ''
+    nfs.client.mount.options = vers=4.0,sec=krb5
+    nfs.client.default_nfs4domain = satanic.link
+  '';
 
   nix = {
-    nixPath = ["nixpkgs=${inputs.nixpkgs}"]; # Enables use of `nix-shell -p ...` etc
-    registry.nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
+    registry.nixpkgs.flake = inputs.nixpkgs;
     optimise.automatic = true;
     settings = {
       system = "aarch64-darwin";
       max-jobs = "auto";
       build-users-group = "nixbld";
       experimental-features = ["nix-command" "flakes"];
+      trusted-substituters = [
+        "ssh-ng://grw@trex.lan.satanic.link"
+      ];
+      trusted-public-keys = [
+        "trex.satanic.link:R5wLrsrQGQdkEa9w+E1o3YibQ/VPVoPqQelJEw0yrtQ="
+        "colmena.cachix.org-1:7BzpDnjjH8ki2CT3f6GdOk7QAzPOl+1t3LvTLXqYcSg="
+      ];
       build-cores = 0;
+      builders-use-substitutes = true;
       always-allow-substitutes = true;
-      download-buffer-size = 500000000;
       trusted-users = [
         "@admin"
         "grw"

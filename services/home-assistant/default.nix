@@ -1,4 +1,8 @@
-{...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: {
   imports = [
     ./lights.nix
     ./lovelace.nix
@@ -7,23 +11,59 @@
     ./homekit.nix
   ];
 
-  users.extraUsers."hass".extraGroups = ["dialout" "lp"];
+  environment.systemPackages = with pkgs; [
+    home-assistant-cli
+    home-assistant-cli-go
+  ];
 
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = true;
-  };
+  users.extraUsers."hass".extraGroups = ["dialout" "lp"];
 
   services.dbus.implementation = "broker";
 
   services.esphome = {
     enable = true;
+    address = "192.168.23.1";
     openFirewall = true;
   };
+
+  # Fix platformio permissions issue with DynamicUser
+  systemd.services.esphome = {
+    serviceConfig = {
+      # Override DynamicUser to use a static user
+      DynamicUser = lib.mkForce false;
+      # Ensure proper permissions for platformio cache
+      StateDirectoryMode = lib.mkForce "0755";
+      # Disable some hardening that interferes with platformio
+      ProtectSystem = lib.mkForce false;
+      PrivateUsers = lib.mkForce false;
+    };
+    preStart = ''
+      # Ensure all esphome directories have correct permissions
+      chown -R esphome:esphome /var/lib/esphome
+      chmod -R u+rwX /var/lib/esphome
+    '';
+  };
+
+  # Create static esphome user
+  users.users.esphome = {
+    isSystemUser = true;
+    group = "esphome";
+    home = "/var/lib/esphome";
+    extraGroups = ["dialout"];
+  };
+  users.groups.esphome = {};
 
   services.home-assistant = {
     enable = true;
     openFirewall = true;
+    customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
+      advanced-camera-card
+    ];
+    customComponents = with pkgs.home-assistant-custom-components; [
+      frigate
+      roborock_custom_map
+      tuya_local
+    ];
     extraPackages = ps:
       with ps; [
         defusedxml
@@ -45,6 +85,8 @@
         pyxiaomigateway
         brother
         pysmlight
+        aiohttp-sse
+        mcp
       ];
     config = {
       homeassistant = {
@@ -66,10 +108,17 @@
       };
       mobile_app = {};
       frontend = {};
+      frigate = {};
+      go2rtc = {
+        url = "http://localhost:1984";
+      };
       history = {};
       config = {};
       zha = {};
       system_health = {};
+      api = {};
+      websocket_api = {};
+      cli = {};
     };
   };
 }

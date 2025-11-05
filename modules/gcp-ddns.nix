@@ -1,61 +1,71 @@
-# /etc/nixos/gcp-ddns.nix
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
-with lib; let
-  cfg = config.services.gcp-ddns;
+{ config, lib, pkgs, ... }:
 
-  dnsRecordType = types.submodule {
-    options = {
-      name = mkOption {
-        type = types.str;
-        description = "DNS record name (with trailing dot)";
-        example = "example.com.";
-      };
-      type = mkOption {
-        type = types.enum ["A" "AAAA"];
-        description = "DNS record type";
-      };
-      ttl = mkOption {
-        type = types.int;
-        default = 300;
-        description = "TTL for DNS record";
-      };
-    };
-  };
+with lib; let
+  cfg = config.sconfig.gcp-ddns;
+  # Convert the simple lists into the record format needed by the script
+  hostnameDomain = builtins.replaceStrings ["-"] ["."] cfg.zoneName;
+  allRecords =
+    (map (name: { name = "${name}."; type = "A"; ttl = cfg.ttl; }) cfg.aRecords)
+    ++ (map (name: { name = "${name}."; type = "AAAA"; ttl = cfg.ttl; }) cfg.aaaaRecords)
+    ++ (if cfg.hostName then
+          [ { name = "${config.networking.hostName}.${hostnameDomain}"; type = "AAAA"; ttl = cfg.ttl; } ]
+        else [] )
+    ++ (if cfg.hostNameARecord then
+          [ { name = "${config.networking.hostName}.${hostnameDomain}"; type = "A"; ttl = cfg.ttl; } ]
+        else []);
 in {
-  options.services.gcp-ddns = {
+  options.sconfig.gcp-ddns = {
     enable = mkEnableOption "Google Cloud DNS Update Service";
 
     projectId = mkOption {
       type = types.str;
+      default = "domain-owner";
       description = "Google Cloud project ID";
     };
 
     zoneName = mkOption {
       type = types.str;
+      default = "satanic-link";
       description = "DNS zone name";
     };
 
-    records = mkOption {
-      type = types.listOf dnsRecordType;
-      description = "List of DNS records to update";
-      example = literalExpression ''
-        [
-          { name = "example.com."; type = "A"; ttl = 300; }
-          { name = "*.example.com."; type = "A"; ttl = 300; }
-          { name = "example.com."; type = "AAAA"; ttl = 300; }
-          { name = "*.example.com."; type = "AAAA"; ttl = 300; }
-        ]
-      '';
+    hostName = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Create IPv6 record for the hostname";
+      example = true;
+    };
+
+    hostNameARecord = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Also create IPv4 A record for the hostname (uses external IPv4).";
+      example = false;
+    };
+
+    aRecords = mkOption {
+      type = types.listOf types.str;
+      default = [];
+      description = "List of DNS names to update with IPv4 address (without trailing dot)";
+      example = [ "router.satanic.link" ];
+    };
+
+    aaaaRecords = mkOption {
+      type = types.listOf types.str;
+      default = [];
+      description = "List of DNS names to update with IPv6 address (without trailing dot)";
+      example = [ "router.satanic.link" ];
+    };
+
+    ttl = mkOption {
+      type = types.int;
+      default = 300;
+      description = "TTL for DNS records";
     };
 
     interval = mkOption {
       type = types.str;
-      default = "5m";
+      default = "24h";
       description = "Update check interval";
     };
   };
@@ -64,14 +74,10 @@ in {
     systemd.services.gcp-ddns = {
       description = "Google Cloud DNS Update Service";
 
-      # Proper ordering with VPP and network
       after = [
-        # "vpp-main.service"
         "network-online.target"
       ];
-      # requires = ["vpp-main.service"];
-      # bindsTo = ["vpp-main.service"];
-      # depends = ["network-online.target"];
+      wants = ["network-online.target"];
 
       path = with pkgs; [
         curl
@@ -81,7 +87,7 @@ in {
 
       script = ''
         # Wait for actual connectivity
-        echo "Waiting 30s for network to stabilize..."
+        echo "Waiting for network to stabilize..."
         sleep 1
 
         # Function to check connectivity
@@ -104,12 +110,14 @@ in {
 
         # Function to get current external IPv4
         get_external_ipv4() {
-            curl -s https://api.ipify.org
+            # Use conservative timeouts to avoid blocking when IPv4 is impaired
+            curl -s --connect-timeout 5 --max-time 8 https://api.ipify.org || true
         }
 
         # Function to get current external IPv6
         get_external_ipv6() {
-            curl -s https://api6.ipify.org
+            # Use IPv6-only endpoint with timeouts; return empty if unavailable
+            curl -s --connect-timeout 5 --max-time 8 https://api6.ipify.org || true
         }
 
         # Function to get current DNS record IP
@@ -228,7 +236,7 @@ in {
             rm -f transaction.yaml
         fi
 
-        # Get current IPs
+        # Get current IPs (may be empty if not available)
         CURRENT_IPV4=$(get_external_ipv4)
         CURRENT_IPV6=$(get_external_ipv6)
 
@@ -237,13 +245,17 @@ in {
             DNS_IP=$(get_dns_ip "${record.name}" "${record.type}")
             CURRENT_IP=$([ "${record.type}" = "A" ] && echo "$CURRENT_IPV4" || echo "$CURRENT_IPV6")
 
-            if [ "$CURRENT_IP" != "$DNS_IP" ]; then
-              update_dns_record "${record.name}" "${record.type}" "${toString record.ttl}" "$DNS_IP" "$CURRENT_IP"
+            if [ -z "$CURRENT_IP" ]; then
+              echo "Skipping ${record.name} (${record.type}): no current ${record.type} address available"
             else
-              echo "No IP change detected for ${record.name} (${record.type})"
+              if [ "$CURRENT_IP" != "$DNS_IP" ]; then
+                update_dns_record "${record.name}" "${record.type}" "${toString record.ttl}" "$DNS_IP" "$CURRENT_IP"
+              else
+                echo "No IP change detected for ${record.name} (${record.type})"
+              fi
             fi
           '')
-          cfg.records}
+          allRecords}
       '';
 
       serviceConfig = {
@@ -257,10 +269,6 @@ in {
     systemd.timers.gcp-ddns = {
       description = "Timer for Google Cloud DNS Update Service";
       wantedBy = ["timers.target"];
-
-      # Start timer when vpp-main starts
-      # after = ["vpp-main.service"];
-      # bindsTo = ["vpp-main.service"];
 
       timerConfig = {
         OnActiveSec = "30s"; # First run 30s after timer starts

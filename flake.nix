@@ -1,20 +1,8 @@
 {
-  nixConfig = {
-    extra-substituters = [
-      "https://colmena.cachix.org"
-      "https://nix-community.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "colmena.cachix.org-1:7BzpDnjjH8ki2CT3f6GdOk7QAzPOl+1t3LvTLXqYcSg="
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
+    chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
     colmena.url = "github:zhaofengli/colmena";
-    # colmena.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
@@ -32,17 +20,30 @@
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    foundry.url = "github:shazow/foundry.nix";
-    foundry.inputs.nixpkgs.follows = "nixpkgs";
-
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
-    apple-silicon.url = "github:tpwrules/nixos-apple-silicon";
-    apple-silicon.inputs.nixpkgs.follows = "nixpkgs";
+    nix-ai-tools.url = "github:numtide/nix-ai-tools";
 
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
+
+    disko.url = "github:nix-community/disko";
+
+    nix-llamacpp-rocm = {
+      url = "path:/Users/grw/src/nix-llamacpp-rocm";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    p2pool-exporter = {
+      url = "github:ForgottenBeast/p2pool-exporter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    ath-kernel = {
+      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git?ref=ath-next&shallow=1";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -50,6 +51,7 @@
     nixpkgs,
     darwin,
     colmena,
+    disko,
     ...
   } @ inputs: let
     inherit inputs;
@@ -93,6 +95,7 @@
       specialArgs = {inherit inputs localOverlays;};
       modules = [./machines/darwin-aarch64/air.nix];
     };
+
     darwinConfigurations."Georges-MacBook-Pro" = darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       specialArgs = {inherit inputs localOverlays;};
@@ -112,6 +115,7 @@
         builtins.attrValues self.nixosModules;
       nixpkgs.overlays = [
         (composeManyExtensions localOverlays)
+        inputs.chaotic.overlays.default
       ];
     };
 
@@ -121,8 +125,6 @@
       in
         pkgs.mkShell {
           packages = [
-            # pkgs.colmena
-            # pkgs.nixVersions.nix_2_24
             inputs.colmena.defaultPackage.${system}
           ];
         };
@@ -132,8 +134,6 @@
       import ./machines
       self.nixosModule
       inputs;
-
-    packages = nixpkgs.legacyPackages;
 
     githubActions = let
       mkGithubMatrix = nixConf: {

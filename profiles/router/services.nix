@@ -4,8 +4,6 @@ in {
   boot.initrd.kernelModules = [
     "nf_tables"
     "nft_compat"
-    # "i40e"
-    # "ice"
   ];
 
   environment.systemPackages = with pkgs; [
@@ -19,9 +17,10 @@ in {
     pciutils
     iperf
     gdb
+    inetutils
   ];
 
-  services.dnscrypt-proxy2 = {
+  services.dnscrypt-proxy = {
     enable = true;
     settings = {
       listen_addresses = ["127.0.0.1:54"];
@@ -84,7 +83,7 @@ in {
         "/trex.satanic.link/192.168.23.8"
         "/mikrotik-100g.satanic.link/192.168.23.9"
         "/trx90bmc.satanic.link/192.168.23.10"
-        "/apc-ups.satanic.link/192.168.23.11"
+        "/apc8B3FCB.satanic.link/192.168.23.11"
         "/printer.satanic.link/192.168.23.12"
         "/cerberus.satanic.link/192.168.23.13"
         "/n100.satanic.link/192.168.23.14"
@@ -114,5 +113,34 @@ in {
 
   services.prometheus.exporters = {
     dnsmasq.enable = true;
+  };
+
+  services.tor = {
+    enable = true;
+    openFirewall = true;
+
+    client = {
+      enable = true;
+      transparentProxy.enable = true;
+      socksListenAddress = {
+        IsolateDestAddr = true;
+        addr = "192.168.23.1";
+        port = 9050;
+      };
+    };
+
+    relay = {
+      enable = true;
+      role = "relay";
+    };
+
+    settings = {
+      # ContactInfo = "toradmin@example.org";
+      Nickname = "sataniclink";
+      ORPort = 9999;
+      ControlPort = 9051;
+      # SocksPolicy = ["accept *:*"];
+      BandWidthRate = "100 MBytes";
+    };
   };
 }

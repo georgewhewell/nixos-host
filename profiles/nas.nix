@@ -2,6 +2,7 @@
   fileSystems."/mnt/Media" = {
     device = "bpool/root/Media";
     fsType = "zfs";
+    options = ["nofail"];
     neededForBoot = false;
   };
 
@@ -120,13 +121,54 @@
         "server string" = "NixOS Media Server";
         "netbios name" = "nixos";
         workgroup = "WORKGROUP";
+        
+        # Performance optimizations
+        "socket options" = "TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072";
+        "use sendfile" = "yes";
+        "aio read size" = "16384";
+        "aio write size" = "16384";
+        "aio max threads" = "256";
+        
+        # SMB3 multi-channel support
+        "server multi channel support" = "yes";
+        "max connections" = "0";  # unlimited
+        
+        # Protocol settings
+        "server min protocol" = "SMB2";
+        "server max protocol" = "SMB3";
+        
+        # CPU optimization
+        "max smbd processes" = "128";
+        "smbd profiling level" = "off";
+        
+        # macOS specific optimizations
+        "vfs objects" = "fruit streams_xattr";
+        "fruit:aapl" = "yes";
+        "fruit:nfs_aces" = "no";
+        "fruit:model" = "MacSamba";
+        "fruit:metadata" = "stream";
+        "fruit:posix_rename" = "yes";
+        "fruit:veto_appledouble" = "no";
+        "fruit:zero_file_id" = "yes";
       };
-      # Home = {
-      #   path = "/mnt/Home";
-      #   "read only" = "no";
-      #   "valid users" = "grw";
-      #   "max connections" = "20000";
-      # };
+      Home = {
+        path = "/home/grw";
+        "read only" = "no";
+        "valid users" = "grw";
+        "guest ok" = "no";
+        "browsable" = "yes";
+        "create mask" = "0644";
+        "directory mask" = "0755";
+        
+        # Performance for this share
+        "strict locking" = "no";
+        "strict sync" = "no";
+        "sync always" = "no";
+        "use sendfile" = "yes";
+        "aio read size" = "1";
+        "aio write size" = "1";
+        "veto oplock files" = "/.DS_Store/";
+      };
       Media = {
         path = "/mnt/Media";
         "read only" = "yes";
@@ -139,24 +181,24 @@
   };
 
   # todo: downloader user
-  systemd.services.fix-media-permissions = {
-    serviceConfig = {
-      Type = "oneshot";
-      Restart = "no";
-      ExecStart = ''
-        ${pkgs.bash}/bin/bash -c "chmod -R 777 /mnt/Media"
-      '';
-    };
-  };
+  # systemd.services.fix-media-permissions = {
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     Restart = "no";
+  #     ExecStart = ''
+  #       ${pkgs.bash}/bin/bash -c "chmod -R 777 /mnt/Media"
+  #     '';
+  #   };
+  # };
 
-  systemd.timers.fix-media-permissions = {
-    partOf = ["fix-media-permissions.service"];
-    wantedBy = ["multi-user.target"];
-    timerConfig = {
-      OnBootSec = "5min";
-      OnUnitActiveSec = "3600";
-    };
-  };
+  # systemd.timers.fix-media-permissions = {
+  #   partOf = ["fix-media-permissions.service"];
+  #   wantedBy = ["multi-user.target"];
+  #   timerConfig = {
+  #     OnBootSec = "5min";
+  #     OnUnitActiveSec = "3600";
+  #   };
+  # };
 
   # services.sabnzbd = {
   #   enable = true;

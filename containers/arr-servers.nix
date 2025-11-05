@@ -1,7 +1,7 @@
 {...}: {
   systemd.services."container@arr-servers" = {
     bindsTo = ["mnt-Media.mount"];
-    after = [ "mnt-Media.mount"];
+    after = ["mnt-Media.mount"];
     unitConfig = {
       ConditionPathExists = "/run/autobrr.secret";
     };

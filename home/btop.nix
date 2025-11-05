@@ -214,4 +214,6 @@ in
     # The level set includes all lower levels, i.e. "DEBUG" will show all logging info.
     log_level = "WARNING";
   };
+
+  programs.btop.enable = true;
 }

@@ -4,103 +4,183 @@
   modulesPath,
   ...
 }: {
+  system.stateVersion = "25.05";
+
   imports = [
     ../../../profiles/common.nix
+    ../../../profiles/headless.nix
     ../../../profiles/home.nix
-    ../../../profiles/nas-mounts.nix
+    ../../../profiles/pray-for-sd-card.nix
     ../../../services/buildfarm-slave.nix
-    (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
   sconfig = {
     profile = "server";
     home-manager.enable = true;
-    home-manager.enableGraphical = false;
+    xmrig.enable = false;
   };
 
-  deployment.targetHost = "rock-5b.satanic.link";
+  deployment.targetHost = "192.168.23.18";
+  # deployment.targetHost = "rock-5b.lan.satanic.link";
   deployment.targetUser = "grw";
 
-  boot.supportedFilesystems = ["vfat" "ext4" "zfs"];
-  systemd.services.zfs-mount.enable = false;
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/9E7A-69DA";
-    fsType = "vfat";
-    options = ["iocharset=iso8859-1" "fmask=0022" "dmask=0022"];
-  };
-
-  boot.loader = {
-    efi.canTouchEfiVariables = true;
-    systemd-boot = {
-      enable = true;
-      configurationLimit = 10;
-    };
-  };
-
-  fileSystems."/" = {
-    device = "zpool/root/nixos";
-    fsType = "zfs";
-    # options = [ ];
-  };
-
-  services.prometheus.exporters = {
-    node = {
-      enable = true;
-      openFirewall = lib.mkForce true;
-    };
-  };
-
-  zramSwap = {
-    enable = true;
-    priority = 10;
-    algorithm = "lz4";
-    swapDevices = 4;
-    memoryPercent = 40;
-    memoryMax = 2 * 1024 * 1024 * 1024;
-  };
-
-  systemd.extraConfig = ''
-    RuntimeWatchdogSec=1m
-    ShutdownWatchdogSec=1m
-  '';
-
-    boot.kernelPackages = pkgs.linuxPackages_latest.extend (final: prev: {
-    zfs_2_3 = prev.zfs_2_3.overrideAttrs (oldAttrs: {
-      src = pkgs.fetchFromGitHub {
-        owner = "openzfs";
-        repo = "zfs";
-        rev = "master";
-        hash = "sha256-ZlrQC1NBZaxquCEu4IHn+5ZnmJi44gmdbCVzrAKabw4=";
+  disko.devices = {
+    disk = {
+      p1600x = {
+        device = "/dev/disk/by-id/nvme-INTEL_SSDPEK1A118GA_PHOC331301BN118B";
+        type = "disk";
+        content = {
+          type = "gpt";
+          partitions = {
+            ESP = {
+              type = "EF00";
+              size = "512M";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = ["umask=0077"];
+              };
+            };
+            root = {
+              size = "100%";
+              content = {
+                type = "filesystem";
+                format = "btrfs";
+                mountpoint = "/";
+                mountOptions = ["relatime"];
+              };
+            };
+          };
+        };
       };
-      version = "2.3.3-staging";
-    });
-  });
+    };
+  };
 
-  boot.extraModprobeConfig = ''
-    options iwlwifi swcrypto=0
-    options iwlwifi power_save=0
-    options iwlwifi uapsd_disable=1
-    options iwlmvm power_scheme=1
-    options cfg80211 ieee80211_regdom="CH"
+  boot = {
+    kernelPackages = pkgs.linuxPackages_latest;
+    extraModprobeConfig = ''
+      options cfg80211 ieee80211_regdom="CH"
+      options iwlwifi power_save=1 11n_disable=1
+      options iwlmvm power_scheme=1
+    '';
+    kernelParams = [
+      "console=ttyS2,1500000n8"
+      "pcie_aspm=off"
+    ];
+    loader = {
+      grub.enable = false;
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+      timeout = 1;
+    };
+    initrd = {
+      systemd = {
+        enable = true;
+        emergencyAccess = true;
+        network.enable = true;
+
+        services.pcie-rescan = {
+          description = "Rescan PCIe bus for NVMe detection";
+          after = ["modprobe@nvme.service"];
+          before = ["systemd-udev-settle.service"];
+          wantedBy = ["initrd.target"];
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "${pkgs.bash}/bin/bash -c 'echo 1 > /sys/bus/pci/rescan && sleep 2'";
+            RemainAfterExit = true;
+          };
+        };
+      };
+
+      kernelModules = [
+        "nvme"
+        "r8169"
+        "phy_rockchip_naneng_combphy"
+      ];
+
+      availableKernelModules = [
+        "phy_rockchip_naneng_combphy"
+        "mmc_core"
+        "mmc_block"
+      ];
+    };
+  };
+
+  services.udev.extraRules = ''
+    # Disable EEE when r8169 ethernet interface comes up
+    ACTION=="add", SUBSYSTEM=="net", DRIVERS=="r8169", RUN+="${pkgs.ethtool}/bin/ethtool --set-eee $name eee off"
+
+    # Disable power save on WiFi interfaces
+    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="${pkgs.iw}/bin/iw dev $name set power_save off"
   '';
 
+  # Service to add policy routing when WiFi gets an IP
+  systemd.services.wifi-policy-route = {
+    description = "Add policy routing for WiFi interface";
+    after = ["network-online.target"];
+    requires = ["network-online.target"];
+    wantedBy = ["multi-user.target"];
 
-  # interfaces should exist before stage2
-  boot.initrd.kernelModules = [
-    "nvme"
-    "r8169"
-    "iwlmvm"
-    "iwldvm"
-  ];
+    path = [pkgs.iproute2 pkgs.gawk pkgs.gnugrep pkgs.coreutils];
 
-  system.stateVersion = "24.03";
+    serviceConfig = {
+      Type = "simple";
+      Restart = "always";
+      RestartSec = "5s";
+    };
 
-  services.iperf3.enable = true;
-  hardware.wirelessRegulatoryDatabase = true;
+    script = ''
+      # Function to set up routing for current IP
+      setup_routing() {
+        IP=$(ip -4 addr show wlan0 2>/dev/null | grep "inet " | awk '{print $2}' | cut -d/ -f1)
 
-  hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = true;
+        if [ -n "$IP" ]; then
+          echo "Setting up policy routing for wlan0 IP: $IP"
+
+          # Remove any existing rule for this IP
+          ip rule del from "$IP" table 100 2>/dev/null || true
+
+          # Add policy routing rule
+          ip rule add from "$IP" table 100 priority 99
+
+          # Ensure route exists in table 100
+          ip route replace default via 192.168.23.1 dev wlan0 table 100
+
+          echo "Policy routing configured for $IP"
+        fi
+      }
+
+      # Wait for wlan0 to come up
+      while ! ip link show wlan0 &>/dev/null; do
+        sleep 5
+      done
+
+      # Set up routing for existing IP (if any)
+      setup_routing
+
+      # Monitor for IP address changes
+      ip monitor address dev wlan0 | while read -r line; do
+        if echo "$line" | grep -q "inet .* scope global"; then
+          sleep 1  # Give time for address to stabilize
+          setup_routing
+        fi
+      done
+    '';
+  };
+
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
+
+  hardware = {
+    wirelessRegulatoryDatabase = true;
+    bluetooth = {
+      enable = true;
+      powerOnBoot = true;
+    };
+  };
 
   networking = {
     hostName = "rock-5b";
@@ -119,9 +199,6 @@
           IPv6 = {
             Enabled = true;
           };
-          # Settings = {
-          #   AutoConnect = true;
-          # };
         };
       };
     };
@@ -130,37 +207,10 @@
   systemd.network = {
     enable = true;
     wait-online.anyInterface = true;
-    netdevs = {
-      # Create the bridge interface
-      "20-br-lan" = {
-        netdevConfig = {
-          Kind = "bridge";
-          Name = "br0.lan";
-        };
-      };
-    };
     networks = {
-      # "20-wifi" = {
-      #   matchConfig.Driver = "iwlwifi";
-      #   networkConfig = {
-      #     Bridge = "br0.lan";
-      #     ConfigureWithoutCarrier = true;
-      #   };
-      #   linkConfig.RequiredForOnline = "enslaved";
-      # };
+      # Ethernet with static IP
       "10-lan" = {
         matchConfig.Driver = "r8169";
-        networkConfig = {
-          Bridge = "br0.lan";
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-      "40-br" = {
-        matchConfig.Name = "br0.lan";
-        networkConfig = {
-          IPv6AcceptRA = true;
-        };
         address = [
           "192.168.23.18/24"
         ];
@@ -170,6 +220,17 @@
             Metric = 1;
           }
         ];
+        linkConfig.RequiredForOnline = "routable";
+      };
+      # WiFi with DHCP
+      "20-wifi" = {
+        matchConfig.Type = "wlan";
+        networkConfig = {
+          DHCP = "yes";
+          IPv6AcceptRA = true;
+        };
+        dhcpV4Config.RouteMetric = 200;
+        linkConfig.RequiredForOnline = "no";
       };
     };
   };
@@ -182,17 +243,31 @@
     usbutils
     wirelesstools
     iw
+    iwd
     powertop
     stress-ng
   ];
 
   services.irqbalance.enable = lib.mkDefault true;
 
-  powerManagement.enable = true;
-  powerManagement.cpuFreqGovernor = lib.mkDefault "schedutil";
-  powerManagement.powertop.enable = true;
-  
-  boot.kernelParams = [
-    "console=ttyS2,1500000n8"
-  ];
+  powerManagement = {
+    enable = true;
+    cpuFreqGovernor = "ondemand";
+    # powertop.enable = true;
+  };
+
+  services.getty.autologinUser = "root";
+
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 10;
+    freeSwapThreshold = 10;
+    enableNotifications = false;
+  };
+
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 50;
+  };
 }

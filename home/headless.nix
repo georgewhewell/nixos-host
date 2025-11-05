@@ -5,6 +5,12 @@
     enable = true;
     settings = {
       use-agent = true;
+      # Work with expired keys
+      trust-model = "always";
+      ignore-time-conflict = true;
+      ignore-valid-from = true;
+      ignore-crc-error = true;
+      allow-weak-digest-algos = true;
     };
   };
 
@@ -15,4 +21,128 @@
     sshKeys = [ "EEB6A2D42BF04599AFEF0E9C104AB9B2E16AE31D" ];
     pinentry.package = pkgs.pinentry-curses;
   };
+
+  # Your public key for automatic import on remote systems
+  home.file.".gnupg/grw-public-key.asc".text = ''
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
+=Y8Z3
+-----END PGP PUBLIC KEY BLOCK-----
+  '';
+
+  # Automatically import your public key and set trust on activation
+  home.activation.gpgSetup = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    # Import your public key if not already present
+    if ! $DRY_RUN_CMD ${pkgs.gnupg}/bin/gpg --list-keys 0C414B6F2BA7BB19 >/dev/null 2>&1; then
+      $DRY_RUN_CMD ${pkgs.gnupg}/bin/gpg --import ${config.home.homeDirectory}/.gnupg/grw-public-key.asc 2>/dev/null || true
+    fi
+    
+    # Set ultimate trust for your key
+    echo "4ED64FA5BBF73612035B86B20C414B6F2BA7BB19:6:" | $DRY_RUN_CMD ${pkgs.gnupg}/bin/gpg --import-ownertrust 2>/dev/null || true
+  '';
 }

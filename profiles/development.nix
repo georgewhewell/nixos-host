@@ -48,7 +48,7 @@
     registry.nixpkgs.flake = inputs.nixpkgs; # Make `nix shell` etc use pinned nixpkgs
   };
 
-  services.udev.packages = [pkgs.platformio];
+  # services.udev.packages = [pkgs.platformio];
 
   services.postgresql = {
     package = pkgs.postgresql_17;
@@ -67,6 +67,13 @@
     autoPrune = {
       enable = true;
       flags = ["--all"];
+    };
+  };
+
+  virtualisation = {
+    podman = {
+      enable = true;
+      defaultNetwork.settings.dns_enabled = true;
     };
   };
 }

@@ -129,6 +129,7 @@
         "DP-1" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
         "DP-2" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
         "DP-3" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
+        "HDMI-A-1" = { mode = "3840x2160@240Hz"; };
         "DVI-I-1" = { mode = "3840x2160@60.000Hz"; transform = "270"; scale = "2"; position = "0 240"; };
       };
       startup = [

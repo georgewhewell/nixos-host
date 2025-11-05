@@ -17,61 +17,36 @@ in {
     };
   };
 
-  hardware.cpu.amd.ryzen-smu.enable = true;
-
-  # deployment.targetHost = "satanic.link";
-  deployment.targetHost = "192.168.23.1";
+  deployment.targetHost = "router.satanic.link";
   deployment.targetUser = "grw";
 
   system.stateVersion = "24.11";
 
-  services.gcp-ddns = {
+  sconfig.gcp-ddns = {
     enable = true;
-    projectId = "domain-owner";
-    zoneName = "satanic-link";
-    records = [
-      {
-        name = "satanic.link.";
-        type = "A";
-        ttl = 300;
-      }
-      {
-        name = "*.satanic.link.";
-        type = "A";
-        ttl = 300;
-      }
-      {
-        name = "satanic.link.";
-        type = "AAAA";
-        ttl = 300;
-      }
-      {
-        name = "router.satanic.link.";
-        type = "AAAA";
-        ttl = 300;
-      }
-    ];
-    interval = "5m";
+    aRecords = ["satanic.link"];
+    aaaaRecords = ["satanic.link"];
   };
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
-    common-cpu-amd-pstate
-    common-cpu-amd-zenpower
+    common-gpu-amd
 
-    ../../../profiles/headless.nix
+    # ../../../profiles/headless.nix
     ../../../profiles/uefi-boot.nix
+    ../../../profiles/radeon.nix
+    ../../../profiles/zfs.nix
     ../../../profiles/common.nix
     ../../../profiles/home.nix
-
-    common-cpu-amd-raphael-igpu
-    common-gpu-amd
-    ../../../profiles/radeon.nix
-    
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
-    ../../../containers/unifi.nix
+    ../../../profiles/router/ap.nix
+
     ../../../services/buildfarm-slave.nix
+    ../../../containers/unifi.nix
+    ../../../services/p2pool.nix
+    ../../../services/p2pool-exporter.nix
+    ../../../services/home-assistant/default.nix
   ];
 
   systemd.network.networks."20-nanokvm" = {
@@ -86,21 +61,93 @@ in {
       IPv6Forwarding = false;
       IgnoreCarrierLoss = true;
     };
+    linkConfig.RequiredForOnline = "no";
   };
 
-  # add a bridge for thunderbolt
-  #     netdevs = {
-  systemd.network.netdevs."20-${bridgeName}" = {
-    netdevConfig = {
-      Kind = "bridge";
-      Name = bridgeName;
+  services.redis = {
+    enable = true;
+    bind = "127.0.0.1";
+  };
+
+  services.opentelemetry-collector = {
+    enable = true;
+    configFile = pkgs.writeText "otel-collector-config.yaml" ''
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 127.0.0.1:4317
+            http:
+              endpoint: 127.0.0.1:4318
+
+      processors:
+        batch:
+
+      exporters:
+        debug:
+          verbosity: detailed
+        prometheus:
+          endpoint: 0.0.0.0:8889
+          resource_to_telemetry_conversion:
+            enabled: true
+
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [debug]
+          metrics:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [debug, prometheus]
+          logs:
+            receivers: [otlp]
+            processors: [batch]
+            exporters: [debug]
+    '';
+    package = pkgs.opentelemetry-collector-contrib;
+  };
+
+  services.go2rtc = {
+    enable = true;
+    settings = {
+      homekit = {
+        esp32-s3-eth-02 = [];
+      };
+      streams = {
+        esp32-s3-eth-02 = [
+          "http://esp32-s3-eth-02.lan.satanic.link:8000#video=h264#hardware"
+          # "ffmpeg:esp32-s3-eth-02#video=h264#hardware#raw=-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1"
+        ];
+      };
     };
   };
 
-  systemd.network.networks."20-thunderbolt" = {
-    matchConfig.Driver = "thunderbolt-net";
-    networkConfig.Bridge = bridgeName;
-    linkConfig.RequiredForOnline = "enslaved";
+  services.nginx.enable = lib.mkForce false;
+  services.frigate = {
+    enable = true;
+    hostname = "frigate.local";
+    checkConfig = false;
+    settings = {
+      ffmpeg = {
+        hwaccel_args = [];
+      };
+      cameras = {
+        # esphome-eth-01.ffmpeg.inputs = [
+        #   {
+        #     path = "rtsp://esphome-eth-01.local:8000/stream";
+        #     roles = ["detect" "record"];
+        #   }
+        # ];
+        esp32-s3-eth-02.ffmpeg.inputs = [
+          {
+            path = "rtsp://127.0.0.1:8554/esp32-s3-eth-02";
+            roles = ["detect" "record"];
+          }
+        ];
+      };
+    };
   };
 
   services = {
@@ -114,10 +161,6 @@ in {
   networking.hosts = {
     "192.168.23.8" = ["trex.satanic.link"];
   };
-
-  boot.kernelParams = [
-    "pci=realloc=off"
-  ];
 
   boot.initrd.kernelModules = [
     "nf_tables"

@@ -5,14 +5,9 @@
 }: {
   # Config for machines on home network
   time.timeZone = "Europe/Zurich";
-
-  nix.settings = {
-    binary-caches = [
-      "https://cache.nixos.org"
-    ];
-    trusted-public-keys = [
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ];
+  location = {
+    latitude = 51.5;
+    longitude = 0.0;
   };
 
   services.udev.extraRules = ''

@@ -1,21 +1,23 @@
-{ config, pkgs, ... }:
-
 {
-
+  config,
+  pkgs,
+  ...
+}: {
   sconfig.pipewire = true;
   # hardware.pulseaudio.enable = true;
 
   # for yubikey
   services.pcscd.enable = true;
+  programs.steam.enable = true;
 
   # enable sway
   # security.pam.services.swaylock = { };
   services.gnome.gnome-keyring.enable = true;
 
   /*
-    environment.loginShellInit = ''
-    [[ "$(tty)" == /dev/tty1 ]] && startsway
-    '';
+  environment.loginShellInit = ''
+  [[ "$(tty)" == /dev/tty1 ]] && startsway
+  '';
   */
 
   # services.ofono = {
@@ -37,9 +39,13 @@
     options evdi initial_device_count=2 initial_loglevel=3
   '';
 
-  services.xserver.videoDrivers = [ "displaylink" "modesetting" ];
+  services.xserver.videoDrivers = [
+    # "displaylink"
+    #    "modesetting"
+    "amdgpu"
+  ];
   boot.extraModulePackages = [
-    config.boot.kernelPackages.evdi
+    # config.boot.kernelPackages.evdi
   ];
 
   xdg.portal.config.common.default = "*";
@@ -56,46 +62,47 @@
     pavucontrol
     pamixer
 
-    (pkgs.writeScriptBin "startsway" ''
-      #! ${pkgs.bash}/bin/bash
+    (
+      pkgs.writeScriptBin "startsway" ''
+        #! ${pkgs.bash}/bin/bash
 
-      # kill weird less vars
-      unset LESS_TERMCAP_so
-      unset LESS_TERMCAP_se
-      unset LESS_TERMCAP_mb
-      unset LESS_TERMCAP_md
-      unset LESS_TERMCAP_me
-      unset LESS_TERMCAP_ue
-      unset LESS_TERMCAP_us
+        # kill weird less vars
+        unset LESS_TERMCAP_so
+        unset LESS_TERMCAP_se
+        unset LESS_TERMCAP_mb
+        unset LESS_TERMCAP_md
+        unset LESS_TERMCAP_me
+        unset LESS_TERMCAP_ue
+        unset LESS_TERMCAP_us
 
-      # first import environment variables from the login manager
-      systemctl --user import-environment
+        # first import environment variables from the login manager
+        systemctl --user import-environment
 
-      # then start the service
-      exec systemctl --user start sway.service
-    ''
+        # then start the service
+        exec systemctl --user start sway.service
+      ''
     )
   ];
 
   programs.hyprland = {
     enable = true;
-    xwayland.enable = true;
+    xwayland.enable = false;
   };
 
   systemd.user.targets.sway-session = {
     description = "Sway compositor session";
-    documentation = [ "man:systemd.special(7)" ];
-    bindsTo = [ "graphical-session.target" ];
-    wants = [ "graphical-session-pre.target" ];
-    after = [ "graphical-session-pre.target" ];
+    documentation = ["man:systemd.special(7)"];
+    bindsTo = ["graphical-session.target"];
+    wants = ["graphical-session-pre.target"];
+    after = ["graphical-session-pre.target"];
   };
 
   systemd.user.services.sway = {
     description = "Sway - Wayland window manager";
-    documentation = [ "man:sway(5)" ];
-    bindsTo = [ "graphical-session.target" ];
-    wants = [ "graphical-session-pre.target" ];
-    after = [ "graphical-session-pre.target" ];
+    documentation = ["man:sway(5)"];
+    bindsTo = ["graphical-session.target"];
+    wants = ["graphical-session-pre.target"];
+    after = ["graphical-session-pre.target"];
     # We explicitly unset PATH here, as we want it to be set by
     # systemctl --user import-environment in startsway
     environment.PATH = pkgs.lib.mkForce null;
@@ -152,27 +159,28 @@
     fontconfig = {
       enable = true;
       defaultFonts = {
-        sansSerif = [ "IBM Plex Sans" ];
-        serif = [ "IBM Plex Sans" ];
-        monospace = [ "Hack Nerd Font" ];
-        emoji = [ "Noto Color Emoji" ];
+        sansSerif = ["IBM Plex Sans"];
+        serif = ["IBM Plex Sans"];
+        monospace = ["Hack Nerd Font"];
+        emoji = ["Noto Color Emoji"];
       };
     };
     packages = with pkgs; [
+      /*
       (nerdfonts.override { fonts = [ "Hack" ]; })
+      */
       ibm-plex
       dejavu_fonts
       unifont
       noto-fonts
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
-      noto-fonts-emoji
-      noto-fonts-extra
+      noto-fonts-color-emoji
     ];
   };
 
   hardware.graphics = {
     enable = true;
-    extraPackages = with pkgs; [ libva ];
+    extraPackages = with pkgs; [libva];
   };
 }

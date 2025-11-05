@@ -2,11 +2,11 @@
   # This module adds common SSH config to system-level SSH
   programs.ssh.extraConfig = lib.mkBefore ''
     # ProxyJump logic for satanic.link hosts
-    Match host "*.satanic.link" exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+    Match host *.satanic.link exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
       ProxyJump grw@satanic.link
     
     # Direct connection when on local network  
-    Match host "*.satanic.link" exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+    Match host *.satanic.link exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
       ProxyJump none
     
     # Also handle direct IPs

@@ -2,6 +2,11 @@
   imports = [./development.nix];
 
   home.packages = with pkgs; [
+    alejandra
+    direnv
+    fd
+    git
+    gh
     nixpkgs-fmt
   ];
 
@@ -22,42 +27,65 @@
           "source.organizeImports" = "explicit";
         };
         "[rust]" = {
-          "editor.defaultFormatter" = "rust-lang.rust-analyzer";
+          #"editor.defaultFormatter" = "rust-lang.rust-analyzer";
           "editor.formatOnSave" = true;
         };
         "[typescript]" = {
-          "editor.codeActionsOnSave"= {
+          "editor.codeActionsOnSave" = {
             "source.organizeImports" = "never";
           };
         };
-        "[python]" = {
-          "editor.defaultFormatter" = "charliermarsh.ruff";
+        # "remote.SSH.configFile" = pkgs.writeText "vscode-ssh" ''
+        #   # Include user SSH config if present
+        #   Include ~/.ssh/config
+
+        #   # # ProxyJump logic for satanic.link when OFF the LAN (no 192.168.23.*)
+        #   Match host *.satanic.link exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+        #     ProxyJump grw@satanic.link
+
+        #   # # Direct connection when ON the LAN
+        #   # Match host *.satanic.link exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+        #   #   ProxyJump none
+
+        #   Host trex.lan.satanic.link
+        #     User grw
+        # '';
+        # "remote.SSH.useLocalServer" = true;
+        # "remote.SSH.useExecServer" = false;
+        # "remote.SSH.enableDynamicForwarding" = false;
+        # "remote.SSH.remoteServerListenOnSocket" = true;
+        "remote.SSH.remotePlatform" = {
+          "trex.satanic.link" = "linux";
         };
+        #  "[python]" = {
+        #    "editor.defaultFormatter" = "charliermarsh.ruff";
+        #  };
         "[nix]" = {
-          "editor.defaultFormatter" = "kamadorueda.alejandra";
+          #     "editor.defaultFormatter" = "kamadorueda.alejandra";
           "editor.formatOnPaste" = true;
           "editor.formatOnSave" = true;
           "editor.formatOnType" = false;
         };
-        "alejandra.program" = "alejandra";
         "remote.SSH.enableX11Forwarding" = false;
-        "ruff.nativeServer" = true;
       };
       extensions = with pkgs.vscode-extensions; [
         jnoortheen.nix-ide
         hashicorp.terraform
         viktorqvarfordt.vscode-pitch-black-theme
         github.copilot
-        rust-lang.rust-analyzer
+        # github.copilot-chat
+        # rust-lang.rust-analyzer
         ms-vscode-remote.remote-ssh
         ms-python.python
         charliermarsh.ruff
         mkhl.direnv
         zxh404.vscode-proto3
         humao.rest-client
-        # continue.continue
         saoudrizwan.claude-dev
         ms-vscode.makefile-tools
+        github.vscode-github-actions
+        github.codespaces
+        kamadorueda.alejandra
       ];
     };
   };

@@ -7,7 +7,7 @@
 }: {
   imports = [
     ./alacritty.nix
-    ./cursor.ni
+    # ./cursor.nix
     ./desktop-apps.nix
     ./sway.nix
     ./firefox.nix

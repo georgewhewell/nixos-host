@@ -1,7 +1,8 @@
 {pkgs, ...}: {
   boot = {
     tmp.useTmpfs = true;
-    kernelPackages = pkgs.lib.mkDefault pkgs.linuxPackages_latest;
+    # use higher prio than default to avoid conflicts
+    kernelPackages = pkgs.lib.mkOverride 999 pkgs.linuxPackages_latest;
     kernelParams = [
       "msr.allow_writes=on"
       "mitigations=off"
@@ -16,13 +17,7 @@
       };
     };
 
-    supportedFilesystems = ["vfat" "f2fs"];
     initrd = {
-      supportedFilesystems = [
-        "f2fs"
-        "nfs"
-      ];
-
       availableKernelModules = [
         "xhci_pci"
         "ehci_pci"
@@ -32,10 +27,6 @@
         "usbhid"
         "sd_mod"
         "sdhci_acpi"
-        "r8169"
-        "tpm"
-        "mii"
-        "tpm_tis"
       ];
     };
   };

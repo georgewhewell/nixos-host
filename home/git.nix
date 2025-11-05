@@ -26,6 +26,9 @@
       };
       diff = {algorithm = "patience";};
       push = {autoSetupRemote = true;};
+      safe = {
+        directory = "*";
+      };
     };
   };
 }

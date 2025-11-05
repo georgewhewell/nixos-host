@@ -1,14 +1,11 @@
 {
   pkgs,
   lib,
+  inputs,
   ...
 }: {
   imports = [
     ./users.nix
-  ];
-
-  boot.kernelParams = [
-    "pcie=pcie_bus_perf"
   ];
 
   networking.hosts = {
@@ -34,6 +31,7 @@
   };
 
   services.dbus.packages = [pkgs.gcr];
+  environment.enableAllTerminfo = true;
 
   environment.systemPackages = with pkgs; [
     ethtool
@@ -54,11 +52,6 @@
     experimental-features = nix-command flakes
   '';
 
-  location = {
-    latitude = 51.5;
-    longitude = 0.0;
-  };
-
   environment.pathsToLink = ["/share/zsh"];
 
   programs.zsh = {
@@ -67,6 +60,7 @@
 
   services.openssh = {
     enable = true;
+    settings.AllowTcpForwarding = "yes";
     extraConfig = ''
       MaxStartups 100:30:200
       MaxAuthTries 20
@@ -74,8 +68,6 @@
       StreamLocalBindUnlink yes
     '';
   };
-
-  # SSH common config is now handled by the ssh-common module
 
   console = {
     font = "Lat2-Terminus16";
@@ -93,8 +85,6 @@
     }
   ];
 
-  systemd.services.nix-daemon.serviceConfig.LimitNOFILE = lib.mkForce 262144;
-
   nixpkgs.config = {
     allowUnfree = true;
     allowBroken = true;
@@ -103,13 +93,10 @@
   nix = {
     settings = {
       trusted-users = ["grw"];
-      substituters = [
-        "https://cuda-maintainers.cachix.org"
-      ];
       trusted-public-keys = [
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+        "trex.satanic.link:R5wLrsrQGQdkEa9w+E1o3YibQ/VPVoPqQelJEw0yrtQ="
       ];
-      download-buffer-size = 1024 * 1024 * 1024;
     };
     gc = {
       automatic = true;

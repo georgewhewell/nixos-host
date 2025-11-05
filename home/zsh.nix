@@ -11,7 +11,7 @@
     # syntaxHighlighting.enable = true;
     enableVteIntegration = true;
     autocd = true;
-    dotDir = ".config/zsh";
+    dotDir = "${config.xdg.configHome}/zsh";
     history = {
       expireDuplicatesFirst = true;
       extended = true;
@@ -23,11 +23,31 @@
     envExtra = ''
       export LESSHISTFILE="${config.xdg.dataHome}/less_history"
       export CARGO_HOME="${config.xdg.cacheHome}/cargo"
+      # Fix Git/Nix ownership issues with NFS mounts
+      export GIT_CEILING_DIRECTORIES=/Volumes
+
+      # disable claude-code spyware
+      export CLAUDE_CODE_ENABLE_TELEMETRY=0
+      export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+      export CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1
+      export DISABLE_AUTOUPDATER=1
+      export DISABLE_BUG_COMMAND=1
+      export DISABLE_COST_WARNINGS=1
+      export DISABLE_ERROR_REPORTING=1
+      export DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
+      export DISABLE_TELEMETRY=1
     '';
 
     initContent = ''
       # make nix-shell use zsh
       ${pkgs.any-nix-shell}/bin/any-nix-shell zsh | source /dev/stdin
+
+      # dietrying function - retry command every second until it succeeds
+      dietrying() {
+        while ! "$@"; do
+          sleep 1
+        done
+      }
     '';
 
     shellAliases = {
@@ -35,7 +55,8 @@
       ll = "eza -la";
       pyclean = "find . | grep -E '(__pycache__|\.pyc|\.pyo$)' | xargs rm -rf";
       pc = "pycharm-community . > /dev/null 2>&1 &";
-      claude = "npx @anthropic-ai/claude-code@latest";
+      nclaude = "npx @anthropic-ai/claude-code@latest";
+      ncodex = "npx @openai/codex@latest -c model_reasoning_effort=high";
       wrangler = "npx wrangler@latest";
     };
 

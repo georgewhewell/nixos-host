@@ -12,12 +12,12 @@
 
   services.grafana = {
     enable = true;
-    addr = "127.0.0.1";
-    port = 3005;
-    rootUrl = "https://grafana.satanic.link";
     settings = {
       server = {
         domain = "grafana.satanic.link";
+        http_addr = "127.0.0.1";
+        http_port = 3005;
+        root_url = "https://grafana.satanic.link";
       };
       database = {
         type = "postgres";
@@ -30,8 +30,8 @@
         admin_password_file = "/var/lib/grafana/grafana-password.secret";
         admin_email = "accounts@hellas.ai";
       };
+      "auth.anonymous".enabled = true;
     };
-    auth.anonymous.enable = true;
   };
 
   systemd.services.grafana.after = ["grafana-password.secret.service"];

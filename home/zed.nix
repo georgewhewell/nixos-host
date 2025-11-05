@@ -82,21 +82,21 @@
           ];
         };
         lmstudio = {};
-        ollama = {
-          api_url = "http://localhost:11434";
-          available_models = [
-            {
-              name = "qwen2.5-coder";
-              display_name = "qwen 2.5 coder 32K";
-              max_tokens = 32768;
-            }
-            {
-              name = "deepseek-r1:70b";
-              display_name = "deepseek r1 70b";
-              max_tokens = 131072;
-            }
-          ];
-        };
+        # ollama = {
+        #   api_url = "http://localhost:11434";
+        #   available_models = [
+        #     {
+        #       name = "qwen2.5-coder";
+        #       display_name = "qwen 2.5 coder 32K";
+        #       max_tokens = 32768;
+        #     }
+        #     {
+        #       name = "deepseek-r1:70b";
+        #       display_name = "deepseek r1 70b";
+        #       max_tokens = 131072;
+        #     }
+        #   ];
+        # };
       };
       languages = {
         Nix = {

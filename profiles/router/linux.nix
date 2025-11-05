@@ -9,19 +9,18 @@ in {
   services.usbmuxd.enable = true;
   services.avahi.allowInterfaces = lib.mkForce [lanBridge];
 
-  systemd.services."systemd-networkd-wait-online" = {
-    serviceConfig.ExecStart = [
-      "" # Clear the existing ExecStart
-      "${pkgs.systemd}/lib/systemd/systemd-networkd-wait-online --interface=${lanBridge}"
-    ];
-  };
-
   services.miniupnpd = {
     enable = true;
     externalInterface = wanInterface;
     internalIPs = [lanBridge];
     natpmp = true;
     upnp = true;
+  };
+
+  # make miniupnpd wait for network to be online
+  systemd.services.miniupnpd = {
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
   };
 
   boot.kernel.sysctl = {
@@ -40,7 +39,7 @@ in {
   };
 
   systemd.network = {
-    wait-online.enable = false;
+    wait-online.enable = true;
     netdevs = {
       "20-${lanBridge}" = {
         netdevConfig = {
@@ -51,7 +50,10 @@ in {
     };
     links = {
       "20-${wanInterface}" = {
-        matchConfig.Driver = "mlx5_core";
+        matchConfig = {
+          Driver = "mlx5_core";
+          Path = "pci-0000:01:00.0";
+        };
         linkConfig = {
           RxBufferSize = 8192;
           TxBufferSize = 8192;
@@ -64,7 +66,6 @@ in {
         bridgeConfig = {};
         address = [
           "192.168.23.1/24"
-          # "192.168.23.254/24"
         ];
         networkConfig = {
           ConfigureWithoutCarrier = true;
@@ -72,10 +73,8 @@ in {
           IPv6AcceptRA = false;
           IPv6SendRA = true;
           IPv6Forwarding = true;
-          # IPv6PrivacyExtensions = true;
         };
         dhcpPrefixDelegationConfig = {
-          # SubnetId = "auto";
           Announce = true;
         };
         ipv6SendRAConfig = {
@@ -84,22 +83,44 @@ in {
           # OtherInformation = true;
           # EmitPrefix = true;
         };
-        linkConfig.RequiredForOnline = "routable";
+        linkConfig.RequiredFamilyForOnline = "ipv4";
+      };
+      "20-thunderbolt" = {
+        matchConfig.Driver = "thunderbolt-net";
+        networkConfig.Bridge = lanBridge;
+        linkConfig.RequiredForOnline = "no";
       };
       "20-lan-25g" = {
         matchConfig.Name = "enp1s0f1np1";
         networkConfig.Bridge = lanBridge;
         linkConfig.RequiredForOnline = "enslaved";
       };
+
       "20-lan-10g" = {
         matchConfig.Driver = "atlantic";
         networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "enslaved";
+        linkConfig.RequiredForOnline = "no";
       };
       "20-lan-2-5g" = {
         matchConfig.Driver = "igc";
         networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "enslaved";
+        linkConfig.RequiredForOnline = "no";
+      };
+      "20-thunderbolt-mlx5-0" = {
+        matchConfig = {
+          Driver = "mlx5_core";
+          Path = "pci-0000:0b:*";
+        };
+        networkConfig.Bridge = lanBridge;
+        linkConfig.RequiredForOnline = "no";
+      };
+      "20-thunderbolt-mlx5-1" = {
+        matchConfig = {
+          Driver = "mlx5_core";
+          Path = "pci-0000:0c:*";
+        };
+        networkConfig.Bridge = lanBridge;
+        linkConfig.RequiredForOnline = "no";
       };
       "20-${wanInterface}" = {
         matchConfig.Name = wanInterface;
@@ -119,10 +140,8 @@ in {
           WithoutRA = "solicit";
           PrefixDelegationHint = "::/56";
         };
-        ipv6SendRAConfig = {
-          Managed = true;
-        };
-        linkConfig.RequiredForOnline = "routable";
+        ipv6SendRAConfig.Managed = true;
+        linkConfig.RequiredFamilyForOnline = "both";
       };
     };
   };
@@ -252,6 +271,7 @@ in {
 
             18080 # monero
             17026 # qBittorrent
+            37889 # P2Pool P2P
             42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
@@ -275,6 +295,7 @@ in {
             30304 # reth
 
             18080 # monero
+            37889 # P2Pool P2P
 
             42069 # Snap sync (Bittorrent)
           ];

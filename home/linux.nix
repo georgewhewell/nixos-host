@@ -1,6 +1,9 @@
-{ pkgs, lib, config, ... }:
-
 {
+  pkgs,
+  lib,
+  config,
+  ...
+}: {
   xdg.enable = true;
 
   services.lorri.enable = true;
@@ -14,13 +17,8 @@
     ccid
     yubikey-manager
     opensc
-    pcsctools
+    pcsc-tools
     bridge-utils
     ghostty.terminfo
   ];
-
-  services.keybase = {
-    enable = true;
-  };
-
 }

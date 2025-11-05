@@ -100,14 +100,14 @@
         (mkMotionLight
           {
             name = "Kitchen";
-            motionSensor = "binary_sensor.kitchen_door_4";
+            motionSensor = "binary_sensor.kitchen_door";
             lightTarget = "{{ area_id('Kitchen') }}";
           })
 
         (mkMotionLight
           {
             name = "Living Room";
-            motionSensor = "binary_sensor.living_room_motion_motion";
+            motionSensor = "binary_sensor.living_room_motion";
             lightTarget = "{{ area_id('Living Room') }}";
           })
 

@@ -40,22 +40,33 @@
   environment.systemPackages = [ pkgs.scream ];
 
   boot.blacklistedKernelModules = [
-    "nouveau"
+    # "nouveau"
     # "nvidia"
-    "b43"
+    # "b43"
     #  "amdgpu"
+    # "thunderbolt"  # Prevent thunderbolt driver from initializing USB4 devices
   ];
 
   boot.kernelParams = [
     # amdgpu passthrough
-    "vfio-pci.ids=1002:731f,1002:ab38"
+    # "vfio-pci.ids=1002:731f,1002:ab38"
+    # USB controllers passthrough (unique IDs only)
+    # ASMedia: USB 3.2 (2426), USB4/Thunderbolt (2425)
+    # "vfio-pci.ids=1b21:2425,1b21:2426"
     "pcie_acs_override=downstream,multifunction"
-    "video=efifb:off"
+    # AMD IOMMU settings for better device isolation
+    "iommu=pt"
+    "amd_iommu=on"
+    # Disable IOMMU for devices not being passed through (better performance)
+    "iommu.passthrough=1"
+    # Force VFIO to handle reset
+    "vfio-pci.disable_idle_d3=1"
+    # "video=efifb:off"
   ];
 
   boot.kernelPatches = [
-    { name = "acs-overrides"; patch = ./add-acs-overrides.patch; }
-    { name = "i915-vga-arbiter"; patch = ./i915-vga-arbiter.patch; }
+    # { name = "acs-overrides"; patch = ./add-acs-overrides.patch; }
+    # { name = "i915-vga-arbiter"; patch = ./i915-vga-arbiter.patch; }
   ];
 
   boot.extraModulePackages = [
@@ -64,16 +75,15 @@
 
   networking.firewall.allowedUDPPorts = [ 1567 4010 ];
 
-  systemd.services.scream-receiver = {
-    wantedBy = [ "libvirtd.service" ];
-    serviceConfig = {
-      ExecStart = "${pkgs.scream}/bin/scream";
-      User = "grw";
-      Group = "audio";
-    };
-  };
+  # systemd.services.scream-receiver = {
+  #   wantedBy = [ "libvirtd.service" ];
+  #   serviceConfig = {
+  #     ExecStart = "${pkgs.scream}/bin/scream";
+  #     User = "grw";
+  #     Group = "audio";
+  #   };
+  # };
 
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_5_18;
   boot.kernelModules = [
     "vendor_reset"
   ];

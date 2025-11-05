@@ -4,10 +4,11 @@
   ];
 
   hardware.amdgpu = {
-    initrd.enable = true;
     opencl.enable = true;
-    # crashes gpu?!?!
-    # amdvlk.enable = true;
+    overdrive = {
+      enable = true;
+      ppfeaturemask = "0xffffffff";
+    };
   };
 
   nixpkgs.config.rocmSupport = true;

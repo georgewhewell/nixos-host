@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }: {
   programs.direnv = {
@@ -11,11 +12,10 @@
     nix-direnv.enable = true;
   };
 
-  home.packages = with pkgs;
-    [
-      # for vscode-server..
-      openssl
-      pkg-config
+  home.packages =
+    (with pkgs; [
+      alejandra
+      nixpkgs-fmt
 
       # platforms
       gh
@@ -25,27 +25,32 @@
       go
       gopls
 
-      # rust tooling
-      # rustup
-
       # saas crap
       runpodctl
 
-      # robot stuff
-      # aider-chat
-      # claude-code
-      # goose-cli
-
       # fml
       nodejs
-    ]
+      docker-compose
+
+      home-assistant-cli
+      home-assistant-cli-go
+
+      # virt-manager
+      # virt-viewer
+    ])
+    ++ (with inputs.nix-ai-tools.packages.${pkgs.system}; [
+      claude-code
+      claude-code-router
+      gemini-cli
+      qwen-code
+#      opencode
+      nanocoder
+      # codex
+      crush
+    ])
     ++ lib.optionals (pkgs.system == "x86_64-linux") [
       # evm tooling
       # solc
       # foundry-bin
     ];
-
-  home.sessionVariables = {
-    OLLAMA_API_BASE = "http://localhost:11434";
-  };
 }

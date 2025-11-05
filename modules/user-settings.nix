@@ -1,4 +1,5 @@
 { config, pkgs, lib, ... }:
+
 let
   cfg = config.sconfig.user-settings;
 in

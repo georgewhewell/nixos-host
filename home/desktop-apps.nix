@@ -6,7 +6,8 @@
       yt-dlp
       discord
       code-cursor
-      # spotify
+      spotify
+      telegram-desktop
     ]
     ++ lib.optionals (pkgs.system == "x86_64-linux") [
       vlc
@@ -17,12 +18,9 @@
       zoom-us
       cool-retro-term
       openshot-qt
-      tdesktop
     ]
     ++ lib.optionals (pkgs.system == "aarch64-darwin") [
-      # lmstudio
       stats
       signal-desktop-bin
-      # whatsapp-for-mac
     ];
 }

@@ -2,6 +2,7 @@
   pkgs,
   config,
   lib,
+  inputs,
   ...
 }: {
   imports = [
@@ -21,10 +22,11 @@
     fzf.enable = true;
     gpg = {
       enable = true;
-      # settings = {
-      #   use-agent = true;
-      # };
+      settings = {
+        use-agent = true;
+      };
     };
+    zsh.enable = true;
     ripgrep.enable = true;
     tmux.enable = true;
   };
@@ -33,8 +35,6 @@
     pv
     eza
     pwgen
-    docker-compose
-    btop
     mosh
     mtr
   ];
@@ -43,23 +43,18 @@
 
   programs.ssh = {
     enable = true;
-    controlMaster = "auto";
-    controlPersist = "60m";
-    serverAliveInterval = 60;
-    serverAliveCountMax = 5;
-    hashKnownHosts = true;
-    forwardAgent = true;
+    enableDefaultConfig = false;
     matchBlocks = {
-      # put these here for vscode remote
-      # "trex.satanic.link" = {
-      #   Hos
-      # };
-      "*.runpod.io".extraOptions = {
-        PubkeyAcceptedAlgorithms = "+ssh-rsa";
+      "*" = {
+        controlMaster = "auto";
+        controlPersist = "60m";
+        serverAliveInterval = 60;
+        serverAliveCountMax = 5;
+        hashKnownHosts = true;
+        forwardAgent = true;
       };
-      "10.86.167.2".extraOptions = {
-        # jump via 192.168.23.17
-        ProxyJump = "root@192.168.23.17";
+      "trex.satanic.link" = {
+        user = "grw";
       };
     };
   };

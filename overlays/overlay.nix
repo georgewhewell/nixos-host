@@ -1,11 +1,157 @@
-self: super:
-{
-  # spotify = super.spotify.overrideAttrs (oldAttrs: {
-  #   src = super.fetchurl {
-  #     url = "https://download.scdn.co/SpotifyARM64.dmg";
-  #     sha256 = "sha256-a3LPFX3/f58fuaEJmzcpsgI27yTaRltwftwOuJBN+nQ=";
+self: super: {
+  home-assistant-cli-go = super.buildGoModule rec {
+    pname = "home-assistant-cli-go";
+    version = "4.39.0";
+
+    src = super.fetchFromGitHub {
+      owner = "home-assistant";
+      repo = "cli";
+      rev = version;
+      hash = "sha256-iBLDa1gEm6a8DndxI9ne8WSzzo12wNhXMfVpri3UkW8=";
+    };
+
+    vendorHash = "sha256-33ghWEgTuTyqFq9YxiSCFnZPry+21ap0jCn8EDa+cGE=";
+
+    postInstall = ''
+      mv $out/bin/cli $out/bin/ha
+    '';
+
+    meta = with super.lib; {
+      description = "Command line interface to facilitate interaction with the Home Assistant Supervisor";
+      homepage = "https://github.com/home-assistant/cli";
+      license = licenses.asl20;
+      maintainers = with maintainers; [];
+      mainProgram = "ha";
+    };
+  };
+
+  # llama-cpp = super.llama-cpp.overrideAttrs (oldAttrs: rec {
+  #   version = "HEAD";
+  #   src = super.fetchFromGitHub {
+  #     owner = "ggerganov";
+  #     repo = "llama.cpp";
+  #     rev = "HEAD";
+  #     hash = "sha256-I1X+xRk4qVnGZWavS8XY5IcQBZXdMoKLa/G/2Tmefbc=";
   #   };
   # });
+
+  xmrig-mo = super.xmrig-mo.overrideAttrs (o: {
+    nativeBuildInputs = o.nativeBuildInputs ++ [super.autoAddDriverRunpath];
+  });
+
+  xmrig-cuda-plugin = let
+    version = "13.0-fixes";
+    _cudaPackages = super.cudaPackages_13;
+  in
+    super.stdenv.mkDerivation {
+      name = "xmrig-cuda";
+      version = version;
+      hardeningDisable = ["all"];
+      src = super.fetchFromGitHub {
+        owner = "samueletonon";
+        repo = "xmrig-cuda";
+        rev = "13.0-fixes";
+        sha256 = "sha256-W4ErYy4Ml36XWmhhValXg6aJ1FUrZgqByaBETRaFl3c=";
+      };
+
+      buildInputs = with _cudaPackages; [
+        cuda_cudart
+        cuda_nvrtc
+        cuda_nvml_dev
+        cuda_nvcc
+      ];
+
+      nativeBuildInputs = with super; [cmake autoPatchelfHook autoAddDriverRunpath _cudaPackages.cuda_nvcc];
+
+      configurePhase = ''
+        mkdir -p build
+      '';
+
+      buildPhase = ''
+        cd build
+        cmake .. -DCUDA_ARCH=89 -DCMAKE_CUDA_ARCHITECTURES=89 -DCUDA_TOOLKIT_ROOT_DIR=${super.lib.getDev _cudaPackages.cuda_cudart} -DCMAKE_C_COMPILER=${super.gcc13}/bin/gcc
+        make -j$(nproc)
+      '';
+
+      installPhase = ''
+        cp -r /build/source/build $out
+      '';
+
+      meta = with super.lib; {
+        description = "NVIDIA CUDA plugin for XMRig miner";
+        homepage = "https://github.com/xmrig/xmrig-cuda";
+        license = licenses.mit;
+        platforms = platforms.linux;
+      };
+    };
+
+  xmrig = super.xmrig.override {
+    stdenv = super.gcc15Stdenv;
+  };
+
+  xmrig-zen4 = super.xmrig.overrideAttrs (oldAttrs: {
+    cmakeFlags = [
+      "-DWITH_SSE4_1=ON"
+    ];
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=znver4"
+      "-mtune=znver4"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
+
+  xmrig-mo-zen4 = super.xmrig-mo.overrideAttrs (oldAttrs: {
+    cmakeFlags = [
+      "-DWITH_SSE4_1=ON"
+    ];
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=znver4"
+      "-mtune=znver4"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
+
+  xmrig-zen5 = super.xmrig.overrideAttrs (oldAttrs: {
+    cmakeFlags = [
+      "-DWITH_SSE4_1=ON"
+    ];
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=znver5"
+      "-mtune=znver5"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
+
+  xmrig-mo-zen5 = super.xmrig-mo.overrideAttrs (oldAttrs: {
+    cmakeFlags = [
+      "-DWITH_SSE4_1=ON"
+    ];
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=znver5"
+      "-mtune=znver5"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
 
   wakiki-fw = super.stdenvNoCC.mkDerivation {
     name = "wakiki-firmware";
@@ -14,20 +160,70 @@ self: super:
     installPhase = ''
       echo $(ls -la)
       mkdir -p $out/lib/firmware/ath12k/QCN9274/hw2.0
-      cp -r * $out/lib/firmware/ath12k/QCN9274/hw2.0/
-      cp regdb.bin $out/lib/firmware/regdb.bin
+      # Copy firmware files but skip regdb.bin to use global regulatory
+      cp board.bin $out/lib/firmware/ath12k/QCN9274/hw2.0/
+      cp firmware-2.bin $out/lib/firmware/ath12k/QCN9274/hw2.0/
+      # cp regdb.bin $out/lib/firmware/regdb.bin
     '';
   };
 
-  ath12k-fw = super.stdenv.mkDerivation {
+  ath12k-fw = super.stdenvNoCC.mkDerivation {
     name = "ath12k-firmware";
-
     src = super.fetchFromGitLab {
       domain = "git.codelinaro.org";
       owner = "clo";
       repo = "ath-firmware/ath12k-firmware";
-      rev = "5f5f6d6585e0dc3fd32dae8223a8faf5349e6609";
-      hash = "sha256-MwLQpfLAQ2SFqHdxr6CVPT8fnA6mozjgqCcqZFPHfX8=";
+      rev = "bbf6fa9186cc475e17293b365624d1c19f43884f";
+      hash = "sha256-u1kUgdH9bliWS+EHcrfgHIY8ssrs9GL0eZYvkcmm7Og=";
     };
+
+    dontBuild = true;
+
+    installPhase = ''
+      mkdir -p $out/lib/firmware/ath12k/QCN9274/hw2.0
+      # Copy board configuration and firmware files
+      cp QCN9274/hw2.0/board-2.bin $out/lib/firmware/ath12k/QCN9274/hw2.0/
+      # Copy latest firmware-2.bin from version 1.5
+      cp QCN9274/hw2.0/1.5/WLAN.WBE.1.5-01651-QCAHKSWPL_SILICONZ-1/firmware-2.bin $out/lib/firmware/ath12k/QCN9274/hw2.0/
+      # Skip regdb.bin to use global regulatory database
+      # cp QCN9274/hw2.0/regdb.bin $out/lib/firmware/ath12k/QCN9274/hw2.0/
+    '';
   };
+
+  librespot = super.librespot.overrideAttrs (oldAttrs: rec {
+    pname = "librespot";
+    version = "0.7.0";
+
+    src = super.fetchFromGitHub {
+      owner = "librespot-org";
+      repo = "librespot";
+      rev = "v${version}";
+      sha256 = "sha256-dGQDRb5fgIkXelZKa+PdodIs9DxbgEMlVGJjK/hU3Mo=";
+    };
+  });
+
+  spotifyd = super.spotifyd.overrideAttrs (oldAttrs: rec {
+    pname = "spotifyd";
+    version = "0.3.4";
+
+    src = super.fetchFromGitHub {
+      owner = "fabienjuif";
+      repo = "spotifyd";
+      rev = "hotfix_librespot_0.7";
+      sha256 = "sha256-OvywtwFg5dGHPSgtMGIrA8NxkaEAdXtlFPXQZo6xR1o=";
+    };
+    cargoHash = "";
+  });
+
+  p2pool = super.p2pool.overrideAttrs (oldAttrs: rec {
+    pname = "p2pool";
+    version = "4.11";
+    src = super.fetchFromGitHub {
+      owner = "SChernykh";
+      repo = "p2pool";
+      rev = "v${version}";
+      hash = "sha256-qoz7wMI6hheF+Pecfq3pPZRc2H3nkrxKRMWR2qmJdsI=";
+      fetchSubmodules = true;
+    };
+  });
 }

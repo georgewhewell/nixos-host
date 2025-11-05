@@ -22,6 +22,22 @@
     };
   };
 
+  sconfig.gcp-ddns = let
+    domain = "grafana.satanic.link";
+  in {
+    aRecords = [domain];
+    aaaaRecords = [domain];
+  };
+
+  services.nginx.virtualHosts."grafana.satanic.link" = {
+    forceSSL = true;
+    enableACME = true;
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:3005";
+      proxyWebsockets = true;
+    };
+  };
+
   services.prometheus = {
     enable = true;
     listenAddress = "0.0.0.0";
@@ -56,6 +72,11 @@
               "trex:9100"
               "rock-5b:9100"
               "n100:9100"
+              "prime:9100"
+              "neo2:9100"
+              "strix-1:9100"
+              "strix-2:9100"
+              "fuckup:9100"
             ];
           }
         ];
@@ -70,6 +91,8 @@
               "trex:58080"
               "rock-5b:58080"
               "n100:58080"
+              # "prime:9100"
+              # "neo2:9100"
             ];
           }
         ];
@@ -80,6 +103,16 @@
           {
             targets = [
               "127.0.0.1:9113"
+            ];
+          }
+        ];
+      }
+      {
+        job_name = "mtail";
+        static_configs = [
+          {
+            targets = [
+              "trex:3903"
             ];
           }
         ];
@@ -177,6 +210,14 @@
         static_configs = [
           {
             targets = ["192.168.23.8:6060"];
+          }
+        ];
+      }
+      {
+        job_name = "p2pool";
+        static_configs = [
+          {
+            targets = ["router:8889"];
           }
         ];
       }

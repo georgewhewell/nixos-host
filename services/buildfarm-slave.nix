@@ -1,9 +1,10 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }: {
+  boot.tmp.useTmpfs = lib.mkDefault true;
+
   nix.settings.trusted-users = ["root" "grw"];
 
   users.extraUsers.root.openssh.authorizedKeys.keys =

@@ -1,4 +1,8 @@
-{pkgs,lib, ...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: {
   /*
   nixhost: xeon-d microserver
   */
@@ -6,55 +10,22 @@
     profile = "server";
     home-manager = {
       enable = true;
-      enableVscodeServer = true;
     };
+    xmrig.enable = true;
   };
 
   system.stateVersion = "24.11";
 
-  deployment.targetHost = "nixhost.satanic.link";
+  deployment.targetHost = "192.168.23.5";
   deployment.targetUser = "grw";
 
   imports = [
     ../../../profiles/common.nix
-    # ../../../profiles/development.nix
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
-    # ../../../profiles/nas.nix
     ../../../profiles/uefi-boot.nix
-    # ../../../profiles/fastlan.nix
-
-    # ../../../services/buildfarm-slave.nix
-    # ../../../services/virt/host.nix
+    ../../../profiles/zfs.nix
   ];
-
-  services.tor = {
-    enable = true;
-    openFirewall = true;
-
-    client = {
-      enable = true;
-      transparentProxy.enable = true;
-      socksListenAddress = {
-        IsolateDestAddr = true;
-        addr = "0.0.0.0";
-        port = 9050;
-      };
-    };
-
-    relay = {
-      enable = true;
-      role = "bridge";
-    };
-
-    settings = {
-      ORPort = 9999;
-      ControlPort = 9051;
-      SocksPolicy = ["accept *:*"];
-    };
-  };
-
-  boot.zfs.requestEncryptionCredentials = false;
 
   services.iperf3 = {
     enable = true;
@@ -66,8 +37,6 @@
     "ipmi_si"
   ];
 
-  boot.supportedFilesystems = ["zfs"];
-  boot.binfmt.emulatedSystems = ["aarch64-linux" "armv7l-linux"];
   boot.kernelParams = ["pci=nocrs"];
 
   networking = {

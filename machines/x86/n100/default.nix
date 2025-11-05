@@ -1,6 +1,8 @@
 {
+  config,
   pkgs,
   lib,
+  inputs,
   ...
 }: {
   /*
@@ -8,10 +10,7 @@
   */
   sconfig = {
     profile = "server";
-    home-manager = {
-      enable = true;
-      enableVscodeServer = false;
-    };
+    home-manager.enable = true;
   };
 
   system.stateVersion = "24.11";
@@ -19,64 +18,91 @@
   deployment.targetHost = "192.168.23.14";
   deployment.targetUser = "grw";
 
-  imports = [
+  imports = with inputs.nixos-hardware.nixosModules; [
+    common-cpu-intel
+    common-gpu-intel
+
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/headless.nix
+    # ../../../profiles/intel-gfx.nix
     ../../../profiles/uefi-boot.nix
 
     ../../../services/buildfarm-slave.nix
-    ../../../services/home-assistant/default.nix
   ];
 
-  hardware.firmwareCompression = "none";
-  # hardware.enableAllFirmware = true;
   hardware.firmware = [
     pkgs.wakiki-fw
-    # pkgs.ath12k-fw
   ];
-  
-  # Explicitly disable graphics since we removed intel-gfx.nix
-  hardware.graphics.enable = lib.mkForce false;
+
+  # Custom kernel from ath git repository for WiFi 7 support
+  boot.kernelPackages = pkgs.linuxPackages_testing;
+
+  # let
+  #   athKernel = pkgs.linuxKernel.kernels.linux_latest.override {
+  #     argsOverride = {
+  #       src = pkgs.fetchgit {
+  #         url = "https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git";
+  #         rev = "ath12k-ng";
+  #         hash = "sha256-rneAiyNgZaFw7rDGr1ym3XIdUEI0WnAmf2J7a9lXX2o=";
+  #       };
+  #       version = "6.17-ath";
+  #       modDirVersion = "6.16.0-ath12k-ng";
+  #     };
+  #     structuredExtraConfig = with lib.kernel; {
+  #       # Disable removed/renamed option
+  #       AMD_HFI = lib.mkForce unset;
+  #       USB_XHCI_SIDEBAND = lib.mkForce unset;
+  #       DAMON_STAT = lib.mkForce unset;
+  #       NET_SCH_BPF = lib.mkForce unset;
+  #     };
+  #   };
+  # in
+  #   lib.mkForce (pkgs.linuxPackagesFor athKernel);
 
   services.hostapd = {
     enable = true;
+    noScan = true;
     radios = {
       wlan0 = {
         band = "5g";
         countryCode = "CH";
-        channel = 149;
-        # settings.he_oper_chwidth = 2;
         settings.country3 = "0x49"; # indoor
-        # settings.op_class = 134; # 160 MHz channe
-        # settings.ieee80211w = 2;
-        # settings.sae_require_mfp = 1;
-        # settings.vht_oper_centr_freq_seg0_idx = 155;
-        wifi4.enable = true;
+        settings.ieee80211w = 2;
+        settings.sae_require_mfp = 1;
+        channel = 165;
+        settings.vht_oper_centr_freq_seg0_idx = config.services.hostapd.radios.wlan0.channel + 6;
+        wifi4.enable = false;
+
         wifi5 = {
           enable = true;
-          operatingChannelWidth = "20or40";
+          operatingChannelWidth = "80+80";
           capabilities = [
             "RXLDPC"
             "RX-STBC-1"
             "SHORT-GI-80"
             "TX-STBC-2BY1"
+            "RX-STBC-1"
+            "RX-ANTENNA-PATTERN"
+            "TX-ANTENNA-PATTERN"
             "SU-BEAMFORMEE"
             "MU-BEAMFORMEE"
             "SU-BEAMFORMER"
             "MU-BEAMFORMER"
           ];
         };
+
         wifi6 = {
           enable = true;
-          operatingChannelWidth = "20or40";
+          operatingChannelWidth = "80+80";
           multiUserBeamformer = true;
           singleUserBeamformee = true;
           singleUserBeamformer = true;
         };
+
         wifi7 = {
-          enable = false;
-          operatingChannelWidth = "80";
+          enable = true;
+          operatingChannelWidth = "20or40";
           multiUserBeamformer = true;
           singleUserBeamformee = true;
           singleUserBeamformer = true;
@@ -89,7 +115,6 @@
               mode = "wpa3-sae";
               saePasswordsFile = "/tmp/password";
             };
-            # bssid = "36:b2:ff:ff:ff:ff";
             settings = {
               bridge = "br0.lan";
             };
@@ -99,38 +124,21 @@
     };
   };
 
-  services.iperf3 = {
-    enable = true;
-    openFirewall = true;
-  };
+  # environment.systemPackages = with pkgs; [
+  #   wirelesstools
+  #   iw
+  # ];
+
+  # services.iperf3 = {
+  #   enable = true;
+  #   openFirewall = true;
+  # };
 
   services.prometheus.exporters = {
     node = {
       enable = true;
       openFirewall = lib.mkForce true;
     };
-  };
-
-  boot = {
-    kernelPackages = pkgs.linuxPackages_testing;
-    initrd.kernelModules = lib.mkForce [
-      "bcachefs"
-      "ixgbe"
-      "r8169"
-      "nfsv4"
-    ];
-    # Disable automatic hardware detection that adds usbhid
-    initrd.systemd.enable = lib.mkForce false;
-    initrd.availableKernelModules = lib.mkForce [
-      "xhci_pci"
-      "ehci_pci"
-      "ata_piix"
-      "nvme"
-      "usb_storage"
-      "bcachefs"
-      "ixgbe" 
-      "r8169"
-    ];
   };
 
   fileSystems."/" = {
@@ -147,11 +155,6 @@
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom="CH"
   '';
-
-  environment.systemPackages = with pkgs; [
-    wirelesstools
-    iw
-  ];
 
   networking = {
     hostName = "n100";

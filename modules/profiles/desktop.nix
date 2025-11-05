@@ -13,14 +13,15 @@ with lib; {
     environment.variables.MOZ_USE_XINPUT2 = "1";
 
     # Disable suspend and hibernation
-    services.logind.extraConfig = ''
-      HandleSuspendKey=ignore
-      HandleLidSwitch=ignore
-      HandleLidSwitchExternalPower=ignore
-      HandleLidSwitchDocked=ignore
-      HandleHibernateKey=ignore
-      HandlePowerKey=ignore
-    '';
+    # todo: migrate
+    # services.logind.extraConfig = ''
+    #   HandleSuspendKey=ignore
+    #   HandleLidSwitch=ignore
+    #   HandleLidSwitchExternalPower=ignore
+    #   HandleLidSwitchDocked=ignore
+    #   HandleHibernateKey=ignore
+    #   HandlePowerKey=ignore
+    # '';
 
     # Disable automatic powering off
     systemd.services.systemd-logind.environment.LOGIND_AUTO_SUSPEND = "no";

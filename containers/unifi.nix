@@ -35,19 +35,16 @@ in {
     '';
   };
 
+  systemd.services.podman-unifi = {
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+  };
+
   virtualisation.oci-containers = {
     backend = "podman";
     containers = {
       unifi-db = {
         image = "docker.io/mongo:4.4";
-        environment = {
-          MONGO_INITDB_ROOT_USERNAME = "root";
-          MONGO_INITDB_ROOT_PASSWORD = "your_root_password_here";
-          MONGO_USER = "unifi";
-          MONGO_PASS = "your_unifi_password_here";
-          MONGO_DBNAME = "unifi";
-          MONGO_AUTHSOURCE = "admin";
-        };
         volumes = [
           "/var/lib/unifi-db:/data/db"
           "/etc/mongodb-init/init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro"
@@ -63,8 +60,6 @@ in {
           PUID = "1000";
           PGID = "1000";
           TZ = "Etc/UTC";
-          MONGO_USER = "unifi";
-          MONGO_PASS = "your_unifi_password_here";
           MONGO_HOST = "unifi-db";
           MONGO_PORT = "27017";
           MONGO_DBNAME = "unifi";
