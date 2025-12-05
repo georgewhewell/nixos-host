@@ -1,11 +1,10 @@
 {
   inputs,
+  config,
   lib,
   pkgs,
   ...
-}: let
-  bridgeName = "br0.lan";
-in {
+}: {
   /*
   router: cwwk 8845hs board
   */
@@ -41,6 +40,7 @@ in {
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
     ../../../profiles/router/ap.nix
+    ../../../profiles/router/wireguard.nix
 
     ../../../services/buildfarm-slave.nix
     ../../../containers/unifi.nix
@@ -64,9 +64,10 @@ in {
     linkConfig.RequiredForOnline = "no";
   };
 
-  services.redis = {
+  services.redis.servers.p2pool = {
     enable = true;
     bind = "127.0.0.1";
+    port = 6379;
   };
 
   services.opentelemetry-collector = {
@@ -113,39 +114,69 @@ in {
     enable = true;
     settings = {
       homekit = {
+        esp32-s3-eth-01 = [];
         esp32-s3-eth-02 = [];
       };
       streams = {
+        esp32-s3-eth-01 = [
+          "http://esp32-s3-eth-01.lan.satanic.link:8000"
+          # "ffmpeg:esp32-s3-eth-02#video=h264#hardware#raw=-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1"
+        ];
         esp32-s3-eth-02 = [
-          "http://esp32-s3-eth-02.lan.satanic.link:8000#video=h264#hardware"
+          "http://esp32-s3-eth-02.lan.satanic.link:8000"
           # "ffmpeg:esp32-s3-eth-02#video=h264#hardware#raw=-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1"
         ];
       };
     };
   };
 
-  services.nginx.enable = lib.mkForce false;
+  # services.nginx.enable = lib.mkForce false; # nixos module enables this by default
+  # networking.hosts = {
+  #   "127.0.0.1" = ["frigate.satanic.link"];
+  # };
+
+  services.nginx.virtualHosts.${config.services.frigate.hostname} = {
+    listen = [
+      {
+        addr = "192.168.23.1";
+        port = 8009;
+        ssl = false;
+      }
+    ];
+  };
+
   services.frigate = {
     enable = true;
-    hostname = "frigate.local";
-    checkConfig = false;
+    hostname = "frigate.satanic.link";
+    vaapiDriver = "radeonsi";
+    # checkConfig = false;
     settings = {
-      ffmpeg = {
-        hwaccel_args = [];
+      mqtt = {
+        enabled = true;
+        host = "rw@127.0.0.1";
       };
+      # ffmpeg = {
+      #   hwaccel_args = [];
+      # };
       cameras = {
-        # esphome-eth-01.ffmpeg.inputs = [
-        #   {
-        #     path = "rtsp://esphome-eth-01.local:8000/stream";
-        #     roles = ["detect" "record"];
-        #   }
-        # ];
-        esp32-s3-eth-02.ffmpeg.inputs = [
-          {
-            path = "rtsp://127.0.0.1:8554/esp32-s3-eth-02";
-            roles = ["detect" "record"];
-          }
-        ];
+        esp32-s3-eth-01.ffmpeg = {
+          input_args = "-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1 -c:v mjpeg";
+          inputs = [
+            {
+              path = "http://127.0.0.1:1984/api/stream.mjpeg?src=esp32-s3-eth-01";
+              roles = ["detect" "record"];
+            }
+          ];
+        };
+        esp32-s3-eth-02.ffmpeg = {
+          input_args = "-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1 -c:v mjpeg";
+          inputs = [
+            {
+              path = "http://127.0.0.1:1984/api/stream.mjpeg?src=esp32-s3-eth-02";
+              roles = ["detect" "record"];
+            }
+          ];
+        };
       };
     };
   };
@@ -159,6 +190,7 @@ in {
   };
 
   networking.hosts = {
+    "127.0.0.1" = ["localhost" "satanic.link" "router.satanic.link" "frigate.satanic.link"];
     "192.168.23.8" = ["trex.satanic.link"];
   };
 

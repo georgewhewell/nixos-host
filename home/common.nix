@@ -12,7 +12,6 @@
     ./git.nix
     ./starship.nix
     ./zsh.nix
-    ./yubikey-helper.nix
   ];
 
   home.stateVersion = "22.05";

@@ -1,8 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}: let
+{lib, ...}: let
   wanInterface = "enp1s0f0np0";
   lanBridge = "br0.lan";
 in {
@@ -66,6 +62,8 @@ in {
         bridgeConfig = {};
         address = [
           "192.168.23.1/24"
+          # Stable ULA for LAN; used for RDNSS/DNS and local IPv6
+          "fd6c:6c58:3edd::1/64"
         ];
         networkConfig = {
           ConfigureWithoutCarrier = true;
@@ -80,8 +78,10 @@ in {
         ipv6SendRAConfig = {
           # RouterLifetimeSec = 300;
           Managed = false;
-          # OtherInformation = true;
-          # EmitPrefix = true;
+          # Only RA (no DHCPv6 for DNS); advertise DNS via RDNSS
+          EmitDNS = true;
+          DNS = ["fd6c:6c58:3edd::1"];
+          Domains = "lan.satanic.link";
         };
         linkConfig.RequiredFamilyForOnline = "ipv4";
       };
@@ -160,7 +160,6 @@ in {
       enable = true;
       internalIPs = [
         "192.168.23.0/24"
-        "192.168.24.0/24"
       ];
       internalInterfaces = [
         lanBridge
@@ -298,6 +297,8 @@ in {
             37889 # P2Pool P2P
 
             42069 # Snap sync (Bittorrent)
+
+            60001 # mosh
           ];
         };
       };

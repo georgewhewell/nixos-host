@@ -7,8 +7,6 @@
     port = 3903;
     logs = ["/var/log/nginx/access.log"];
     extraGroups = ["nginx"];
-    debug = true;  # Enable debug logging to troubleshoot
-
     programs = {
       nginx = ''
         # Nginx access log parser for mtail

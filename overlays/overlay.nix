@@ -25,6 +25,8 @@ self: super: {
     };
   };
 
+  hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
+
   # llama-cpp = super.llama-cpp.overrideAttrs (oldAttrs: rec {
   #   version = "HEAD";
   #   src = super.fetchFromGitHub {
@@ -35,23 +37,19 @@ self: super: {
   #   };
   # });
 
-  xmrig-mo = super.xmrig-mo.overrideAttrs (o: {
-    nativeBuildInputs = o.nativeBuildInputs ++ [super.autoAddDriverRunpath];
-  });
-
   xmrig-cuda-plugin = let
-    version = "13.0-fixes";
-    _cudaPackages = super.cudaPackages_13;
+    version = "6.22.1";
+    _cudaPackages = super.cudaPackages;
   in
     super.stdenv.mkDerivation {
       name = "xmrig-cuda";
       version = version;
       hardeningDisable = ["all"];
       src = super.fetchFromGitHub {
-        owner = "samueletonon";
+        owner = "xmrig";
         repo = "xmrig-cuda";
-        rev = "13.0-fixes";
-        sha256 = "sha256-W4ErYy4Ml36XWmhhValXg6aJ1FUrZgqByaBETRaFl3c=";
+        rev = "v${version}";
+        sha256 = "sha256-krS0ygKclXDLti24PDnBFUetOAYkYM8jty4C3PSOEWY=";
       };
 
       buildInputs = with _cudaPackages; [
@@ -61,7 +59,14 @@ self: super: {
         cuda_nvcc
       ];
 
-      nativeBuildInputs = with super; [cmake autoPatchelfHook autoAddDriverRunpath _cudaPackages.cuda_nvcc];
+      nativeBuildInputs = with super; [
+        cmake
+        # autoPatchelfHook
+        autoAddDriverRunpath
+        _cudaPackages.cuda_nvcc
+      ];
+
+      propagatedBuildInputs = [_cudaPackages.cuda_nvml_dev];
 
       configurePhase = ''
         mkdir -p build
@@ -69,7 +74,7 @@ self: super: {
 
       buildPhase = ''
         cd build
-        cmake .. -DCUDA_ARCH=89 -DCMAKE_CUDA_ARCHITECTURES=89 -DCUDA_TOOLKIT_ROOT_DIR=${super.lib.getDev _cudaPackages.cuda_cudart} -DCMAKE_C_COMPILER=${super.gcc13}/bin/gcc
+        cmake .. -DCMAKE_CUDA_ARCHITECTURES=89 -DCUDA_LIB=${super.lib.getDev _cudaPackages.cuda_cudart}/lib/stubs/libcuda.so -DCUDA_TOOLKIT_ROOT_DIR=${super.lib.getDev _cudaPackages.cuda_cudart} -DCMAKE_C_COMPILER=${super.gcc13}/bin/gcc
         make -j$(nproc)
       '';
 
@@ -89,6 +94,32 @@ self: super: {
     stdenv = super.gcc15Stdenv;
   };
 
+  xmrig-rock5b = super.xmrig.overrideAttrs (oldAttrs: {
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=armv8.2-a+crypto+dotprod"
+      "-mtune=cortex-a76.cortex-a55"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
+
+  xmrig-alderlake = super.xmrig.overrideAttrs (oldAttrs: {
+    NIX_CFLAGS_COMPILE = toString [
+      "-O3"
+      "-march=alderlake"
+      "-mtune=alderlake"
+      "-fomit-frame-pointer"
+      "-pipe"
+      "-fno-stack-protector"
+    ];
+    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
+    hardeningDisable = ["all"];
+  });
+
   xmrig-zen4 = super.xmrig.overrideAttrs (oldAttrs: {
     cmakeFlags = [
       "-DWITH_SSE4_1=ON"
@@ -105,39 +136,7 @@ self: super: {
     hardeningDisable = ["all"];
   });
 
-  xmrig-mo-zen4 = super.xmrig-mo.overrideAttrs (oldAttrs: {
-    cmakeFlags = [
-      "-DWITH_SSE4_1=ON"
-    ];
-    NIX_CFLAGS_COMPILE = toString [
-      "-O3"
-      "-march=znver4"
-      "-mtune=znver4"
-      "-fomit-frame-pointer"
-      "-pipe"
-      "-fno-stack-protector"
-    ];
-    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
-    hardeningDisable = ["all"];
-  });
-
   xmrig-zen5 = super.xmrig.overrideAttrs (oldAttrs: {
-    cmakeFlags = [
-      "-DWITH_SSE4_1=ON"
-    ];
-    NIX_CFLAGS_COMPILE = toString [
-      "-O3"
-      "-march=znver5"
-      "-mtune=znver5"
-      "-fomit-frame-pointer"
-      "-pipe"
-      "-fno-stack-protector"
-    ];
-    NIX_CFLAGS_LINK = "-Wl,-z,norelro";
-    hardeningDisable = ["all"];
-  });
-
-  xmrig-mo-zen5 = super.xmrig-mo.overrideAttrs (oldAttrs: {
     cmakeFlags = [
       "-DWITH_SSE4_1=ON"
     ];
@@ -190,39 +189,40 @@ self: super: {
     '';
   };
 
-  librespot = super.librespot.overrideAttrs (oldAttrs: rec {
-    pname = "librespot";
-    version = "0.7.0";
+  # librespot = super.librespot.overrideAttrs (oldAttrs: rec {
+  #   pname = "librespot";
+  #   version = "0.7.0";
 
-    src = super.fetchFromGitHub {
-      owner = "librespot-org";
-      repo = "librespot";
-      rev = "v${version}";
-      sha256 = "sha256-dGQDRb5fgIkXelZKa+PdodIs9DxbgEMlVGJjK/hU3Mo=";
-    };
-  });
+  #   src = super.fetchFromGitHub {
+  #     owner = "librespot-org";
+  #     repo = "librespot";
+  #     rev = "v${version}";
+  #     sha256 = "sha256-dGQDRb5fgIkXelZKa+PdodIs9DxbgEMlVGJjK/hU3Mo=";
+  #   };
+  # });
 
-  spotifyd = super.spotifyd.overrideAttrs (oldAttrs: rec {
-    pname = "spotifyd";
-    version = "0.3.4";
+  # spotifyd = super.spotifyd.overrideAttrs (oldAttrs: rec {
+  #   pname = "spotifyd";
+  #   version = "0.3.4";
 
-    src = super.fetchFromGitHub {
-      owner = "fabienjuif";
-      repo = "spotifyd";
-      rev = "hotfix_librespot_0.7";
-      sha256 = "sha256-OvywtwFg5dGHPSgtMGIrA8NxkaEAdXtlFPXQZo6xR1o=";
-    };
-    cargoHash = "";
-  });
+  #   src = super.fetchFromGitHub {
+  #     owner = "fabienjuif";
+  #     repo = "spotifyd";
+  #     rev = "hotfix_librespot_0.7";
+  #     sha256 = "sha256-OvywtwFg5dGHPSgtMGIrA8NxkaEAdXtlFPXQZo6xR1o=";
+  #   };
+  #   cargoHash = "";
+  # });
+  tari = super.callPackage ../packages/tari {};
 
   p2pool = super.p2pool.overrideAttrs (oldAttrs: rec {
     pname = "p2pool";
-    version = "4.11";
+    version = "4.12";
     src = super.fetchFromGitHub {
       owner = "SChernykh";
       repo = "p2pool";
       rev = "v${version}";
-      hash = "sha256-qoz7wMI6hheF+Pecfq3pPZRc2H3nkrxKRMWR2qmJdsI=";
+      hash = "sha256-Yrc36tibHanXZcE3I+xcmkCzBALE09zi1Zg0Lz3qS2g=";
       fetchSubmodules = true;
     };
   });

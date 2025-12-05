@@ -1,7 +1,4 @@
 {pkgs, ...}: {
-  boot.kernelParams = [
-    "amdgpu.ppfeaturemask=0xffffffff"
-  ];
 
   hardware.amdgpu = {
     opencl.enable = true;
@@ -16,6 +13,9 @@
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
+    extraPackages = with pkgs; [
+      libvdpau-va-gl
+    ];
   };
 
   systemd.tmpfiles.rules = [
@@ -27,5 +27,6 @@
     radeontop
     rocmPackages.rocm-smi
     rocmPackages.rocminfo
+    libva-utils
   ];
 }

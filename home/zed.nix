@@ -23,27 +23,16 @@
       "terraform"
     ];
     userSettings = {
-      features = {
-        copilot = true;
-        # inline_completion_provider = "copilot";
-        # edit_prediction_provider = "copilot";
-      };
-      assistant = {
-        version = "2";
-        default_model = {
-          provider = "google";
-          model = "gemini-2.5-pro-exp-03-25";
-        };
-      };
+      current_line_highlight = "gutter";
+      features = {};
+      assistant = {};
       lsp = {
         rust-analyzer = {
           binary = {
-            path_lookup = true;
           };
         };
         nix = {
           binary = {
-            path_lookup = true;
           };
         };
         nil = {
@@ -58,12 +47,12 @@
         metrics = false;
       };
       vim_mode = false;
-      ui_font_size = 12;
+      ui_font_size = 14;
       buffer_font_size = 11;
       theme = {
         mode = "system";
-        light = "Andromeda";
-        dark = "One Dark";
+        light = "Ayu Light";
+        dark = "Ayu Dark";
       };
       ssh_connections = [
         {
@@ -72,31 +61,9 @@
       ];
       language_models = {
         anthropic = {};
-        google = {
-          available_models = [
-            {
-              name = "gemini-2.5-pro-exp-03-25";
-              display_name = "Gemini 2.5 Pro Exp";
-              max_tokens = 1000000;
-            }
-          ];
-        };
+        google = {};
         lmstudio = {};
-        # ollama = {
-        #   api_url = "http://localhost:11434";
-        #   available_models = [
-        #     {
-        #       name = "qwen2.5-coder";
-        #       display_name = "qwen 2.5 coder 32K";
-        #       max_tokens = 32768;
-        #     }
-        #     {
-        #       name = "deepseek-r1:70b";
-        #       display_name = "deepseek r1 70b";
-        #       max_tokens = 131072;
-        #     }
-        #   ];
-        # };
+        openai = {};
       };
       languages = {
         Nix = {

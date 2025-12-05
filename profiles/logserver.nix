@@ -89,7 +89,7 @@
               "nixhost:58080"
               "router:58080"
               "trex:58080"
-              "rock-5b:58080"
+              # "rock-5b:58080"
               "n100:58080"
               # "prime:9100"
               # "neo2:9100"
@@ -113,6 +113,11 @@
           {
             targets = [
               "trex:3903"
+              "fuckup:3903"
+              "rock-5b:3903"
+              "n100:3903"
+              "strix-1:3903"
+              "strix-2:3903"
             ];
           }
         ];
@@ -218,6 +223,14 @@
         static_configs = [
           {
             targets = ["router:8889"];
+          }
+        ];
+      }
+      {
+        job_name = "hostapd";
+        static_configs = [
+          {
+            targets = ["router:9551"];
           }
         ];
       }

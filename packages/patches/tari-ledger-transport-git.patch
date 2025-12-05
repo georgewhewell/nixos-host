@@ -1,0 +1,39 @@
+diff --git a/Cargo.lock b/Cargo.lock
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@
+ [[package]]
+ name = "ledger-apdu"
+ version = "0.11.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "c21ffd28d97c9252671ab2ebe7078c9fa860ff3c5a125039e174d25ec6872169"
+ dependencies = [
+  "arrayref",
+  "no-std-compat",
+  "snafu 0.8.5",
+ ]
+ 
+-[[package]]
+-name = "ledger-transport"
+-version = "0.11.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c2f18de77d956a030dbc5869ced47d404bbd641216ef2f9dce7ca90833ca64ff"
+-dependencies = [
+- "async-trait",
+- "ledger-apdu",
+-]
+-
+ [[package]]
+ name = "ledger-transport"
+ version = "0.11.0"
+ source = "git+https://github.com/Zondax/ledger-rs?rev=4ed4cfdef0ae8b40e8997d849a3262bcf00c7d3c#4ed4cfdef0ae8b40e8997d849a3262bcf00c7d3c"
+ dependencies = [
+  "async-trait",
+  "ledger-apdu",
+@@
+  "dialoguer 0.11.0",
+- "ledger-transport 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
++ "ledger-transport 0.11.0 (git+https://github.com/Zondax/ledger-rs?rev=4ed4cfdef0ae8b40e8997d849a3262bcf00c7d3c)",
+  "ledger-transport-hid",
+  "log",
+  "minotari_ledger_wallet_common",

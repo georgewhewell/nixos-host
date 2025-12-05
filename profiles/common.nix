@@ -1,7 +1,7 @@
 {
+  config,
   pkgs,
   lib,
-  inputs,
   ...
 }: {
   imports = [
@@ -16,6 +16,7 @@
     "192.168.23.4" = ["x10-ipmi"];
     "192.168.23.5" = ["nixhost"];
     "192.168.23.6" = ["vacuum"];
+    "192.168.23.7" = ["fuckup"];
     "192.168.23.8" = ["trex"];
     "192.168.23.9" = ["mikrotik-100g"];
     "192.168.23.10" = ["trx90bmc"];
@@ -34,23 +35,24 @@
   environment.enableAllTerminfo = true;
 
   environment.systemPackages = with pkgs; [
-    ethtool
-    iotop
     rsync
-    ncdu
-    usbutils
-    pciutils
+    # ethtool
+    # iotop
+    # ncdu
+    # usbutils
+    # pciutils
   ];
 
   hardware.enableAllFirmware = true;
 
-  services.irqbalance.enable = lib.mkDefault true;
-  services.fwupd.enable = true;
-
-  nix.optimise.automatic = true;
-  nix.extraOptions = ''
-    experimental-features = nix-command flakes
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
+    ACTION=="add", SUBSYSTEM=="nvme", KERNEL=="nvme[0-9]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
+    ACTION=="add"  SUBSYSTEM=="block", KERNEL=="sd[a-z]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
   '';
+
+  services.irqbalance.enable = lib.mkDefault true;
+  services.fwupd.enable = config.boot.kernelPackages.stdenv.isx86_64;
 
   environment.pathsToLink = ["/share/zsh"];
 
@@ -97,10 +99,12 @@
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
         "trex.satanic.link:R5wLrsrQGQdkEa9w+E1o3YibQ/VPVoPqQelJEw0yrtQ="
       ];
+      experimental-features = ["nix-command" "flakes"];
     };
     gc = {
       automatic = true;
       dates = pkgs.lib.mkDefault "weekly";
     };
+    optimise.automatic = true;
   };
 }

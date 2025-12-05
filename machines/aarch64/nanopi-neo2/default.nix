@@ -6,14 +6,18 @@
 }: {
   imports = [
     ../../../profiles/common.nix
-    # ../../../profiles/headless.nix
+    ../../../profiles/headless.nix
     ../../../profiles/home.nix
     ../../../profiles/pray-for-sd-card.nix
+    ../../../services/buildfarm-slave.nix
   ];
+
+  deployment.targetHost = "neo2.lan.satanic.link";
+  deployment.targetUser = "grw";
 
   sconfig = {
     profile = "server";
-    home-manager.enable = true;
+    home-manager.enable = false;
   };
 
   networking = {
@@ -50,10 +54,6 @@
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/";
-                # mountOptions = [
-                # "compress=zstd"
-                # "noatime"
-                # ];
               };
             };
           };
@@ -99,9 +99,20 @@
     };
   };
 
-  services.iperf3 = {
-    enable = true;
-    openFirewall = true;
+  # USB OTG Ethernet gadget
+  boot.kernelModules = ["g_ether"];
+
+  # Use udev rule to set peripheral mode automatically
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="platform", KERNEL=="musb-hdrc.2.auto", RUN+="${pkgs.bash}/bin/sh -c 'echo peripheral > /sys/devices/platform/soc/1c19000.usb/musb-hdrc.2.auto/mode'"
+  '';
+
+  systemd.network.networks."10-usb0" = {
+    matchConfig.Name = "usb0";
+    networkConfig = {
+      DHCP = "yes";
+      IPv6AcceptRA = true;
+    };
   };
 
   services.getty.autologinUser = "root";
@@ -113,12 +124,9 @@
     enableNotifications = false;
   };
 
-  zramSwap = {
-    enable = true;
-    algorithm = "zstd";
-    memoryPercent = 50;
-  };
-
-  deployment.targetHost = "192.168.23.84";
-  deployment.targetUser = "grw";
+  # zramSwap = {
+  #   enable = true;
+  #   algorithm = "zstd";
+  #   memoryPercent = 50;
+  # };
 }

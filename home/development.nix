@@ -5,6 +5,7 @@
   inputs,
   ...
 }: {
+  imports = [./vim/default.nix];
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
@@ -38,17 +39,17 @@
       # virt-manager
       # virt-viewer
     ])
-    ++ (with inputs.nix-ai-tools.packages.${pkgs.system}; [
+    ++ (with inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}; [
       claude-code
-      claude-code-router
+      # claude-code-router
       gemini-cli
-      qwen-code
-#      opencode
-      nanocoder
+      # qwen-code
+      #      opencode
+      # nanocoder
       # codex
-      crush
+      # crush
     ])
-    ++ lib.optionals (pkgs.system == "x86_64-linux") [
+    ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
       # evm tooling
       # solc
       # foundry-bin

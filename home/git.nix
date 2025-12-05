@@ -3,8 +3,6 @@
     enable = true;
     # package = pkgs.gitAndTools.gitFull;
     lfs.enable = true;
-    userName = "georgewhewell";
-    userEmail = "georgerw@gmail.com";
 
     ignores = [
       ".vscode/settings.json"
@@ -18,7 +16,11 @@
       signByDefault = true;
     };
 
-    extraConfig = {
+    settings = {
+      user = {
+        name = "georgewhewell";
+        email = "georgerw@gmail.com";
+      };
       core = {whitespace = "trailing-space,space-before-tab";};
       pull = {
         rebase = true;

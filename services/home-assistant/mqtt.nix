@@ -1,11 +1,5 @@
-{...}: {
-  deployment.keys."mosquitto-password" = {
-    keyCommand = ["pass" "mqtt/home-assistant"];
-    destDir = "/run/secrets";
-    user = "mosquitto";
-    group = "mosquitto";
-    permissions = "0400";
-  };
+{mkSecret, ...}: {
+  sops.secrets.mosquitto-password = mkSecret "mosquitto-password" {};
 
   services.mosquitto = {
     enable = true;
@@ -16,6 +10,14 @@
           "rw" = {
             acl = ["readwrite #"];
             passwordFile = "/run/secrets/mosquitto-password";
+          };
+        };
+      }
+      {
+        address = "127.0.0.1";
+        users = {
+          "rw" = {
+            acl = ["readwrite #"];
           };
         };
       }

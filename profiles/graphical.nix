@@ -136,16 +136,6 @@
 
   zramSwap.enable = true;
 
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    publish = {
-      enable = true;
-      addresses = true;
-      userServices = true;
-    };
-  };
-
   services.usbmuxd = {
     enable = true;
   };

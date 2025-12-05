@@ -1,16 +1,16 @@
-{ config, pkgs, ... }:
-
-
 {
-
+  config,
+  pkgs,
+  ...
+}: {
   boot = {
     extraModprobeConfig = ''
       options kvm_intel nested=1
       options i915 enable_psr=1 enable_fbc=1 enable_gvt=1 enable_guc=3 enable_fbc=1 fastboot=1 perf_stream_paranoid=0
     '';
-    kernelModules = [ "kvm_intel" ];
-    kernelParams = [ "intel_iommu=on" ];
-    initrd.kernelModules = [ "i915" ];
+    kernelModules = ["kvm_intel"];
+    kernelParams = ["intel_iommu=on"];
+    initrd.kernelModules = ["i915"];
   };
 
   environment.systemPackages = with pkgs; [
@@ -21,7 +21,7 @@
   ];
 
   nixpkgs.config.packageOverrides = pkgs: {
-    vaapiIntel = pkgs.vaapiIntel.override { enableHybridCodec = true; };
+    vaapiIntel = pkgs.vaapiIntel.override {enableHybridCodec = true;};
   };
 
   hardware.graphics = {
@@ -29,11 +29,12 @@
     extraPackages = with pkgs; [
       libva
       intel-media-driver
-      intel-vaapi-driver # previously vaapiIntel
-      vaapiVdpau
+      intel-vaapi-driver
+      libva-vdpau-driver
       libvdpau-va-gl
-      intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
-      vpl-gpu-rt # QSV on 11th gen or newer
+      intel-compute-runtime
+      vpl-gpu-rt
+      intel-ocl
     ];
   };
 }

@@ -5,6 +5,7 @@
   boot,
   networking,
   containers,
+  mkSecret,
   ...
 }: {
   
@@ -17,16 +18,8 @@
 
   nix.settings.trusted-users = ["gh-runner-grw"];
 
-  systemd.services."container@gh-runner-grw".unitConfig = {
-    ConditionPathExists = "/run/gh-runner-georgewhewell-nixos-host.secret";
-  };
-
-  deployment.keys."gh-runner-georgewhewell-nixos-host.secret" = {
-    keyCommand = ["pass" "gh-runner/georgewhewell/nixos-host"];
-    destDir = "/run";
-    uploadAt = "pre-activation";
-    permissions = "0777";
-  };
+  # Declare GitHub runner secret using sops-nix
+  sops.secrets.gh-runner-grw = mkSecret "gh-runner-grw" {};
 
   containers.gh-runner-grw = {
     autoStart = true;

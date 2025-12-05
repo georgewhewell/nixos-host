@@ -39,7 +39,7 @@
       ../../home/desktop-apps.nix
       ../../home/darwin.nix
       ../../home/vscode.nix
-      # ../../home/zed.nix
+      ../../home/zed.nix
       inputs.mac-app-util.homeManagerModules.default
     ];
 
@@ -108,8 +108,13 @@
     StandardOutPath = "/tmp/postgres.log";
   };
 
+  nixpkgs.config.permittedInsecurePackages = [
+    "jitsi-meet-1.0.8792"
+  ];
+
+  # doesnt work- installed manually
   # launchd.daemons.mullvad-daemon = {
-  #   path = with pkgs; [ mullvad ];
+  #   path = with pkgs; [mullvad];
   #   command = "mullvad-daemon -v --disable-stdout-timestamps --disable-log-to-file";
   #   serviceConfig = {
   #     Label = "com.mullvad.daemon";
@@ -120,6 +125,10 @@
   #     UserName = "root";
   #   };
   # };
+  # environment.systemPackages = with pkgs; [
+  #   mullvad
+  #   # mullvad-vpn
+  # ];
 
   system.activationScripts.preActivation = {
     enable = true;
@@ -145,6 +154,8 @@
     registry.nixpkgs.flake = inputs.nixpkgs;
     optimise.automatic = true;
     settings = {
+      download-buffer-size = 104857600; # 100 MiB
+      http-connections = 32;
       system = "aarch64-darwin";
       max-jobs = "auto";
       build-users-group = "nixbld";

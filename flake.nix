@@ -30,6 +30,9 @@
 
     disko.url = "github:nix-community/disko";
 
+    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-llamacpp-rocm = {
       url = "path:/Users/grw/src/nix-llamacpp-rocm";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,9 +44,17 @@
     };
 
     ath-kernel = {
-      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git?ref=ath-next&shallow=1";
+      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git?ref=for-current&shallow=1";
       flake = false;
     };
+
+    # Track OpenZFS upstream directly for ZFS package source
+    openzfs = {
+      url = "github:openzfs/zfs";
+      flake = false;
+    };
+
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = {
@@ -72,6 +83,24 @@
         ]
       );
   in rec {
+    # Define mkSecret once and pass it to both machines and colmena
+    secretsRegistry = import ./secrets/default.nix;
+    mkSecret = name: overrides:
+      secretsRegistry.${name} // overrides;
+
+    # expose packages (after overlay)
+    packages = forAllSystems (
+      system:
+        import nixpkgs {
+          inherit system;
+          overlays = [
+            (composeManyExtensions localOverlays)
+            inputs.chaotic.overlays.default
+            inputs.rust-overlay.overlays.default
+          ];
+        }
+    );
+
     colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
     colmena =
       {
@@ -79,7 +108,7 @@
           description = "My personal machines";
           nixpkgs = nixpkgs.legacyPackages.x86_64-linux;
           specialArgs = {
-            inherit inputs;
+            inherit inputs mkSecret;
           };
         };
       }
@@ -112,10 +141,62 @@
 
     nixosModule = {
       imports =
-        builtins.attrValues self.nixosModules;
+        builtins.attrValues self.nixosModules
+        ++ [
+          inputs.sops-nix.nixosModules.sops
+          ./profiles/sops.nix
+        ];
       nixpkgs.overlays = [
         (composeManyExtensions localOverlays)
-        inputs.chaotic.overlays.default
+        # inputs.chaotic.overlays.default
+        # inputs.rust-overlay.overlay
+        (final: prev: let
+          # Helper function to override ZFS in any linuxPackages set
+          # Build with configFile = "all" to include both kernel modules and userspace tools
+          mkZfsOverride = lpsuper: let
+            zfsPkg = lpsuper.zfs_unstable.override {
+              # Override the build to include both kernel and userspace
+              configFile = "all";
+            };
+          in
+            zfsPkg.overrideAttrs (o: {
+              version = "openzfs-${inputs.openzfs.rev or "unknown"}";
+              src = inputs.openzfs;
+              configureFlags =
+                o.configureFlags
+                ++ [
+                  "--enable-linux-experimental"
+                ];
+            });
+        in {
+          # Override base zfs_unstable for compatibility
+          zfs_unstable = prev.zfs_unstable.overrideAttrs (o: {
+            version = "openzfs-${inputs.openzfs.rev or "unknown"}";
+            src = inputs.openzfs;
+            configureFlags =
+              o.configureFlags
+              ++ [
+                "--enable-linux-experimental"
+              ];
+          });
+
+          # Override all standard kernel package sets
+          linuxPackages = prev.linuxPackages.extend (lpself: lpsuper: {
+            zfs_unstable = mkZfsOverride lpsuper;
+          });
+          linuxPackages_testing = prev.linuxPackages_testing.extend (lpself: lpsuper: {
+            zfs_unstable = mkZfsOverride lpsuper;
+          });
+          linuxPackages_latest = prev.linuxPackages_latest.extend (lpself: lpsuper: {
+            zfs_unstable = mkZfsOverride lpsuper;
+          });
+
+          # Override linuxPackagesFor to ensure custom kernels get the ZFS override
+          linuxPackagesFor = kernel:
+            (prev.linuxPackagesFor kernel).extend (lpself: lpsuper: {
+              zfs_unstable = mkZfsOverride lpsuper;
+            });
+        })
       ];
     };
 
@@ -126,14 +207,25 @@
         pkgs.mkShell {
           packages = [
             inputs.colmena.defaultPackage.${system}
+            pkgs.sops
+            pkgs.ssh-to-age
           ];
         };
     });
 
+    checks = {
+      x86_64-linux = let
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in {
+        mtail-xmrig = pkgs.testers.runNixOSTest (import ./tests/mtail-xmrig.nix {inherit pkgs;});
+      };
+    };
+
     nixosConfigurations =
       import ./machines
       self.nixosModule
-      inputs;
+      inputs
+      mkSecret;
 
     githubActions = let
       mkGithubMatrix = nixConf: {

@@ -11,18 +11,21 @@
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
     ../../../profiles/pray-for-sd-card.nix
+    ../../../profiles/wireless.nix
     ../../../services/buildfarm-slave.nix
   ];
+
+  deployment.targetHost = "rock-5b.lan.satanic.link";
+  deployment.targetUser = "grw";
 
   sconfig = {
     profile = "server";
     home-manager.enable = true;
-    xmrig.enable = false;
+    xmrig = {
+      enable = true;
+      package = pkgs.xmrig-rock5b;
+    };
   };
-
-  deployment.targetHost = "192.168.23.18";
-  # deployment.targetHost = "rock-5b.lan.satanic.link";
-  deployment.targetUser = "grw";
 
   disko.devices = {
     disk = {
@@ -190,18 +193,6 @@
     useDHCP = false;
     nat.enable = false;
     firewall.enable = true;
-
-    wireless = {
-      enable = false; # exclusive with iwd
-      iwd = {
-        enable = true;
-        settings = {
-          IPv6 = {
-            Enabled = true;
-          };
-        };
-      };
-    };
   };
 
   systemd.network = {
@@ -220,16 +211,6 @@
             Metric = 1;
           }
         ];
-        linkConfig.RequiredForOnline = "routable";
-      };
-      # WiFi with DHCP
-      "20-wifi" = {
-        matchConfig.Type = "wlan";
-        networkConfig = {
-          DHCP = "yes";
-          IPv6AcceptRA = true;
-        };
-        dhcpV4Config.RouteMetric = 200;
         linkConfig.RequiredForOnline = "no";
       };
     };
@@ -246,6 +227,7 @@
     iwd
     powertop
     stress-ng
+    xmrig
   ];
 
   services.irqbalance.enable = lib.mkDefault true;
@@ -266,7 +248,7 @@
   };
 
   zramSwap = {
-    enable = true;
+    enable = false;
     algorithm = "zstd";
     memoryPercent = 50;
   };

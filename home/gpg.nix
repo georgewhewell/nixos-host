@@ -290,5 +290,5 @@
     pinentry-tty # Always include tty version as fallback
   ];
 
-  services.keybase.enable = pkgs.stdenv.isLinux;
+  services.keybase.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isX86_64;
 }

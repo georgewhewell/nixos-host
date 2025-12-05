@@ -107,7 +107,7 @@
         (mkMotionLight
           {
             name = "Living Room";
-            motionSensor = "binary_sensor.living_room_motion";
+            motionSensor = "binary_sensor.presence";
             lightTarget = "{{ area_id('Living Room') }}";
           })
 
@@ -155,7 +155,7 @@
                   };
                   data = {
                     brightness_pct = 1;
-                    kelvin = 2000;
+                    color_temp_kelvin = 2000;
                     transition = 3;
                   };
                 };
@@ -191,7 +191,7 @@
                   };
                   data = {
                     brightness_pct = 1;
-                    kelvin = 2000;
+                    color_temp_kelvin = 2000;
                     transition = 3;
                   };
                 };
@@ -205,7 +205,7 @@
               };
               data = {
                 brightness_pct = 1;
-                kelvin = 2000;
+                color_temp_kelvin = 2000;
                 transition = 3;
               };
             };
@@ -460,7 +460,7 @@
           };
         }
 
-        # Set random colour on corner light
+        # Set random colour in living room
         {
           alias = "Living Room Random Colour";
           mode = "single";
@@ -485,6 +485,7 @@
           };
         }
 
+        # Bedtime scene
         {
           description = "bedtime light";
           mode = "single";
@@ -496,7 +497,7 @@
             {
               service = "light.turn_on";
               data = {
-                kelvin = 2000;
+                color_temp_kelvin = 2000;
                 brightness_pct = 1;
               };
               target = {

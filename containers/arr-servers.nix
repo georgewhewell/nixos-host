@@ -1,17 +1,10 @@
-{...}: {
+{mkSecret, ...}: {
+  # Declare autobrr secret using sops-nix
+  sops.secrets.autobrr = mkSecret "autobrr" {};
+
   systemd.services."container@arr-servers" = {
     bindsTo = ["mnt-Media.mount"];
     after = ["mnt-Media.mount"];
-    unitConfig = {
-      ConditionPathExists = "/run/autobrr.secret";
-    };
-  };
-
-  deployment.keys."autobrr.secret" = {
-    keyCommand = ["pass" "autobrr.satanic.link"];
-    destDir = "/run";
-    uploadAt = "pre-activation";
-    permissions = "0777";
   };
 
   containers.arr-servers = {

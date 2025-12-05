@@ -1,10 +1,11 @@
 {
   config,
   lib,
-  inputs,
   ...
 }: {
-  imports = [./common.nix];
+  imports = [
+    ./common.nix
+  ];
 
   boot.isContainer = true;
   time.timeZone = "Europe/London";

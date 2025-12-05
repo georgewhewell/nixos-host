@@ -1,4 +1,6 @@
-{...}: {
+{mkSecret, ...}: {
+  # Declare Grafana password secret using sops-nix
+  sops.secrets.grafana-password = mkSecret "grafana-password" {};
   services.postgresql = {
     enable = true;
     ensureUsers = [
@@ -31,17 +33,6 @@
         admin_email = "accounts@hellas.ai";
       };
       "auth.anonymous".enabled = true;
-    };
-  };
-
-  systemd.services.grafana.after = ["grafana-password.secret.service"];
-  deployment.keys = {
-    "grafana-password.secret" = {
-      keyCommand = ["pass" "grafana.satanic.link"];
-      user = "grafana";
-      group = "grafana";
-      destDir = "/var/lib/grafana";
-      uploadAt = "pre-activation";
     };
   };
 }

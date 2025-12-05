@@ -3,6 +3,7 @@
   lib,
   pkgs,
   inputs,
+  mkSecret,
   ...
 }: {
   # ethereum
@@ -18,28 +19,17 @@
   #   options = ["nofail" "sync=disabled"];
   # };
 
-  deployment.keys = {
-    "LIGHTHOUSE_JWT" = {
-      keyCommand = ["pass" "erigon-gpg"];
-      destDir = "/run/keys";
-      uploadAt = "pre-activation";
-    };
-    # "LIGHTHOUSE_JWT_GETH" = {
-    #   keyCommand = ["pass" "erigon-gpg"];
-    #   destDir = "/var/lib/goethereum/mainnet";
-    #   uploadAt = "pre-activation";
-    #   permissions = "0444";
-    # };
-  };
+  # Declare Lighthouse JWT secret using sops-nix
+  sops.secrets.lighthouse-jwt = mkSecret "lighthouse-jwt" {};
 
   # imports = [inputs.ethereum.nixosModules.default];
 
   # use lighthouse from nix-ethereum
   nixpkgs.overlays = [
     (self: _: {
-      geth = inputs.ethereum.packages.${pkgs.system}.geth;
-      lighthouse = inputs.ethereum.packages.${pkgs.system}.lighthouse;
-      reth = inputs.ethereum.packages.${pkgs.system}.reth;
+      geth = inputs.ethereum.packages.${pkgs.stdenv.hostPlatform.system}.geth;
+      lighthouse = inputs.ethereum.packages.${pkgs.stdenv.hostPlatform.system}.lighthouse;
+      reth = inputs.ethereum.packages.${pkgs.stdenv.hostPlatform.system}.reth;
     })
   ];
 
@@ -70,7 +60,6 @@
 
   systemd.services.lighthouse-beacon.unitConfig = {
     RequiresMountsFor = [config.services.lighthouse.beacon.dataDir];
-    ConditionPathExists = config.services.lighthouse.beacon.execution.jwtPath;
   };
 
   services.reth.mainnet = {
@@ -120,10 +109,7 @@
   };
 
   # Add systemd dependencies
-  systemd.services.reth = {
-    unitConfig = {
-      RequiresMountsFor = ["/var/lib/reth"];
-      ConditionPathExists = config.services.reth.authrpc.jwtsecret;
-    };
+  systemd.services.reth.unitConfig = {
+    RequiresMountsFor = ["/var/lib/reth"];
   };
 }

@@ -74,7 +74,7 @@
         viktorqvarfordt.vscode-pitch-black-theme
         github.copilot
         # github.copilot-chat
-        # rust-lang.rust-analyzer
+        rust-lang.rust-analyzer
         ms-vscode-remote.remote-ssh
         ms-python.python
         charliermarsh.ruff

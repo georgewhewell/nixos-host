@@ -159,6 +159,7 @@
   #   options = "mode=1770,gid=kvm";
   #   wantedBy = [ "multi-user.target" ];
   # }];
+  services.avahi.allowInterfaces = lib.mkForce ["br0"];
 
   environment.systemPackages = with pkgs; [
     tbtools

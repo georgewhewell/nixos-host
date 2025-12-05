@@ -9,7 +9,7 @@
       spotify
       telegram-desktop
     ]
-    ++ lib.optionals (pkgs.system == "x86_64-linux") [
+    ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
       vlc
       calibre
       signal-desktop
@@ -19,7 +19,7 @@
       cool-retro-term
       openshot-qt
     ]
-    ++ lib.optionals (pkgs.system == "aarch64-darwin") [
+    ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "aarch64-darwin") [
       stats
       signal-desktop-bin
     ];

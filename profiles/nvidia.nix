@@ -11,6 +11,11 @@
     enable = true;
   };
 
+  harware.opengl = {
+    enable = true;
+    driSupport32Bit = false;
+  };
+
   hardware.nvidia = {
     # Modesetting is required.
     modesetting.enable = true;

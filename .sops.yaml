@@ -1,0 +1,78 @@
+# sops-nix configuration
+# Machine age keys derived from SSH host keys
+# Your GPG key: 4ED64FA5BBF73612035B86B20C414B6F2BA7BB19
+
+keys:
+  # Machine age keys (from SSH host keys)
+  - &router age1evpz8q2vsh029ph5v63muxk7ml7vg99ygqd7vg09e2azuff2a3pq34lal4    # router (192.168.23.1)
+  - &trex age1zzzz6c85g7p2r57k0hkejs6097k8thqajt42pmj5xnp8l2h0v9qs7f5qsy      # trex (192.168.23.8)
+  - &fuckup age1ykqrhesjvasdz8hr2yguveevh5prdt2hxfchsa8d29np9zc5udfqmt8gln   # fuckup
+  - &strix-1 age100uvrjnf40g727gnw365h7ew6ey24whyann0ql6pgevf0a4fd5asrtruyd  # strix-1
+  - &strix-2 age1d7z2rcpuv63lcvjkk0rzlspajnudp6phrx89h0l4t4gtwaqmn5aq3wqu5t  # strix-2
+  - &rock-5b age1u6s0s0la00zy3hp86fgcj6lwqu59k0lgkjp77qgdrl9k3798s36qtsnuug  # rock-5b (192.168.23.18)
+  - &prime age1tmy38cwuf2jsjj72s6w55jsvgyf9207mxw29at58u4x9m68mg34qk67yrt    # prime
+
+  # Your GPG key for editing
+  - &grw_gpg 4ED64FA5BBF73612035B86B20C414B6F2BA7BB19  # George Whewell
+
+creation_rules:
+  # Crypto services (Ethereum) - trex only
+  - path_regex: secrets/crypto\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+
+  # GitHub runners - trex only
+  - path_regex: secrets/github-runners\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+
+  # Media services (Arr stack) - trex only
+  - path_regex: secrets/media\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+
+  # Monitoring (Grafana) - trex only
+  - path_regex: secrets/monitoring\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+
+  # Home automation (MQTT) - router only
+  - path_regex: secrets/home-automation\.yaml$
+    key_groups:
+      - age:
+          - *router
+        pgp:
+          - *grw_gpg
+
+  # WiFi password - router and WiFi-enabled machines
+  - path_regex: secrets/wifi\.yaml$
+    key_groups:
+      - age:
+          - *router
+          - *fuckup
+          - *strix-1
+          - *strix-2
+          - *rock-5b
+          - *prime
+        pgp:
+          - *grw_gpg
+
+  # WireGuard VPN - router (server) and clients
+  - path_regex: secrets/wireguard\.yaml$
+    key_groups:
+      - age:
+          - *router
+        pgp:
+          - *grw_gpg

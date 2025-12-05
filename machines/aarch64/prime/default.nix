@@ -10,11 +10,15 @@
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
     ../../../profiles/pray-for-sd-card.nix
+    ../../../services/buildfarm-slave.nix
   ];
+
+  deployment.targetHost = "prime.lan.satanic.link";
+  deployment.targetUser = "grw";
 
   sconfig = {
     profile = "server";
-    home-manager.enable = true;
+    home-manager.enable = false;
   };
 
   networking.firewall.allowedUDPPorts = [
@@ -45,9 +49,6 @@
     };
   };
 
-  deployment.targetHost = "prime.lan.satanic.link";
-  deployment.targetUser = "grw";
-
   networking = {
     hostName = "prime";
     useDHCP = true;
@@ -77,10 +78,6 @@
     };
   };
 
-  environment.systemPackages = with pkgs; [
-    btop
-  ];
-
   disko.devices = {
     disk = {
       main = {
@@ -107,10 +104,6 @@
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/";
-                # mountOptions = [
-                # "compress=zstd"
-                # "noatime"
-                # ];
               };
             };
           };
@@ -162,11 +155,6 @@
     };
   };
 
-  services.iperf3 = {
-    enable = true;
-    openFirewall = true;
-  };
-
   hardware = {
     wirelessRegulatoryDatabase = true;
     bluetooth = {
@@ -184,9 +172,17 @@
     enableNotifications = false;
   };
 
-  zramSwap = {
-    enable = true;
-    algorithm = "zstd";
-    memoryPercent = 50;
+  nix = {
+    settings = {
+      build-cores = 2;
+      max-jobs = 1;
+      http-connections = 2;
+    };
   };
+
+  # zramSwap = {
+  #   enable = true;
+  #   algorithm = "zstd";
+  #   memoryPercent = 50;
+  # };
 }

@@ -63,7 +63,7 @@
       ]
       ++ lib.optionals (config.networking.hostName != "rock-5b") [
         {
-          hostName = "192.168.23.18";
+          hostName = "rock-5b.lan.satanic.link";
           sshUser = "grw";
           protocol = "ssh-ng";
           speedFactor = 2;
@@ -71,6 +71,15 @@
           supportedFeatures = ["kvm" "nixos-test" "big-parallel"];
           systems = ["aarch64-linux"];
         }
+        # {
+        #   hostName = "prime.lan.satanic.link";
+        #   sshUser = "grw";
+        #   protocol = "ssh-ng";
+        #   speedFactor = 1;
+        #   maxJobs = 1;
+        #   supportedFeatures = ["nixos-test"];
+        #   systems = ["aarch64-linux"];
+        # }
       ]
       ++ lib.optionals (config.networking.hostName != "trex") [
         {

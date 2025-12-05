@@ -56,7 +56,7 @@ in {
 
   config = lib.mkIf cfg.enable {
     # Enable Redis for p2pool-exporter
-    services.redis.servers."".enable = true;
+    services.redis.servers.p2pool.enable = true;
 
     users.users.p2pool-exporter = {
       isSystemUser = true;
@@ -68,7 +68,7 @@ in {
 
     systemd.services.p2pool-exporter = {
       description = "P2Pool Prometheus exporter";
-      after = ["network.target" "p2pool.service" "redis.service"];
+      after = ["network.target" "p2pool.service" "redis-p2pool.service"];
       wantedBy = ["multi-user.target"];
 
       environment = {
@@ -84,7 +84,7 @@ in {
         RestartSec = 10;
 
         ExecStart = ''
-          ${inputs.p2pool-exporter.packages.${pkgs.system}.p2pool-exporter}/bin/p2pool-exporter \
+          ${inputs.p2pool-exporter.packages.${pkgs.stdenv.hostPlatform.system}.p2pool-exporter}/bin/p2pool-exporter \
             -a ${cfg.p2poolApiUrl} \
             -w ${lib.concatStringsSep " " cfg.walletAddresses} \
             -l ${cfg.logLevel} \

@@ -14,7 +14,7 @@
     xmrig = with pkgs; {
       enable = true;
       package = xmrig-zen5;
-      # cudaPlugin = xmrig-cuda-plugin;
+      cudaPlugin = xmrig-cuda-plugin;
     };
   };
 
@@ -22,7 +22,7 @@
 
   deployment.targetHost = "fuckup.lan.satanic.link";
   deployment.targetUser = "grw";
-  zramSwap.enable = true;
+
   boot.tmp.useTmpfs = lib.mkForce false;
 
   hardware.enableAllHardware = true;
@@ -40,6 +40,7 @@
     ../../../profiles/uefi-boot.nix
     ../../../profiles/zfs.nix
     ../../../profiles/development.nix
+    ../../../profiles/wireless.nix
 
     ../../../services/buildfarm-slave.nix
 
@@ -166,6 +167,5 @@
     enableIPv6 = true;
     useNetworkd = true;
     useDHCP = true;
-    firewall.enable = false;
   };
 }

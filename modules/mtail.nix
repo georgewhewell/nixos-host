@@ -149,14 +149,31 @@ in {
           Enable verbose debug logging for mtail.
         '';
       };
+
+      journaldUnits = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        example = ["xmrig" "nginx"];
+        description = ''
+          List of systemd units whose journald logs should be streamed to mtail via FIFOs.
+          For each unit, a FIFO will be created at /run/mtail-UNIT.fifo and a systemd
+          service will stream logs using journalctl.
+        '';
+      };
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf cfg.enable (let
+    # Generate FIFO paths for journald units
+    journaldFifos = map (unit: "/run/mtail-${unit}.fifo") cfg.journaldUnits;
+
+    # Combine regular logs with journald FIFOs
+    allLogs = cfg.logs ++ journaldFifos;
+  in {
     assertions = [
       {
-        assertion = cfg.logs != [];
-        message = "services.mtail.logs must contain at least one log file or pattern";
+        assertion = allLogs != [];
+        message = "services.mtail.logs or services.mtail.journaldUnits must contain at least one entry";
       }
       {
         assertion = cfg.programs != {};
@@ -164,38 +181,63 @@ in {
       }
     ];
 
-    systemd.services.mtail = {
-      description = "mtail log metrics extractor";
-      after = ["network.target"];
-      wantedBy = ["multi-user.target"];
+    # Create FIFOs for journald units
+    systemd.tmpfiles.rules = map (unit:
+      "p /run/mtail-${unit}.fifo 0644 ${cfg.user} ${cfg.group} -"
+    ) cfg.journaldUnits;
 
-      serviceConfig = {
-        Type = "simple";
-        ExecStart = ''
-          ${pkgs.mtail}/bin/mtail \
-            --progs ${mtailProgsDir} \
-            --logs ${lib.concatStringsSep "," cfg.logs} \
-            --port ${toString cfg.port} \
-            --logtostderr \
-            ${lib.optionalString cfg.debug "--alsologtostderr --v=2"} \
-            ${lib.concatStringsSep " " cfg.extraFlags}
+    # Create streaming services for each journald unit
+    systemd.services = lib.listToAttrs (map (unit: {
+      name = "mtail-journal-${unit}";
+      value = {
+        description = "Stream ${unit} logs to mtail FIFO";
+        after = ["${unit}.service" "mtail.service"];
+        wantedBy = ["multi-user.target"];
+        script = ''
+          # Strip ANSI color codes from journald output and stream to FIFO
+          ${pkgs.systemd}/bin/journalctl -f -u ${unit} -o cat | \
+            ${pkgs.gnused}/bin/sed -u 's/\x1b\[[0-9;]*m//g' > /run/mtail-${unit}.fifo
         '';
-        Restart = "always";
-        RestartSec = 10;
-        User = cfg.user;
-        Group = cfg.group;
-        SupplementaryGroups = cfg.extraGroups;
+        serviceConfig = {
+          Type = "simple";
+          Restart = "always";
+          RestartSec = "5s";
+        };
+      };
+    }) cfg.journaldUnits) // {
+      mtail = {
+        description = "mtail log metrics extractor";
+        after = ["network.target"];
+        wantedBy = ["multi-user.target"];
 
-        # Security hardening
-        PrivateTmp = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-        NoNewPrivileges = true;
+        serviceConfig = {
+          Type = "simple";
+          ExecStart = ''
+            ${pkgs.mtail}/bin/mtail \
+              --progs ${mtailProgsDir} \
+              --logs ${lib.concatStringsSep "," allLogs} \
+              --port ${toString cfg.port} \
+              --logtostderr \
+              ${lib.optionalString cfg.debug "--alsologtostderr --v=2"} \
+              ${lib.concatStringsSep " " cfg.extraFlags}
+          '';
+          Restart = "always";
+          RestartSec = 10;
+          User = cfg.user;
+          Group = cfg.group;
+          SupplementaryGroups = cfg.extraGroups;
 
-        # Allow reading configured log paths
-        ReadOnlyPaths = cfg.logs ++ [
-          "/var/log"  # Often needed for log rotation detection
-        ];
+          # Security hardening
+          PrivateTmp = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+          NoNewPrivileges = true;
+
+          # Allow reading configured log paths
+          ReadOnlyPaths = allLogs ++ [
+            "/var/log"  # Often needed for log rotation detection
+          ];
+        };
       };
     };
 
@@ -212,7 +254,7 @@ in {
     };
 
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [cfg.port];
-  };
+  });
 
   meta.maintainers = with lib.maintainers; [];
 }

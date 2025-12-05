@@ -137,13 +137,8 @@ in {
     inherit hostName;
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
-    useNetworkd = false;
-    networkmanager = {
-      enable = true;
-      wifi = {
-      };
-    };
-    # useDHCP = true;
+    useNetworkd = true;
+    useDHCP = true;
     firewall.enable = false;
   };
 
@@ -154,14 +149,44 @@ in {
   # Thunderbolt network configuration
   boot.kernelModules = ["thunderbolt-net"];
   users.users.grw.extraGroups = ["networkmanager"];
-  # network-manager.enable = true;
 
-  # systemd.network = {
-  #   enable = true;
-  #   networks."40-thunderbolt" = {
-  #     matchConfig.Driver = "thunderbolt-net";
-  #     address = ["10.0.0.${toString index}/24"];
-  #     linkConfig.MTUBytes = "65522";
-  #   };
-  # };
+  systemd.network = let
+    lanBridge = "br0.lan";
+  in {
+    enable = true;
+    wait-online = {
+      enable = true;
+      anyInterface = true;
+    };
+    netdevs = {
+      "20-${lanBridge}" = {
+        netdevConfig = {
+          Kind = "bridge";
+          Name = lanBridge;
+        };
+      };
+    };
+    networks = {
+      "10-bridge" = {
+        matchConfig.Name = lanBridge;
+        networkConfig = {
+          DHCP = "yes";
+          IPv6AcceptRA = true;
+        };
+      };
+      "10-lan" = {
+        matchConfig.Driver = "r8169";
+        networkConfig = {
+          Bridge = lanBridge;
+          ConfigureWithoutCarrier = true;
+        };
+        linkConfig.RequiredForOnline = "enslaved";
+      };
+      "50-usb-cdc" = {
+        matchConfig.Driver = "cdc_subset";
+        networkConfig.Bridge = lanBridge;
+        linkConfig.RequiredForOnline = "enslaved";
+      };
+    };
+  };
 }

@@ -1,20 +1,18 @@
 {
   config,
   pkgs,
+  lib,
   ...
 }: {
   # Config for machines on home network
+  networking.nameservers = ["192.168.23.1"];
+
   time.timeZone = "Europe/Zurich";
+
   location = {
     latitude = 51.5;
     longitude = 0.0;
   };
-
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
-    ACTION=="add", SUBSYSTEM=="nvme", KERNEL=="nvme[0-9]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
-    ACTION=="add"  SUBSYSTEM=="block", KERNEL=="sd[a-z]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
-  '';
 
   # Collect metrics for prometheus
   services.prometheus.exporters = {
@@ -23,18 +21,19 @@
       openFirewall = true;
       enabledCollectors = ["systemd"];
     };
+    # only on x86_64 servers with disks
     zfs = {
-      enable = true;
+      enable = config.boot.kernelPackages.stdenv.isx86_64 && lib.hasAttr "zfs" config.boot.kernelPackages;
       openFirewall = true;
     };
     smartctl = {
-      enable = true;
+      enable = config.boot.kernelPackages.stdenv.isx86_64;
       openFirewall = true;
     };
   };
 
   services.cadvisor = {
-    enable = true;
+    enable = config.boot.kernelPackages.stdenv.isx86_64;
     listenAddress = "0.0.0.0";
     port = 58080;
   };
@@ -43,5 +42,13 @@
     config.services.cadvisor.port
   ];
 
-  networking.nameservers = ["192.168.23.1"];
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      userServices = true;
+    };
+  };
 }

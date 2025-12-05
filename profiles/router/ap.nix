@@ -3,14 +3,17 @@
   pkgs,
   lib,
   inputs,
+  mkSecret,
   ...
 }: {
+  sops.secrets.wifi-password = mkSecret "wifi-password" {};
+
   boot.kernelPackages = let
-    athKernel = pkgs.linuxKernel.kernels.linux_6_17.override {
+    athKernel = pkgs.linuxKernel.kernels.linux_testing.override {
       argsOverride = {
         src = inputs.ath-kernel;
-        version = "6.17-rc7";
-        modDirVersion = "6.17.0-rc7";
+        version = "6.18-rc3";
+        modDirVersion = "6.18.0-rc4";
       };
     };
   in
@@ -68,8 +71,8 @@
       ssid = "Radio Free Europe";
       authentication = {
         mode = "wpa3-sae-transition"; # WPA2+WPA3 for iwd compatibility
-        saePasswordsFile = "/tmp/password";
-        wpaPasswordFile = "/tmp/password";
+        saePasswordsFile = config.sops.secrets.wifi-password.path;
+        wpaPasswordFile = config.sops.secrets.wifi-password.path;
       };
       settings = {
         bridge = "br0.lan";
@@ -124,7 +127,7 @@
       };
       wifi7 = {
         enable = true;
-        operatingChannelWidth = "80";
+        operatingChannelWidth = "160";
         multiUserBeamformer = true;
         singleUserBeamformee = true;
         singleUserBeamformer = true;
@@ -140,7 +143,7 @@
         settings =
           radioSettings
           // {
-            freqlist = "5180-5240";
+            freqlist = "5180-5240 5745-5865";
           };
         networks.wlan0 = networkSettings;
         inherit (wifiSettings) wifi4 wifi5 wifi6 wifi7;
@@ -164,5 +167,12 @@
         inherit (wifiSettings) wifi6 wifi7;
       };
     };
+  };
+
+  # hostapd Prometheus Exporter
+  services.hostapd-exporter = {
+    enable = true;
+    interfaces = ["wlan0" "wlan1"];
+    openFirewall = true;
   };
 }

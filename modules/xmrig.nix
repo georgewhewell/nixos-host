@@ -43,6 +43,7 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    environment.systemPackages = [cfg.package];
     systemd.services.xmrig = {
       serviceConfig = {
         Nice = 19;
@@ -55,6 +56,7 @@ in {
         RuntimeMaxSec = "12h";
       };
     };
+
     services.xmrig = {
       enable = true;
       package = cfg.package;
@@ -63,6 +65,8 @@ in {
           enabled = true;
           priority = 1;
           max-threads-hint = 99;
+        };
+        randomx = {
           "1gb-pages" = true;
         };
         opencl = false;
@@ -81,6 +85,64 @@ in {
           }
         ];
       };
+    };
+
+    # Configure mtail to monitor xmrig logs from journald
+    services.mtail = {
+      enable = true;
+      openFirewall = true;
+      journaldUnits = ["xmrig"];
+      programs.xmrig = ''
+        # XMRig miner metrics parser
+        # Extracts hashrate, accepted/rejected shares, and difficulty
+
+        # Gauges for current hashrate (updated every 60s)
+        gauge xmrig_hashrate_10s
+        gauge xmrig_hashrate_60s
+        gauge xmrig_hashrate_15m
+        gauge xmrig_hashrate_max
+
+        # Counters for shares
+        counter xmrig_shares_accepted_total
+        counter xmrig_shares_rejected_total
+
+        # Gauge for current difficulty
+        gauge xmrig_difficulty_current
+
+        # Histogram for share response time
+        histogram xmrig_share_response_time_ms buckets 0, 1, 5, 10, 50, 100, 500, 1000
+
+        # Parse miner speed line:
+        # [2025-11-12 23:27:26.500]  miner    speed 10s/60s/15m 43992.8 44216.1 44746.0 H/s max 45885.5 H/s
+        /\[.+\]\s+miner\s+speed\s+10s\/60s\/15m\s+(?P<speed_10s>[\d\.]+)\s+(?P<speed_60s>[\d\.]+)\s+(?P<speed_15m>[\d\.]+|n\/a)\s+H\/s\s+max\s+(?P<speed_max>[\d\.]+)\s+H\/s/ {
+          xmrig_hashrate_10s = float($speed_10s)
+          xmrig_hashrate_60s = float($speed_60s)
+
+          # Handle n/a for 15m average (when just started)
+          $speed_15m != "n/a" {
+            xmrig_hashrate_15m = float($speed_15m)
+          }
+
+          xmrig_hashrate_max = float($speed_max)
+        }
+
+        # Parse accepted shares:
+        # [2025-11-12 23:27:34.309]  cpu      accepted (50/0) diff 1552K (1 ms)
+        /\[.+\]\s+cpu\s+accepted\s+\((?P<accepted>\d+)\/(?P<rejected>\d+)\)\s+diff\s+(?P<diff>[\d\.]+)K\s+\((?P<response_ms>\d+)\s+ms\)/ {
+          xmrig_shares_accepted_total = int($accepted)
+          xmrig_shares_rejected_total = int($rejected)
+          xmrig_difficulty_current = float($diff)
+          xmrig_share_response_time_ms = int($response_ms)
+        }
+
+        # Parse rejected shares (if they occur):
+        # [timestamp]  cpu      rejected (accepted/rejected) diff XK (Y ms) "reason"
+        /\[.+\]\s+cpu\s+rejected\s+\((?P<accepted>\d+)\/(?P<rejected>\d+)\)\s+diff\s+(?P<diff>[\d\.]+)K/ {
+          xmrig_shares_accepted_total = int($accepted)
+          xmrig_shares_rejected_total = int($rejected)
+          xmrig_difficulty_current = float($diff)
+        }
+      '';
     };
   };
 }
