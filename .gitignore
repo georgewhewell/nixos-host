@@ -12,3 +12,6 @@
 .aider*
 .direnv
 .claude
+*.conf
+*.png
+

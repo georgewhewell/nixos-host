@@ -62,8 +62,7 @@ in {
         bridgeConfig = {};
         address = [
           "192.168.23.1/24"
-          # Stable ULA for LAN; used for RDNSS/DNS and local IPv6
-          "fd6c:6c58:3edd::1/64"
+          "fdde:ad::1/64"  # ULA for LAN
         ];
         networkConfig = {
           ConfigureWithoutCarrier = true;
@@ -80,7 +79,7 @@ in {
           Managed = false;
           # Only RA (no DHCPv6 for DNS); advertise DNS via RDNSS
           EmitDNS = true;
-          DNS = ["fd6c:6c58:3edd::1"];
+          DNS = ["fdde:ad::1"];
           Domains = "lan.satanic.link";
         };
         linkConfig.RequiredFamilyForOnline = "ipv4";
@@ -247,7 +246,7 @@ in {
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [lanBridge];
+      trustedInterfaces = [lanBridge "wg-home"];
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = false;

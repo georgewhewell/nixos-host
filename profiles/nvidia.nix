@@ -7,13 +7,10 @@
     videoDrivers = ["nvidia"];
   };
 
-  hardware.graphics = {
-    enable = true;
-  };
+  hardware.graphics.enable = true;
 
-  harware.opengl = {
+  hardware.opengl = {
     enable = true;
-    driSupport32Bit = false;
   };
 
   hardware.nvidia = {

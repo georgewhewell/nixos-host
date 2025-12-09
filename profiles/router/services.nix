@@ -43,7 +43,7 @@ in {
       domain = "lan.satanic.link";
       local = "/lan.satanic.link/";
       bind-dynamic = true;
-      interface = lanName;
+      interface = [lanName "wg-home"];
       except-interface = "lo";
       "dhcp-range" = [
         "${lanName},192.168.23.32,192.168.23.249,6h"

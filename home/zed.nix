@@ -25,7 +25,6 @@
     userSettings = {
       current_line_highlight = "gutter";
       features = {};
-      assistant = {};
       lsp = {
         rust-analyzer = {
           binary = {

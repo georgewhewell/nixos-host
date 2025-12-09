@@ -145,6 +145,12 @@ in {
       readOnly = true;
       description = "Derived client profile data (addresses, AllowedIPs, endpoint, DNS).";
     };
+
+    clientConfigData = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.attrsOf lib.types.anything);
+      readOnly = true;
+      description = "Data needed for generating client configs (used by wg-client-config.sh).";
+    };
   };
 
   config = let
@@ -181,9 +187,27 @@ in {
               publicKey = peer.publicKey;
             })
           network.peers;
+
+        clientConfigData =
+          lib.mapAttrs (_peerName: peer: let
+            # Split routes: base routes + extra, but NOT fullTunnel routes
+            baseRoutes =
+              if network.clientRoutes != []
+              then network.clientRoutes
+              else network.subnets;
+            splitRoutes = lib.unique (baseRoutes ++ peer.extraClientRoutes);
+          in {
+            address = "${peer.ip}/32";
+            addressV6 = lib.optionalString (peer.ipv6 != null) "${peer.ipv6}/128";
+            dns = network.dns;
+            endpoint = network.endpoint;
+            splitAllowedIPs = splitRoutes;
+            fullAllowedIPs = ["0.0.0.0/0" "::/0"];
+            persistentKeepalive = peer.persistentKeepalive;
+          }) network.peers;
       in
         {
-          inherit name peerList clientProfiles;
+          inherit name peerList clientProfiles clientConfigData;
           inherit (network) interface addresses listenPort privateKeyFile subnets dns endpoint enable;
           natAddInternal = network.nat.addInternalIPs;
         })
@@ -244,6 +268,13 @@ in {
           (lib.mapAttrsToList
             (_: network:
               lib.mkIf network.enable { ${network.name} = network.clientProfiles; })
+            perNetwork);
+
+        clientConfigData =
+          lib.mkMerge
+          (lib.mapAttrsToList
+            (_: network:
+              lib.mkIf network.enable { ${network.name} = network.clientConfigData; })
             perNetwork);
       };
     };

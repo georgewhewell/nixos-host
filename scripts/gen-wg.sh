@@ -53,6 +53,7 @@ gen_peer() {
   psk=$(wg genpsk)
 
   set_secret "[\"wg-home-${peer}-private\"]" "$priv"
+  set_secret "[\"wg-home-${peer}-public\"]" "$pub"
   set_secret "[\"wg-home-${peer}-psk\"]" "$psk"
 
   echo "$peer:"

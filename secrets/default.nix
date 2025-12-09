@@ -83,10 +83,19 @@
 
   # WireGuard (router)
   # Private key for the wg-home interface
+  # Note: path must be flat (no subdirs) to avoid sops-nix symlink bug
   wg-home-key = {
     sopsFile = ./wireguard.yaml;
     key = "wg-home-router-private";
-    path = "/run/secrets/wireguard/wg-home.key";
+    path = "/run/secrets/wg-home-key";
+    mode = "0400";
+  };
+
+  # WireGuard PSK for iOS peer
+  wg-home-ios-psk = {
+    sopsFile = ./wireguard.yaml;
+    key = "wg-home-ios-psk";
+    path = "/run/secrets/wg-home-ios-psk";
     mode = "0400";
   };
 }
