@@ -13,6 +13,9 @@ in {
   /*
   FEVM Strix Halo
   */
+  users.groups.video.members = map (n: "nixbld${toString n}") (lib.range 1 32);
+  users.groups.render.members = map (n: "nixbld${toString n}") (lib.range 1 32);
+
   sconfig = {
     profile = "server";
     home-manager = {
@@ -185,16 +188,23 @@ in {
     # FastFlowLM bench derivations talk to the NPU via XRT, which opens
     # /dev/accel/accel0 (amdxdna DRM accel device) and walks sysfs to
     # enumerate devices (xrt::device(0) needs PCI topology to find the
-    # NPU, which lives under /sys/devices and /sys/bus/pci). Models are
-    # pre-staged at /models/flm/ by `flm pull` with FLM_MODEL_PATH set.
+    # NPU, which lives under /sys/devices and /sys/bus/pci). ROCm's libdrm
+    # path also needs /sys/dev/char to classify render nodes correctly.
+    # Models are pre-staged at /models/flm/ by `flm pull` with
+    # FLM_MODEL_PATH set.
     extra-sandbox-paths = [
+      "/dev/dri"
+      "/dev/kfd"
+      "/dev/shm"
       "/dev/accel"
+      "/sys/class/drm"
+      "/sys/class/kfd"
+      "/models"
       "/sys/class/accel"
       "/sys/bus/pci"
       "/sys/devices"
       "/sys/dev"
       "/proc"
-      "/models"
     ];
   };
 
@@ -203,6 +213,14 @@ in {
   # bench numbers depend on avoiding. nix-daemon spawns builders so the
   # limit must be set on the daemon's systemd unit.
   systemd.services.nix-daemon.serviceConfig.LimitMEMLOCK = "infinity";
+
+  # ROCm build-time JIT derivations run in Nix's sandbox without the
+  # caller's supplemental groups. Some ROCm imports still touch the primary
+  # DRM node before settling on the render node, so expose it like the NPU
+  # accel device below.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="drm", KERNEL=="card[0-9]*", ATTRS{vendor}=="0x1002", MODE="0666"
+  '';
 
   # NPU server. The fastflowlm-server module installs a MODE=0666 udev
   # rule on /dev/accel/accel0 so the service and the bench-flm-*
