@@ -1,14 +1,102 @@
 {
   config,
   pkgs,
+  lib,
+  mkSecret,
+  network,
   ...
-}: {
+}: let
+  apcIp = network.primaryIp network.hosts."apc-ups";
+  trexIp = network.primaryIp network.hosts.trex;
+in {
+  sops.secrets.nut-upsmon = mkSecret "nut-upsmon" {};
+  sops.secrets.hass-prometheus-token = mkSecret "hass-prometheus-token" {};
   environment.systemPackages = with pkgs; [
     ipmitool
     lm_sensors
   ];
 
   boot.kernelModules = ["ipmi_si" "ipmi_devintf" "ipmi_msghandler"];
+
+  # APC UPS monitoring via network management card
+  services.apcupsd = {
+    enable = true;
+    configText = ''
+      UPSCABLE ether
+      UPSTYPE snmp
+      DEVICE ${apcIp}
+      POLLTIME 60
+      NISIP ${trexIp}
+      NISPORT 3551
+    '';
+  };
+
+  services.prometheus.exporters.apcupsd = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    apcupsdAddress = "${trexIp}:3551";
+  };
+
+  # NUT prometheus exporter
+  systemd.services.prometheus-nut-exporter = {
+    description = "Prometheus NUT Exporter";
+    wantedBy = ["multi-user.target"];
+    after = ["upsd.service"];
+    serviceConfig = {
+      ExecStart = ''${pkgs.prometheus-nut-exporter}/bin/nut_exporter --nut.server=127.0.0.1 --web.listen-address=127.0.0.1:9199 --nut.vars_enable=""'';
+      Restart = "always";
+      DynamicUser = true;
+    };
+  };
+
+  # Ensure UPS services wait for network to be online
+  systemd.services.apcupsd = {
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+  };
+  systemd.services.upsd = {
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+  };
+  systemd.services.upsdrv = {
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+  };
+
+  # NUT for UPS monitoring and control
+  power.ups = {
+    enable = true;
+    mode = "netserver";
+    upsd.listen = [
+      {address = "127.0.0.1";}
+      {address = trexIp;}
+    ];
+    ups.apc = {
+      driver = "snmp-ups";
+      port = apcIp;
+      description = "APC Smart-UPS 3000";
+      directives = [
+        "community = public"
+        "snmp_version = v2c"
+        "pollfreq = 10"
+      ];
+    };
+    users.upsmon = {
+      upsmon = "primary";
+      passwordFile = "/run/secrets/nut-upsmon";
+    };
+    upsmon.monitor.apc = {
+      user = "upsmon";
+      system = "apc@localhost";
+      powerValue = 1;
+    };
+    upsmon.settings = {
+      # Don't shutdown - no battery installed
+      SHUTDOWNCMD = "/run/current-system/sw/bin/true";
+      # Require 0% battery before considering shutdown (never triggers without battery)
+      MINSUPPLIES = 0;
+    };
+  };
 
   systemd.services.prometheus-ipmi-exporter = {
     wantedBy = ["multi-user.target"];
@@ -23,13 +111,13 @@
   };
 
   sconfig.gcp-ddns = let
-    domain = "grafana.satanic.link";
+    domain = network.publicFqdn "grafana";
   in {
     aRecords = [domain];
     aaaaRecords = [domain];
   };
 
-  services.nginx.virtualHosts."grafana.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "grafana"} = {
     forceSSL = true;
     enableACME = true;
     locations."/" = {
@@ -38,231 +126,23 @@
     };
   };
 
-  services.prometheus = {
-    enable = true;
-    listenAddress = "0.0.0.0";
-    exporters = {
-      snmp = {
-        enable = true;
-        enableConfigCheck = false;
-        configuration = null;
-        configurationPath = "${pkgs.prometheus-snmp-exporter.src}/snmp.yml";
-      };
-      postgres = {
-        enable = true;
-        user = "postgres";
-        extraFlags = ["--auto-discover-databases"];
-      };
-      dnsmasq = {
-        enable = true;
-      };
-      smartctl = {
-        enable = true;
-      };
+  services.prometheus.exporters = {
+    snmp = {
+      enable = true;
+      enableConfigCheck = false;
+      configuration = null;
+      configurationPath = "${pkgs.prometheus-snmp-exporter.src}/snmp.yml";
     };
-
-    scrapeConfigs = [
-      {
-        job_name = "node";
-        static_configs = [
-          {
-            targets = [
-              "nixhost:9100"
-              "router:9100"
-              "trex:9100"
-              "rock-5b:9100"
-              "n100:9100"
-              "prime:9100"
-              "neo2:9100"
-              "strix-1:9100"
-              "strix-2:9100"
-              "fuckup:9100"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "cadvisor";
-        static_configs = [
-          {
-            targets = [
-              "nixhost:58080"
-              "router:58080"
-              "trex:58080"
-              # "rock-5b:58080"
-              "n100:58080"
-              # "prime:9100"
-              # "neo2:9100"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "nginx";
-        static_configs = [
-          {
-            targets = [
-              "127.0.0.1:9113"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "mtail";
-        static_configs = [
-          {
-            targets = [
-              "trex:3903"
-              "fuckup:3903"
-              "rock-5b:3903"
-              "n100:3903"
-              "strix-1:3903"
-              "strix-2:3903"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "unifi";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:9130"];
-          }
-        ];
-      }
-      {
-        job_name = "prometheus";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:9090"];
-          }
-        ];
-      }
-      {
-        job_name = "postgres";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:9187"];
-          }
-        ];
-      }
-      {
-        job_name = "ipmi";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:9290"];
-          }
-        ];
-      }
-      {
-        job_name = "dnsmasq";
-        static_configs = [
-          {
-            targets = ["192.168.23.1:9153"];
-          }
-        ];
-      }
-      {
-        job_name = "smartctl";
-        static_configs = [
-          {
-            targets = [
-              "trex:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
-              "nixhost:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "tor";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:9130"];
-          }
-        ];
-      }
-      {
-        job_name = "zfs";
-        static_configs = [
-          {
-            targets = [
-              "trex:${builtins.toString config.services.prometheus.exporters.zfs.port}"
-              "router:${builtins.toString config.services.prometheus.exporters.zfs.port}"
-            ];
-          }
-        ];
-      }
-      {
-        job_name = "geth_node";
-        metrics_path = "/debug/metrics/prometheus";
-        static_configs = [
-          {
-            targets = ["127.0.0.1:6060"];
-          }
-        ];
-      }
-
-      {
-        job_name = "lighthouse";
-        static_configs = [
-          {
-            targets = ["192.168.23.8:5054"];
-          }
-        ];
-      }
-      {
-        job_name = "reth";
-        static_configs = [
-          {
-            targets = ["192.168.23.8:6060"];
-          }
-        ];
-      }
-      {
-        job_name = "p2pool";
-        static_configs = [
-          {
-            targets = ["router:8889"];
-          }
-        ];
-      }
-      {
-        job_name = "hostapd";
-        static_configs = [
-          {
-            targets = ["router:9551"];
-          }
-        ];
-      }
-      {
-        job_name = "snmp";
-        metrics_path = "/snmp";
-        params = {module = ["if_mib"];};
-        relabel_configs = [
-          {
-            source_labels = ["__address__"];
-            target_label = "__param_target";
-          }
-          {
-            source_labels = ["__param_target"];
-            target_label = "instance";
-          }
-          {
-            source_labels = [];
-            target_label = "__address__";
-            replacement = "localhost:9116";
-          }
-        ];
-        static_configs = [
-          {
-            targets = [
-              "mikrotik-10g"
-              "mikrotik-100g"
-              "apc8b3fcb.lan.satanic.link"
-            ];
-          }
-        ];
-      }
-    ];
+    postgres = {
+      enable = true;
+      user = "postgres";
+      extraFlags = ["--auto-discover-databases"];
+    };
+    dnsmasq = {
+      enable = true;
+    };
+    smartctl = {
+      enable = true;
+    };
   };
 }

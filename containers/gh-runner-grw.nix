@@ -6,9 +6,11 @@
   networking,
   containers,
   mkSecret,
+  network,
   ...
-}: {
-  
+}: let
+  self = network.hosts."gh-runner-grw";
+in {
   users.users."gh-runner-grw" = {
     isSystemUser = true;
     group = "gh-runner-grw";
@@ -24,8 +26,8 @@
   containers.gh-runner-grw = {
     autoStart = true;
     privateNetwork = true;
-    hostBridge = "br0";
-    localAddress = "192.168.23.50/24";
+    hostBridge = "br0.lan";
+    localAddress = network.cidrOf "lan" self.addresses.lan;
 
     bindMounts = {
       "/run/gh-runner-georgewhewell-nixos-host.secret" = {

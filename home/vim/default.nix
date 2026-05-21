@@ -4,14 +4,6 @@
   ...
 }: {
   home = {
-    sessionVariables = rec {
-      EDITOR = "nvim";
-      VISUAL = EDITOR;
-    };
-    shellAliases = {
-      vi = "nvim";
-      vim = "nvim";
-    };
     packages = with pkgs;
       [
         nixpkgs-fmt
@@ -46,8 +38,13 @@
 
     neovim = {
       enable = true;
+      defaultEditor = true;
+      viAlias = true;
+      vimAlias = true;
+      withRuby = false;
+      withPython3 = false;
 
-      extraLuaConfig = ''
+      initLua = ''
         -- Disable mouse so terminal copy/paste works
         vim.opt.mouse = ""
 
@@ -79,16 +76,6 @@
 
         -- Reduce the delay before CursorHold triggers
         vim.opt.updatetime = 500
-
-        -- Treesitter setup
-        require('nvim-treesitter.configs').setup({
-          highlight = {
-            enable = true,
-          },
-          indent = {
-            enable = true,
-          },
-        })
 
         -- Trouble.nvim setup
         require('trouble').setup({})

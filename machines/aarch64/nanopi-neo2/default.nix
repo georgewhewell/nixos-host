@@ -2,9 +2,14 @@
   config,
   pkgs,
   lib,
+  inputs,
+  network,
   ...
 }: {
+  system.stateVersion = "25.05";
+
   imports = [
+    inputs.disko.nixosModules.disko
     ../../../profiles/common.nix
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
@@ -12,12 +17,12 @@
     ../../../services/buildfarm-slave.nix
   ];
 
-  deployment.targetHost = "neo2.lan.satanic.link";
+  deployment.targetHost = "neo2.${network.domains.lan}";
   deployment.targetUser = "grw";
 
   sconfig = {
     profile = "server";
-    home-manager.enable = false;
+    home-manager.enable = true;
   };
 
   networking = {
@@ -26,21 +31,19 @@
     useNetworkd = true;
   };
 
-  documentation.enable = false;
-
+  disko.imageBuilder.enableBinfmt = true;
   disko.devices = {
     disk = {
-      main = {
+      neo2-sdcard = {
+        device = "/dev/sda";
         type = "disk";
-        device = "/dev/mmcblk0";
+        imageSize = "2G";
         content = {
           type = "gpt";
           partitions = {
             ESP = {
-              name = "ESP";
-              start = "1M";
-              size = "512M";
               type = "EF00";
+              size = "512M";
               content = {
                 type = "filesystem";
                 format = "vfat";
@@ -58,6 +61,11 @@
             };
           };
         };
+        # Write u-boot to sector 256 (128KB offset) for Allwinner H3+ SoCs
+        # This location doesn't conflict with GPT partition table
+        postCreateHook = ''
+          dd if=${pkgs.ubootNanoPiNeo2}/u-boot-sunxi-with-spl.bin of=$device bs=1024 seek=128 conv=notrunc
+        '';
       };
     };
   };

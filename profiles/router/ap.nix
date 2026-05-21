@@ -8,16 +8,16 @@
 }: {
   sops.secrets.wifi-password = mkSecret "wifi-password" {};
 
-  boot.kernelPackages = let
-    athKernel = pkgs.linuxKernel.kernels.linux_testing.override {
-      argsOverride = {
-        src = inputs.ath-kernel;
-        version = "6.18-rc5";
-        modDirVersion = "6.18.0-rc5";
-      };
-    };
-  in
-    lib.mkForce (pkgs.linuxPackagesFor athKernel);
+  # boot.kernelPackages = let
+  #   athKernel = pkgs.linuxKernel.kernels.linux_testing.override {
+  #     argsOverride = {
+  #       src = inputs.ath-kernel;
+  #       version = "6.18-rc5";
+  #       modDirVersion = "6.18.0-rc5";
+  #     };
+  #   };
+  # in
+  #   lib.mkForce (pkgs.linuxPackagesFor athKernel);
 
   hardware.wirelessRegulatoryDatabase = true;
 

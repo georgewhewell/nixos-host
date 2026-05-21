@@ -3,9 +3,14 @@
   pkgs,
   lib,
   modulesPath,
+  inputs,
+  network,
   ...
 }: {
+  system.stateVersion = "25.05";
+
   imports = [
+    inputs.disko.nixosModules.disko
     ../../../profiles/common.nix
     ../../../profiles/headless.nix
     ../../../profiles/home.nix
@@ -13,7 +18,7 @@
     ../../../services/buildfarm-slave.nix
   ];
 
-  deployment.targetHost = "prime.lan.satanic.link";
+  deployment.targetHost = "prime.${network.domains.lan}";
   deployment.targetUser = "grw";
 
   sconfig = {
@@ -21,61 +26,10 @@
     home-manager.enable = false;
   };
 
-  networking.firewall.allowedUDPPorts = [
-    5353
-  ];
-  networking.firewall.allowedTCPPorts = [
-    1234
-  ];
-
-  services.spotifyd = {
-    enable = true;
-    settings = {
-      global = {
-        device_name = "prime";
-        device_type = "speaker";
-        use_mpris = false;
-        dbus_type = "system";
-        cache_path = "/tmp/spotifyd";
-        max_cache_size = 100000000; # ~100MB
-        # };
-        # discovery = {
-        disable_discovery = false;
-        zeroconf_port = 1234;
-        # };
-        # audio = {
-        backend = "alsa";
-      };
-    };
-  };
-
   networking = {
     hostName = "prime";
     useDHCP = true;
     useNetworkd = true;
-  };
-
-  hardware.alsa.enable = true;
-
-  # Set REIYIN Audio device as default
-  hardware.alsa.config = ''
-    defaults.pcm.card 0
-    defaults.ctl.card 0
-  '';
-
-  # Run amixer commands after boot to configure audio
-  systemd.services.configure-usb-audio = {
-    description = "Configure USB audio device for analog output";
-    after = ["sound.target"];
-    wantedBy = ["multi-user.target"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = [
-        "${pkgs.alsa-utils}/bin/amixer -c 0 set 'REIYIN Audio' unmute"
-        "${pkgs.alsa-utils}/bin/amixer -c 0 set 'Extension Unit' off"
-      ];
-    };
   };
 
   disko.devices = {

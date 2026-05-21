@@ -26,19 +26,21 @@
       # Fix Git/Nix ownership issues with NFS mounts
       export GIT_CEILING_DIRECTORIES=/Volumes
 
-      # disable claude-code spyware
-      export CLAUDE_CODE_ENABLE_TELEMETRY=0
-      export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-      export CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1
-      export DISABLE_AUTOUPDATER=1
-      export DISABLE_BUG_COMMAND=1
-      export DISABLE_COST_WARNINGS=1
-      export DISABLE_ERROR_REPORTING=1
-      export DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
-      export DISABLE_TELEMETRY=1
     '';
 
     initContent = ''
+      # Use fcntl locking to prevent history corruption on crash
+      setopt HIST_FCNTL_LOCK
+
+      # Auto-repair corrupt history file on shell start
+      if [[ -f "$HISTFILE" ]] && ! fc -R "$HISTFILE" 2>/dev/null; then
+        echo "Repairing corrupt history file..."
+        mv "$HISTFILE" "$HISTFILE.corrupt"
+        strings "$HISTFILE.corrupt" | grep -a '^: [0-9]*:[0-9]*;' > "$HISTFILE"
+        rm "$HISTFILE.corrupt"
+        fc -R "$HISTFILE"
+      fi
+
       # make nix-shell use zsh
       ${pkgs.any-nix-shell}/bin/any-nix-shell zsh | source /dev/stdin
 
@@ -57,7 +59,7 @@
       pc = "pycharm-community . > /dev/null 2>&1 &";
       nclaude = "npx @anthropic-ai/claude-code@latest";
       ncodex = "npx @openai/codex@latest -c model_reasoning_effort=high";
-      wrangler = "npx wrangler@latest";
+      nwrangler = "npx wrangler@latest";
     };
 
     plugins = [

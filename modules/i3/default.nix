@@ -34,7 +34,7 @@ in
       '';
     };
 
-    hardware.pulseaudio.enable = true;
+    services.pulseaudio.enable = true;
 
     environment.etc."xdg/gtk-3.0/settings.ini".text = ''
       [Settings]

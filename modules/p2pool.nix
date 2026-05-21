@@ -80,6 +80,40 @@ in {
         '';
       };
 
+      mergeMining = {
+        enable = lib.mkEnableOption "Tari merge mining";
+
+        tariHost = lib.mkOption {
+          type = lib.types.str;
+          default = "127.0.0.1";
+          description = "IP address of the Tari base node gRPC for merge mining.";
+        };
+
+        tariPort = lib.mkOption {
+          type = lib.types.port;
+          default = 18142;
+          description = "Tari base node gRPC port (used for merge mining).";
+        };
+
+        tariWalletAddress = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            Tari wallet address for merge mining payouts.
+            Can use environment variable substitution (e.g. "$TARI_WALLET_ADDRESS")
+            when used with environmentFile.
+          '';
+        };
+      };
+
+      extraArgs = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        description = ''
+          Extra command-line arguments to pass to p2pool.
+        '';
+      };
+
       socks5.enable = lib.mkEnableOption "connecting to a SOCKS5 proxy for outgoing connections";
 
       socks5.ip = lib.mkOption {
@@ -163,7 +197,7 @@ in {
           --stratum 0.0.0.0:${toString cfg.stratumPort} \
           --p2p 0.0.0.0:${toString cfg.p2pPort} \
           --no-stratum-http \
-          --loglevel ${toString cfg.logLevel}${lib.optionalString cfg.mini " \\\n  --mini"}${lib.optionalString cfg.socks5.enable " \\\n  --socks5 ${cfg.socks5.ip}:${toString cfg.socks5.port}"}${lib.optionalString (cfg.walletAddress != "") " \\\n  --wallet ${cfg.walletAddress}"}
+          --loglevel ${toString cfg.logLevel}${lib.optionalString cfg.mini " \\\n  --mini"}${lib.optionalString cfg.socks5.enable " \\\n  --socks5 ${cfg.socks5.ip}:${toString cfg.socks5.port}"}${lib.optionalString (cfg.walletAddress != "") " \\\n  --wallet ${cfg.walletAddress}"}${lib.optionalString cfg.mergeMining.enable " \\\n  --merge-mine tari://${cfg.mergeMining.tariHost}:${toString cfg.mergeMining.tariPort} ${cfg.mergeMining.tariWalletAddress}"}${lib.optionalString (cfg.extraArgs != []) " \\\n  ${lib.escapeShellArgs cfg.extraArgs}"}
       '';
 
       serviceConfig = {
@@ -182,10 +216,57 @@ in {
       };
     };
 
-    assertions = lib.singleton {
-      assertion = cfg.walletAddress != "";
-      message = ''
-        A wallet address must be specified.
+    assertions = [
+      {
+        assertion = cfg.walletAddress != "";
+        message = "A wallet address must be specified.";
+      }
+      {
+        assertion = cfg.mergeMining.enable -> cfg.mergeMining.tariWalletAddress != null;
+        message = "A Tari wallet address must be specified when merge mining is enabled.";
+      }
+    ];
+
+    # Configure mtail to monitor p2pool logs from journald
+    services.mtail = {
+      enable = true;
+      openFirewall = true;
+      journaldUnits = ["p2pool"];
+      programs.p2pool = ''
+        # P2Pool metrics parser
+        counter p2pool_share_found_total by user
+        gauge p2pool_share_difficulty by user
+        gauge p2pool_share_effort by user
+        counter p2pool_block_found_total
+        counter p2pool_payout_total
+        counter p2pool_payout_xmr_total
+        counter p2pool_payout_missed_total
+
+        # Share found - filter restart noise (diff < 10000000)
+        # Real shares have diff in the billions; restart replays ramp from 100000 to ~4M
+        /StratumServer SHARE FOUND: mainchain height \d+, sidechain height \d+, diff (?P<diff>\d+), client [^,]+, user (?P<user>\w+), effort (?P<effort>[\d\.]+)%/ {
+          int($diff) > 10000000 {
+            p2pool_share_found_total[$user]++
+            p2pool_share_difficulty[$user] = int($diff)
+            p2pool_share_effort[$user] = float($effort)
+          }
+        }
+
+        # Pool found a block
+        /P2Pool BLOCK FOUND: main chain block at height/ {
+          p2pool_block_found_total++
+        }
+
+        # Payout received
+        /got a payout of (?P<amount>[\d\.]+) XMR in block/ {
+          p2pool_payout_total++
+          p2pool_payout_xmr_total += float($amount)
+        }
+
+        # Missed payout
+        /didn't get a payout in block/ {
+          p2pool_payout_missed_total++
+        }
       '';
     };
 

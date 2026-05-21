@@ -2,6 +2,7 @@
   pkgs,
   lib,
   config,
+  network,
   ...
 }: {
   programs.gpg = {
@@ -200,95 +201,95 @@
     maxCacheTtl = 86400; # 24 hours
     maxCacheTtlSsh = 86400; # 24 hours
     extraConfig = let
-      pinentryAuto = pkgs.writeShellScript "pinentry-auto" ''
-        # Smart pinentry selector based on context
-
-        # Allow explicit control via environment variable
-        case "$PINENTRY_USER_DATA" in
-          *USE_TTY*) exec ${pkgs.pinentry-tty}/bin/pinentry-tty "$@" ;;
-          *USE_CURSES*) exec ${pkgs.pinentry-tty}/bin/pinentry-tty "$@" ;;  # Use tty instead of curses to avoid hangs
-          ${
-          if pkgs.stdenv.isDarwin
-          then ''
-            *USE_MAC*) exec ${pkgs.pinentry_mac}/bin/pinentry-mac "$@" ;;
-          ''
-          else ""
-        }
-        esac
-
-        # Auto-detect based on environment
-        ${
-          if pkgs.stdenv.isDarwin
-          then ''
-            # On Darwin, ALWAYS use GUI pinentry
-            # This is where the Yubikey is physically connected
-            exec ${pkgs.pinentry_mac}/bin/pinentry-mac "$@"
-          ''
-          else ''
-            # On Linux, check for display
-            if [ -n "$DISPLAY" ]; then
-              # We have a display, try GUI pinentries
-              for p in ${pkgs.pinentry-gtk2}/bin/pinentry-gtk-2 ${pkgs.pinentry-qt}/bin/pinentry-qt ${pkgs.pinentry-gnome3}/bin/pinentry-gnome3; do
-                [ -x "$p" ] && exec "$p" "$@"
-              done
-            fi
-            # No display or no GUI pinentry found, use tty
-            exec ${pkgs.pinentry-tty}/bin/pinentry-tty "$@"
-          ''
-        }
-      '';
+      # gpg.nix is only loaded for graphical homes (see modules/home-manager.nix),
+      # so we hard-code a GUI pinentry here. pinentry-qt is the only Linux
+      # pinentry that works under both Wayland and X11; pinentry-mac on Darwin.
+      # When there's no display (SSH'd into the desktop), fall back to TTY.
+      pinentrySelect =
+        if pkgs.stdenv.isDarwin
+        then "${pkgs.pinentry_mac}/bin/pinentry-mac"
+        else pkgs.writeShellScript "pinentry-graphical" ''
+          if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; then
+            exec ${pkgs.pinentry-qt}/bin/pinentry-qt "$@"
+          fi
+          exec ${pkgs.pinentry-tty}/bin/pinentry-tty "$@"
+        '';
     in ''
-      pinentry-program ${pinentryAuto}
+      pinentry-program ${pinentrySelect}
     '';
   };
 
-  # programs.ssh = {
-  #   extraConfig =
-  #     ''
-  #       # Update GPG TTY when initiating SSH connections (only if agent exists)
-  #       Match host * exec "test -S ~/.gnupg/S.gpg-agent && gpg-connect-agent --no-autostart UPDATESTARTUPTTY /bye >/dev/null 2>&1"
+  # GPG agent forwarding only to LAN machines (they have /run/user/1000/gnupg/)
+  programs.ssh.matchBlocks = {
+    "*.${network.domains.lan}" = {
+      extraOptions = {
+        StreamLocalBindUnlink = "yes";
+      };
+      remoteForwards = [
+        {
+          bind.address = "/run/user/1000/gnupg/S.gpg-agent";
+          host.address =
+            if pkgs.stdenv.isDarwin
+            then "/Users/grw/.gnupg/S.gpg-agent.extra"
+            else "/run/user/1000/gnupg/S.gpg-agent.extra";
+        }
+        {
+          bind.address = "/run/user/1000/gnupg/S.gpg-agent.ssh";
+          host.address =
+            if pkgs.stdenv.isDarwin
+            then "/Users/grw/.gnupg/S.gpg-agent.ssh"
+            else "/run/user/1000/gnupg/S.gpg-agent.ssh";
+        }
+      ];
+    };
+  };
 
-  #     ''
-  #     + (
-  #       if pkgs.stdenv.isDarwin
-  #       then ''
-  #         Host *.satanic.link 78.47.106.113
-  #           RemoteForward /run/user/1000/gnupg/S.gpg-agent /Users/grw/.gnupg/S.gpg-agent.extra
-  #           RemoteForward /run/user/1000/gnupg/S.gpg-agent.ssh /Users/grw/.gnupg/S.gpg-agent.ssh
-  #           StreamLocalBindUnlink yes
-  #       ''
-  #       else ''
-  #         Host *.satanic.link 78.47.106.113
-  #           RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra
-  #           RemoteForward /run/user/1000/gnupg/S.gpg-agent.ssh /run/user/1000/gnupg/S.gpg-agent.ssh
-  #           StreamLocalBindUnlink yes
-  #       ''
-  #     );
-  # };
+  programs.zsh.initContent = lib.mkAfter ''
+    export GPG_TTY=$(tty)
 
-  # programs.zsh.initContent = lib.mkAfter ''
-  #   export GPG_TTY=$(tty)
+    ${
+      if pkgs.stdenv.isLinux
+      then ''
+        # On Linux, use forwarded GPG agent socket if available AND we're in SSH session
+        if [[ -n "$SSH_CONNECTION" ]] && [[ -S "/run/user/1000/gnupg/S.gpg-agent.ssh" ]]; then
+          export SSH_AUTH_SOCK="/run/user/1000/gnupg/S.gpg-agent.ssh"
+        fi
+      ''
+      else ""
+    }
+  '';
 
-  #   ${
-  #     if pkgs.stdenv.isLinux
-  #     then ''
-  #       # On Linux, use forwarded GPG agent socket if available AND we're in SSH session
-  #       if [[ -n "$SSH_CONNECTION" ]] && [[ -S "/run/user/1000/gnupg/S.gpg-agent.ssh" ]]; then
-  #         export SSH_AUTH_SOCK="/run/user/1000/gnupg/S.gpg-agent.ssh"
-  #       fi
-  #     ''
-  #     else ""
-  #   }
-  # '';
-
+  # libsecret backend for Zed et al — pass-secret-service exposes the
+  # standard org.freedesktop.secrets D-Bus API and stores everything in
+  # the pass store, encrypted with the user's GPG key (YubiKey-backed).
+  # The package ships its own dbus-org.freedesktop.secrets.service unit,
+  # auto-activated by D-Bus on first request. We override it here only
+  # to inject PASSWORD_STORE_DIR (XDG location) and PATH (gpg/pass).
   home.packages = with pkgs; [
     (
       if pkgs.stdenv.isDarwin
       then pinentry_mac
-      else pinentry-tty
+      else pinentry-qt
     )
-    pinentry-tty # Always include tty version as fallback
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    pkgs.pass-secret-service
   ];
 
-  services.keybase.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isX86_64;
+  systemd.user.services."dbus-org.freedesktop.secrets" = lib.mkIf pkgs.stdenv.isLinux {
+    Unit.Description = "Expose libsecret D-Bus API with pass as backend";
+    Service = {
+      BusName = "org.freedesktop.secrets";
+      # --path is required: pypass hardcodes ~/.password-store and
+      # ignores $PASSWORD_STORE_DIR. We use the XDG location to match
+      # programs.password-store in home/development.nix.
+      ExecStart = "${pkgs.pass-secret-service}/bin/pass_secret_service --path %h/.local/share/password-store";
+      Environment = [
+        "PATH=${lib.makeBinPath [pkgs.pass pkgs.gnupg]}"
+      ];
+      Restart = "on-failure";
+    };
+  };
+
+  services.keybase.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
+  services.kbfs.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
 }

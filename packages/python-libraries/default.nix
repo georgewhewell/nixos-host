@@ -24,4 +24,8 @@ rec {
   jaxlib = callPackage ./jaxlib { };
   jaxlib-bin = callPackage ./jaxlib-bin { };
 
+  # LTX-2 video generation model
+  ltx-core = callPackage ./ltx-core { };
+  ltx-pipelines = callPackage ./ltx-pipelines { inherit ltx-core; };
+
 }

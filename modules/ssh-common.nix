@@ -1,18 +1,24 @@
-{config, lib, ...}: {
+{config, lib, pkgs, network, ...}:
+let
+  ip = lib.getExe' pkgs.iproute2 "ip";
+  grep = lib.getExe pkgs.gnugrep;
+  ssh = lib.getExe pkgs.openssh;
+  lanPrefixRegex = builtins.replaceStrings ["."] ["\\."] network.vlans.lan.prefix;
+in {
   # This module adds common SSH config to system-level SSH
   programs.ssh.extraConfig = lib.mkBefore ''
-    # ProxyJump logic for satanic.link hosts
-    Match host *.satanic.link exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
-      ProxyJump grw@satanic.link
-    
-    # Direct connection when on local network  
-    Match host *.satanic.link exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+    # ProxyCommand for ${network.domains.public} hosts (resolves hostname on jump host, not client)
+    Match host *.${network.domains.public} exec "! ${ip} addr 2>/dev/null | ${grep} -q '${lanPrefixRegex}\.'"
+      ProxyCommand ${ssh} -W %h:%p grw@${network.domains.public}
+
+    # Direct connection when on local network
+    Match host *.${network.domains.public} exec "${ip} addr 2>/dev/null | ${grep} -q '${lanPrefixRegex}\.'"
       ProxyJump none
-    
+
     # Also handle direct IPs
     Host 78.47.106.113
       ProxyJump none
-    
+
     # Control master settings
     Host *
       ControlMaster auto

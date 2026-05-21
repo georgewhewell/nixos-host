@@ -1,0 +1,7 @@
+.claude
+.cache
+result
+.direnv
+*.esphome
+esphomes/.esphome
+flake.lock

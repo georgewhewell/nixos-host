@@ -3,40 +3,30 @@
   pkgs,
   lib,
   ...
-}: {
+}: let
+  network = import ../network.nix lib;
+in {
   imports = [
     ./users.nix
   ];
 
-  networking.hosts = {
-    "127.0.0.1" = ["localhost"];
-    "192.168.23.1" = ["router"];
-    "192.168.23.2" = ["mikrotik-10g"];
-    "192.168.23.3" = ["ap"];
-    "192.168.23.4" = ["x10-ipmi"];
-    "192.168.23.5" = ["nixhost"];
-    "192.168.23.6" = ["vacuum"];
-    "192.168.23.7" = ["fuckup"];
-    "192.168.23.8" = ["trex"];
-    "192.168.23.9" = ["mikrotik-100g"];
-    "192.168.23.10" = ["trx90bmc"];
-    "192.168.23.11" = ["apc-ups"];
-    "192.168.23.12" = ["printer"];
-    "192.168.23.13" = ["cerberus"];
-    "192.168.23.14" = ["n100"];
-    "192.168.23.15" = ["arr-servers"];
-    "192.168.23.16" = ["zigbee-stick"];
-    "192.168.23.17" = ["nanokvm"];
-    "192.168.23.18" = ["rock-5b"];
-    "192.168.23.23" = ["poe-switch-10g"];
-  };
+  # Expose `network` as a free function arg to every module in the same
+  # NixOS evaluation. Set here because every host AND every container imports
+  # this profile, so it covers both top-level and nested-container modules
+  # (containers don't inherit parent specialArgs).
+  _module.args.network = network;
 
-  services.dbus.packages = [pkgs.gcr];
+  boot.swraid.mdadmConf = "MAILADDR root";
+
+  networking.hosts =
+    {"127.0.0.1" = ["localhost"];}
+    // network.toNixosHosts;
+
   environment.enableAllTerminfo = true;
 
   environment.systemPackages = with pkgs; [
     rsync
-    # ethtool
+    ethtool
     # iotop
     # ncdu
     # usbutils
@@ -51,8 +41,32 @@
     ACTION=="add"  SUBSYSTEM=="block", KERNEL=="sd[a-z]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
   '';
 
+  # Smart card support (Yubikey) - lightweight, needed on any machine with a card reader
+  services.pcscd.enable = true;
+
   services.irqbalance.enable = lib.mkDefault true;
-  services.fwupd.enable = config.boot.kernelPackages.stdenv.isx86_64;
+  services.fwupd.enable = lib.mkDefault config.boot.kernelPackages.stdenv.isx86_64;
+
+  # Hardware watchdog - reboots if systemd hangs
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "15s";
+    RebootWatchdogSec = "30s";
+    KExecWatchdogSec = "30s";
+  };
+
+  # Reboot on kernel lockups. The x86 hardlockup detector is enabled
+  # by nmi_watchdog=panic,1 in uefi-boot.nix; keep the sysctl explicit so the
+  # runtime state is visible and survives systemd-sysctl.
+  boot.kernelParams = ["softlockup_panic=1"];
+  boot.kernel.sysctl =
+    {
+      "kernel.watchdog" = 1;
+      "kernel.softlockup_panic" = 1;
+    }
+    // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+      "kernel.nmi_watchdog" = 1;
+      "kernel.hardlockup_panic" = 1;
+    };
 
   environment.pathsToLink = ["/share/zsh"];
 
@@ -72,7 +86,7 @@
   };
 
   console = {
-    font = "Lat2-Terminus16";
+    font = lib.mkDefault "Lat2-Terminus16";
     keyMap = "uk";
   };
 
@@ -87,24 +101,11 @@
     }
   ];
 
-  nixpkgs.config = {
-    allowUnfree = true;
-    allowBroken = true;
-  };
+  # nixpkgs.config is now set in pkgsFor (flake.nix) and read-only via readOnlyPkgs
 
-  nix = {
-    settings = {
-      trusted-users = ["grw"];
-      trusted-public-keys = [
-        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
-        "trex.satanic.link:R5wLrsrQGQdkEa9w+E1o3YibQ/VPVoPqQelJEw0yrtQ="
-      ];
-      experimental-features = ["nix-command" "flakes"];
-    };
-    gc = {
-      automatic = true;
-      dates = pkgs.lib.mkDefault "weekly";
-    };
-    optimise.automatic = true;
+  # Core nix settings are in modules/nix.nix (auto-imported)
+  nix.gc = {
+    automatic = true;
+    dates = pkgs.lib.mkDefault "weekly";
   };
 }

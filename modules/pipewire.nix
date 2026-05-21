@@ -6,7 +6,8 @@ in
   options.sconfig.pipewire = lib.mkEnableOption "Enable Pipewire";
 
   config = lib.mkIf cfg {
-    hardware.pulseaudio.enable = false;
+    services.pulseaudio.enable = false;
+    security.rtkit.enable = true;
     services.pipewire = {
       enable = true;
       pulse.enable = true;

@@ -1,6 +1,6 @@
 /configuration.nix
 .cache
-/result
+/result*
 /ssl
 *.DS_Store
 *.swp
@@ -12,6 +12,12 @@
 .aider*
 .direnv
 .claude
+.gcroots/
+.playwright-mcp/
 *.conf
 *.png
+.stfolder/
+.stversions/
+*.sync-conflict-*
 
+.scion/agents/

@@ -1,17 +1,18 @@
 {...}: {
   programs.git = {
     enable = true;
-    # package = pkgs.gitAndTools.gitFull;
-    lfs.enable = true;
 
     ignores = [
       ".vscode/settings.json"
       ".direnv"
       ".envrc"
       ".DS_Store"
+      "/target"
+      ".claude"
     ];
 
     signing = {
+      format = "openpgp";
       key = "2BA7BB19";
       signByDefault = true;
     };

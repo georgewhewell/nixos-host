@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{pkgs, network, ...}: {
   home.packages = with pkgs; [
     nixd
     nil
@@ -21,23 +21,26 @@
       "dockerfile"
       "make"
       "terraform"
+      "andromeda"
     ];
     userSettings = {
       current_line_highlight = "gutter";
-      features = {};
       lsp = {
         rust-analyzer = {
           binary = {
           };
-        };
-        nix = {
-          binary = {
-          };
+          enable_lsp_tasks = true;
         };
         nil = {
           initialization_options = {
             formatting = {
               command = ["alejandra"];
+            };
+            nix = {
+              flake = {
+                autoArchive = true;
+                autoEvalInputs = true;
+              };
             };
           };
         };
@@ -46,16 +49,14 @@
         metrics = false;
       };
       vim_mode = false;
-      ui_font_size = 14;
-      buffer_font_size = 11;
-      theme = {
-        mode = "system";
-        light = "Ayu Light";
-        dark = "Ayu Dark";
-      };
+      ui_font_size = 18;
+      buffer_font_size = 14;
+      # ui_font_size = 14;
+      # buffer_font_size = 11;
+      theme = "Black Rain (blur)";
       ssh_connections = [
         {
-          host = "trex.satanic.link";
+          host = network.publicFqdn "trex";
         }
       ];
       language_models = {

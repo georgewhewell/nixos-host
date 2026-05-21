@@ -1,0 +1,106 @@
+#ifdef USE_ESP32_VARIANT_ESP32P4
+
+#include "accelerated_jpeg_encoder.h"
+
+namespace esphome {
+namespace camera_encoder {
+
+static const char *const TAG = "camera_encoder";
+
+AcceleratedJPEGEncoder::AcceleratedJPEGEncoder(uint8_t quality, camera::EncoderSubsampling subsampling,
+                                               uint16_t timeout) {
+  this->quality_ = quality;
+  this->subsampling_ = subsampling;
+  this->timeout_ = timeout;
+
+  jpeg_encode_engine_cfg_t encode_eng_cfg = {
+      .intr_priority = 0,
+      .timeout_ms = this->timeout_,
+  };
+
+  ESP_ERROR_CHECK(jpeg_new_encoder_engine(&encode_eng_cfg, &this->encoder_engine_));
+}
+
+camera::EncoderError AcceleratedJPEGEncoder::encode_pixels(camera::CameraImageSpec *spec, camera::Buffer *pixels) {
+  uint8_t *buffer = this->output_->get_data();
+  size_t buffer_length = this->output_->get_max_size();
+  uint32_t bytes_written = 0;
+
+  jpeg_encode_cfg_t enc_config = {
+      .height = spec->height,
+      .width = spec->width,
+      .src_type = this->to_internal_(spec->format),
+      .sub_sample = this->to_internal_(this->subsampling_),
+      .image_quality = this->quality_,
+  };
+
+  esp_err_t error = jpeg_encoder_process(this->encoder_engine_, &enc_config, pixels->get_data(), pixels->get_size(),
+                                         buffer, buffer_length, &bytes_written);
+  this->output_->set_buffer_size(bytes_written);
+  if (error == ESP_ERR_TIMEOUT) {
+    ESP_LOGE(TAG, "JPEG encoder timed out. Try increasing the timeout setting.", error);
+    return this->encoded_first_frame_ ? camera::ENCODER_ERROR_SKIP_FRAME : camera::ENCODER_ERROR_CONFIGURATION;
+  }
+
+  if (error == ESP_ERR_INVALID_STATE) {
+    size_t recommended = spec->height * spec->width / 10;
+    if (buffer_length < recommended)
+      ESP_LOGE(TAG, "JPEG encoder ran out of memory. Buffer size is %zu but should be at least %zu bytes.",
+               buffer_length, recommended);
+    else
+      ESP_LOGE(TAG, "JPEG encoder ran out of memory. Buffer size is %zu. Consider increasing the buffer size.",
+               buffer_length);
+
+    return this->encoded_first_frame_ ? camera::ENCODER_ERROR_SKIP_FRAME : camera::ENCODER_ERROR_CONFIGURATION;
+  }
+
+  if (error != ESP_OK) {
+    ESP_LOGE(TAG, "ERROR: %d", error);
+    return camera::ENCODER_ERROR_CONFIGURATION;
+  }
+
+  this->encoded_first_frame_ = true;
+  return camera::ENCODER_ERROR_SUCCESS;
+}
+
+void AcceleratedJPEGEncoder::dump_config() {
+  ESP_LOGCONFIG(TAG,
+                "Accelerated JPEG Encoder:\n"
+                "  Size: %zu\n"
+                "  Quality: %u\n"
+                "  Timeout: %u\n"
+                "  %s\n",
+                this->output_->get_max_size(), this->quality_, this->timeout_, to_string(this->subsampling_));
+}
+
+jpeg_enc_input_format_t AcceleratedJPEGEncoder::to_internal_(camera::PixelFormat format) {
+  switch (format) {
+    case camera::PIXEL_FORMAT_GRAYSCALE:
+      return JPEG_ENCODE_IN_FORMAT_GRAY;
+    case camera::PIXEL_FORMAT_RGB565:
+      return JPEG_ENCODE_IN_FORMAT_RGB565;
+    // Internal representation for RGB is in byte order: B, G, R
+    case camera::PIXEL_FORMAT_BGR888:
+      return JPEG_ENCODE_IN_FORMAT_RGB888;
+  }
+
+  return JPEG_ENCODE_IN_FORMAT_GRAY;
+}
+
+jpeg_down_sampling_type_t AcceleratedJPEGEncoder::to_internal_(camera::EncoderSubsampling sampling) {
+  switch (sampling) {
+    case camera::SUBSAMPLING_444:
+      return JPEG_DOWN_SAMPLING_YUV444;
+    case camera::SUBSAMPLING_422:
+      return JPEG_DOWN_SAMPLING_YUV422;
+    case camera::SUBSAMPLING_420:
+      return JPEG_DOWN_SAMPLING_YUV420;
+  }
+
+  return JPEG_DOWN_SAMPLING_YUV444;
+}
+
+}  // namespace camera_encoder
+}  // namespace esphome
+
+#endif

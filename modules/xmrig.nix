@@ -3,8 +3,10 @@
   pkgs,
   inputs,
   lib,
+  network,
   ...
 }: let
+  common = import ../lib/xmrig.nix { inherit lib network; };
   cfg = config.sconfig.xmrig;
 in {
   options.sconfig.xmrig = {
@@ -31,7 +33,7 @@ in {
 
     poolHost = lib.mkOption {
       type = lib.types.str;
-      default = "192.168.23.1";
+      default = network.routerIp;
       description = "P2Pool stratum host to connect to.";
     };
 
@@ -40,21 +42,204 @@ in {
       default = 3333;
       description = "P2Pool stratum port to connect to.";
     };
+
+    uclampMax = lib.mkOption {
+      type = lib.types.nullOr (lib.types.ints.between 0 100);
+      default = null;
+      example = 50;
+      description = "CPU utilization clamp maximum (0-100%).";
+    };
+
+    httpApi = {
+      enable = lib.mkEnableOption "XMRig HTTP API";
+
+      host = lib.mkOption {
+        type = lib.types.str;
+        default = "127.0.0.1";
+        description = "Host/address for the XMRig HTTP API listener.";
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8082;
+        description = "Port for the XMRig HTTP API.";
+      };
+
+      restricted = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether the XMRig HTTP API runs in restricted (read-only) mode.";
+      };
+
+      accessToken = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Access token for the HTTP API.
+          If null, a deterministic per-host local token is used.
+        '';
+      };
+    };
+
+    mqttSwitch = common.mqttSwitchOptions;
+
+    inhibit = {
+      nixDaemonBuilds = {
+        enable = lib.mkEnableOption "Pause xmrig mining when nix-daemon is actively building";
+
+        quietSeconds = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = 120;
+          description = "How long to wait after the last nix-daemon build log event before resuming.";
+        };
+      };
+
+      dota2 = {
+        enable = lib.mkEnableOption "Pause xmrig mining when Dota 2 activity is seen in journald";
+
+        quietSeconds = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = 600;
+          description = "How long to keep xmrig inhibited after the last Dota 2 journal match.";
+        };
+
+        patterns = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [
+            "\\bdota2\\b"
+            "\\bdota\\b"
+            "appid\\s*570"
+          ];
+          description = "Case-insensitive Python regex patterns to detect Dota 2 activity.";
+        };
+      };
+    };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf cfg.enable (let
+    mqttCfg = cfg.mqttSwitch;
+    nixDaemonInhibitCfg = cfg.inhibit.nixDaemonBuilds;
+    dota2InhibitCfg = cfg.inhibit.dota2;
+    hostName = config.networking.hostName;
+    xmrigApiToken =
+      if cfg.httpApi.accessToken != null
+      then cfg.httpApi.accessToken
+      else "xmrig-${hostName}-local";
+
+    topics = common.mkMqttTopics { inherit mqttCfg hostName; };
+    payloads = common.mkDiscoveryPayloads {
+      inherit hostName topics;
+      platformModel = "Linux Host";
+    };
+    mqttAgentConfig = common.mkMqttAgentConfig { inherit mqttCfg topics payloads; };
+
+    agentConfigJson = builtins.toJSON {
+      platform = "linux";
+      mqtt = mqttAgentConfig;
+      xmrigApi = {
+        baseUrl = "http://${cfg.httpApi.host}:${toString cfg.httpApi.port}";
+        token = xmrigApiToken;
+      };
+      inhibitor = {
+        nixBuilds = {
+          enable = nixDaemonInhibitCfg.enable;
+          quietSeconds = nixDaemonInhibitCfg.quietSeconds;
+        };
+        dota2 = {
+          enable = dota2InhibitCfg.enable;
+          quietSeconds = dota2InhibitCfg.quietSeconds;
+          patterns = dota2InhibitCfg.patterns;
+        };
+      };
+      system = {
+        systemctl = "${pkgs.systemd}/bin/systemctl";
+        journalctl = "${pkgs.systemd}/bin/journalctl";
+        stateDir = "/var/lib/xmrig-mqtt";
+      };
+    };
+
+    xmrigMqttAgentPython = common.mkMqttAgentPython { inherit pkgs agentConfigJson; };
+
+    # Shell script for ExecStopPost — publish offline availability on service stop
+    xmrigPublishAvailabilityScript = pkgs.writeShellScript "xmrig-mqtt-publish-availability" ''
+      set -euo pipefail
+      payload="''${1:-}"
+      case "$payload" in
+        online|offline) ;;
+        *)
+          echo "usage: $0 {online|offline}" >&2
+          exit 2
+          ;;
+      esac
+      pw_file=${lib.escapeShellArg (toString mqttCfg.passwordFile)}
+      if [ ! -r "$pw_file" ]; then
+        exit 1
+      fi
+      pw="$(${pkgs.coreutils}/bin/cat "$pw_file")"
+      ${pkgs.mosquitto}/bin/mosquitto_pub \
+        -h ${lib.escapeShellArg mqttCfg.host} \
+        -p ${lib.escapeShellArg (toString mqttCfg.port)} \
+        -u ${lib.escapeShellArg mqttCfg.username} \
+        -P "$pw" \
+        -q ${toString mqttCfg.qos} \
+        -r \
+        -t ${lib.escapeShellArg topics.availabilityTopic} \
+        -m "$payload"
+    '';
+  in {
+    sconfig.xmrig.httpApi.enable = lib.mkDefault mqttCfg.enable;
+    sconfig.xmrig.mqttSwitch.enable = lib.mkDefault (mqttCfg.passwordFile != null);
+    sconfig.xmrig.mqttSwitch.passwordFile = lib.mkDefault (
+      lib.attrByPath ["sops" "secrets" "mosquitto-password" "path"] null config
+    );
+    sconfig.xmrig.inhibit.nixDaemonBuilds.enable = lib.mkDefault mqttCfg.enable;
+
+    environment.persistence = lib.mkIf (config.sconfig.impermanence.enable && mqttCfg.enable) {
+      ${config.sconfig.impermanence.persistentStoragePath}.directories = [
+        "/var/lib/xmrig-mqtt"
+      ];
+    };
+
+    assertions = [
+      {
+        assertion = (!mqttCfg.enable) || (mqttCfg.username != null && mqttCfg.passwordFile != null);
+        message = "sconfig.xmrig.mqttSwitch requires `username` and `passwordFile` when enabled";
+      }
+    ];
+
     environment.systemPackages = [cfg.package];
     systemd.services.xmrig = {
+      environment = lib.mkIf (cfg.cudaPlugin != null) {
+        LD_LIBRARY_PATH = "/run/opengl-driver/lib";
+      };
       serviceConfig = {
         Nice = 19;
         CPUWeight = 1;
         IOWeight = 1;
-        # Restart on failure
         Restart = "always";
         RestartSec = "30s";
-        # Restart every 12 hours
         RuntimeMaxSec = "12h";
       };
+      postStart =
+        lib.optionalString (cfg.uclampMax != null) ''
+          echo "${toString cfg.uclampMax}.00" > /sys/fs/cgroup/system.slice/xmrig.service/cpu.uclamp.max
+        '';
+    };
+
+    systemd.services.xmrig-mqtt = lib.mkIf mqttCfg.enable {
+      description = "MQTT control/discovery agent for xmrig";
+      wantedBy = ["multi-user.target"];
+      after = ["network-online.target" "sops-install-secrets.service"];
+      wants = ["network-online.target" "sops-install-secrets.service"];
+      serviceConfig = {
+        Type = "simple";
+        Restart = "always";
+        RestartSec = "2s";
+        StateDirectory = "xmrig-mqtt";
+        ExecStart = "${xmrigMqttAgentPython}/bin/xmrig-mqtt-agent";
+        ExecStopPost = [ "-${xmrigPublishAvailabilityScript} offline" ];
+      };
+      path = [pkgs.mosquitto pkgs.coreutils pkgs.systemd pkgs.curl pkgs.gnugrep];
     };
 
     services.xmrig = {
@@ -81,9 +266,18 @@ in {
           {
             url = "${cfg.poolHost}:${toString cfg.poolPort}";
             user = config.networking.hostName;
-            pass = config.networking.hostName; # rig id / password
+            pass = config.networking.hostName;
           }
         ];
+      }
+      // lib.optionalAttrs cfg.httpApi.enable {
+        http = {
+          enabled = true;
+          host = cfg.httpApi.host;
+          port = cfg.httpApi.port;
+          restricted = cfg.httpApi.restricted;
+          "access-token" = xmrigApiToken;
+        };
       };
     };
 
@@ -144,5 +338,5 @@ in {
         }
       '';
     };
-  };
+  });
 }

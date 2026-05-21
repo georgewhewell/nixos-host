@@ -1,6 +1,5 @@
 {config, ...}: {
-  nixpkgs.config.cudaSupport = true;
-  nixpkgs.config.cudaCapabilities = ["8.9"]; # RTX 4090
+  # cudaSupport and cudaCapabilities are set by the sysCuda builder in machines/default.nix
 
   services.xserver = {
     enable = false;
@@ -8,10 +7,6 @@
   };
 
   hardware.graphics.enable = true;
-
-  hardware.opengl = {
-    enable = true;
-  };
 
   hardware.nvidia = {
     # Modesetting is required.

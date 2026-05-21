@@ -1,26 +1,29 @@
 {pkgs, ...}: {
   home.packages = with pkgs;
     [
-      element-desktop
       xournalpp
       yt-dlp
-      discord
-      code-cursor
-      spotify
+      #      discord
+      # code-cursor
+
       telegram-desktop
+      signal-desktop
+      element-desktop
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
       vlc
-      calibre
-      signal-desktop
+      # calibre
+      # signal
+      spotify
       monero-gui
-      tor-browser-bundle-bin
+      tor-browser
       zoom-us
       cool-retro-term
-      openshot-qt
+      element-desktop
+
+      # openshot-qt
     ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "aarch64-darwin") [
       stats
-      signal-desktop-bin
     ];
 }

@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{pkgs, network, ...}: {
   imports = [./development.nix];
 
   home.packages = with pkgs; [
@@ -55,7 +55,7 @@
         # "remote.SSH.enableDynamicForwarding" = false;
         # "remote.SSH.remoteServerListenOnSocket" = true;
         "remote.SSH.remotePlatform" = {
-          "trex.satanic.link" = "linux";
+          ${network.publicFqdn "trex"} = "linux";
         };
         #  "[python]" = {
         #    "editor.defaultFormatter" = "charliermarsh.ruff";
@@ -72,8 +72,7 @@
         jnoortheen.nix-ide
         hashicorp.terraform
         viktorqvarfordt.vscode-pitch-black-theme
-        github.copilot
-        # github.copilot-chat
+        github.copilot-chat
         rust-lang.rust-analyzer
         ms-vscode-remote.remote-ssh
         ms-python.python

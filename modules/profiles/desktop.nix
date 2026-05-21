@@ -31,6 +31,12 @@ with lib; {
       "systemd-suspend.service".enable = false;
       "systemd-hibernate.service".enable = false;
       "systemd-hybrid-sleep.service".enable = false;
+
+      # Protect the user-session tree (user manager, dbus-broker,
+      # compositor, ...) from earlyoom under heavy build pressure.
+      # Children inherit unless they explicitly override; mkForce is
+      # needed because upstream user@.service ships with +100.
+      "user@".serviceConfig.OOMScoreAdjust = mkForce (-200);
     };
   };
 }

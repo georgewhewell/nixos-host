@@ -1,6 +1,9 @@
-{mkSecret, ...}: {
-  # Declare Grafana password secret using sops-nix
+{mkSecret, network, ...}: let
+  domain = network.publicFqdn "grafana";
+in {
+  # Declare Grafana secrets using sops-nix
   sops.secrets.grafana-password = mkSecret "grafana-password" {};
+  sops.secrets.grafana-secret-key = mkSecret "grafana-secret-key" {};
   services.postgresql = {
     enable = true;
     ensureUsers = [
@@ -14,12 +17,22 @@
 
   services.grafana = {
     enable = true;
+    provision.datasources.settings.datasources = [
+      {
+        name = "prometheus";
+        type = "prometheus";
+        uid = "feit1tygbp81sc";
+        url = "http://127.0.0.1:8428";
+        isDefault = true;
+        jsonData.httpMethod = "POST";
+      }
+    ];
     settings = {
       server = {
-        domain = "grafana.satanic.link";
+        inherit domain;
         http_addr = "127.0.0.1";
         http_port = 3005;
-        root_url = "https://grafana.satanic.link";
+        root_url = "https://${domain}";
       };
       database = {
         type = "postgres";
@@ -31,6 +44,7 @@
         admin_user = "admin";
         admin_password_file = "/var/lib/grafana/grafana-password.secret";
         admin_email = "accounts@hellas.ai";
+        secret_key = "$__file{/run/secrets/grafana-secret-key}";
       };
       "auth.anonymous".enabled = true;
     };

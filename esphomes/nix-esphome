@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+backend="${script_dir}/nix-to-esphome"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  esphomes/nix-esphome render <device> [output-file]
+  esphomes/nix-esphome <esphome-command> <device> [args...]
+
+Examples:
+  esphomes/nix-esphome config esp32-s3-amoled
+  esphomes/nix-esphome compile esp32-s3-amoled
+  esphomes/nix-esphome run esp32-s3-amoled
+  esphomes/nix-esphome upload esp32-s3-amoled --device esp32-s3-amoled.local
+  esphomes/nix-esphome logs esp32-s3-amoled --device esp32-s3-amoled.local
+EOF
+}
+
+if [[ $# -lt 1 ]]; then
+  usage >&2
+  exit 1
+fi
+
+cmd="$1"
+shift
+
+case "${cmd}" in
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  render)
+    if [[ $# -lt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+    exec "${backend}" render "$@"
+    ;;
+  *)
+    if [[ $# -lt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+    device="$1"
+    shift
+    exec "${backend}" run "${device}" "${cmd}" "$@"
+    ;;
+esac

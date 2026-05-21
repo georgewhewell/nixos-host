@@ -1,8 +1,4 @@
-{
-  config,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   sconfig.pipewire = true;
   # hardware.pulseaudio.enable = true;
 
@@ -10,9 +6,15 @@
   services.pcscd.enable = true;
   programs.steam.enable = true;
 
+
   # enable sway
   # security.pam.services.swaylock = { };
-  services.gnome.gnome-keyring.enable = true;
+
+  # Use pass-secret-service (YubiKey-backed via GPG) as the libsecret backend
+  # instead of gnome-keyring. The D-Bus session activation file and systemd
+  # user unit are wired up in home/gpg.nix.
+  services.gnome.gnome-keyring.enable = false;
+  services.dbus.packages = [pkgs.gcr pkgs.pass-secret-service];
 
   /*
   environment.loginShellInit = ''
@@ -32,21 +34,6 @@
   #   wlr.enable = true;
   # };
   # services.xserver.enable = false;
-
-  # NOTE: Just to try wlroots + displaylink
-  environment.etc."modprobe.d/evdi.conf".text = ''
-    softdep evdi pre: i915 drm_display_helper
-    options evdi initial_device_count=2 initial_loglevel=3
-  '';
-
-  services.xserver.videoDrivers = [
-    # "displaylink"
-    #    "modesetting"
-    "amdgpu"
-  ];
-  boot.extraModulePackages = [
-    # config.boot.kernelPackages.evdi
-  ];
 
   xdg.portal.config.common.default = "*";
   environment.systemPackages = with pkgs; [
@@ -117,9 +104,9 @@
     };
   };
 
-  # services.upower = {
-  #   enable = true;
-  # };
+  services.upower = {
+    enable = true;
+  };
 
   hardware.bluetooth = {
     enable = true;
@@ -134,7 +121,7 @@
 
   services.blueman.enable = true;
 
-  zramSwap.enable = true;
+  #zramSwap.enable = true;
 
   services.usbmuxd = {
     enable = true;
@@ -156,9 +143,8 @@
       };
     };
     packages = with pkgs; [
-      /*
-      (nerdfonts.override { fonts = [ "Hack" ]; })
-      */
+      nerd-fonts.hack
+      font-awesome
       ibm-plex
       dejavu_fonts
       unifont

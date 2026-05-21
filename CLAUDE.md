@@ -7,6 +7,7 @@
 - Deploy single host: `colmena apply --on <hostname>`
 - Test changes: `colmena build`
 - Development shell: `nix develop`
+- you can ssh to e.g machine.lan.satanic.link
 
 ## Style Guidelines
 - Attribute set formatting: `{ pkgs, config, lib, ... }: { ... }`
@@ -31,3 +32,4 @@
 - Leverage flakes for reproducible builds
 - Use `specialArgs` to pass required context
 - Test changes with `colmena build` before deploying
+- Do NOT deploy yourself (colmena apply), but ask user to do it

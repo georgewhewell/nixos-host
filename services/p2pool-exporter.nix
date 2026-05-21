@@ -66,36 +66,36 @@ in {
 
     users.groups.p2pool-exporter = {};
 
-    systemd.services.p2pool-exporter = {
-      description = "P2Pool Prometheus exporter";
-      after = ["network.target" "p2pool.service" "redis-p2pool.service"];
-      wantedBy = ["multi-user.target"];
+    # systemd.services.p2pool-exporter = {
+    #   description = "P2Pool Prometheus exporter";
+    #   after = ["network.target" "p2pool.service" "redis-p2pool.service"];
+    #   wantedBy = ["multi-user.target"];
 
-      environment = {
-        OTEL_SERVER = "127.0.0.1:4318";
-        REDIS_SERVER = "127.0.0.1:6379";
-      };
+    #   environment = {
+    #     OTEL_SERVER = "127.0.0.1:4318";
+    #     REDIS_SERVER = "127.0.0.1:6379";
+    #   };
 
-      serviceConfig = {
-        Type = "simple";
-        User = "p2pool-exporter";
-        Group = "p2pool-exporter";
-        Restart = "always";
-        RestartSec = 10;
+    #   serviceConfig = {
+    #     Type = "simple";
+    #     User = "p2pool-exporter";
+    #     Group = "p2pool-exporter";
+    #     Restart = "always";
+    #     RestartSec = 10;
 
-        ExecStart = ''
-          ${inputs.p2pool-exporter.packages.${pkgs.stdenv.hostPlatform.system}.p2pool-exporter}/bin/p2pool-exporter \
-            -a ${cfg.p2poolApiUrl} \
-            -w ${lib.concatStringsSep " " cfg.walletAddresses} \
-            -l ${cfg.logLevel} \
-            ${lib.optionalString (cfg.scrapeInterval != null) "-t ${toString cfg.scrapeInterval}"} \
-            -e ${lib.concatStringsSep " " cfg.exchangeRates}
-        '';
+    #     ExecStart = ''
+    #       ${inputs.p2pool-exporter.packages.${pkgs.stdenv.hostPlatform.system}.p2pool-exporter}/bin/p2pool-exporter \
+    #         -a ${cfg.p2poolApiUrl} \
+    #         -w ${lib.concatStringsSep " " cfg.walletAddresses} \
+    #         -l ${cfg.logLevel} \
+    #         ${lib.optionalString (cfg.scrapeInterval != null) "-t ${toString cfg.scrapeInterval}"} \
+    #         -e ${lib.concatStringsSep " " cfg.exchangeRates}
+    #     '';
 
-        StandardOutput = "journal";
-        StandardError = "journal";
-      };
-    };
+    #     StandardOutput = "journal";
+    #     StandardError = "journal";
+    #   };
+    # };
   };
 
   meta.maintainers = with lib.maintainers; [];

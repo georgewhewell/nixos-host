@@ -8,7 +8,7 @@
   virtualisation.libvirtd = {
     enable = true;
     onBoot = "start";
-    allowedBridges = ["br0"];
+    allowedBridges = ["br0.lan"];
     qemu = {
       swtpm.enable = true;
       verbatimConfig = ''

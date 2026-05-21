@@ -3,6 +3,7 @@
   config,
   lib,
   pkgs,
+  network,
   ...
 }: {
   /*
@@ -16,38 +17,92 @@
     };
   };
 
-  deployment.targetHost = "router.satanic.link";
+  # Bind to the LAN bridge IP only — never 0.0.0.0 since this host
+  # holds the public WAN address too. `openFirewall` would open port
+  # 6052 globally, so leave it off and add a LAN-scoped rule instead.
+  services.esphome-dashboard = {
+    enable = true;
+    address = network.routerIp;
+  };
+  networking.firewall.interfaces."br0.lan".allowedTCPPorts = [6052];
+
+  profiles.thunderbolt-bridge.bridgeThunderboltNet = false;
+
+  # Override testing kernel from radeon.nix - router doesn't need HDMI VRR patches
+  # and ZFS doesn't support 6.19-rc yet
+  # boot.kernelPackages = lib.mkForce pkgs.linuxKernel.packages.linux_6_18;
+  # boot.kernelPatches = lib.mkForce [];
+
+  # Realtek RTL8127 10GbE out-of-tree driver with RSS/multi-queue support
+  # The in-kernel r8169 driver only has single-queue support for this chip
+  boot.extraModulePackages = [
+    (config.boot.kernelPackages.callPackage ../../../packages/r8127 {})
+  ];
+  boot.blacklistedKernelModules = ["r8169"];
+
+  boot.kernelParams = [
+    "video=HDMI-A-1:1920x1080@60e" # 'e' forces enable even without EDID
+  ];
+
+  deployment.targetHost = network.domains.public;
+  # deployment.targetHost = "10.86.167.2";
+  #  deployment.targetHost = network.routerIp;
+
+  # deployment.targetHost = "router.${network.domains.public}";
   deployment.targetUser = "grw";
 
   system.stateVersion = "24.11";
 
   sconfig.gcp-ddns = {
     enable = true;
-    aRecords = ["satanic.link"];
-    aaaaRecords = ["satanic.link"];
+    aRecords = [network.domains.public];
+    aaaaRecords = [network.domains.public];
   };
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-gpu-amd
 
-    # ../../../profiles/headless.nix
+    inputs.nix-strix-halo.nixosModules.default
+    inputs.nix-strix-halo.nixosModules.ryzenadj
+
+    ../../../profiles/headless.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/radeon.nix
     ../../../profiles/zfs.nix
     ../../../profiles/common.nix
     ../../../profiles/home.nix
+    ../../../profiles/amd-npu.nix
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
-    ../../../profiles/router/ap.nix
+    # ../../../profiles/router/ap.nix  # WiFi card not installed
     ../../../profiles/router/wireguard.nix
+    ../../../profiles/thunderbolt-bridge.nix
+    ../../../profiles/usb4-rdma-kernel-stable.nix
+    ../../../profiles/thunderbolt-ibverbs-mac-host.nix
 
     ../../../services/buildfarm-slave.nix
     ../../../containers/unifi.nix
     ../../../services/p2pool.nix
     ../../../services/p2pool-exporter.nix
     ../../../services/home-assistant/default.nix
+    ../../../services/frigate.nix
   ];
+
+  hardware.cpu.amd.ryzen-smu.enable = true;
+  programs.ryzen-monitor-ng.enable = true;
+  environment.systemPackages = with pkgs; [
+    ryzenadj
+    mstflint
+  ];
+
+  # services.ryzenadj = {
+  #   enable = true;
+  #   # stapmLimit = 30000;
+  #   fastLimit = 45000;
+  #   slowLimit = 38000;
+  #   tctlTemp = 90;
+  # };
 
   systemd.network.networks."20-nanokvm" = {
     matchConfig.Driver = "rndis_host";
@@ -70,114 +125,62 @@
     port = 6379;
   };
 
-  services.opentelemetry-collector = {
-    enable = true;
-    configFile = pkgs.writeText "otel-collector-config.yaml" ''
-      receivers:
-        otlp:
-          protocols:
-            grpc:
-              endpoint: 127.0.0.1:4317
-            http:
-              endpoint: 127.0.0.1:4318
+  # services.opentelemetry-collector = {
+  #   enable = true;
+  #   configFile = pkgs.writeText "otel-collector-config.yaml" ''
+  #     receivers:
+  #       otlp:
+  #         protocols:
+  #           grpc:
+  #             endpoint: 127.0.0.1:4317
+  #           http:
+  #             endpoint: 127.0.0.1:4318
 
-      processors:
-        batch:
+  #     processors:
+  #       batch:
 
-      exporters:
-        debug:
-          verbosity: detailed
-        prometheus:
-          endpoint: 0.0.0.0:8889
-          resource_to_telemetry_conversion:
-            enabled: true
+  #     exporters:
+  #       debug:
+  #         verbosity: detailed
+  #       prometheus:
+  #         endpoint: 0.0.0.0:8889
+  #         resource_to_telemetry_conversion:
+  #           enabled: true
 
-      service:
-        pipelines:
-          traces:
-            receivers: [otlp]
-            processors: [batch]
-            exporters: [debug]
-          metrics:
-            receivers: [otlp]
-            processors: [batch]
-            exporters: [debug, prometheus]
-          logs:
-            receivers: [otlp]
-            processors: [batch]
-            exporters: [debug]
-    '';
-    package = pkgs.opentelemetry-collector-contrib;
-  };
-
-  services.go2rtc = {
-    enable = true;
-    settings = {
-      homekit = {
-        esp32-s3-eth-01 = [];
-        esp32-s3-eth-02 = [];
-      };
-      streams = {
-        esp32-s3-eth-01 = [
-          "http://esp32-s3-eth-01.lan.satanic.link:8000"
-          # "ffmpeg:esp32-s3-eth-02#video=h264#hardware#raw=-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1"
-        ];
-        esp32-s3-eth-02 = [
-          "http://esp32-s3-eth-02.lan.satanic.link:8000"
-          # "ffmpeg:esp32-s3-eth-02#video=h264#hardware#raw=-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1"
-        ];
-      };
-    };
-  };
-
-  # services.nginx.enable = lib.mkForce false; # nixos module enables this by default
-  # networking.hosts = {
-  #   "127.0.0.1" = ["frigate.satanic.link"];
+  #     service:
+  #       pipelines:
+  #         traces:
+  #           receivers: [otlp]
+  #           processors: [batch]
+  #           exporters: [debug]
+  #         metrics:
+  #           receivers: [otlp]
+  #           processors: [batch]
+  #           exporters: [debug, prometheus]
+  #         logs:
+  #           receivers: [otlp]
+  #           processors: [batch]
+  #           exporters: [debug]
+  #   '';
+  #   package = pkgs.opentelemetry-collector-contrib;
   # };
 
-  services.nginx.virtualHosts.${config.services.frigate.hostname} = {
+  # IndieAuth client metadata for Claude Code MCP - served on localhost for HA to fetch
+  services.nginx.virtualHosts."localhost-oauth" = {
     listen = [
       {
-        addr = "192.168.23.1";
-        port = 8009;
-        ssl = false;
+        addr = "127.0.0.1";
+        port = 80;
       }
     ];
-  };
-
-  services.frigate = {
-    enable = true;
-    hostname = "frigate.satanic.link";
-    vaapiDriver = "radeonsi";
-    # checkConfig = false;
-    settings = {
-      mqtt = {
-        enabled = true;
-        host = "rw@127.0.0.1";
-      };
-      # ffmpeg = {
-      #   hwaccel_args = [];
-      # };
-      cameras = {
-        esp32-s3-eth-01.ffmpeg = {
-          input_args = "-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1 -c:v mjpeg";
-          inputs = [
-            {
-              path = "http://127.0.0.1:1984/api/stream.mjpeg?src=esp32-s3-eth-01";
-              roles = ["detect" "record"];
-            }
-          ];
-        };
-        esp32-s3-eth-02.ffmpeg = {
-          input_args = "-avoid_negative_ts make_zero -fflags nobuffer -flags low_delay -strict experimental -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1 -c:v mjpeg";
-          inputs = [
-            {
-              path = "http://127.0.0.1:1984/api/stream.mjpeg?src=esp32-s3-eth-02";
-              roles = ["detect" "record"];
-            }
-          ];
-        };
-      };
+    locations."= /oauth/client" = {
+      extraConfig = ''
+        default_type text/html;
+        return 200 '<!DOCTYPE html><html><head><link rel="redirect_uri" href="http://127.0.0.1/"><link rel="redirect_uri" href="http://localhost/"><link rel="redirect_uri" href="http://127.0.0.1/callback"><link rel="redirect_uri" href="http://localhost/callback"></head><body><h1>Claude Code MCP Client</h1></body></html>';
+      '';
+    };
+    locations."/" = {
+      return = "404";
     };
   };
 
@@ -186,12 +189,68 @@
       enable = true;
       openFirewall = true;
     };
-    hardware.bolt.enable = true;
+  };
+
+  # Enable switchdev mode on ConnectX-4 WAN port for hardware TC offload
+  # Must run before networkd configures the interface
+  # Note: Port 1 (LAN) stays in legacy mode - switchdev is incompatible with Linux bridge
+  # Wait on PCI device, not interface name — switchdev destroys/recreates the netdev
+  systemd.services.mlx5-switchdev-wan = {
+    description = "Enable switchdev mode on ConnectX-4 Lx WAN port";
+    before = ["systemd-networkd.service" "network-pre.target"];
+    after = ["systemd-udevd.service" "sys-devices-pci0000:00-0000:00:01.1-0000:01:00.0.device"];
+    wants = ["sys-devices-pci0000:00-0000:00:01.1-0000:01:00.0.device"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.iproute2}/bin/devlink dev eswitch set pci/0000:01:00.0 mode switchdev";
+    };
+  };
+
+  # Configure 25G interfaces (ConnectX-4) - requires manual speed/FEC settings
+  systemd.services.ethtool-enp1s0f0np0 = {
+    description = "Configure enp1s0f0np0 25G WAN link settings";
+    after = ["sys-subsystem-net-devices-enp1s0f0np0.device" "mlx5-switchdev-wan.service"];
+    wants = ["sys-subsystem-net-devices-enp1s0f0np0.device"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = [
+        "${pkgs.ethtool}/bin/ethtool -s enp1s0f0np0 speed 25000 autoneg off"
+        "${pkgs.ethtool}/bin/ethtool --set-fec enp1s0f0np0 encoding rs"
+      ];
+    };
+  };
+
+  # Realtek 10G tuning: GRO forwarding + RPS across all CPUs
+  systemd.services.ethtool-enp2s0 = {
+    description = "Configure enp2s0 Realtek 10G offload and RPS";
+    after = ["sys-subsystem-net-devices-enp2s0.device"];
+    wants = ["sys-subsystem-net-devices-enp2s0.device"];
+    wantedBy = ["multi-user.target"];
+    path = [pkgs.ethtool];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ethtool -K enp2s0 rx-udp-gro-forwarding on
+      for q in /sys/class/net/enp2s0/queues/rx-*/rps_cpus; do
+        echo ffff > "$q"
+      done
+    '';
   };
 
   networking.hosts = {
-    "127.0.0.1" = ["localhost" "satanic.link" "router.satanic.link" "frigate.satanic.link"];
-    "192.168.23.8" = ["trex.satanic.link"];
+    "127.0.0.1" = [
+      "localhost"
+      network.domains.public
+      "router.${network.domains.public}"
+      "frigate.${network.domains.public}"
+    ];
+    ${network.primaryIp network.hosts.trex} = ["trex.${network.domains.public}"];
   };
 
   boot.initrd.kernelModules = [

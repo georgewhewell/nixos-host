@@ -1,0 +1,23 @@
+# Shared SSH public keys - used by both NixOS and nix-darwin
+{
+  mac-pubkey = ''
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDLP7HdNP1K1zgEOiJvAJ/7UjnjbIZ77kfM0IP/M726Vw67AcpVZf7XIfwaz4/I4NeeXKHcAE1sZodbb9efZ6oOFHec0UmfDprmQYqcrTqLNSqdxfyeEV8VdxEM8N4Kp9+7zc38NeCd66B67FDPs/YzEOgWNtyR4UrJpCH60j1cSndeqPF90hDjHMmYVcUn1Pq+R6cRxppcCjOQiOPT7jST48s6pqyJm0x31GAt/bH4WERT5Wzah34tZLlNp3AEGjfZ/8CDLSEkvkkMdjyjQZJ0QJEdYH6u1VD2TOwtBuAHZCmW0yIkj+3m/1kU2AFdsz6r29Ix6azBnThMMTubYCsk6HoH+MBd7A/7tuUs4rphGTfPnMMI9IwhPkhJiWaWPJlrYW6JO/szu1LdWRORtuCyXFIFJJaOAKwkS5uaxGBdx4NXZLNtLMX+0qIkfQWBcwhkKb43TQ2+/bqEQme9U80ILGHMsYb/K8IVSbsgP0tnQPFoVv3HTyLCloIwtoL8Bf8= grw@MacBook-Air.lan'';
+  gpg-pubkey = ''
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC33L+epirAZn22pRF0i/+618qWprG121KVZqPjLkpMRhsGrF1zmUnvTYEaJfg6ZD9Ndrnw5XfGw9iazkxs55JFnm+qzv9DIWjIVMTH9QLDEscz7bY0df5wKOtInByLAQ0g7KoZIZugMjywU5+N42PztUQ7fdt90tYZm4hvg7ZrjjbQBHAn3dwAsqmyQ3BtSiqfoudRABEwZx1pRqZrIE1Ms6xOHT4WN1cPCL0ROG1BWY148dj05nhJl9wGgqgFGkJoxb4bdfDsPqtcveGIFKQo5bb66OOsulSJdDA5MberYrrN8sD/yWcuwi/arRqwFAAU6MRMsM+7g5AAauNXoZVJnX0ltf2cyajUjCrLLcVSvebzH1m1ZvVqeqjUagXnc6wWpOv8NmVJMcfoboYWJ1dRfGaoUAX/T9joFr87fWkOvd/cuxRhUcy5IbL/o1ykhAfmaSUlFmdOkms8WEOwkJ+5tmRwkfSTWYwFMQcqJgf/PepatWYW/ruUTFwRDVLRx6+EdH1EiVpYCd+F2OgSUsaH7kvafciVZbwFwpg51BQ9uCTxavsGZK8TrIK1Mq0ByhOUM8Slk4QNNcIaCXivJpxd5VY2Ak44VgVze0mrxTfYffnDfAFNTmDe7W5E+X36TwqxJXpAiam3vbq8BmpQtSfUyGhWY/0acvfrdCuK9V/JCQ== cardno:000608755089
+  '';
+  mbp-grw = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ3UfDQwI0oA+04pmx2d+ekX1wSlTb1jwLDOasLsNesv grw@Georges-MBP
+  '';
+  mbp-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICHr083xA9j09SFUzZV6RNYmJDUSviEo5WRnc4ABXuZW root@Georges-MBP.lan.satanic.link
+  '';
+  trex-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEtPi2T/lOR9s64SVS4ETOmJgj//nKJxuGD8A+PZxcLb root@trex
+  '';
+  strix-root = ''
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICro0pwdLoDCIgQhkarDzKewCCOiY3DnXHFBgw9RSJkw root@strix-1
+  '';
+  trex-grw = ''
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCyY41b/cMwT7o5NOJzEuRGc/1LDg8GsPVkQ0su+Yd6BRPU/i+Eqg2w2BU0PGZANvezfLkVRrr72njjBLYkIB8ubcBt6jNtx5vYBMruJZBXIMG2IQPXsuncLGlq6bfWe8tZpzEsKzjosn12S0qdOMASwSn80JX6M2PL4SOFwoe182OOLmrqyZ4eDarIwuG8DFv3UesSlvORAN57+UlCREgZaGkrbvVHWw9uObnml17zbNF/4kggxpOM4HXG0EAU6uoTXRNNWU/+e37UBgkne+WAvgZz++WDyb8aJsPH16xjmRG1UjcR/5pV0+e34l/Ma01lL/Bx8/junJi6BiJOh5XQLYds3qztKu32TDuzxEN9/aOCgm9MkfrIwjq0j61EbvODlCwcZ79RQUjcZhN3Pb14c1r2ugq+faZt/3+xhARRtc5+ng6FtTqwQzNA0W8nQbH/JNzbSMuf60Z/D+1R3hB3yytnKdQK+tyYnCxhy3MV8DUPRRKFqEsqYyVUhPU6hagWySAGe1N+zLwucD+Qg5lN/gicyltzZKz+zwzbyPgx5AB0wXBfSElBihKmL7wIIE60XnxmMwN0TUz0s2qc9ZgxGTX2/JyltA+ZFq7j5X6P9vgkZXDR5btV3F5iyGq/foTnSYUJCr1PXdbpY2ZmG+bT13PhKposHpBnCutqy55jnQ== grw@fuckup
+  '';
+}

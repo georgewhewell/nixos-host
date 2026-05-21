@@ -1,4 +1,7 @@
-{...}: {
+{network, ...}: let
+  routerHa = "${network.routerIp}:8123";
+  arrIp = network.primaryIp network.hosts."arr-servers";
+in {
   networking.firewall.allowedTCPPorts = [80 443];
 
   # Configure mtail for nginx log parsing
@@ -94,62 +97,78 @@
   };
 
   sconfig.gcp-ddns = let
-    domains = [
-      "home.satanic.link"
-      "radarr.satanic.link"
-      "sonarr.satanic.link"
-      "autobrr.satanic.link"
-      "static.satanic.link"
+    domains = map network.publicFqdn [
+      "home"
+      "radarr"
+      "sonarr"
+      "autobrr"
+      "static"
     ];
   in {
     aRecords = domains;
     aaaaRecords = domains;
   };
 
-  services.nginx.virtualHosts."home.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "home"} = {
     forceSSL = true;
     enableACME = true;
     extraConfig = ''
       proxy_buffering off;
     '';
+    # Fake DCR endpoint for Claude Code MCP compatibility
+    locations."= /oauth/register" = {
+      extraConfig = ''
+        default_type application/json;
+        return 201 '{"client_id":"http://127.0.0.1/oauth/client","client_secret":"","client_id_issued_at":0,"client_secret_expires_at":0,"redirect_uris":["http://127.0.0.1/callback","http://localhost/callback"]}';
+      '';
+    };
+    # Intercept OAuth metadata to add registration_endpoint
+    locations."= /.well-known/oauth-authorization-server" = let
+      base = "https://${network.publicFqdn "home"}";
+    in {
+      extraConfig = ''
+        default_type application/json;
+        return 200 '{"authorization_endpoint":"${base}/auth/authorize","token_endpoint":"${base}/auth/token","revocation_endpoint":"${base}/auth/revoke","registration_endpoint":"${base}/oauth/register","response_types_supported":["code"],"service_documentation":"https://developers.home-assistant.io/docs/auth_api","issuer":"${base}"}';
+      '';
+    };
     locations."/" = {
-      proxyPass = "http://192.168.23.1:8123";
+      proxyPass = "http://${routerHa}";
       proxyWebsockets = true;
     };
   };
 
-  services.nginx.virtualHosts."radarr.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "radarr"} = {
     forceSSL = true;
     enableACME = true;
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
       '';
-      proxyPass = "http://192.168.23.15:7878";
+      proxyPass = "http://${arrIp}:7878";
       proxyWebsockets = true;
     };
   };
 
-  services.nginx.virtualHosts."sonarr.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "sonarr"} = {
     forceSSL = true;
     enableACME = true;
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
       '';
-      proxyPass = "http://192.168.23.15:8989";
+      proxyPass = "http://${arrIp}:8989";
       proxyWebsockets = true;
     };
   };
 
-  services.nginx.virtualHosts."autobrr.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "autobrr"} = {
     forceSSL = true;
     enableACME = true;
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
       '';
-      proxyPass = "http://192.168.23.15:7474";
+      proxyPass = "http://${arrIp}:7474";
       proxyWebsockets = true;
     };
   };
@@ -165,7 +184,7 @@
     extraGroups = ["acme"];
   };
 
-  services.nginx.virtualHosts."static.satanic.link" = {
+  services.nginx.virtualHosts.${network.publicFqdn "static"} = {
     forceSSL = true;
     enableACME = true;
     root = "/var/www/static";

@@ -1,11 +1,11 @@
-{mkSecret, ...}: {
+{mkSecret, network, ...}: {
   sops.secrets.mosquitto-password = mkSecret "mosquitto-password" {};
 
   services.mosquitto = {
     enable = true;
     listeners = [
       {
-        address = "192.168.23.1";
+        address = network.routerIp;
         users = {
           "rw" = {
             acl = ["readwrite #"];

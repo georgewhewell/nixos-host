@@ -2,10 +2,18 @@
   config,
   pkgs,
   lib,
+  network,
   ...
-}: {
+}: let
+  hasContainerRuntime =
+    config.virtualisation.docker.enable
+    || config.virtualisation.podman.enable
+    || config.virtualisation.oci-containers.containers != {};
+  enableCadvisor = pkgs.stdenv.hostPlatform.isx86_64 && hasContainerRuntime;
+in {
   # Config for machines on home network
-  networking.nameservers = ["192.168.23.1"];
+  networking.nameservers = [network.routerIp];
+  networking.search = lib.mkDefault [network.domains.lan];
 
   time.timeZone = "Europe/Zurich";
 
@@ -23,22 +31,22 @@
     };
     # only on x86_64 servers with disks
     zfs = {
-      enable = config.boot.kernelPackages.stdenv.isx86_64 && lib.hasAttr "zfs" config.boot.kernelPackages;
+      enable = pkgs.stdenv.hostPlatform.isx86_64 && lib.hasAttr "zfs" config.boot.kernelPackages;
       openFirewall = true;
     };
     smartctl = {
-      enable = config.boot.kernelPackages.stdenv.isx86_64;
+      enable = pkgs.stdenv.hostPlatform.isx86_64;
       openFirewall = true;
     };
   };
 
   services.cadvisor = {
-    enable = config.boot.kernelPackages.stdenv.isx86_64;
+    enable = enableCadvisor;
     listenAddress = "0.0.0.0";
     port = 58080;
   };
 
-  networking.firewall.allowedTCPPorts = [
+  networking.firewall.allowedTCPPorts = lib.mkIf enableCadvisor [
     config.services.cadvisor.port
   ];
 
@@ -51,4 +59,6 @@
       userServices = true;
     };
   };
+
+  services.resolved.settings.Resolve.MulticastDNS = "no";
 }

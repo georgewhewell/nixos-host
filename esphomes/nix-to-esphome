@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "${script_dir}/.." && pwd)"
+render_nix="${script_dir}/render-device.nix"
+meta_nix="${script_dir}/device-meta.nix"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  esphomes/nix-to-esphome render <device> [output-file]
+  esphomes/nix-to-esphome run <device> <esphome-command> [args...]
+
+Secrets/substitutions:
+  Export env vars with prefix ESPHOME_SUBST_, e.g.
+    ESPHOME_SUBST_wifi_ssid=...
+    ESPHOME_SUBST_wifi_password=...
+  The wrapper converts them to `esphome -s key value`.
+
+Environment:
+  NIX_SYSTEM    Override Nix system (default: builtins.currentSystem)
+  ESPHOME_BIN   Override ESPHome executable (default: esphome)
+EOF
+}
+
+if [[ $# -lt 2 ]]; then
+  usage >&2
+  exit 1
+fi
+
+mode="$1"
+device="$2"
+shift 2
+
+system="${NIX_SYSTEM:-}"
+if [[ -z "${system}" ]]; then
+  system="$(nix eval --impure --raw --expr 'builtins.currentSystem')"
+fi
+
+render_yaml() {
+  ESPHOME_NIX_DEVICE="${device}" NIX_SYSTEM="${system}" \
+    nix build --impure --no-link --print-out-paths \
+      --expr "import (builtins.toPath \"${render_nix}\") {}"
+}
+
+build_substitution_args() {
+  local meta_json
+  local subst_args_file
+  meta_json="$(
+    ESPHOME_NIX_DEVICE="${device}" NIX_SYSTEM="${system}" \
+      nix eval --impure --json \
+        --expr "import (builtins.toPath \"${meta_nix}\") {}"
+  )"
+
+  subst_args_file="$(mktemp)"
+  if ! META_JSON="${meta_json}" REPO_ROOT="${repo_root}" python3 - >"${subst_args_file}" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+
+def fail(msg: str) -> None:
+    print(msg, file=sys.stderr)
+    sys.exit(2)
+
+
+def resolve_sops_yaml(repo_root: str, src: dict) -> str:
+    path = src["file"]
+    if not os.path.isabs(path):
+        path = os.path.join(repo_root, path)
+
+    extract = json.dumps([src["key"]])
+    try:
+        proc = subprocess.run(
+            ["sops", "--decrypt", "--output-type", "json", "--extract", extract, path],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        fail("Missing dependency: `sops` is required to resolve ESPHome substitutions from secrets.")
+    except subprocess.CalledProcessError as exc:
+        fail(
+            f"Failed to resolve SOPS secret for {src.get('key')} from {path}:\n"
+            f"{exc.stderr.strip()}"
+        )
+
+    raw = proc.stdout
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        value = raw.rstrip("\r\n")
+
+    if isinstance(value, (dict, list)):
+        fail(f"SOPS key {src.get('key')} in {path} did not resolve to a scalar value.")
+    if value == "":
+        fail(f"SOPS key {src.get('key')} in {path} resolved to an empty value.")
+    return str(value)
+
+
+meta = json.loads(os.environ["META_JSON"])
+repo_root = os.environ["REPO_ROOT"]
+env = os.environ
+
+required = meta.get("requiredSubstitutions", [])
+sources = meta.get("substitutionSources", {})
+
+args: list[str] = []
+missing: list[str] = []
+
+for key in required:
+    env_name = f"ESPHOME_SUBST_{key}"
+    if env_name in env:
+        args.extend(["-s", key, env[env_name]])
+        continue
+
+    src = sources.get(key)
+    if src is None:
+        missing.append(env_name)
+        continue
+
+    src_type = src.get("type")
+    if src_type == "sops-yaml":
+        args.extend(["-s", key, resolve_sops_yaml(repo_root, src)])
+        continue
+
+    fail(f"Unsupported substitution source type for {key}: {src_type!r}")
+
+if missing:
+    lines = "\n".join(f"  {name}" for name in missing)
+    fail(f"Missing required substitutions for {meta.get('name', 'device')}:\n{lines}")
+
+sys.stdout.write("\0".join(args))
+if args:
+    sys.stdout.write("\0")
+PY
+  then
+    rm -f -- "${subst_args_file}"
+    exit 2
+  fi
+  mapfile -d '' -t SUBST_ARGS < "${subst_args_file}"
+  rm -f -- "${subst_args_file}"
+}
+
+case "${mode}" in
+  render)
+    yaml_store_path="$(render_yaml)"
+    if [[ $# -ge 1 ]]; then
+      cp -- "${yaml_store_path}" "$1"
+      printf '%s\n' "$1"
+    else
+      cat -- "${yaml_store_path}"
+    fi
+    ;;
+  run)
+    if [[ $# -lt 1 ]]; then
+      usage >&2
+      exit 1
+    fi
+
+    declare -a SUBST_ARGS=()
+    build_substitution_args
+
+    yaml_store_path="$(render_yaml)"
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf -- "${tmpdir}"' EXIT
+    yaml_path="${tmpdir}/${device}.yaml"
+    cp -- "${yaml_store_path}" "${yaml_path}"
+
+    for d in "${script_dir}"/*/; do
+      name="$(basename "${d}")"
+      [[ "${name}" == ".esphome" ]] && continue
+      ln -snf "${d}" "${tmpdir}/${name}"
+    done
+
+    esphome_bin="${ESPHOME_BIN:-esphome}"
+    esphome_cmd="$1"
+    shift
+    exec "${esphome_bin}" "${SUBST_ARGS[@]}" "${esphome_cmd}" "${yaml_path}" "$@"
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac

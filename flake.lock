@@ -119,16 +119,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1778445566,
+        "lastModified": 1778446047,
         "narHash": "sha256-oQvcadh2BCkrog+SGrG6YffKJrveYpjj3TdQJWaKhaM=",
         "owner": "nix-community",
         "repo": "bun2nix",
-        "rev": "2499dedd70744dba1815875b854818a3019e9e4c",
+        "rev": "f2bc12af1a6369648aac41041ceeaa0b866599c6",
         "type": "github"
       },
       "original": {
         "owner": "nix-community",
-        "ref": "staging-2.1.0",
         "repo": "bun2nix",
         "type": "github"
       }
@@ -725,6 +724,22 @@
         "type": "github"
       }
     },
+    "llama-cpp-master": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779316537,
+        "narHash": "sha256-TZqKvA6IYDjt0ULIIleyQhvj8K5Ced8C/bTIsrAZ/H8=",
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "rev": "6a257d44633d4a752183ed778b88d2924d0a6b9d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
     "mac-app-util": {
       "inputs": {
         "cl-nix-lite": "cl-nix-lite",
@@ -851,11 +866,11 @@
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
-        "lastModified": 1778881568,
-        "narHash": "sha256-/8VccWMqtA3L7uanoAY2e3A9DeaFSrsO+3pufv4qbzk=",
+        "lastModified": 1779341808,
+        "narHash": "sha256-RC3GaOxJ/fQtXTw+km1fPAGso09+Jn/LCfiESZ/fxy0=",
         "owner": "numtide",
         "repo": "nix-ai-tools",
-        "rev": "114876827da720ef711ceb7de0141d27a1e9f2c3",
+        "rev": "339239b8e071b0294cc5b49b555d724761a68bf0",
         "type": "github"
       },
       "original": {
@@ -956,9 +971,11 @@
         ],
         "ec-su-axb35": "ec-su-axb35",
         "fastflowlm": "fastflowlm",
+        "llama-cpp-master": "llama-cpp-master",
         "nixpkgs": [
           "nixpkgs"
         ],
+        "rocm-xio": "rocm-xio",
         "usb4-rdma": [
           "usb4-rdma"
         ],
@@ -966,11 +983,11 @@
         "xrt-src": "xrt-src"
       },
       "locked": {
-        "lastModified": 1779338063,
-        "narHash": "sha256-s1D6vKrgJuRpUlOVGy+nQXo9hbTsnM9TnIAE/scHakw=",
-        "ref": "refs/heads/grw/feat/vllm",
-        "rev": "3f8821f72d32e6dfb99d9102fc16c550bed75f4f",
-        "revCount": 29,
+        "lastModified": 1779372905,
+        "narHash": "sha256-tnn0GTldG3T7lzHSV20Lx3BShx0JLExN6L7Fkvduh+0=",
+        "ref": "refs/heads/grw/feat/therock-rocm-source-build",
+        "rev": "8d511ec09f0f4907c8c6ad242ae5618446477d0e",
+        "revCount": 34,
         "type": "git",
         "url": "ssh://trex/mnt/Home/src/nix-strix-halo"
       },
@@ -1234,11 +1251,11 @@
     },
     "nixpkgs_9": {
       "locked": {
-        "lastModified": 1778794387,
-        "narHash": "sha256-BL04pOS9453Awkeb9f90XBJXBSkWxN+vB7HIgnL0iMM=",
+        "lastModified": 1778869304,
+        "narHash": "sha256-30sZNZoA1cqF5JNO9fVX+wgiQYjB7HJqqJ4ztCDeBZE=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "8a1b0127302ea51e05bf4ea5a291743fac442406",
+        "rev": "d233902339c02a9c334e7e593de68855ad26c4cb",
         "type": "github"
       },
       "original": {
@@ -1336,6 +1353,22 @@
         "owner": "pyproject-nix",
         "repo": "pyproject.nix",
         "type": "github"
+      }
+    },
+    "rocm-xio": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778795617,
+        "narHash": "sha256-3OcuRqVj52pahOJ1V3AZ4E2XobyqQ9suG38lsrqx18g=",
+        "ref": "refs/heads/main",
+        "rev": "5cdd6f4caeca999d968c291f2b530ffd1d4b2d39",
+        "revCount": 430,
+        "type": "git",
+        "url": "file:///mnt/Home/src/rocm-xio"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///mnt/Home/src/rocm-xio"
       }
     },
     "root": {
@@ -1704,8 +1737,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1779328721,
-        "narHash": "sha256-02W3cSM9RlxlsflAJuJQYCOrRuerfAHMh8QvQ4aN7dM=",
+        "lastModified": 1779376042,
+        "narHash": "sha256-UT63tP5RPGfId4BNn/7QPvq4w7E+ExWq/CSwVZUT1oY=",
         "path": "/mnt/Home/src/thunderbolt-ibverbs",
         "type": "path"
       },

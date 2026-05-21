@@ -3,18 +3,22 @@
   config,
   lib,
   inputs,
+  network,
   ...
 }: {
   imports = [
     ./btop.nix
     ./hostid.nix
-    ./vim/default.nix
-    ./git.nix
     ./starship.nix
     ./zsh.nix
   ];
 
   home.stateVersion = "22.05";
+
+  home.sessionPath = [
+    "$HOME/.local/bin"
+    "$HOME/.cache/cargo/bin"
+  ];
 
   programs = {
     bat.enable = true;
@@ -27,10 +31,24 @@
     };
     zsh.enable = true;
     ripgrep.enable = true;
-    tmux.enable = true;
+    tmux = {
+      enable = true;
+      mouse = true;
+      extraConfig = ''
+        set -g set-clipboard on
+      '';
+    };
+  };
+
+  # Minimal vim for headless - neovim doesn't cross-compile (luajit/nlua0 issue)
+  # vim/default.nix overrides with neovim for dev machines
+  home.sessionVariables = {
+    EDITOR = lib.mkDefault "vim";
+    VISUAL = lib.mkDefault "vim";
   };
 
   home.packages = with pkgs; [
+    vim-minimal
     pv
     eza
     pwgen
@@ -52,7 +70,7 @@
         hashKnownHosts = true;
         forwardAgent = true;
       };
-      "trex.satanic.link" = {
+      ${network.publicFqdn "trex"} = {
         user = "grw";
       };
     };
@@ -82,12 +100,5 @@
           (text "Uptime")
           (text "Systemd")
         ]);
-  };
-
-  programs.password-store = {
-    enable = true;
-    settings = {
-      PASSWORD_STORE_DIR = "${config.xdg.dataHome}/password-store";
-    };
   };
 }

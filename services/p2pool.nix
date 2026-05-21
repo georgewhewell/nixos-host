@@ -1,4 +1,7 @@
-{config, ...}: {
+{config, mkSecret, network, ...}: let
+  trexIp = network.primaryIp network.hosts.trex;
+in {
+  sops.secrets.p2pool-env = mkSecret "p2pool-env" {};
   # ZFS filesystem for p2pool data
   fileSystems."/var/lib/p2pool" = {
     device = "zpool/root/p2pool";
@@ -6,15 +9,28 @@
     options = ["nofail" "sync=disabled"];
   };
 
+  # Create data-api directory
+  systemd.tmpfiles.rules = [
+    "d /var/lib/p2pool/data-api 0755 p2pool p2pool - -"
+  ];
+
   services.p2pool = {
     enable = true;
     mini = false;
-    host = "192.168.23.8";
+    host = trexIp;
     rpcPort = 18081;
     zmqPort = 18083;
-    walletAddress = "4878JKf387qCg1dT6Gs1wERmosrTqxtUR185xeMXpTW3f9TRkM6vD5dHABzULx5DTDZFC9XcdQ1nW3ZksvNp34pVBmNCEfm";
+    walletAddress = "45M3DBgTqc9jd8TwmvtZbg7v5pKjsgckzgUENPkXVwD8QURYoVkXQPQ3YJMjtYKaqgExxrFe5T2Li8cosfN82xWGSsLyJwa";
     dataDir = "/var/lib/p2pool";
     openFirewall = false;
+    extraArgs = ["--data-api" "/var/lib/p2pool/data-api"];
+    environmentFile = config.sops.secrets.p2pool-env.path;
+    mergeMining = {
+      enable = true;
+      tariHost = trexIp;
+      tariPort = 18142;
+      tariWalletAddress = "$TARI_WALLET_ADDRESS";
+    };
   };
 
   # Enable p2pool-exporter
@@ -26,6 +42,7 @@
     exchangeRates = ["USD"];
   };
 
-  # Ensure p2pool starts after ZFS mount
+  # Ensure p2pool starts after ZFS mount and secrets are available
   systemd.services.p2pool.unitConfig.RequiresMountsFor = [config.services.p2pool.dataDir];
+  systemd.services.p2pool.after = ["sops-nix.service"];
 }

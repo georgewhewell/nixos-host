@@ -1,0 +1,62 @@
+// I2S2_M1 → PCM5102A DAC on the Rock 5B 40-pin header.
+//
+// On Rock 5B, I2S1's pinctrl pins (GPIO4_A1/A2/B1) are NOT broken out
+// on the 40-pin header — only the GPIO3 bank is. The complete I2S
+// triplet on the header is I2S2_M1:
+//
+//   I2S2_SCLK_M1 → GPIO3_B5 → header pin 12   (BCK)
+//   I2S2_LRCK_M1 → GPIO3_B6 → header pin 35   (LCK / LRCK)
+//   I2S2_SDO_M1  → GPIO3_B3 → header pin 40   (DIN)
+//
+// Power + ground:
+//   VIN → 3V3 (pin 1) or 5V (pin 2)
+//   GND → any GND pin
+//
+// On the DAC board: SCK pin must be tied to GND so the PCM5102A uses
+// its internal PLL (we don't route MCLK; i2s2m1_mclk is GPIO3_B4 which
+// is not on the header).
+
+/dts-v1/;
+/plugin/;
+
+/ {
+  compatible = "radxa,rock-5b", "rockchip,rk3588";
+
+  fragment@0 {
+    target-path = "/";
+    __overlay__ {
+      pcm5102a: pcm5102a-codec {
+        #sound-dai-cells = <0>;
+        compatible = "ti,pcm5102a";
+        status = "okay";
+      };
+
+      sound-pcm5102a {
+        compatible = "simple-audio-card";
+        simple-audio-card,name = "rockchip,pcm5102a";
+        simple-audio-card,format = "i2s";
+        simple-audio-card,mclk-fs = <256>;
+        simple-audio-card,bitclock-master = <&sndcpu>;
+        simple-audio-card,frame-master = <&sndcpu>;
+        status = "okay";
+
+        sndcpu: simple-audio-card,cpu {
+          sound-dai = <&i2s2_2ch>;
+        };
+        simple-audio-card,codec {
+          sound-dai = <&pcm5102a>;
+        };
+      };
+    };
+  };
+
+  fragment@1 {
+    target = <&i2s2_2ch>;
+    __overlay__ {
+      status = "okay";
+      pinctrl-names = "default";
+      pinctrl-0 = <&i2s2m1_sclk &i2s2m1_lrck &i2s2m1_sdo>;
+      #sound-dai-cells = <0>;
+    };
+  };
+};

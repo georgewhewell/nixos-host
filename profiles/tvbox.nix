@@ -46,7 +46,7 @@
 
   networking.firewall.allowedTCPPorts = [ 8080 ];
 
-  hardware.opengl = {
+  hardware.graphics = {
     enable = true;
     extraPackages = with pkgs; [ libva libva-v4l2-request ];
   };

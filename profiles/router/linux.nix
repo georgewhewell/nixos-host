@@ -1,7 +1,33 @@
-{lib, ...}: let
+{lib, pkgs, network, ...}: let
   wanInterface = "enp1s0f0np0";
   lanBridge = "br0.lan";
+  lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+
+  # Import shared port forward definitions
+  portForwardHosts = import ./port-forwards.nix network;
+
+  # Convert shared format to NixOS networking.nat.forwardPorts format
+  expandProto = fwd:
+    if fwd.proto == "both"
+    then [(fwd // {proto = "tcp";}) (fwd // {proto = "udp";})]
+    else [fwd];
+
+  toLinuxForwardPorts = hosts:
+    lib.flatten (lib.mapAttrsToList (
+      name: hostCfg:
+        lib.flatten (map (fwd:
+          map (f: {
+            sourcePort = f.port;
+            destination = "${hostCfg.ip}:${toString (f.dstPort or f.port)}";
+            proto = f.proto;
+          }) (expandProto fwd)
+        ) hostCfg.forwards)
+    ) hosts);
 in {
+  imports = [./base.nix];
+
+  router.lanInterface = lanBridge;
+
   services.usbmuxd.enable = true;
   services.avahi.allowInterfaces = lib.mkForce [lanBridge];
 
@@ -19,19 +45,41 @@ in {
     wants = ["network-online.target"];
   };
 
+  # Linux-specific: enable IP forwarding (base.nix has common sysctl tuning)
   boot.kernel.sysctl = {
-    "net.core.rmem_default" = 1048576;
-    "net.core.wmem_default" = 1048576;
-    "net.core.rmem_max" = 134217728;
-    "net.core.wmem_max" = 134217728;
-    "net.core.netdev_max_backlog" = 50000;
-    "net.core.netdev_budget" = 1000;
-    "net.ipv4.tcp_congestion_control" = "bbr";
-    "net.ipv4.route.max_size" = 524288;
-    "net.ipv4.tcp_fastopen" = "3";
+    "net.ipv4.ip_forward" = true;
     "net.ipv6.conf.all.forwarding" = true;
-    "net.netfilter.nf_conntrack_max" = 131072;
-    "net.nf_conntrack_max" = 131072;
+  };
+
+  # Load flowtable kernel modules
+  boot.kernelModules = ["nf_flow_table" "nf_flow_table_inet"];
+
+  # Software flowtable for accelerated forwarding
+  # Bypasses full netfilter stack for established connections
+  # Note: Can't use networking.nftables.tables because validation fails without devices
+  systemd.services.nftables-flowtable = {
+    description = "nftables flowtable for accelerated forwarding";
+    after = ["nftables.service" "network-online.target"];
+    wants = ["network-online.target"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.nftables}/bin/nft -f ${pkgs.writeText "flowtable.nft" ''
+        table inet flow-offload {
+          flowtable f {
+            hook ingress priority 0
+            devices = { ${wanInterface}, ${lanBridge} }
+          }
+
+          chain forward {
+            type filter hook forward priority -1; policy accept;
+            meta l4proto { tcp, udp } flow add @f counter
+          }
+        }
+      ''}";
+      ExecStop = "${pkgs.nftables}/bin/nft delete table inet flow-offload";
+    };
   };
 
   systemd.network = {
@@ -42,17 +90,44 @@ in {
           Kind = "bridge";
           Name = lanBridge;
         };
+        bridgeConfig = {
+          STP = true;
+        };
       };
     };
     links = {
       "20-${wanInterface}" = {
+        # Match the WAN port by MAC — switchdev recreates the netdev and the
+        # default predictable-name rules don't re-fire, leaving it as `eth0`.
+        # Driver+MAC survives both that rebuild and PCI path shuffles from
+        # other ConnectX cards on Thunderbolt.
         matchConfig = {
           Driver = "mlx5_core";
-          Path = "pci-0000:01:00.0";
+          PermanentMACAddress = "50:6b:4b:03:04:ca";
         };
         linkConfig = {
+          Name = wanInterface;
           RxBufferSize = 8192;
           TxBufferSize = 8192;
+        };
+      };
+      # LAN port (Mellanox CX-4 to Mikrotik 25G). Autoneg + FEC negotiation
+      # don't land cleanly on this peer — the link stays down until ethtool
+      # forces 25G/no-autoneg and disables FEC. Pin both here so a clean
+      # boot brings the bridge up without manual recovery via nanokvm. FEC
+      # has no .link option; handled by the lan-25g-fec.service below.
+      "20-lan-25g" = {
+        matchConfig = {
+          Driver = "mlx5_core";
+          PermanentMACAddress = "50:6b:4b:03:04:cb";
+        };
+        linkConfig = {
+          Name = "enp1s0f1np1";
+          RxBufferSize = 8192;
+          TxBufferSize = 8192;
+          AutoNegotiation = "no";
+          BitsPerSecond = "25G";
+          Duplex = "full";
         };
       };
     };
@@ -61,8 +136,8 @@ in {
         matchConfig.Name = lanBridge;
         bridgeConfig = {};
         address = [
-          "192.168.23.1/24"
-          "fdde:ad::1/64"  # ULA for LAN
+          (network.cidrOf "lan" network.vlans.lan.gatewayHost)
+          "fdde:ad::1/64" # ULA for LAN
         ];
         networkConfig = {
           ConfigureWithoutCarrier = true;
@@ -80,14 +155,9 @@ in {
           # Only RA (no DHCPv6 for DNS); advertise DNS via RDNSS
           EmitDNS = true;
           DNS = ["fdde:ad::1"];
-          Domains = "lan.satanic.link";
+          Domains = network.domains.lan;
         };
         linkConfig.RequiredFamilyForOnline = "ipv4";
-      };
-      "20-thunderbolt" = {
-        matchConfig.Driver = "thunderbolt-net";
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
       };
       "20-lan-25g" = {
         matchConfig.Name = "enp1s0f1np1";
@@ -102,6 +172,11 @@ in {
       };
       "20-lan-2-5g" = {
         matchConfig.Driver = "igc";
+        networkConfig.Bridge = lanBridge;
+        linkConfig.RequiredForOnline = "no";
+      };
+      "20-lan-10g-realtek" = {
+        matchConfig.Driver = ["r8169" "r8127"];
         networkConfig.Bridge = lanBridge;
         linkConfig.RequiredForOnline = "no";
       };
@@ -145,102 +220,35 @@ in {
     };
   };
 
+  # Force FEC off on the LAN 25G port. The Mellanox CX-4 ↔ Mikrotik CRS510
+  # link won't come up at boot otherwise (peer FEC negotiation is unstable);
+  # without this the bridge stays carrierless until manual ethtool recovery.
+  systemd.services.lan-25g-fec = {
+    description = "Disable FEC on LAN 25G interface";
+    bindsTo = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
+    after = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
+    wantedBy = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.ethtool}/bin/ethtool --set-fec enp1s0f1np1 encoding off";
+    };
+  };
+
+  # Linux-specific networking (base.nix has common settings)
   networking = {
-    useDHCP = false;
-
-    enableIPv6 = true;
-    useNetworkd = true;
-    nftables.enable = true;
-
-    domain = "lan.satanic.link";
-    nameservers = ["192.168.23.1"];
+    nameservers = [network.routerIp];
 
     nat = {
       enable = true;
       internalIPs = [
-        "192.168.23.0/24"
+        lanCidr
       ];
       internalInterfaces = [
         lanBridge
       ];
       externalInterface = wanInterface;
-      forwardPorts = [
-        {
-          sourcePort = 80;
-          destination = "192.168.23.8:80";
-          proto = "tcp";
-        } # nginx
-        {
-          sourcePort = 443;
-          destination = "192.168.23.8:443";
-          proto = "tcp";
-        } # nginx
-        {
-          sourcePort = 17026;
-          destination = "192.168.23.8:17026";
-          proto = "tcp";
-        } # qBittorrent
-        {
-          sourcePort = 17026;
-          destination = "192.168.23.8:17026";
-          proto = "udp";
-        } # qBittorrent
-        {
-          sourcePort = 9000;
-          destination = "192.168.23.8:9000";
-          proto = "tcp";
-        } # Lighthouse
-        {
-          sourcePort = 9000;
-          destination = "192.168.23.8:9000";
-          proto = "udp";
-        } # Lighthouse
-        {
-          sourcePort = 9001;
-          destination = "192.168.23.8:9001";
-          proto = "udp";
-        } # Lighthouse
-        {
-          sourcePort = 18080;
-          destination = "192.168.23.8:18080";
-          proto = "tcp";
-        } # Monero
-        {
-          sourcePort = 18080;
-          destination = "192.168.23.8:18080";
-          proto = "udp";
-        } # Monero
-        {
-          sourcePort = 30303;
-          destination = "192.168.23.8:30303";
-          proto = "tcp";
-        } # Reth (Ethereum)
-        {
-          sourcePort = 30303;
-          destination = "192.168.23.8:30303";
-          proto = "udp";
-        } # Reth (Ethereum)
-        {
-          sourcePort = 8333;
-          destination = "192.168.23.8:8333";
-          proto = "tcp";
-        } # Bitcoin
-        {
-          sourcePort = 8333;
-          destination = "192.168.23.8:8333";
-          proto = "udp";
-        } # Bitcoin
-        {
-          sourcePort = 51412;
-          destination = "192.168.23.8:51412";
-          proto = "udp";
-        } # rtorrent
-        {
-          sourcePort = 51412;
-          destination = "192.168.23.8:51412";
-          proto = "tcp";
-        } # rtorrent
-      ];
+      forwardPorts = toLinuxForwardPorts portForwardHosts;
     };
 
     firewall = {
@@ -269,7 +277,7 @@ in {
 
             18080 # monero
             17026 # qBittorrent
-            37889 # P2Pool P2P
+            37889 # P2Pool P2P (C++ on trex)
             42069 # Snap sync (Bittorrent)
           ];
           allowedUDPPorts = [
@@ -293,7 +301,7 @@ in {
             30304 # reth
 
             18080 # monero
-            37889 # P2Pool P2P
+            37889 # P2Pool P2P (C++ on trex)
 
             42069 # Snap sync (Bittorrent)
 

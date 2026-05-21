@@ -154,7 +154,7 @@ in
 
     # Optional filter for shown disks, should be full path of a mountpoint, separate multiple values with whitespace " ".
     # Begin line with "exclude=" to change to exclude filter, otherwise defaults to "most include" filter. Example: disks_filter="exclude=/boot /home/user".
-    disks_filter = "/ /state /nix /nix/state /srv/music /srv/pictures";
+    disks_filter = "";
 
     # Show graphs instead of meters for memory values.
     mem_graphs = false;
@@ -175,13 +175,19 @@ in
     only_physical = true;
 
     # Read disks list from /etc/fstab. This also disables only_physical.
-    use_fstab = true;
+    use_fstab = false;
+
+    # Hide ZFS datasets and show pool-level IO instead. Toggle in the `o` options menu
+    # to flip between dataset view (per mountpoint) and pool view (aggregated across pool members).
+    # Note: btop on Linux only enumerates mounted filesystems, so per-physical-disk IO
+    # (e.g. sda, nvme0n1) is not available — use `iostat -xz 1` or `iotop` for that.
+    zfs_hide_datasets = false;
 
     # Toggles if io activity % (disk busy time) should be shown in regular disk usage view.
     show_io_stat = true;
 
     # Toggles io mode for disks, showing big graphs for disk read/write speeds.
-    io_mode = false;
+    io_mode = true;
 
     # Set to true to show combined read/write io graphs in io mode.
     io_graph_combined = false;

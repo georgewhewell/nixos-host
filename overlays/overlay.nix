@@ -1,4 +1,28 @@
 self: super: {
+  # U-Boot for NanoPi NEO2 (Allwinner H5)
+  ubootNanoPiNeo2 = super.ubootPine64.override {
+    defconfig = "nanopi_neo2_defconfig";
+  };
+
+  # Minimal vim without GUI/scripting for headless servers
+  # Reduces closure from 483MB to ~30MB
+  vim-minimal = super.vim-full.override {
+    guiSupport = false;
+    pythonSupport = false;
+    luaSupport = false;
+    rubySupport = false;
+    perlSupport = false;
+    tclSupport = false;
+  };
+
+  # Fix mtail cross-compilation - upstream vendor directory is out of sync
+  mtail = super.mtail.overrideAttrs (old: {
+    proxyVendor = true;
+    vendorHash = "sha256-ZZcVtZBG0Erh/NmYbw0aOVCg2AGZeHMFRfRbwNFTCks=";
+  });
+
+  apple-health-ingester = super.callPackage ../packages/apple-health-ingester {};
+
   home-assistant-cli-go = super.buildGoModule rec {
     pname = "home-assistant-cli-go";
     version = "4.39.0";
@@ -25,7 +49,26 @@ self: super: {
     };
   };
 
+  rockchip-mpp = super.callPackage ../packages/rockchip-mpp {};
+
+  # ffmpeg with Rockchip MPP hardware encoding support (nyanmisaka fork)
+  ffmpeg-rockchip = super.ffmpeg-headless.overrideAttrs (old: {
+    src = super.fetchFromGitHub {
+      owner = "nyanmisaka";
+      repo = "ffmpeg-rockchip";
+      rev = "8.0";
+      hash = "sha256-mds5Djgc7IFmDhXmDkdW3vwONj5HYQXXCZTBxv6zhIU=";
+    };
+    patches = builtins.filter (p:
+      !(builtins.isPath p && builtins.match ".*hardcoded-tables.*" (toString p) != null)
+      && !(builtins.isAttrs p && builtins.match ".*hardcoded-tables.*" (p.name or "") != null)
+    ) (old.patches or []);
+    buildInputs = (old.buildInputs or []) ++ [self.rockchip-mpp super.libdrm];
+    configureFlags = (old.configureFlags or []) ++ ["--enable-rkmpp"];
+  });
+
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
+  nvidia_oc = super.callPackage ../packages/nvidia-oc {};
 
   # llama-cpp = super.llama-cpp.overrideAttrs (oldAttrs: rec {
   #   version = "HEAD";
@@ -39,7 +82,7 @@ self: super: {
 
   xmrig-cuda-plugin = let
     version = "6.22.1";
-    _cudaPackages = super.cudaPackages;
+    _cudaPackages = super.cudaPackages_13;
   in
     super.stdenv.mkDerivation {
       name = "xmrig-cuda";
@@ -68,13 +111,18 @@ self: super: {
 
       propagatedBuildInputs = [_cudaPackages.cuda_nvml_dev];
 
+      postPatch = ''
+        # CUDA 13 removed deprecated clockRate/memoryClockRate from cudaDeviceProp
+        sed -i '/props\.clockRate/d; /props\.memoryClockRate/d' src/cuda_extra.cu
+      '';
+
       configurePhase = ''
         mkdir -p build
       '';
 
       buildPhase = ''
         cd build
-        cmake .. -DCMAKE_CUDA_ARCHITECTURES=89 -DCUDA_LIB=${super.lib.getDev _cudaPackages.cuda_cudart}/lib/stubs/libcuda.so -DCUDA_TOOLKIT_ROOT_DIR=${super.lib.getDev _cudaPackages.cuda_cudart} -DCMAKE_C_COMPILER=${super.gcc13}/bin/gcc
+        cmake .. -DCMAKE_CUDA_ARCHITECTURES=89 -DCUDA_ARCH="89" -DCUDA_LIB=${super.lib.getDev _cudaPackages.cuda_cudart}/lib/stubs/libcuda.so -DCUDA_TOOLKIT_ROOT_DIR=${super.lib.getDev _cudaPackages.cuda_cudart} -DCMAKE_C_COMPILER=${super.gcc13}/bin/gcc
         make -j$(nproc)
       '';
 
@@ -89,10 +137,6 @@ self: super: {
         platforms = platforms.linux;
       };
     };
-
-  xmrig = super.xmrig.override {
-    stdenv = super.gcc15Stdenv;
-  };
 
   xmrig-rock5b = super.xmrig.overrideAttrs (oldAttrs: {
     NIX_CFLAGS_COMPILE = toString [
@@ -189,41 +233,72 @@ self: super: {
     '';
   };
 
-  # librespot = super.librespot.overrideAttrs (oldAttrs: rec {
-  #   pname = "librespot";
-  #   version = "0.7.0";
-
-  #   src = super.fetchFromGitHub {
-  #     owner = "librespot-org";
-  #     repo = "librespot";
-  #     rev = "v${version}";
-  #     sha256 = "sha256-dGQDRb5fgIkXelZKa+PdodIs9DxbgEMlVGJjK/hU3Mo=";
-  #   };
-  # });
-
-  # spotifyd = super.spotifyd.overrideAttrs (oldAttrs: rec {
-  #   pname = "spotifyd";
-  #   version = "0.3.4";
-
-  #   src = super.fetchFromGitHub {
-  #     owner = "fabienjuif";
-  #     repo = "spotifyd";
-  #     rev = "hotfix_librespot_0.7";
-  #     sha256 = "sha256-OvywtwFg5dGHPSgtMGIrA8NxkaEAdXtlFPXQZo6xR1o=";
-  #   };
-  #   cargoHash = "";
-  # });
   tari = super.callPackage ../packages/tari {};
+
+  scion = super.callPackage ../packages/scion {};
+  scion-claude-image = super.callPackage ../packages/scion/image.nix {
+    scion = self.scion;
+    # antigravity isn't in nixpkgs yet; it ships in the nix-ai-tools flake.
+    # Threaded in via specialArgs from flake.nix where the input is in scope.
+    inherit (self) antigravity;
+  };
 
   p2pool = super.p2pool.overrideAttrs (oldAttrs: rec {
     pname = "p2pool";
-    version = "4.12";
+    version = "4.14";
     src = super.fetchFromGitHub {
       owner = "SChernykh";
       repo = "p2pool";
       rev = "v${version}";
-      hash = "sha256-Yrc36tibHanXZcE3I+xcmkCzBALE09zi1Zg0Lz3qS2g=";
+      hash = "sha256-osVzCx5h52qbSG4iwd3r7lsxtkqakGDJp6W3Xfs0t4E=";
       fetchSubmodules = true;
+    };
+  });
+
+  # LTX-2 video generation model - extend python package sets
+  pythonPackagesExtensions =
+    super.pythonPackagesExtensions
+    ++ [
+      (python-final: python-prev: {
+        # accelerate tests fail on builders without GPU (rocm) or missing nvidia-ml-py (cuda)
+        accelerate = python-prev.accelerate.overridePythonAttrs (old:
+          super.lib.optionalAttrs ((super.config.rocmSupport or false) || (super.config.cudaSupport or false)) {
+            doCheck = false;
+          });
+        ltx-core = python-final.callPackage ../packages/python-libraries/ltx-core {
+          cudaSupport = super.config.cudaSupport or false;
+        };
+        ltx-pipelines = python-final.callPackage ../packages/python-libraries/ltx-pipelines {
+          inherit (python-final) ltx-core;
+        };
+      })
+    ];
+
+  # Also expose as top-level for convenience
+  ltx-2 = super.python3Packages.ltx-pipelines;
+
+  easyeda2kicad = super.callPackage ../packages/easyeda2kicad {};
+
+  lighthouse = super.lighthouse.overrideAttrs (old: rec {
+    version = "8.0.0";
+    src = super.fetchFromGitHub {
+      owner = "sigp";
+      repo = "lighthouse";
+      tag = "v${version}";
+      hash = "sha256-dfWh9BHhoRfKvHRp/Osxsz0udL1q3XsC8PaPy3RCt1s=";
+    };
+    patches = [];
+    postPatch = ''
+      substituteInPlace Cargo.toml \
+        --replace-fail 'rusqlite = { version = "0.28", features = ["bundled"] }' \
+                       'rusqlite = { version = "0.28" }'
+    '';
+    cargoBuildFeatures = ["gnosis"];
+    cargoDeps = super.rustPlatform.fetchCargoVendor {
+      inherit src;
+      pname = "lighthouse";
+      inherit version;
+      hash = "sha256-XR3/9+fcoPHU0xONkFydJcvKBck51RpgCiOOulzoY8I=";
     };
   });
 }

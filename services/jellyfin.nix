@@ -1,13 +1,12 @@
-{pkgs, ...}: {
-  
-  sconfig.gcp-ddns = let
-    domain = "jellyfin.satanic.link";
-  in {
-    aRecords = [ domain ];
-    aaaaRecords = [ domain ];
+{pkgs, network, ...}: let
+  domain = network.publicFqdn "jellyfin";
+in {
+  sconfig.gcp-ddns = {
+    aRecords = [domain];
+    aaaaRecords = [domain];
   };
 
-  services.nginx.virtualHosts."jellyfin.satanic.link" = {
+  services.nginx.virtualHosts.${domain} = {
     forceSSL = true;
     enableACME = true;
     locations."/" = {
@@ -29,5 +28,5 @@
 
   users.users.jellyfin.extraGroups = ["video" "render"];
 
-  environment.systemPackages = with pkgs; [ffmpeg libva1 libva-utils];
+  # environment.systemPackages = with pkgs; [ffmpeg libva1 libva-utils];
 }

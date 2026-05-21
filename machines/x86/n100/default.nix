@@ -3,14 +3,23 @@
   pkgs,
   lib,
   inputs,
+  network,
   ...
-}: {
+}: let
+  self = network.hosts.n100;
+in {
   /*
   asrock n100 itx board
   */
   sconfig = {
     profile = "server";
     home-manager.enable = true;
+    impermanence = {
+      enable = true;
+      # First tmpfs-root cutover: mount the old bcachefs root at /persist, so
+      # the existing impermanence data remains at /persist/persist.
+      persistentStoragePath = "/persist/persist";
+    };
     xmrig = {
       enable = true;
       package = pkgs.xmrig-alderlake;
@@ -19,7 +28,7 @@
 
   system.stateVersion = "24.11";
 
-  deployment.targetHost = "192.168.23.14";
+  deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
 
   imports = with inputs.nixos-hardware.nixosModules; [
@@ -42,26 +51,46 @@
     };
   };
 
-  # Enable 1GB huge pages for xmrig
-  # boot.kernelParams = [
-  #   "hugepagesz=1G"
-  #   "hugepages=2"
-  #   "default_hugepagesz=1G"
-  # ];
+  # XMRig uses 1 GiB hugepages; reserve them at boot instead of trying to set
+  # the non-existent vm.nr_hugepages_1gb sysctl.
+  boot.kernelParams = [
+    "hugepagesz=1G"
+    "hugepages=3"
+  ];
+  # nixpkgs currently emits this unlock unit for boot-time bcachefs mounts even
+  # when the filesystem is not encrypted.
+  boot.initrd.systemd.services."unlock-bcachefs--".enable = false;
+  boot.initrd.systemd.services."unlock-bcachefs-persist".enable = false;
 
-  boot.kernel.sysctl = {
-    "vm.nr_hugepages_1gb" = 2;
-  };
+  services.irqbalance.enable = lib.mkForce false;
 
   fileSystems."/" = {
+    device = "tmpfs";
+    fsType = "tmpfs";
+    options = [
+      "mode=755"
+      "size=8G"
+    ];
+  };
+
+  fileSystems."/persist" = {
     device = "UUID=8b8990d8-15a7-4308-a51c-4e5b7a6898e1";
     fsType = "bcachefs";
+    neededForBoot = true;
+  };
+
+  fileSystems."/nix" = {
+    device = "/persist/nix";
+    fsType = "none";
+    options = ["bind"];
+    depends = ["/persist"];
+    neededForBoot = true;
   };
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/2A3E-BFEC";
     fsType = "vfat";
-    options = ["fmask=0022" "dmask=0022"];
+    options = ["fmask=0077" "dmask=0077"];
   };
 
   networking = {
@@ -100,11 +129,12 @@
           IPv6AcceptRA = true;
         };
         address = [
-          "192.168.23.14/24"
+          (network.cidrOf "lan" self.addresses.lan)
         ];
+        dns = [network.routerIp];
         routes = [
           {
-            Gateway = "192.168.23.1";
+            Gateway = network.routerIp;
             Metric = 1;
           }
         ];

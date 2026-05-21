@@ -1,0 +1,22 @@
+#pragma once
+
+#include "esphome/components/number/number.h"
+
+namespace esphome::camera_sensor {
+
+class SetterNumber : public number::Number {
+ public:
+  using SetterCallback = std::function<void(float)>;
+  SetterNumber() = default;
+  void set_setter(const SetterCallback &setter) { this->setter_ = setter; }
+
+ protected:
+  void control(float value) override {
+    this->publish_state(value);
+    if (this->setter_)
+      this->setter_(value);
+  }
+  SetterCallback setter_;
+};
+
+}  // namespace esphome::camera_sensor

@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  scripts/kexec-ssh [options] <status|stage|run|fire|unload> <host>
+
+Actions:
+  status   Show boot/kexec/watchdog state.
+  stage    Load a target into kexec, but do not execute it.
+  run      Load a target, verify it is loaded, then start kexec.target.
+  fire     Start kexec.target using the image that is already loaded.
+  unload   Unload any staged kexec image.
+
+Options:
+  --target TARGET     current, profile, booted, or an absolute system path.
+                      Default: profile (/nix/var/nix/profiles/system).
+  --user USER         SSH user. You can also pass user@host.
+  --sudo SUDO         sudo command on the remote host. Default: sudo.
+  --wait SECONDS      Wait for host to return after run/fire. Default: 180.
+  --no-wait           Do not wait after run/fire.
+  --ssh-option OPT    Extra SSH -o option. May be repeated.
+  -h, --help          Show this help.
+
+Examples:
+  scripts/kexec-ssh status strix-2
+  scripts/kexec-ssh stage --target current strix-2
+  scripts/kexec-ssh run --target profile n100
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+action=""
+host=""
+target="profile"
+remote_user=""
+sudo_cmd="sudo"
+wait_after=1
+wait_seconds=180
+ssh_opts=(-o BatchMode=yes -o ConnectTimeout=5)
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --target)
+      [ "$#" -ge 2 ] || die "--target requires an argument"
+      target="$2"
+      shift 2
+      ;;
+    --user)
+      [ "$#" -ge 2 ] || die "--user requires an argument"
+      remote_user="$2"
+      shift 2
+      ;;
+    --sudo)
+      [ "$#" -ge 2 ] || die "--sudo requires an argument"
+      sudo_cmd="$2"
+      shift 2
+      ;;
+    --wait)
+      [ "$#" -ge 2 ] || die "--wait requires a seconds argument"
+      wait_after=1
+      wait_seconds="$2"
+      shift 2
+      ;;
+    --no-wait)
+      wait_after=0
+      shift
+      ;;
+    --ssh-option)
+      [ "$#" -ge 2 ] || die "--ssh-option requires an argument"
+      ssh_opts+=(-o "$2")
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      die "unknown option: $1"
+      ;;
+    *)
+      if [ -z "$action" ]; then
+        action="$1"
+      elif [ -z "$host" ]; then
+        host="$1"
+      else
+        die "unexpected argument: $1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ "$#" -gt 0 ]; then
+  [ -z "$host" ] || die "unexpected trailing arguments: $*"
+  host="$1"
+  shift
+fi
+
+[ -n "$action" ] || die "missing action"
+[ -n "$host" ] || die "missing host"
+
+case "$action" in
+  status|stage|run|fire|unload) ;;
+  *) die "unknown action: $action" ;;
+esac
+
+case "$wait_seconds" in
+  ''|*[!0-9]*) die "--wait must be an integer number of seconds" ;;
+esac
+
+if [ -n "$remote_user" ] && [[ "$host" != *@* ]]; then
+  dest="${remote_user}@${host}"
+else
+  dest="$host"
+fi
+
+ssh_base=(ssh "${ssh_opts[@]}" "$dest")
+
+# The remote script is intentionally single-quoted locally; it expands on the
+# remote host after ssh starts bash there.
+# shellcheck disable=SC2016
+remote_script='
+set -euo pipefail
+
+action="$1"
+target_spec="$2"
+sudo_cmd="$3"
+marker=/run/kexec-ssh.loaded
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+read_booted_target() {
+  if [ -e /run/booted-system ]; then
+    readlink -f /run/booted-system
+    return
+  fi
+
+  for word in $(cat /proc/cmdline); do
+    case "$word" in
+      init=*/init)
+        word="${word#init=}"
+        dirname "$word"
+        return
+        ;;
+    esac
+  done
+
+  die "could not resolve booted system from /run/booted-system or /proc/cmdline"
+}
+
+resolve_target() {
+  case "$1" in
+    current)
+      readlink -f /run/current-system
+      ;;
+    profile)
+      readlink -f /nix/var/nix/profiles/system
+      ;;
+    booted)
+      read_booted_target
+      ;;
+    /*)
+      readlink -f "$1"
+      ;;
+    *)
+      die "target must be current, profile, booted, or an absolute path"
+      ;;
+  esac
+}
+
+show_state() {
+  local booted current profile loaded disabled watchdogs failed
+
+  booted="$(read_booted_target 2>/dev/null || true)"
+  current="$(readlink -f /run/current-system 2>/dev/null || true)"
+  profile="$(readlink -f /nix/var/nix/profiles/system 2>/dev/null || true)"
+  loaded="$(cat /sys/kernel/kexec_loaded 2>/dev/null || echo unknown)"
+  disabled="$(cat /proc/sys/kernel/kexec_load_disabled 2>/dev/null || echo unknown)"
+  watchdogs="$(systemctl show -p RuntimeWatchdogUSec -p RebootWatchdogUSec -p KExecWatchdogUSec --value 2>/dev/null | paste -sd, - || true)"
+  failed="$(systemctl --failed --no-legend --plain 2>/dev/null | wc -l || true)"
+
+  printf "host=%s\n" "$(hostname)"
+  printf "system=%s\n" "$(systemctl is-system-running 2>/dev/null || true)"
+  printf "boot_id=%s\n" "$(cat /proc/sys/kernel/random/boot_id)"
+  printf "booted=%s\n" "$booted"
+  printf "current=%s\n" "$current"
+  printf "profile=%s\n" "$profile"
+  printf "kexec_loaded=%s\n" "$loaded"
+  printf "kexec_load_disabled=%s\n" "$disabled"
+  printf "watchdogs=%s\n" "$watchdogs"
+  printf "failed_units=%s\n" "$failed"
+  if [ -r "$marker" ]; then
+    sed "s/^/marker_/" "$marker"
+  fi
+}
+
+validate_target() {
+  local target="$1"
+
+  [ -d "$target" ] || die "target is not a directory: $target"
+  [ -e "$target/kernel" ] || die "missing target kernel: $target/kernel"
+  [ -e "$target/initrd" ] || die "missing target initrd: $target/initrd"
+  [ -x "$target/init" ] || die "missing or non-executable target init: $target/init"
+  [ -r "$target/kernel-params" ] || die "missing or unreadable target kernel-params: $target/kernel-params"
+  [ "$(cat /proc/sys/kernel/kexec_load_disabled)" = 0 ] || die "kernel has kexec_load_disabled=1"
+  command -v kexec >/dev/null 2>&1 || die "kexec is not in PATH"
+}
+
+load_target() {
+  local target params append watchdogs
+
+  target="$(resolve_target "$target_spec")"
+  validate_target "$target"
+
+  params="$(tr "\n" " " < "$target/kernel-params")"
+  case " $params " in
+    *" init="*) die "$target/kernel-params already contains init=; refusing ambiguous append" ;;
+  esac
+  append="$params init=$target/init"
+
+  watchdogs="$(systemctl show -p RuntimeWatchdogUSec -p RebootWatchdogUSec -p KExecWatchdogUSec --value 2>/dev/null | paste -sd, - || true)"
+
+  printf "target=%s\n" "$target"
+  printf "old_boot_id=%s\n" "$(cat /proc/sys/kernel/random/boot_id)"
+  printf "before_loaded=%s\n" "$(cat /sys/kernel/kexec_loaded)"
+  printf "watchdogs=%s\n" "$watchdogs"
+
+  $sudo_cmd kexec --load "$target/kernel" --initrd="$target/initrd" --append="$append"
+
+  [ "$(cat /sys/kernel/kexec_loaded)" = 1 ] || die "kexec load did not stick"
+
+  {
+    printf "target=%s\n" "$target"
+    printf "boot_id=%s\n" "$(cat /proc/sys/kernel/random/boot_id)"
+    printf "loaded_at=%s\n" "$(date -Is)"
+    printf "kernel=%s\n" "$(readlink -f "$target/kernel")"
+    printf "initrd=%s\n" "$(readlink -f "$target/initrd")"
+  } | $sudo_cmd tee "$marker" >/dev/null
+
+  printf "after_loaded=1\n"
+}
+
+fire_loaded() {
+  [ "$(cat /sys/kernel/kexec_loaded)" = 1 ] || die "no kexec image is loaded"
+  printf "KEXEC_SSH_FIRING old_boot_id=%s\n" "$(cat /proc/sys/kernel/random/boot_id)"
+  if [ -r "$marker" ]; then
+    sed "s/^/marker_/" "$marker"
+  fi
+  $sudo_cmd systemctl start kexec.target
+}
+
+case "$action" in
+  status)
+    show_state
+    ;;
+  stage)
+    load_target
+    ;;
+  run)
+    load_target
+    fire_loaded
+    ;;
+  fire)
+    fire_loaded
+    ;;
+  unload)
+    $sudo_cmd kexec --unload
+    $sudo_cmd rm -f "$marker"
+    printf "after_loaded=%s\n" "$(cat /sys/kernel/kexec_loaded)"
+    ;;
+esac
+'
+
+run_remote() {
+  "${ssh_base[@]}" bash -s -- "$action" "$target" "$sudo_cmd" <<<"$remote_script"
+}
+
+wait_for_return() {
+  local old_boot_id="$1"
+  local deadline=$((SECONDS + wait_seconds))
+  local output new_boot_id state
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if output=$("${ssh_base[@]}" 'printf "boot_id="; cat /proc/sys/kernel/random/boot_id; printf "system="; systemctl is-system-running || true' 2>/dev/null); then
+      new_boot_id="$(printf "%s\n" "$output" | sed -n "s/^boot_id=//p" | head -n1)"
+      state="$(printf "%s\n" "$output" | sed -n "s/^system=//p" | head -n1)"
+      if [ -n "$new_boot_id" ] && [ "$new_boot_id" != "$old_boot_id" ]; then
+        printf "returned=1\n"
+        printf "new_boot_id=%s\n" "$new_boot_id"
+        printf "system=%s\n" "$state"
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+
+  die "host did not return with a new boot id within ${wait_seconds}s"
+}
+
+if [ "$action" = run ] || [ "$action" = fire ]; then
+  tmp="$(mktemp)"
+  rc=0
+  run_remote >"$tmp" 2>&1 || rc=$?
+  cat "$tmp"
+
+  old_boot_id="$(sed -n "s/^KEXEC_SSH_FIRING old_boot_id=//p" "$tmp" | tail -n1)"
+  rm -f "$tmp"
+
+  if [ "$rc" -ne 0 ] && [ -z "$old_boot_id" ]; then
+    exit "$rc"
+  fi
+
+  if [ "$wait_after" -eq 1 ] && [ -n "$old_boot_id" ]; then
+    wait_for_return "$old_boot_id"
+  fi
+else
+  run_remote
+fi

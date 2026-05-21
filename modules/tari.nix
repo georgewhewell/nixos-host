@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  network,
   ...
 }:
 with lib; let
@@ -24,7 +25,7 @@ in {
 
     port = mkOption {
       type = types.port;
-      default = 18189;
+      default = 18141;
       description = "Port for peer connections";
     };
 
@@ -40,6 +41,12 @@ in {
       description = "Port for gRPC connections";
     };
 
+    metricsPort = mkOption {
+      type = types.port;
+      default = 5577;
+      description = "Port for Prometheus metrics";
+    };
+
     openFirewall = mkOption {
       type = types.bool;
       default = false;
@@ -48,7 +55,7 @@ in {
 
     image = mkOption {
       type = types.str;
-      default = "quay.io/tarilabs/minotari_node:latest-mainnet";
+      default = "quay.io/tarilabs/minotari_node:v5.2.1-mainnet";
       description = "Docker image to use for Tari node";
     };
 
@@ -60,7 +67,7 @@ in {
   };
 
   config = let
-    lanIp = "192.168.23.8";
+    lanIp = network.primaryIp network.hosts.trex;
   in
     mkIf cfg.enable {
       virtualisation = {
@@ -71,7 +78,9 @@ in {
       };
 
       systemd.tmpfiles.rules = [
-        "d '${cfg.dataDir}' 0755 root root - -"
+        "d '${cfg.dataDir}' 0755 1000 1000 - -"
+        "d '${cfg.dataDir}/node' 0755 1000 1000 - -"
+        "d '${cfg.dataDir}/config' 0755 1000 1000 - -"
       ];
 
       virtualisation.oci-containers = {
@@ -89,6 +98,8 @@ in {
               "--network"
               cfg.network
               "--non-interactive"
+              "-p"
+              "metrics.server_bind_address=0.0.0.0:${toString cfg.metricsPort}"
             ]
             ++ cfg.extraArgs;
           extraOptions = [
@@ -99,6 +110,8 @@ in {
             "${lanIp}:${toString cfg.grpcPort}:${toString cfg.grpcPort}"
             "-p"
             "${lanIp}:${toString cfg.walletPort}:${toString cfg.walletPort}"
+            "-p"
+            "${lanIp}:${toString cfg.metricsPort}:${toString cfg.metricsPort}"
           ];
           autoStart = true;
         };
@@ -107,7 +120,7 @@ in {
       systemd.services.podman-tari.unitConfig.RequiresMountsFor = [cfg.dataDir];
 
       networking.firewall = mkIf (cfg.openFirewall && config.networking.firewall.enable) {
-        allowedTCPPorts = [cfg.grpcPort cfg.walletPort];
+        allowedTCPPorts = [cfg.port cfg.grpcPort cfg.walletPort];
       };
     };
 }

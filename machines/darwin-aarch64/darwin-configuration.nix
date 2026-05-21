@@ -4,16 +4,28 @@
   lib,
   inputs,
   localOverlays,
+  network,
   ...
-}: {
+}: let
+  lanPrefixRegex = builtins.replaceStrings ["."] ["\\."] network.vlans.lan.prefix;
+in {
   imports = [
     ./system.nix
+    ../../modules/nix.nix
+    ../../modules/xmrig-darwin.nix
     ../../services/buildfarm-executor.nix
     inputs.home-manager.darwinModules.home-manager
     inputs.mac-app-util.darwinModules.default
   ];
 
+  # sops-nix: use SSH host key for decryption
+  sops.age.sshKeyPaths = ["/etc/ssh/ssh_host_ed25519_key"];
+
   environment.enableAllTerminfo = true;
+
+  security.sudo.extraConfig = ''
+    grw ALL=(ALL) NOPASSWD: ALL
+  '';
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.overlays =
@@ -22,15 +34,18 @@
     ]
     ++ localOverlays;
 
-  users.users."grw" = {
+  users.users."grw" = let
+    keys = import ../../profiles/ssh-keys.nix;
+  in {
     shell = pkgs.zsh;
     home = "/Users/grw";
+    openssh.authorizedKeys.keys = builtins.attrValues keys;
   };
 
   system.primaryUser = "grw";
 
   home-manager.useGlobalPkgs = true;
-  home-manager.extraSpecialArgs = {inherit inputs;};
+  home-manager.extraSpecialArgs = {inherit inputs network;};
   home-manager.users.grw = {...}: {
     imports = [
       ../../home/common.nix
@@ -65,12 +80,12 @@
   # SSH common config is handled by ../../modules/ssh-common.nix
   programs.ssh = {
     extraConfig = ''
-      # ProxyJump logic for satanic.link hosts
-      Match host *.satanic.link exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
-        ProxyJump grw@satanic.link
+      # ProxyJump logic for ${network.domains.public} hosts
+      Match host *.${network.domains.public} exec "! (ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '${lanPrefixRegex}\.'"
+        ProxyJump grw@${network.domains.public}
 
       # Direct connection when on local network
-      Match host *.satanic.link exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '192\.168\.23\.'"
+      Match host *.${network.domains.public} exec "(ifconfig 2>/dev/null || ip addr 2>/dev/null) | grep -q '${lanPrefixRegex}\.'"
         ProxyJump none
 
       # Control master settings
@@ -108,10 +123,6 @@
     StandardOutPath = "/tmp/postgres.log";
   };
 
-  nixpkgs.config.permittedInsecurePackages = [
-    "jitsi-meet-1.0.8792"
-  ];
-
   # doesnt work- installed manually
   # launchd.daemons.mullvad-daemon = {
   #   path = with pkgs; [mullvad];
@@ -147,34 +158,31 @@
   # NFS client configuration
   environment.etc."nfs.conf".text = ''
     nfs.client.mount.options = vers=4.0,sec=krb5
-    nfs.client.default_nfs4domain = satanic.link
+    nfs.client.default_nfs4domain = ${network.domains.public}
   '';
 
+  # Core nix settings are in modules/nix.nix
   nix = {
     registry.nixpkgs.flake = inputs.nixpkgs;
-    optimise.automatic = true;
     settings = {
+      # Darwin-specific
       download-buffer-size = 104857600; # 100 MiB
       http-connections = 32;
       system = "aarch64-darwin";
+      system-features = ["apple-virt" "benchmark" "big-parallel" "apple-m4" "metal"];
       max-jobs = "auto";
       build-users-group = "nixbld";
-      experimental-features = ["nix-command" "flakes"];
-      trusted-substituters = [
-        "ssh-ng://grw@trex.lan.satanic.link"
-      ];
-      trusted-public-keys = [
-        "trex.satanic.link:R5wLrsrQGQdkEa9w+E1o3YibQ/VPVoPqQelJEw0yrtQ="
-        "colmena.cachix.org-1:7BzpDnjjH8ki2CT3f6GdOk7QAzPOl+1t3LvTLXqYcSg="
-      ];
       build-cores = 0;
       builders-use-substitutes = true;
       always-allow-substitutes = true;
+      trusted-substituters = [
+        "ssh-ng://grw@trex.${network.domains.lan}"
+      ];
       trusted-users = [
         "@admin"
-        "grw"
         "root"
       ];
+      keep-outputs = true; # Dev machine
     };
   };
 }

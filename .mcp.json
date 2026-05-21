@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "homeassistant": {
+      "type": "http",
+      "url": "https://home.satanic.link/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${HASS_TOKEN}"
+      }
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "mcp-grafana",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.satanic.link",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_TOKEN}"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp",
+        "--executable-path",
+        "${PLAYWRIGHT_CHROMIUM_PATH}"
+      ]
+    }
+  }
+}

@@ -4,8 +4,11 @@
   pkgs,
   inputs,
   mkSecret,
+  network,
   ...
-}: {
+}: let
+  trexIp = network.primaryIp network.hosts.trex;
+in {
   # ethereum
   fileSystems."/var/lib/lighthouse" = {
     device = "pool3d/root/ethereum/lighthouse-geth-mainnet";
@@ -37,7 +40,7 @@
     beacon = {
       enable = true;
       dataDir = "/var/lib/lighthouse";
-      address = "192.168.23.8";
+      address = trexIp;
       execution = {
         address = "127.0.0.1";
         port = 8551;

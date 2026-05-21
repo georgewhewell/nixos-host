@@ -3,6 +3,7 @@
   lib,
   pkgs,
   inputs,
+  network,
   ...
 }: let
   cfg = config.sconfig.home-manager;
@@ -17,16 +18,17 @@ in {
     enableLaptop = lib.mkEnableOption "Enable laptop";
     enableVscodeServer = lib.mkEnableOption "Enable vscode";
     enableDevelopment = lib.mkEnableOption "Enable dev tools";
+    enableCad = lib.mkEnableOption "Enable CAD tools (KiCad, FreeCAD, etc)";
   };
 
-  config =
-    lib.mkIf cfg.enable
-    {
+  config = lib.mkMerge [
+    (lib.mkIf cfg.enable {
       environment.systemPackages = [pkgs.home-manager];
 
-      home-manager.extraSpecialArgs = {inherit inputs;};
+      home-manager.extraSpecialArgs = {inherit inputs network;};
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
+      home-manager.backupFileExtension = "hm-backup";
       home-manager.users.grw = {...}: {
         hostId = config.networking.hostName;
         imports =
@@ -52,7 +54,21 @@ in {
           ]
           ++ lib.optionals cfg.enableDevelopment [
             ../home/development.nix
+          ]
+          ++ lib.optionals cfg.enableCad [
+            ../home/cad.nix
           ];
       };
-    };
+    })
+
+    # When Home Manager is disabled, create minimal zshrc to prevent zsh-newuser-install prompt
+    (lib.mkIf (!cfg.enable) {
+      system.activationScripts.zshrc-fallback = ''
+        if [ ! -e /home/grw/.zshrc ]; then
+          echo "# Minimal zshrc (Home Manager not enabled)" > /home/grw/.zshrc
+          chown grw:users /home/grw/.zshrc
+        fi
+      '';
+    })
+  ];
 }

@@ -30,6 +30,10 @@ in {
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
 
+  environment.systemPackages = [
+    pkgs.kexec-tools
+  ];
+
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
   deployment.targetHost = network.primaryIp self;
@@ -82,6 +86,7 @@ in {
     inputs.nix-strix-halo.nixosModules.tuning
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.nix-strix-halo.nixosModules.rpc-server
+    inputs.nix-strix-halo.nixosModules.fastflowlm-server
     inputs.nix-strix-halo.nixosModules.disko-raid0
     inputs.nix-strix-halo.nixosModules.ec-su-axb35
     inputs.nix-strix-halo.nixosModules.ryzenadj
@@ -178,19 +183,35 @@ in {
     ];
 
     # FastFlowLM bench derivations talk to the NPU via XRT, which opens
-    # /dev/accel/accel0 (amdxdna DRM accel device), and read pre-staged
-    # models from /models/flm/.
+    # /dev/accel/accel0 (amdxdna DRM accel device) and walks sysfs to
+    # enumerate devices (xrt::device(0) needs PCI topology to find the
+    # NPU, which lives under /sys/devices and /sys/bus/pci). Models are
+    # pre-staged at /models/flm/ by `flm pull` with FLM_MODEL_PATH set.
     extra-sandbox-paths = [
       "/dev/accel"
       "/sys/class/accel"
+      "/sys/bus/pci"
+      "/sys/devices"
+      "/sys/dev"
+      "/proc"
       "/models"
     ];
   };
 
-  # Let the nixbld build group open /dev/accel/accel0.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="accel", KERNEL=="accel*", GROUP="nixbld", MODE="0660"
-  '';
+  # FastFlowLM pins NPU input/output buffers with mlock; on the default
+  # 8 MB nixbld limit it warns and falls back to pageable memory, which
+  # bench numbers depend on avoiding. nix-daemon spawns builders so the
+  # limit must be set on the daemon's systemd unit.
+  systemd.services.nix-daemon.serviceConfig.LimitMEMLOCK = "infinity";
+
+  # NPU server. The fastflowlm-server module installs a MODE=0666 udev
+  # rule on /dev/accel/accel0 so the service and the bench-flm-*
+  # nixbld builders both have access without per-user group plumbing.
+  services.fastflowlm-server = {
+    enable = false;
+    model = "gpt-oss:20b";
+    openFirewall = false;
+  };
 
   services = {
     fstrim.enable = true;

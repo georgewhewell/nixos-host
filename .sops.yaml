@@ -11,16 +11,22 @@ keys:
   - &strix-2 age1d7z2rcpuv63lcvjkk0rzlspajnudp6phrx89h0l4t4gtwaqmn5aq3wqu5t  # strix-2
   - &rock-5b age1u6s0s0la00zy3hp86fgcj6lwqu59k0lgkjp77qgdrl9k3798s36qtsnuug  # rock-5b (192.168.23.18)
   - &prime age1tmy38cwuf2jsjj72s6w55jsvgyf9207mxw29at58u4x9m68mg34qk67yrt    # prime
+  - &neo2 age1l397cc000vd660wynywsvd30adr4hwa3s4se5c83gglfmm7s23asgjuaw5     # neo2
+
+  # Darwin machine age keys (from SSH host keys)
+  - &air age1huqmde9sgsl3vlf87l9c8874caa7vezjutq4vjx9e2wey62zlfgqq468u3                                    # air (macbook air)
+  - &mbp age1huqmde9sgsl3vlf87l9c8874caa7vezjutq4vjx9e2wey62zlfgqq468u3                                    # mbp (macbook pro)
 
   # Your GPG key for editing
   - &grw_gpg 4ED64FA5BBF73612035B86B20C414B6F2BA7BB19  # George Whewell
 
 creation_rules:
-  # Crypto services (Ethereum) - trex only
+  # Crypto services - trex and router (merge mining)
   - path_regex: secrets/crypto\.yaml$
     key_groups:
       - age:
           - *trex
+          - *router
         pgp:
           - *grw_gpg
 
@@ -48,11 +54,18 @@ creation_rules:
         pgp:
           - *grw_gpg
 
-  # Home automation (MQTT) - router only
+  # Home automation (MQTT) - router + MQTT-controlled hosts
   - path_regex: secrets/home-automation\.yaml$
     key_groups:
       - age:
           - *router
+          - *fuckup
+          - *trex
+          - *strix-1
+          - *strix-2
+          - *rock-5b
+          - *prime
+          - *neo2
         pgp:
           - *grw_gpg
 
@@ -69,10 +82,45 @@ creation_rules:
         pgp:
           - *grw_gpg
 
+  # ESPHome device credentials (API/OTA/web auth) and shared substitutions.
+  # Router decrypts these at activation to populate the ESPHome dashboard's
+  # secrets.yaml; GPG is kept for local authoring/wrapping via the CLI.
+  - path_regex: secrets/esphome\.yaml$
+    key_groups:
+      - age:
+          - *router
+        pgp:
+          - *grw_gpg
+
   # WireGuard VPN - router (server) and clients
   - path_regex: secrets/wireguard\.yaml$
     key_groups:
       - age:
           - *router
         pgp:
+          - *grw_gpg
+
+  # Hellas executor secrets (HF_TOKEN) - trex + fuckup
+  - path_regex: secrets/hellas\.yaml$
+    key_groups:
+      - age:
+          - *trex
+          - *fuckup
+        pgp:
+          - *grw_gpg
+
+  # nix-daemon path-signing key + nix-serve key. trex is the only signer;
+  # other hosts trust the corresponding public key via nix.settings in
+  # modules/nix.nix.
+  - path_regex: secrets/nix\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+
+  # SSH host keys - GPG only (for bootstrapping new installs)
+  - path_regex: secrets/ssh-host-keys\.yaml$
+    key_groups:
+      - pgp:
           - *grw_gpg

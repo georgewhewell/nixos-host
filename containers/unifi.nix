@@ -1,5 +1,5 @@
-{...}: let
-  lanIp = "192.168.23.1";
+{network, ...}: let
+  lanIp = network.routerIp;
 in {
   virtualisation = {
     podman = {
@@ -35,10 +35,6 @@ in {
     '';
   };
 
-  systemd.services.podman-unifi = {
-    after = ["network-online.target"];
-    wants = ["network-online.target"];
-  };
 
   virtualisation.oci-containers = {
     backend = "podman";
@@ -99,7 +95,7 @@ in {
   ];
 
   # Add firewall rules for LAN access only
-  networking.firewall.interfaces."tap0" = {
+  networking.firewall.interfaces."br0.lan" = {
     allowedTCPPorts = [
       8443 # Web UI
       8080 # Device communication

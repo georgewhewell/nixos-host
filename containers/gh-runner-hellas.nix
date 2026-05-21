@@ -52,7 +52,7 @@
   containers.gh-runner-hellas = {
     autoStart = true;
     privateNetwork = true;
-    hostBridge = "br0";
+    hostBridge = "br0.lan";
 
     bindMounts = {
       "/run/gh-runner-hellas-a.secret".hostPath = "/run/gh-runner-hellas-a.secret";

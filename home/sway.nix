@@ -1,11 +1,9 @@
-{ config, lib, pkgs, ... }:
-
 {
-
-  imports = [
-    ./waybar.nix
-  ];
-
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   home.sessionVariables = {
     MOZ_DBUS_REMOTE = 1;
     MOZ_USE_XINPUT2 = 1;
@@ -19,41 +17,41 @@
     waypipe
   ];
 
-  services.gammastep = {
-    enable = true;
-    provider = "manual";
-    dawnTime = "6:00-7:45";
-    duskTime = "18:35-20:15";
-    tray = true;
-    settings = {
-      general = {
-        adjustment-method = "wayland";
-        gamma = 0.8;
-      };
-    };
-  };
+  # services.gammastep = {
+  #   enable = true;
+  #   provider = "manual";
+  #   dawnTime = "6:00-7:45";
+  #   duskTime = "18:35-20:15";
+  #   tray = true;
+  #   settings = {
+  #     general = {
+  #       adjustment-method = "wayland";
+  #       gamma = 0.8;
+  #     };
+  #   };
+  # };
 
-  services.mako =
-    let
-      homeIcons = "${config.home.homeDirectory}/.nix-profile/share/icons/hicolor";
-      homePixmaps = "${config.home.homeDirectory}/.nix-profile/share/pixmaps";
-      systemIcons = "/run/current-system/sw/share/icons/hicolor";
-      systemPixmaps = "/run/current-system/sw/share/pixmaps";
-    in
-    {
-      enable = true;
-      backgroundColor = "#0A0E14";
-      borderColor = "#53BDFA";
-      defaultTimeout = 30 * 1000; # millis
+  services.mako = let
+    homeIcons = "${config.home.homeDirectory}/.nix-profile/share/icons/hicolor";
+    homePixmaps = "${config.home.homeDirectory}/.nix-profile/share/pixmaps";
+    systemIcons = "/run/current-system/sw/share/icons/hicolor";
+    systemPixmaps = "/run/current-system/sw/share/pixmaps";
+  in {
+    enable = true;
+    settings = {
+      background-color = "#0A0E14";
+      border-color = "#53BDFA";
+      default-timeout = 30 * 1000; # millis
       font = "monospace 10";
-      iconPath = "${homeIcons}:${systemIcons}:${homePixmaps}:${systemPixmaps}";
+      icon-path = "${homeIcons}:${systemIcons}:${homePixmaps}:${systemPixmaps}";
       icons = true;
-      maxIconSize = 96;
-      maxVisible = 3;
+      max-icon-size = 96;
+      max-visible = 3;
       sort = "-time";
-      textColor = "#B3B1AD";
+      text-color = "#B3B1AD";
       width = 500;
     };
+  };
 
   wayland.windowManager.sway = {
     enable = true;
@@ -63,15 +61,14 @@
       . "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh"
     '';
     config = rec {
-      bars = [ ];
+      bars = [];
       modifier = "Mod1";
       menu = "${pkgs.rofi}/bin/rofi -show combi";
       terminal = "${pkgs.alacritty}/bin/alacritty";
-      keybindings =
-        let
-          pactl = "${pkgs.pulseaudio}/bin/pactl";
-          playerctl = "${pkgs.playerctl}/bin/playerctl";
-        in
+      keybindings = let
+        pactl = "${pkgs.pulseaudio}/bin/pactl";
+        playerctl = "${pkgs.playerctl}/bin/playerctl";
+      in
         lib.mkOptionDefault {
           "${modifier}+Shift+s" = "exec loginctl lock-session $XDG_SESSION_ID";
           "${modifier}+Shift+p" = "exec slurp | grim -g -";
@@ -124,54 +121,79 @@
       };
       output = {
         # disable whatever this is
-        "Virtual-1" = { disable = ""; };
-        "eDP-1" = { scale = "1"; };
-        "DP-1" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
-        "DP-2" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
-        "DP-3" = { mode = "3840x2160@239.991Hz"; position = "1080 0"; };
-        "HDMI-A-1" = { mode = "3840x2160@240Hz"; };
-        "DVI-I-1" = { mode = "3840x2160@60.000Hz"; transform = "270"; scale = "2"; position = "0 240"; };
+        "Virtual-1" = {disable = "";};
+        "eDP-1" = {scale = "1";};
+        "DP-1" = {
+          mode = "3840x2160@239.991Hz";
+          position = "1080 0";
+          adaptive_sync = "on";
+        };
+        "DP-2" = {
+          mode = "3840x2160@239.991Hz";
+          position = "1080 0";
+          adaptive_sync = "on";
+        };
+        "DP-3" = {
+          mode = "3840x2160@239.991Hz";
+          position = "1080 0";
+          adaptive_sync = "on";
+        };
+        "HDMI-A-1" = {mode = "3840x2160@240Hz";};
+        "DVI-I-1" = {
+          mode = "3840x2160@60.000Hz";
+          transform = "270";
+          scale = "2";
+          position = "0 240";
+        };
       };
-      startup = [
-        { command = "${pkgs.mako}/bin/mako"; always = true; }
-        {
-          command = ''
-            ${pkgs.swayidle}/bin/swayidle \
-              timeout 600 "${pkgs.swaylock}/bin/swaylock \
-              --screenshots \
-              --clock \
-              --indicator \
-              --indicator-radius 100 \
-              --indicator-thickness 7 \
-              --effect-blur 7x5 \
-              --effect-vignette 0.5:0.5 \
-              --ring-color bb00cc \
-              --key-hl-color 880033 \
-              --line-color 00000000 \
-              --inside-color 00000088 \
-              --separator-color 00000000 \
-              --grace 30 \
-              --fade-in 0.2" \
-              timeout 3600 'swaymsg "output * dpms off"' \
-              resume 'swaymsg "output * dpms on"' 
-          '';
-          always = false;
-        }
-        # static workspaces
-        /*{
+      startup =
+        [
+          {
+            command = "${pkgs.mako}/bin/mako";
+            always = true;
+          }
+          {
+            command = ''
+              ${pkgs.swayidle}/bin/swayidle \
+                timeout 600 "${pkgs.swaylock}/bin/swaylock \
+                --screenshots \
+                --clock \
+                --indicator \
+                --indicator-radius 100 \
+                --indicator-thickness 7 \
+                --effect-blur 7x5 \
+                --effect-vignette 0.5:0.5 \
+                --ring-color bb00cc \
+                --key-hl-color 880033 \
+                --line-color 00000000 \
+                --inside-color 00000088 \
+                --separator-color 00000000 \
+                --grace 30 \
+                --fade-in 0.2" \
+                timeout 3600 'swaymsg "output * dpms off"' \
+                resume 'swaymsg "output * dpms on"'
+            '';
+            always = false;
+          }
+          # static workspaces
+          /*
+          {
           command = ''
           swaymsg "workspace 9; exec alacritty --working-directory /etc/nixos -e sh -c 'while true; do vim .; done'; workspace 1"
           '';
           always = false;
-          }*/
-      ]
-      ++ lib.optionals (config.hostId == "yoga") [ ]
-      ++ lib.optionals (config.hostId == "workvm") [{
-        command = ''
-          ${pkgs.wayvnc}/bin/wayvnc 0.0.0.0
-        '';
-        always = false;
-      }];
+          }
+          */
+        ]
+        ++ lib.optionals (config.hostId == "yoga") []
+        ++ lib.optionals (config.hostId == "workvm") [
+          {
+            command = ''
+              ${pkgs.wayvnc}/bin/wayvnc 0.0.0.0
+            '';
+            always = false;
+          }
+        ];
       modes = {
         passthrough = {
           "Mod1+Pause" = "mode default";

@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  network,
   ...
 }: {
   imports = [
@@ -23,6 +24,6 @@
       useDHCP = true;
     };
     useHostResolvConf = false;
-    nameservers = ["192.168.23.1"];
+    nameservers = [network.routerIp];
   };
 }

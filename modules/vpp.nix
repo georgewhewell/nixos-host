@@ -4,475 +4,417 @@
   pkgs,
   ...
 }: let
-  inherit
-    (lib)
-    mkEnableOption
-    mkPackageOption
-    mkOption
-    types
-    mkIf
-    ;
   cfg = config.services.vpp;
 
-  # Converts the settings option to a string
-  parseConfig = cfg: let
-    inherit (lib.lists) sort concatMap filter;
-
-    sortedAttrs = set:
-      sort
-      (
-        l: r:
-          if l == "extraConfig"
-          then false # Always put extraConfig last
-          else if builtins.isAttrs set.${l} == builtins.isAttrs set.${r}
-          then l < r
-          else builtins.isAttrs set.${r} # Attrsets should be last, makes for a nice config
-        # This last case occurs when any side (but not both) is an attrset
-        # The order of these is correct when the attrset is on the right
-        # which we're just returning
+  mapAttrsToLines = f: attrs:
+    lib.concatStringsSep "\n" (
+      lib.mapAttrsToList f (
+        lib.filterAttrs (_: value: value != null && value != {} && value != []) attrs
       )
-      (builtins.attrNames set);
+    );
+  prefixWith = prefix: lines: builtins.replaceStrings ["\n"] [("\n" + prefix)] lines;
 
-    # Specifies an attrset that encodes the value according to its type
-    encode = name: value:
-      {
-        null = [];
-        bool = lib.optional value name;
-        int = ["${name} ${builtins.toString value}"];
-
-        # extraConfig should be inserted verbatim
-        string = [
-          (
-            if name == "extraConfig"
-            then value
-            else "${name} ${value}"
-          )
-        ];
-
-        # Values like `foo = [ "bar" "baz" ];` should be transformed into
-        #   foo bar
-        #   foo baz
-        list = concatMap (encode name) value;
-
-        # Values like `foo = { bar = { baz = true; }; bar2 = { baz2 = true; }; };` should be transformed into
-        #   foo bar {
-        #     baz
-        #   }
-        #   foo bar2 {
-        #     baz2
-        #   }
-        set =
-          concatMap
-          (
-            subname:
-              lib.optionals (value.${subname} != null) (
-                ["${name} ${subname} {"] ++ (map (line: "  ${line}") (toLines value.${subname})) ++ ["}"]
-              )
-          )
-          (filter (v: v != null) (builtins.attrNames value));
-      }
-      .${builtins.typeOf value};
-
-    # One level "above" encode, acts upon a set and uses encode on each name,value pair
-    toLines = set: concatMap (name: encode name set.${name}) (sortedAttrs set);
-
-    # Moves top-level attrsets into a dummy "" value, so that `section = {...}` is transformed to `section  {...}`
-    parseSections = set:
-      builtins.mapAttrs
-      (name: value: {
-        "" = value;
-      })
-      set;
+  # Parse the settings option into a string
+  # Filters out sections that would result in empty blocks
+  parseSettings = settings: let
+    processSection = sectionName: section: let
+      innerContent = mapAttrsToLines parseAttr section;
+    in
+      if innerContent == ""
+      then null
+      else ''
+        ${sectionName} {
+          ${prefixWith "  " innerContent}
+        }
+      '';
   in
-    lib.strings.concatStringsSep "\n" (toLines (parseSections cfg));
+    lib.concatStringsSep "\n" (
+      lib.filter (x: x != null && x != "") (
+        lib.mapAttrsToList processSection settings
+      )
+    );
 
-  semanticTypes = with types; rec {
-    vppAtom = nullOr (oneOf [
-      int
-      bool
-      str
-    ]);
-    vppAttr = attrsOf vppAll;
-    vppAll =
+  # Parse a single VPP config value (e.g. settings.unix.cli-listen) into a string
+  parseAttr = name: value:
+    {
+      bool = lib.optionalString value name;
+      int = "${name} ${toString value}";
+      string = "${name} ${value}";
+
+      # Values like `foo = [ {bar = {};} {baz = {};} ];` should be transformed into
+      #   foo bar {}
+      #   foo baz {}
+      # which is equivalent to `foo = {bar = {}; baz = {};};`.
+      list = lib.concatMapStringsSep "\n" (parseAttr name) value;
+
+      # Values like `foo.bar.baz = true;` should be transformed into
+      #   foo bar {
+      #     baz
+      #   }
+      set =
+        mapAttrsToLines (subname: subvalue: ''
+          ${name} ${subname} {
+            ${prefixWith "  " (mapAttrsToLines parseAttr subvalue)}
+          }
+        '')
+        value;
+    }
+    .${
+      builtins.typeOf value
+    };
+
+  # Type for the settings option
+  settingsTypes = with lib.types; {
+    atom =
       (oneOf [
-        vppAtom
-        (listOf vppAtom)
-        vppAttr
+        int
+        bool
+        str
+        (listOf settingsTypes.atom)
+        settingsTypes.nestedAttrs
       ])
       // {
-        # Since this is a recursive type and the description by default contains
-        # the description of its subtypes, infinite recursion would occur without
-        # explicitly breaking this cycle
-        description = "vpp values (atoms (null, str, int, bool), list of atoms, or attrsets of vpp values)";
+        # Description needs to be overridden for recursive types
+        description = "VPP atom (int, bool, string, list of VPP atoms, attrs of attrs of null or VPP atoms)";
+      };
+
+    attrs =
+      (attrsOf (nullOr settingsTypes.atom))
+      // {
+        description = "attrs of null or " + settingsTypes.atom.description;
+      };
+
+    nestedAttrs =
+      (attrsOf settingsTypes.attrs)
+      // {
+        description = "attrs of " + settingsTypes.attrs.description;
       };
   };
 
-  vppOpts = {name, ...}: {
-    options = {
-      enable = mkEnableOption "FD.io's Vector Packet Processor, a high-performance userspace network stack.";
-
-      name = mkOption {
-        type = types.str;
-        default = name;
-        description = ''
-          Name is used as a suffix for the service name.
-          By default it takes the value you use for `<instance>` in:
-          {option}`services.vpp.instances.<instance>`
-        '';
+  # Documented options and defaults for settings
+  settingsOptions = let
+    # Most of the defaults shouldn't ever need to be changed and all have their values
+    # documented in defaultText, so they're not visible to reduce clutter
+    mkHiddenDefault = value:
+      lib.mkOption {
+        default = value;
+        type = settingsTypes.atom;
+        visible = false;
       };
+  in {
+    # Config defaults
 
-      package = mkPackageOption pkgs "vpp" {};
+    api-segment.gid = mkHiddenDefault cfg.group;
+    unix = {
+      nodaemon = mkHiddenDefault true;
+      nosyslog = mkHiddenDefault true;
+      cli-listen = mkHiddenDefault "/run/vpp/cli.sock";
+      startup-config = mkHiddenDefault (toString cfg.startupConfigFile);
+      gid = mkHiddenDefault cfg.group;
+    };
 
-      kernelModule = mkOption {
-        type = types.nullOr types.str;
-        default = "uio_pci_generic";
-        example = "vfio-pci";
-        description = "UIO kernel driver module to load before starting this VPP instance. Set to `null` to disable this functionality.";
-      };
+    logging.default-syslog-log-level = lib.mkOption {
+      type = lib.types.enum [
+        "emerg"
+        "alert"
+        "crit"
+        "err"
+        "warn"
+        "notice"
+        "info"
+        "debug"
+        "disabled"
+      ];
+      description = "Logging level for journald logs.";
+      default = "info";
+      example = "alert";
+    };
 
-      group = mkOption {
-        type = types.str;
-        default = "vpp";
-        example = "vpp-main";
-        description = "Group that grants users in it privileges to control this instance via {command}`vppctl`.";
-      };
+    # Option documentation
 
-      settings = mkOption {
-        description = ''
-          Configuration for VPP, see <https://fd.io/docs/vpp/master/configuration/reference.html> for details.
-          Nix value declared here will be translated directly to the config format VPP uses. Attributes
-          called `extraConfig` will be inserted verbatim into the resulting config file.
-          Top-level attrsets, lists and primitives get parsed as expected, i.e. `foo = { bar = true; };`
-          becomes `foo { bar }` in the final config file. Nested attrsets on the other hand, such as
-          {option}`dpdk.dev`, get parsed differently. For example, this config:
-          ```nix
-          settings = {
-            dpdk = {
-              dev = {
-                "foo".name = "bar";
-                "baz".name = "qux";
-              };
+    plugins.plugin = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          freeformType = settingsTypes.attrs;
+
+          options.enable = lib.mkOption {
+            type = with lib.types; nullOr bool;
+            description = ''
+              Whether to enable this plugin. Because of how the config is parsed, `false`
+              has no effect. If you want to explicitly turn a plugin off use {option}`disable`.
+            '';
+            default = null;
+            example = true;
+          };
+          options.disable = lib.mkOption {
+            type = with lib.types; nullOr bool;
+            description = ''
+              Whether to disable this plugin. Because of how the config is parsed, `false`
+              has no effect. If you want to explicitly turn a plugin on use {option}`enable`.
+            '';
+            default = null;
+            example = true;
+          };
+        }
+      );
+      description = ''
+        Configuration for specific plugins, usually used to turn a plugin on or off.
+        Special value `default` applies to all plugins.
+      '';
+      default = {};
+      example = lib.literalExpression ''
+        {
+          default.disable = true;
+          "dpdk_plugin.so".enable = true;
+        }
+      '';
+    };
+
+    dpdk = {
+      dev = lib.mkOption {
+        type = lib.types.attrsOf (
+          lib.types.submodule {
+            freeformType = settingsTypes.attrs;
+
+            options.name = lib.mkOption {
+              type = with lib.types; nullOr str;
+              description = "Override the name of this interface as seen from the CLI.";
+              default = null;
+              example = "eth0";
             };
-          };
-          ```
-          Would get parsed into the following:
-          ```
-          dpdk {
-            dev foo { name bar }
-            dev baz { name qux }
+            options.num-rx-queues = lib.mkOption {
+              type = with lib.types; nullOr ints.positive;
+              description = ''
+                Number of receive queues on this interface. Useful for multi-threaded operation.
+                Use the `cpu.*` options to setup workers if you want to use this option.
+              '';
+              default = null;
+              example = 4;
+            };
           }
-          ```
-          Notice how `dev.foo` becomes `dev foo { }` instead of `dev { foo { } }`.
+        );
+        description = ''
+          Which DPDK network interfaces VPP should bind to.
+          Special value `default` applies to all interfaces.
         '';
-        defaultText = ''
-          unix = {
-            nodaemon = true;
-            nosyslog = true;
-            cli-listen = "/run/vpp/\${name}-cli.sock";
-            gid = config.services.vpp.instances.\${name}.group;
-            startup-config = config.services.vpp.instances.\${name}.startupConfigFile;
-            cli-prompt = "vpp-\${name}";
-          };
-          api-segment = {
-            prefix = "\${name}";
-            gid = config.services.vpp.instances.\${name}.group;
-          };
-        '';
+        default = {};
         example = lib.literalExpression ''
           {
-            unix.cli-listen = "/run/vpp/cli.sock";
-            plugins = {
-              plugin."rdma_plugin.so".disable = true;
-            };
-            cpu = {
-              main-core = 0;
-              workers = 4;
-            };
-            dpdk = {
-              dev."0000:01:00.0" = {
-                name = "sfp0";
-                num-rx-queues = 4;
-              };
-              dev."0000:01:00.1" = { };
-              ## In the case of many devices that don't need special config, they can also be defined in a list:
-              # dev = [ "0000:01:00.0" "0000:01:00.1" ];
-              ## And, since `x = [ y ];` is functionally identical to `x = y;`, this is also possible:
-              # dev = [
-              #   {
-              #     default.num-rx-queues = 4;
-              #
-              #     "0000:01:00.0" = {
-              #       name = "uplink";
-              #       num-rx-queues = 8;
-              #     };
-              #   }
-              #   [ "0000:02:00.0" "0000:02:00.1" ]
-              # ];
-              blacklist = [
-                "8086:10fb"
-              ];
-              no-multi-seg = true;
-              no-tx-checksum-offload = true;
-              extraConfig = "dev 0000:02:00.0";
-            };
+            default.num-rx-queues = 4;
+            "0000:01:00.0".name = "eth0";
           }
         '';
-        type = types.submodule {
-          freeformType = semanticTypes.vppAttr;
-          options = let
-            # Most of the defaults don't need to be changed except under very specific circumstances and
-            # all have their values documented in defaultText, so they're not visible to reduce clutter
-            mkDefaultOption = value:
-              mkOption {
-                default = value;
-                type = semanticTypes.vppAll;
-                visible = false;
-              };
-          in {
-            ## Config defaults
-            api-segment = {
-              prefix = mkDefaultOption name;
-              gid = mkDefaultOption cfg.instances.${name}.group;
-            };
-
-            unix = {
-              nodaemon = mkDefaultOption true;
-              nosyslog = mkDefaultOption true;
-              gid = mkDefaultOption cfg.instances.${name}.group;
-              startup-config = mkDefaultOption (builtins.toString cfg.instances.${name}.startupConfigFile);
-
-              cli-prompt = mkDefaultOption "vpp-${name}";
-              cli-listen = mkOption {
-                # Visible in documentation unlike other defaults, since changing this
-                # setting will likely be pretty common on single-instance configs
-                type = types.str;
-                default = "/run/vpp/${name}-cli.sock";
-                example = "localhost:5002";
-                description = ''
-                  Address in the format IPADDR:PORT or a socket path the CLI should listen on. If you only run
-                  a single instance of VPP, it's recommended to change this to `/run/vpp/cli.sock` so
-                  {command}`vppctl` can be used without specifying this path using the `-s` argument.
-                '';
-              };
-            };
-
-            ## User-facing option documentation
-            plugins.plugin = mkOption {
-              type = types.attrsOf (
-                types.submodule {
-                  freeformType = semanticTypes.vppAll;
-                  options.enable = mkOption {
-                    type = types.nullOr types.bool;
-                    example = true;
-                    default = null;
-                    description = ''
-                      Whether to enable this plugin. Because of how the config is parsed, `false`
-                      has no effect. If you want to explicitly turn a plugin off use {option}`disable`.
-                    '';
-                  };
-                  options.disable = mkOption {
-                    type = types.nullOr types.bool;
-                    example = true;
-                    default = null;
-                    description = ''
-                      Whether to disable this plugin. Because of how the config is parsed, `false`
-                      has no effect. If you want to explicitly turn a plugin on use {option}`enable`.
-                    '';
-                  };
-                }
-              );
-              example = {
-                default.disable = true;
-                "dpdk_plugin.so".enable = true;
-              };
-              default = {};
-              description = ''
-                Configuration for specific plugins, usually used to turn a plugin on or off.
-                Special value `default` applies to all plugins.
-              '';
-            };
-
-            dpdk = {
-              dev = mkOption {
-                type = types.attrsOf (
-                  types.submodule {
-                    freeformType = semanticTypes.vppAll;
-
-                    options.name = mkOption {
-                      type = types.nullOr types.str;
-                      example = "eth0";
-                      default = null;
-                      description = "Override the name of this interface as seen from the CLI.";
-                    };
-                    options.num-rx-queues = mkOption {
-                      type = types.nullOr types.ints.positive;
-                      example = 4;
-                      default = null;
-                      description = ''
-                        Number of receive queues on this interface. Useful for multi-threaded operation.
-                        Use the `cpu.*` options to setup workers if you want to use this option.
-                      '';
-                    };
-                  }
-                );
-                example = {
-                  "0000:01:00.0".name = "eth0";
-                };
-                default = {};
-                description = ''
-                  Which DPDK network interfaces VPP should bind to, can also be specified as a list if no
-                  per-device configuration is needed. Special value `default` applies to all interfaces.
-                '';
-              };
-
-              blacklist = mkOption {
-                type = types.oneOf [
-                  types.str
-                  (types.listOf types.str)
-                ];
-                example = "8086:10fb";
-                default = [];
-                description = "Device types to blacklist, using PCI vendor:device syntax.";
-              };
-            };
-
-            cpu = {
-              main-core = mkOption {
-                type = types.nullOr types.ints.unsigned;
-                example = 0;
-                default = null;
-                description = ''
-                  Logical CPU core where the main thread runs, if unset VPP will use core 1 if available.
-                '';
-              };
-
-              corelist-workers = mkOption {
-                type = types.nullOr types.str;
-                example = "2-3,18-19";
-                default = null;
-                description = ''
-                  Explicitely set logical CPUs on which VPP worker threads will run.
-                  {option}`skip-cores` and {option}`workers` are incompatible with {option}`corelist-workers`.
-                '';
-              };
-
-              skip-cores = mkOption {
-                type = types.nullOr types.ints.positive;
-                example = 8;
-                default = null;
-                description = ''
-                  Set number of logical CPU cores to skip when using the {option}`workers` option.
-                  {option}`skip-cores` and {option}`workers` are incompatible with {option}`corelist-workers`.
-                '';
-              };
-              workers = mkOption {
-                type = types.nullOr types.ints.positive;
-                example = 4;
-                default = null;
-                description = ''
-                  Set number of workers to be created and automatically assigned. Workers will be pinned to
-                  N consecutive CPU cores while skipping {option}`skip-cores` CPU core(s) and main thread's core.
-                  {option}`skip-cores` and {option}`workers` are incompatible with {option}`corelist-workers`.
-                '';
-              };
-            };
-          };
-        };
       };
 
-      settingsFile = mkOption {
-        type = types.path;
-        example = "/etc/vpp/startup.conf";
-        default = pkgs.writeText "vpp-${name}.conf" (parseConfig cfg.instances.${name}.settings);
-        defaultText = ''
-          pkgs.writeText "vpp-\${name}.conf" (parseConfig config.services.vpp.instances.\${name}.settings);
-        '';
+      blacklist = lib.mkOption {
+        type = with lib.types;
+          oneOf [
+            str
+            (listOf str)
+          ];
+        description = "Device types to blacklist, using PCI vendor:device syntax.";
+        default = [];
+        example = "8086:10fb";
+      };
+    };
+
+    cpu = {
+      main-core = lib.mkOption {
+        type = with lib.types; nullOr ints.unsigned;
         description = ''
-          Configuration file passed to {command}`vpp -c`.
-          It is recommended to use the {option}`settings` option instead.
-          Setting this option will override the config file
-          auto-generated from the {option}`settings` option.
+          Logical CPU core where the main thread runs, if unset VPP will use core 1 if available.
+
+          {option}`main-core` and {option}`corelist-workers` are incompatible with
+          {option}`skip-cores` and {option}`workers`.
         '';
+        default = null;
+        example = 0;
+      };
+      corelist-workers = lib.mkOption {
+        type = with lib.types; nullOr str;
+        description = ''
+          Explicitly set logical CPUs on which VPP worker threads will run.
+
+          {option}`main-core` and {option}`corelist-workers` are incompatible with
+          {option}`skip-cores` and {option}`workers`.
+        '';
+        default = null;
+        example = "2-3,18-19";
       };
 
-      startupConfig = mkOption {
-        type = types.str;
-        default = "";
-        example = ''
-          set interface state TenGigabitEthernet1/0/0 up
-          set interface state TenGigabitEthernet1/0/1 up
-          set interface ip address TenGigabitEthernet1/0/0 2001:db8::1/64
-          set interface ip address TenGigabitEthernet1/0/1 2001:db8:1234::1/64
-        '';
+      skip-cores = lib.mkOption {
+        type = with lib.types; nullOr ints.positive;
         description = ''
-          Script to run on startup in {command}`vppctl`, passed to
-          VPP's `startup-config` option in the `unix` section as a file.
-          This is used to configure things like IP addresses and routes. To configure
-          interfaces, plugins, etc., see the {option}`settings` option.
-        '';
-      };
+          Set number of logical CPU cores to skip when using the {option}`workers` option.
+          Using this option, the main thread will be pinned to the next available CPU core after skipping.
 
-      startupConfigFile = mkOption {
-        type = types.path;
-        example = "./vpp-startup.conf";
-        default = pkgs.writeText "vpp-${name}-startup.conf" cfg.instances.${name}.startupConfig;
-        defaultText = ''
-          pkgs.writeText "vpp-\${name}-startup.conf" (builtins.toString config.services.vpp.instances.\${name}.startupConfig);
+          {option}`skip-cores` and {option}`workers` are incompatible with
+          {option}`main-core` and {option}`corelist-workers`.
         '';
+        default = null;
+        example = 8;
+      };
+      workers = lib.mkOption {
+        type = with lib.types; nullOr ints.positive;
         description = ''
-          File to run as a script on startup in {command}`vppctl`, passed
-          to VPP's `startup-config` option in the `unix` section.
-          Setting this option will override {option}`startupConfig`.
+          Set number of workers to be created and automatically assigned. Workers will be pinned to
+          N consecutive CPU cores while skipping {option}`skip-cores` CPU core(s) and the main thread's core.
+
+          {option}`skip-cores` and {option}`workers` are incompatible with
+          {option}`main-core` and {option}`corelist-workers`.
         '';
+        default = null;
+        example = 4;
       };
     };
   };
 in {
-  options.services.vpp = {
-    hugepages = {
-      autoSetup = mkOption {
-        default = false;
-        example = true;
-        description = ''
-          Whether to automatically setup hugepages for use with FD.io's Vector Packet Processor.
-          If any programs other than VPP use hugepages or you want to use 1GB hugepages, it's recommended
-          to keep this `false` and set them up manually using {option}`boot.kernel.sysctl` or {option}`boot.kernelParams`.
-        '';
-      };
+  # Interface
 
-      count = mkOption {
-        type = types.ints.positive;
-        default = 1024;
-        example = 512;
-        description = "Number of 2MB hugepages to setup on the system if {option}`services.vpp.hugepages.autoSetup` is enabled.";
-      };
+  options.services.vpp = {
+    enable = lib.mkEnableOption "FD.io's Vector Packet Processor";
+
+    package = lib.mkPackageOption pkgs "vpp" {};
+
+    group = lib.mkOption {
+      type = lib.types.str;
+      description = "Group that grants users in it privileges to control this instance via {command}`vppctl`.";
+      default = "vpp";
+      example = "wheel";
     };
 
-    instances = mkOption {
-      default = {};
-      type = types.attrsOf (types.submodule vppOpts);
-      description = ''
-        VPP supports multiple instances for testing or other purposes.
-        If you don't require multiple instances of VPP you can define just the one.
-      '';
-      example = {
-        main = {
-          enable = true;
-          group = "vpp-main";
-          settings = {};
-        };
-        test = {
-          enable = false;
-          group = "vpp-test";
-          settings = {};
-        };
+    settings = lib.mkOption {
+      type = lib.types.submodule {
+        freeformType = settingsTypes.nestedAttrs;
+        options = settingsOptions;
       };
+      description = ''
+        Configuration for VPP, see <https://fd.io/docs/vpp/master/configuration/reference.html> for details.
+        Nix value declared here will be translated directly to the config format VPP uses.
+
+        **NOTE**: VPP requires hugepages and a loaded PCI driver to work, users are expected to configure this
+        by themselves. See the
+        [upstream documentation on hugepages](https://fd.io/docs/vpp/master/gettingstarted/running/index.html#huge-pages),
+        upstream VPP (but not this module!) also defaults to loading the `uio_pci_generic` driver if you don't
+        require a specific one.
+      '';
+      defaultText = lib.literalExpression ''
+        {
+          api-segment.gid = config.services.vpp.group;
+          unix = {
+            nodaemon = true;
+            nosyslog = true;
+            cli-listen = "/run/vpp/cli.sock";
+            startup-config = config.services.vpp.startupConfigFile;
+            gid = config.services.vpp.group;
+          };
+          logging.default-syslog-log-level = "info";
+        }
+      '';
+      example = lib.literalExpression ''
+        {
+          plugins.plugin."rdma_plugin.so".disable = true;
+
+          cpu.corelist-workers = "2-3,18-19";
+          dpdk.dev = {
+            default.num-rx-queues = 4;
+            "0000:01:00.0".name = "sfp0";
+            "0000:01:00.1".name = "sfp1";
+          };
+        }
+      '';
+    };
+
+    settingsFile = lib.mkOption {
+      type = lib.types.path;
+      description = ''
+        Configuration file passed to {command}`vpp -c`.
+        It is recommended to use the {option}`settings` option instead.
+
+        Setting this option will override the config file auto-generated
+        from the {option}`settings` option.
+      '';
+      default = pkgs.writeText "vpp.conf" (parseSettings cfg.settings);
+      defaultText = lib.literalMD "generated from {option}`settings`";
+      example = "/etc/vpp/custom.conf";
+    };
+
+    startupConfig = lib.mkOption {
+      type = lib.types.lines;
+      description = ''
+        Script to run on startup in {command}`vppctl`, passed to
+        VPP's `startup-config` option in the `unix` section as a file.
+
+        This is used to configure things like IP addresses and routes. To
+        configure interfaces, plugins, etc., see the {option}`settings` option.
+      '';
+      default = "";
+      example = ''
+        set interface state TenGigabitEthernet1/0/0 up
+        set interface state TenGigabitEthernet1/0/1 up
+        set interface ip address TenGigabitEthernet1/0/0 2001:db8:1::1/64
+        set interface ip address TenGigabitEthernet1/0/1 2001:db8:2::1/64
+      '';
+    };
+
+    startupConfigFile = lib.mkOption {
+      type = lib.types.path;
+      description = ''
+        File to run as a script on startup in {command}`vppctl`, passed
+        to VPP's `startup-config` option in the `unix` section.
+
+        Setting this option will override {option}`startupConfig`.
+      '';
+      default = pkgs.writeText "vpp-startup.conf" cfg.startupConfig;
+      defaultText = lib.literalMD "generated from {option}`startupConfig`";
+      example = "/etc/vpp/startup.conf";
+    };
+
+    silenceNoHugepages = lib.mkOption {
+      type = lib.types.bool;
+      description = ''
+        Silence warning that occurs if hugepages aren't detected on the system.
+
+        **NOTE**: Alongside hugepages, users of this module are also expected to
+        load a kernel driver that VPP can use. If you aren't sure and don't require
+        a specific one, `uio_pci_generic` should work.
+      '';
+      default = false;
+      example = true;
     };
   };
 
-  config = let
-    #TODO: systemd hardening
-    mkInstanceServiceConfig = instance: {
+  # Implementation
+
+  config = lib.mkIf cfg.enable {
+    warnings = let
+      hugepagesDetected =
+        config.boot.kernel.sysctl ? "vm.nr_hugepages"
+        || builtins.any (lib.hasPrefix "hugepages=") config.boot.kernelParams;
+    in
+      lib.optional (!hugepagesDetected && !cfg.silenceNoHugepages) ''
+        `services.vpp` is enabled, but hugepages aren't configured!
+
+        VPP requires hugepages and a loaded PCI driver to work, users are expected
+        to configure this by themselves. See the upstream documentation on hugepages:
+
+        https://fd.io/docs/vpp/master/gettingstarted/running/index.html#huge-pages
+
+        Upstream VPP (but not this module) defaults to loading the `uio_pci_generic`
+        driver, which works if you aren't sure and don't require a specific one.
+
+        If this is a false positive, you can silence this warning by setting the
+        `services.vpp.silenceNoHugepages` option to true.
+      '';
+
+    environment.systemPackages = [cfg.package]; # for the vppctl tool
+    boot.extraModulePackages = [
+      config.boot.kernelPackages.dpdk-kmods
+    ];
+
+    users.groups.${cfg.group} = {};
+
+    systemd.services.vpp = {
       description = "Vector Packet Processing Process";
       after = [
         "syslog.target"
@@ -480,53 +422,75 @@ in {
         "auditd.service"
       ];
       serviceConfig = {
-        ExecStartPre =
-          [
-            "-${pkgs.coreutils}/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api"
-          ]
-          ++ (lib.optional
-            (
-              instance.kernelModule != null
-            ) "-/run/current-system/sw/bin/modprobe ${instance.kernelModule}");
-        ExecStart = "${instance.package}/bin/vpp -c ${instance.settingsFile}";
+        ExecStartPre = [
+          # https://fd.io/docs/vpp/master/gettingstarted/running/index.html#systemd-file-vpp-service
+          "-${pkgs.coreutils}/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api"
+        ];
+        ExecStart = "${cfg.package}/bin/vpp -c ${cfg.settingsFile}";
         Type = "simple";
         Restart = "on-failure";
         RestartSec = "5s";
         RuntimeDirectory = "vpp";
+        LimitMEMLOCK = "infinity";
       };
       wantedBy = ["multi-user.target"];
     };
-    instances = lib.attrValues cfg.instances;
-  in {
-    boot.kernel.sysctl = mkIf cfg.hugepages.autoSetup {
-      # defaults for 2MB hugepages, see https://fd.io/docs/vpp/master/gettingstarted/running/index.html#huge-pages
-      "vm.nr_hugepages" = cfg.hugepages.count;
-      "vm.max_map_count" = cfg.hugepages.count * 2;
-      "kernel.shmmax" = cfg.hugepages.count * 2097152; # * 2 * 1024 * 1024
-    };
-
-    users.groups = lib.mkMerge (
-      map
-      (
-        instance:
-          lib.mkIf instance.enable {
-            ${instance.group} = {};
-          }
-      )
-      instances
-    );
-
-    systemd.services = lib.mkMerge (
-      map
-      (
-        instance:
-          lib.mkIf instance.enable {
-            "vpp-${instance.name}" = mkInstanceServiceConfig instance;
-          }
-      )
-      instances
-    );
-
-    meta.maintainers = with lib.maintainers; [romner-set];
   };
+
+  meta.maintainers = with lib.maintainers; [azey7f];
 }
+# # WAN (wan0) is created by DPDK from dpdk.dev config above
+# # Create RDMA interface for LAN Mellanox
+# create interface rdma host-if ${lan.linux} name ${lan.name} num-rx-queues 4
+# create bridge-domain 1 learn 1 forward 1 uu-flood 1 flood 1 arp-term 1
+# # Set hardware MAC addresses (VPP generates random MACs otherwise)
+# # WAN MAC is set by DPDK, LAN needs manual setting
+# set interface mac address ${lan.name} ${lan.mac}
+# # WAN setup - DHCP (IPv4) and SLAAC (IPv6)
+# # DHCPv6-PD is configured via vpp-dhcp6-pd.service (CLI commands don't work reliably)
+# set interface mtu packet 1500 ${wan.name}
+# set interface state ${wan.name} up
+# set dhcp client intfc ${wan.name} hostname router
+# ip6 nd address autoconfig ${wan.name} default-route
+# # Create bridge domain for LAN (bridges physical LAN + TAP to Linux)
+# # arp-term 1: VPP answers ARP from its neighbor table (more reliable than flooding via tap0)
+# create bridge-domain 1 learn 1 forward 1 uu-flood 1 flood 1 arp-term 1
+# # Add physical LAN (Mellanox) to bridge
+# set interface l2 bridge ${lan.name} 1
+# set interface state ${lan.name} up
+# # Create AF_XDP interfaces for Intel switch ports and add to bridge
+# ${lib.concatMapStringsSep "\n" (port: ''
+#     create interface af_xdp host-if ${port.linux} name ${port.name}
+#     set interface l2 bridge ${port.name} 1
+#     set interface state ${port.name} up
+#   '')
+#   switchPorts}
+# # Thunderbolt Mellanox ports are added by vpp-thunderbolt.service after enumeration
+# # Create TAP for host services and add to bridge (jumbo MTU, large ring sizes for throughput)
+# # Note: num-tx-queues must match what kernel expects (4 on this system)
+# create tap host-if-name ${network.host.interface} host-ip4-addr ${network.host.addr}/${toString network.host.prefix} host-ip4-gw ${network.lan.addr} num-rx-queues 4 num-tx-queues 4 rx-ring-size 16384 tx-ring-size 16384 host-mtu-size 9000 gso gro-coalesce
+# set interface l2 bridge ${network.host.interface} 1
+# set interface state ${network.host.interface} up
+# # Create BVI (Bridge Virtual Interface) - this is the LAN gateway
+# # Use a vendor MAC (Mellanox-like) instead of locally-administered MAC
+# # to avoid filtering by Mikrotik switches
+# bvi create instance 1
+# set interface mac address bvi1 50:6b:4b:03:04:cc
+# set interface l2 bridge bvi1 1 bvi
+# set interface ip address bvi1 ${network.lan.addr}/${toString network.lan.prefix}
+# set interface ip address bvi1 fdde:ad::1/64
+# set interface state bvi1 up
+# # IPv6 Router Advertisements for LAN (ULA prefix; global prefix added by vpp-dhcp6-pd.service)
+# ip6 nd bvi1 ra-interval 30 60 ra-lifetime 180
+# ip6 nd bvi1 prefix fdde:ad::/64 86400 14400
+# # NAT44 setup - NAT on the BVI (LAN gateway)
+# nat44 forwarding enable
+# nat44 plugin enable sessions 131072
+# nat44 add interface address ${wan.name}
+# set interface nat44 in bvi1 out ${wan.name}
+# # WAN also needs 'in' for DNAT (port forwarding from WAN)
+# set interface nat44 in ${wan.name}
+# # LAN hairpin NAT: redirect .1 ports to Linux (.254) for local services
+# ${toVppHairpinRules network.lan.addr portForwardHosts.router}
+# # Port forwarding rules
+# ${toVppNatRules wan.name portForwardHosts}
