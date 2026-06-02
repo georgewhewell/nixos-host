@@ -1,7 +1,8 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, network, ... }:
 let
   cfg = config.profiles.thunderbolt-bridge;
   bridgeName = "br0.lan";
+  lanMtu = toString network.vlans.lan.mtu;
 
   # Common bridge config for USB/thunderbolt interfaces
   bridgeNetwork = {
@@ -87,6 +88,8 @@ in {
             GenericSegmentationOffload = false;
             TCPSegmentationOffload = false;
             MACAddressPolicy = "none";
+          } // lib.optionalAttrs cfg.bridgeThunderboltNet {
+            MTUBytes = lanMtu;
           };
         };
       };
@@ -124,12 +127,12 @@ in {
           linkConfig.RequiredForOnline = "no";
         };
       } // lib.optionalAttrs cfg.enableThunderboltNet {
-        # Thunderbolt networking
+        # Thunderbolt networking. Hot-plug, so never required-for-online.
         "50-thunderbolt" = {
           matchConfig.Driver = "thunderbolt-net";
         } // (
           if cfg.bridgeThunderboltNet
-          then bridgeNetwork
+          then bridgeNetwork // { linkConfig.RequiredForOnline = "no"; }
           else {
             networkConfig = {
               LinkLocalAddressing = "yes";

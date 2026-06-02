@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -51,12 +52,44 @@
 
   fastflowlmFixed = npu.fastflowlm.override {xrt = xrtFixed;};
 in {
-  imports = [inputs.nix-amd-npu.nixosModules.default];
+  boot.kernelModules = ["amdxdna"];
+  boot.extraModulePackages = lib.optional (lib.versionOlder config.boot.kernelPackages.kernel.version "7.0") (
+    (npu.amdxdna-driver).override {
+      kernel = config.boot.kernelPackages.kernel;
+    }
+  );
+  hardware.firmware = lib.optional (lib.versionOlder config.boot.kernelPackages.kernel.version "7.0") npu.amdxdna-firmware;
 
-  hardware.amd-npu = {
-    enable = true;
-    package = xrtAmdxdnaFixed;
-  };
+  environment.systemPackages = [
+    fastflowlmFixed
+    xrtAmdxdnaFixed
+  ];
 
-  environment.systemPackages = [fastflowlmFixed];
+  environment.variables.XILINX_XRT = "${xrtAmdxdnaFixed}/opt/xilinx/xrt";
+
+  services.udev.extraRules = ''
+    SUBSYSTEM=="accel", KERNEL=="accel[0-9]*", GROUP="video", MODE="0660"
+  '';
+
+  security.pam.loginLimits = [
+    {
+      domain = "@video";
+      type = "soft";
+      item = "memlock";
+      value = "unlimited";
+    }
+    {
+      domain = "@video";
+      type = "hard";
+      item = "memlock";
+      value = "unlimited";
+    }
+  ];
+
+  assertions = [
+    {
+      assertion = config.boot.kernelPackages.kernelAtLeast "6.10";
+      message = "AMD NPU support requires kernel 6.10 or newer.";
+    }
+  ];
 }

@@ -45,6 +45,12 @@ in {
     interval = "weekly";
   };
 
+  # NFSv4 delegations are implemented as kernel file leases. Because
+  # this host also does local development directly on the exported Home
+  # filesystem, delegated reads from NFS clients can stall local writers
+  # in break_lease() on Git index/ref updates.
+  boot.kernel.sysctl."fs.leases-enable" = 0;
+
   services.nfs = {
     settings = {
       nfsd.vers3 = false;

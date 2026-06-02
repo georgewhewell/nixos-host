@@ -13,6 +13,7 @@ in {
     ./system.nix
     ../../modules/nix.nix
     ../../modules/xmrig-darwin.nix
+    inputs.nix-strix-halo.darwinModules.benchmark-executor
     ../../services/buildfarm-executor.nix
     inputs.home-manager.darwinModules.home-manager
     inputs.mac-app-util.darwinModules.default

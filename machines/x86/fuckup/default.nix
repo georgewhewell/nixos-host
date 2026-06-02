@@ -1,16 +1,17 @@
-{
-  pkgs,
-  lib,
-  inputs,
-  config,
-  mkSecret,
-  network,
-  ...
-}: let
+{ pkgs
+, lib
+, inputs
+, config
+, mkSecret
+, network
+, ...
+}:
+let
   self = network.hosts.fuckup;
-in {
+in
+{
   /*
-  AMD Ryzen 9 9950X3D
+    AMD Ryzen 9 9950X3D
   */
   sconfig = {
     profile = "desktop";
@@ -44,7 +45,7 @@ in {
     mode = "0400";
   };
 
-  sops.secrets.hf-token = mkSecret "hf-token" {};
+  sops.secrets.hf-token = mkSecret "hf-token" { };
   sops.templates."hellas-env".content = ''
     HF_TOKEN=${config.sops.placeholder."hf-token"}
   '';
@@ -55,7 +56,7 @@ in {
   boot.tmp.useTmpfs = lib.mkForce false;
 
   hardware.enableAllHardware = true;
-  nix.settings.system-features = ["gccarch-znver5"];
+  nix.settings.system-features = [ "gccarch-znver5" "rtx4090" "9950x3d" ];
 
   services.hellas = {
     enable = true;
@@ -101,6 +102,7 @@ in {
     ../../../profiles/thunderbolt-bridge.nix
 
     ../../../services/buildfarm-slave.nix
+    ../../../services/hydra-builder-slave.nix
 
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
@@ -108,15 +110,38 @@ in {
     # inputs.nix-strix-halo.nixosModules.tuning
   ];
 
-  # llama.cpp built from ggml-org/master with CUDA (sm_89, RTX 4090).
-  # Sourced from nix-strix-halo so the master pin + nixpkgs overrides
-  # stay in one place; consumed as a flake package because fuckup's
-  # pkgsForCuda doesn't itself carry the strix-halo overlay.
-  environment.systemPackages = [
-    inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-cuda
-  ];
+  benchmark.runners.cuda-rtx4090 = {
+    requireIommuOff = false;
+    gpus = [
+      {
+        type = "nvidia";
+        arch = "rtx4090";
+      }
+    ];
+    systemFeatures = [
+      "benchmark"
+      "cuda"
+      "nvidia"
+    ];
+    extraSandboxPaths = [
+      "/proc/driver/nvidia"
+    ];
+  };
 
-  networking.firewall.allowedTCPPorts = [8080 8081];
+  home-manager.users.grw =
+    { lib
+    , pkgs
+    , ...
+    }: {
+      home.activation.kwinGameInput = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 \
+          --file "$HOME/.config/kwinrc" \
+          --group MouseBindings \
+          --key CommandAllKey Meta
+      '';
+    };
+
+  networking.firewall.allowedTCPPorts = [ 8080 8081 ];
 
   services.iperf3 = {
     enable = true;
@@ -150,7 +175,7 @@ in {
   ];
 
   # Import the archive pool at boot
-  boot.zfs.extraPools = ["archive"];
+  boot.zfs.extraPools = [ "archive" ];
 
   disko.devices = {
     disk = {
@@ -167,7 +192,7 @@ in {
                 type = "filesystem";
                 format = "vfat";
                 mountpoint = "/boot";
-                mountOptions = ["umask=0077"];
+                mountOptions = [ "umask=0077" ];
               };
             };
             root = {
@@ -215,55 +240,57 @@ in {
     };
   };
 
-  systemd.network = let
-    lanBridge = "br0.lan";
-  in {
-    enable = true;
-    wait-online = {
+  systemd.network =
+    let
+      lanBridge = "br0.lan";
+    in
+    {
       enable = true;
-      anyInterface = true;
+      wait-online = {
+        enable = true;
+        anyInterface = true;
+      };
+      netdevs = {
+        "20-${lanBridge}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = lanBridge;
+          };
+          bridgeConfig.STP = true;
+        };
+      };
+      networks = {
+        "10-bridge" = {
+          matchConfig.Name = lanBridge;
+          networkConfig.IPv6AcceptRA = true;
+          address = [ (network.cidrOf "lan" self.addresses.lan) ];
+          gateway = [ network.routerIp ];
+          dns = [ network.routerIp ];
+        };
+        "10-mlx5" = {
+          matchConfig.Driver = "mlx5_core";
+          networkConfig = {
+            Bridge = lanBridge;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
+        "10-igc" = {
+          matchConfig.Driver = "igc";
+          networkConfig = {
+            Bridge = lanBridge;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
+        "10-aquantia" = {
+          matchConfig.Driver = "atlantic";
+          networkConfig = {
+            Bridge = lanBridge;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "enslaved";
+        };
+      };
     };
-    netdevs = {
-      "20-${lanBridge}" = {
-        netdevConfig = {
-          Kind = "bridge";
-          Name = lanBridge;
-        };
-        bridgeConfig.STP = true;
-      };
-    };
-    networks = {
-      "10-bridge" = {
-        matchConfig.Name = lanBridge;
-        networkConfig.IPv6AcceptRA = true;
-        address = [(network.cidrOf "lan" self.addresses.lan)];
-        gateway = [network.routerIp];
-        dns = [network.routerIp];
-      };
-      "10-mlx5" = {
-        matchConfig.Driver = "mlx5_core";
-        networkConfig = {
-          Bridge = lanBridge;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-      "10-igc" = {
-        matchConfig.Driver = "igc";
-        networkConfig = {
-          Bridge = lanBridge;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-      "10-aquantia" = {
-        matchConfig.Driver = "atlantic";
-        networkConfig = {
-          Bridge = lanBridge;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-    };
-  };
 }

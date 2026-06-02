@@ -18,7 +18,7 @@ self: super: {
   # Fix mtail cross-compilation - upstream vendor directory is out of sync
   mtail = super.mtail.overrideAttrs (old: {
     proxyVendor = true;
-    vendorHash = "sha256-ZZcVtZBG0Erh/NmYbw0aOVCg2AGZeHMFRfRbwNFTCks=";
+    vendorHash = "sha256-QWIVIEhnDoU8omWEL2GJLUCr3U7fqJ5znTt7yehtq8g=";
   });
 
   apple-health-ingester = super.callPackage ../packages/apple-health-ingester {};
@@ -265,6 +265,12 @@ self: super: {
           super.lib.optionalAttrs ((super.config.rocmSupport or false) || (super.config.cudaSupport or false)) {
             doCheck = false;
           });
+        # Torchaudio's GPU test suite is not stable under the ROCm/CUDA
+        # package sets used by the builders; keep the package buildable.
+        torchaudio = python-prev.torchaudio.overridePythonAttrs (old:
+          super.lib.optionalAttrs ((super.config.rocmSupport or false) || (super.config.cudaSupport or false)) {
+            doCheck = false;
+          });
         ltx-core = python-final.callPackage ../packages/python-libraries/ltx-core {
           cudaSupport = super.config.cudaSupport or false;
         };
@@ -279,26 +285,4 @@ self: super: {
 
   easyeda2kicad = super.callPackage ../packages/easyeda2kicad {};
 
-  lighthouse = super.lighthouse.overrideAttrs (old: rec {
-    version = "8.0.0";
-    src = super.fetchFromGitHub {
-      owner = "sigp";
-      repo = "lighthouse";
-      tag = "v${version}";
-      hash = "sha256-dfWh9BHhoRfKvHRp/Osxsz0udL1q3XsC8PaPy3RCt1s=";
-    };
-    patches = [];
-    postPatch = ''
-      substituteInPlace Cargo.toml \
-        --replace-fail 'rusqlite = { version = "0.28", features = ["bundled"] }' \
-                       'rusqlite = { version = "0.28" }'
-    '';
-    cargoBuildFeatures = ["gnosis"];
-    cargoDeps = super.rustPlatform.fetchCargoVendor {
-      inherit src;
-      pname = "lighthouse";
-      inherit version;
-      hash = "sha256-XR3/9+fcoPHU0xONkFydJcvKBck51RpgCiOOulzoY8I=";
-    };
-  });
 }

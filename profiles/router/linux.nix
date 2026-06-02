@@ -1,7 +1,22 @@
 {lib, pkgs, network, ...}: let
-  wanInterface = "enp1s0f0np0";
-  lanBridge = "br0.lan";
+  routerPorts = network.ports.router;
+  wanPort = routerPorts.wan;
+  lan25gPort = routerPorts.lan25g;
+  wanInterface = wanPort.linuxName;
+  lan25gInterface = lan25gPort.linuxName;
+  lanBridge = routerPorts.lanBridge;
+  lanMtu = toString network.vlans.lan.mtu;
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+  lan25gAutoneg = if lan25gPort.autoNegotiation == "no" then "off" else "on";
+
+  bridgeMemberNetwork = matchConfig: requiredForOnline: {
+    inherit matchConfig;
+    networkConfig.Bridge = lanBridge;
+    linkConfig = {
+      MTUBytes = lanMtu;
+      RequiredForOnline = requiredForOnline;
+    };
+  };
 
   # Import shared port forward definitions
   portForwardHosts = import ./port-forwards.nix network;
@@ -89,6 +104,7 @@ in {
         netdevConfig = {
           Kind = "bridge";
           Name = lanBridge;
+          MTUBytes = lanMtu;
         };
         bridgeConfig = {
           STP = true;
@@ -103,7 +119,7 @@ in {
         # other ConnectX cards on Thunderbolt.
         matchConfig = {
           Driver = "mlx5_core";
-          PermanentMACAddress = "50:6b:4b:03:04:ca";
+          PermanentMACAddress = wanPort.mac;
         };
         linkConfig = {
           Name = wanInterface;
@@ -119,14 +135,15 @@ in {
       "20-lan-25g" = {
         matchConfig = {
           Driver = "mlx5_core";
-          PermanentMACAddress = "50:6b:4b:03:04:cb";
+          PermanentMACAddress = lan25gPort.mac;
         };
         linkConfig = {
-          Name = "enp1s0f1np1";
+          Name = lan25gInterface;
           RxBufferSize = 8192;
           TxBufferSize = 8192;
-          AutoNegotiation = "no";
-          BitsPerSecond = "25G";
+          MTUBytes = lanMtu;
+          AutoNegotiation = lan25gPort.autoNegotiation;
+          BitsPerSecond = lan25gPort.bitsPerSecond;
           Duplex = "full";
         };
       };
@@ -157,45 +174,24 @@ in {
           DNS = ["fdde:ad::1"];
           Domains = network.domains.lan;
         };
-        linkConfig.RequiredFamilyForOnline = "ipv4";
+        linkConfig = {
+          MTUBytes = lanMtu;
+          RequiredFamilyForOnline = "ipv4";
+        };
       };
-      "20-lan-25g" = {
-        matchConfig.Name = "enp1s0f1np1";
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "enslaved";
-      };
+      "20-lan-25g" = bridgeMemberNetwork {Name = lan25gInterface;} "enslaved";
 
-      "20-lan-10g" = {
-        matchConfig.Driver = "atlantic";
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
-      };
-      "20-lan-2-5g" = {
-        matchConfig.Driver = "igc";
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
-      };
-      "20-lan-10g-realtek" = {
-        matchConfig.Driver = ["r8169" "r8127"];
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
-      };
-      "20-thunderbolt-mlx5-0" = {
-        matchConfig = {
-          Driver = "mlx5_core";
-          Path = "pci-0000:0b:*";
-        };
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
-      };
-      "20-thunderbolt-mlx5-1" = {
-        matchConfig = {
-          Driver = "mlx5_core";
-          Path = "pci-0000:0c:*";
-        };
-        networkConfig.Bridge = lanBridge;
-        linkConfig.RequiredForOnline = "no";
-      };
+      "20-lan-10g" = bridgeMemberNetwork {Driver = "atlantic";} "no";
+      "20-lan-2-5g" = bridgeMemberNetwork {Driver = "igc";} "no";
+      "20-lan-10g-realtek" = bridgeMemberNetwork {Driver = ["r8169" "r8127"];} "no";
+      "20-thunderbolt-mlx5-0" = bridgeMemberNetwork {
+        Driver = "mlx5_core";
+        Path = "pci-0000:0b:*";
+      } "no";
+      "20-thunderbolt-mlx5-1" = bridgeMemberNetwork {
+        Driver = "mlx5_core";
+        Path = "pci-0000:0c:*";
+      } "no";
       "20-${wanInterface}" = {
         matchConfig.Name = wanInterface;
         networkConfig = {
@@ -220,19 +216,25 @@ in {
     };
   };
 
-  # Force FEC off on the LAN 25G port. The Mellanox CX-4 ↔ Mikrotik CRS510
-  # link won't come up at boot otherwise (peer FEC negotiation is unstable);
-  # without this the bridge stays carrierless until manual ethtool recovery.
+  # Force the LAN 25G port to match the MikroTik CRS510 peer. The switch port
+  # is still in AN/FEC auto mode, and this ConnectX-4 link does not always come
+  # up cleanly unless both the speed and FEC are pinned.
   systemd.services.lan-25g-fec = {
-    description = "Disable FEC on LAN 25G interface";
-    bindsTo = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
-    after = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
-    wantedBy = ["sys-subsystem-net-devices-enp1s0f1np1.device"];
+    description = "Configure LAN 25G interface link settings";
+    after = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    before = ["systemd-networkd.service" "network-pre.target"];
+    bindsTo = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    wants = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    wantedBy = ["multi-user.target"];
+    path = [pkgs.ethtool];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.ethtool}/bin/ethtool --set-fec enp1s0f1np1 encoding off";
     };
+    script = ''
+      ethtool -s ${lan25gInterface} speed ${toString lan25gPort.speedMbps} autoneg ${lan25gAutoneg}
+      ethtool --set-fec ${lan25gInterface} encoding ${lan25gPort.fecEncoding}
+    '';
   };
 
   # Linux-specific networking (base.nix has common settings)
@@ -268,12 +270,7 @@ in {
             32400 # plex
             3074 # bo2
 
-            9000 # lighthouse
-            9001 # lighthouse
-            9002 # lighthouse
-
             30303 # geth
-            30304 # reth
 
             18080 # monero
             17026 # qBittorrent
@@ -293,12 +290,7 @@ in {
 
             5000 # (IPTV)
 
-            9000 # lighthouse
-            9001 # lighthouse
-            9002 # lighthouse
-
             30303 # geth
-            30304 # reth
 
             18080 # monero
             37889 # P2Pool P2P (C++ on trex)

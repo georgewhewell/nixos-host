@@ -1,4 +1,8 @@
-{pkgs, network, ...}: {
+{
+  pkgs,
+  network,
+  ...
+}: {
   home.packages = with pkgs; [
     nixd
     nil
@@ -34,7 +38,7 @@
         nil = {
           initialization_options = {
             formatting = {
-              command = ["alejandra"];
+              command = ["nixpkgs-fmt"];
             };
             nix = {
               flake = {
@@ -73,7 +77,7 @@
           ];
           formatter = {
             external = {
-              command = "alejandra";
+              command = "nixpkgs-fmt";
             };
           };
         };

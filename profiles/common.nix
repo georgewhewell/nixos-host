@@ -47,27 +47,6 @@ in {
   services.irqbalance.enable = lib.mkDefault true;
   services.fwupd.enable = lib.mkDefault config.boot.kernelPackages.stdenv.isx86_64;
 
-  # Hardware watchdog - reboots if systemd hangs
-  systemd.settings.Manager = {
-    RuntimeWatchdogSec = "15s";
-    RebootWatchdogSec = "30s";
-    KExecWatchdogSec = "30s";
-  };
-
-  # Reboot on kernel lockups. The x86 hardlockup detector is enabled
-  # by nmi_watchdog=panic,1 in uefi-boot.nix; keep the sysctl explicit so the
-  # runtime state is visible and survives systemd-sysctl.
-  boot.kernelParams = ["softlockup_panic=1"];
-  boot.kernel.sysctl =
-    {
-      "kernel.watchdog" = 1;
-      "kernel.softlockup_panic" = 1;
-    }
-    // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
-      "kernel.nmi_watchdog" = 1;
-      "kernel.hardlockup_panic" = 1;
-    };
-
   environment.pathsToLink = ["/share/zsh"];
 
   programs.zsh = {

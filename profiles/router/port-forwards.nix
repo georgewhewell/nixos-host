@@ -77,24 +77,9 @@ network: {
         comment = "qBittorrent";
       }
       {
-        port = 9000;
-        proto = "both";
-        comment = "Lighthouse";
-      }
-      {
-        port = 9001;
-        proto = "udp";
-        comment = "Lighthouse";
-      }
-      {
         port = 18080;
         proto = "both";
         comment = "Monero";
-      }
-      {
-        port = 30303;
-        proto = "both";
-        comment = "Reth (Ethereum)";
       }
       {
         port = 8333;

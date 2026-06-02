@@ -172,6 +172,22 @@
     mode = "0400";
   };
 
+  # Private key for the Hydra-only builder tunnel on the router.
+  wg-hydra-builders-router-key = {
+    sopsFile = ./wireguard.yaml;
+    key = "wg-hydra-builders-router-private";
+    path = "/run/secrets/wg-hydra-builders-router-key";
+    mode = "0400";
+  };
+
+  # WireGuard PSK shared by ax102 and the home router for the Hydra builder tunnel.
+  wg-hydra-builders-psk = {
+    sopsFile = ./wireguard.yaml;
+    key = "wg-hydra-builders-psk";
+    path = "/run/secrets/wg-hydra-builders-psk";
+    mode = "0400";
+  };
+
   # WireGuard PSK for iOS peer
   wg-home-ios-psk = {
     sopsFile = ./wireguard.yaml;
@@ -187,5 +203,4 @@
     path = "/run/secrets/wg-home-macbook-pro-psk";
     mode = "0400";
   };
-
 }

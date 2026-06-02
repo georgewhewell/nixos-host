@@ -8,6 +8,14 @@
 
   hardware.graphics.enable = true;
 
+  # Nixpkgs only adds nvidia_modeset/nvidia_drm to kernelModules when
+  # services.xserver.enable is true. We run Wayland with xserver disabled,
+  # so without this the boot framebuffer keeps the display at 1024x768.
+  boot.kernelModules = ["nvidia_modeset" "nvidia_drm"];
+  boot.extraModprobeConfig = ''
+    options nvidia_drm modeset=1 fbdev=1
+  '';
+
   hardware.nvidia = {
     # Modesetting is required.
     modesetting.enable = true;

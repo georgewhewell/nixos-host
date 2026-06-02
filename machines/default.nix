@@ -93,13 +93,15 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
   sysRocmZnver5 = system: machine: mkRocmSystem (pkgsForRocmZnver5 system) machine;
 in {
   router = sys "x86_64-linux" ./x86/router;
-  trex = sys "x86_64-linux" ./x86/trex;
   n100 = sys "x86_64-linux" ./x86/n100;
 
   # NVIDIA GPU machine
   fuckup = sysCuda "x86_64-linux" ./x86/fuckup;
 
-  # AMD GPU machines (ROCm)
+  # AMD GPU machines (ROCm). trex has a Navi 10 dGPU; the strix
+  # machines have gfx1151 iGPUs. They share the same pkgsForRocm
+  # base — anything per-target lives in the host config.
+  trex = sysRocm "x86_64-linux" ./x86/trex;
   strix-1 = sysRocm       "x86_64-linux" (import ./x86/strix-halo 1);
   # Keep both Strix machines on the same generic ROCm package set for
   # reliability work. The znver5 package set is useful for performance A/B

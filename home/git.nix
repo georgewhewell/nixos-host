@@ -9,6 +9,10 @@
       ".DS_Store"
       "/target"
       ".claude"
+      ".antigravitycli"
+      ".worktrees"
+      "__pycache__/"
+      "*.pyc"
     ];
 
     signing = {

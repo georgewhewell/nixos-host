@@ -129,22 +129,6 @@
       ];
     }
     {
-      job_name = "lighthouse";
-      static_configs = [
-        {
-          targets = ["${trexIp}:5054"];
-        }
-      ];
-    }
-    {
-      job_name = "reth";
-      static_configs = [
-        {
-          targets = ["${trexIp}:6060"];
-        }
-      ];
-    }
-    {
       job_name = "p2pool";
       static_configs = [
         {

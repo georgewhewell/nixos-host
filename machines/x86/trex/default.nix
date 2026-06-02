@@ -8,6 +8,7 @@
   ...
 }: let
   self = network.hosts.trex;
+  hellasGatewayCli = inputs.hellas.packages.${pkgs.stdenv.hostPlatform.system}.cli;
 in {
   /*
   trex: trx90 system
@@ -45,7 +46,7 @@ in {
     # Sign locally-built store paths with our cache key so `nix copy` to
     # strix-1/strix-2 (which trust this key via modules/nix.nix) is
     # accepted without --no-check-sigs.
-    secret-key-files = [ config.sops.secrets.nix-cache-key.path ];
+    secret-key-files = [config.sops.secrets.nix-cache-key.path];
   };
 
   boot.kernel.sysctl = {
@@ -102,8 +103,42 @@ in {
     };
   };
 
+  systemd.services.hellas-gateway = {
+    description = "Hellas HTTP gateway passthrough to local llama.cpp";
+    wantedBy = ["multi-user.target"];
+    after = ["network-online.target" "llama-cpp.service"];
+    wants = ["network-online.target" "llama-cpp.service"];
+    environment = {
+      HOME = "/var/lib/hellas-gateway";
+    };
+    serviceConfig = {
+      ExecStart = lib.escapeShellArgs [
+        "${hellasGatewayCli}/bin/hellas-cli"
+        "--identity"
+        "/var/lib/hellas-gateway/.hellas/identity"
+        "--producer-key-path"
+        "/var/lib/hellas-gateway/.hellas/signing-key.secp256k1"
+        "gateway"
+        "--host"
+        (network.primaryIp self)
+        "--port"
+        "8083"
+        "--responses-backend"
+        "proxy"
+        "--responses-proxy-url"
+        "http://127.0.0.1:8081/v1/responses"
+        "--responses-proxy-api-key-env"
+        "HELLAS_GATEWAY_PROXY_API_KEY"
+      ];
+      Restart = "on-failure";
+      DynamicUser = true;
+      StateDirectory = "hellas-gateway";
+      WorkingDirectory = "/var/lib/hellas-gateway";
+    };
+  };
+
   nix.settings.build-cores = lib.mkDefault 48;
-  nix.settings.max-jobs = lib.mkDefault 12;
+  nix.settings.max-jobs = lib.mkDefault 4;
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
@@ -134,13 +169,13 @@ in {
     ../../../services/victoriametrics.nix
     ../../../services/jellyfin.nix
     ../../../services/buildfarm-executor.nix
+    ../../../services/hydra-builder-slave.nix
     ../../../services/buildfarm-slave.nix
     ../../../services/virt/host.nix
     ../../../services/virt/vfio.nix
     ../../../services/apple-health-ingester.nix
 
     ../../../profiles/thunderbolt-bridge.nix
-    ../../../profiles/usb4-rdma-kernel-stable.nix
   ];
 
   deployment = {
@@ -533,14 +568,13 @@ in {
         weekly = 0;
         monthly = 0;
       };
-      datasets."pool3d/root/ethereum" = excluded // {recursive = true;};
       datasets."pool3d/root/tari" = excluded;
       datasets."pool3d/root/monero" = excluded;
     };
 
     # ZFS replication to fuckup
     syncoid = let
-      excludedDatasets = ["ethereum" "tari" "monero"];
+      excludedDatasets = ["tari" "monero"];
     in {
       enable = true;
       interval = "hourly";
@@ -572,6 +606,7 @@ in {
         4001 # lockd
         4002 # mountd
         17026 # qbittorrent
+        8083 # Hellas gateway
         18089 # monerod
         20048 # NFSv4 callback
       ];
@@ -590,7 +625,7 @@ in {
   };
 
   services.open-webui = {
-    enable = false;
+    enable = true;
     host = network.primaryIp self;
     port = 11111;
     openFirewall = true;
@@ -598,37 +633,43 @@ in {
       ANONYMIZED_TELEMETRY = "False";
       DO_NOT_TRACK = "True";
       SCARF_NO_ANALYTICS = "True";
-      OLLAMA_API_BASE_URL = "http://127.0.0.1:11434/api";
-      OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+      ENABLE_OLLAMA_API = "False";
+      ENABLE_OPENAI_API = "True";
+      OPENAI_API_BASE_URL = "http://127.0.0.1:8081/v1";
+      OPENAI_API_KEY = "sk-no-key-required";
     };
   };
 
-  # llama.cpp HTTP server on the Navi 10 dGPU. Uses the strix-halo
-  # flake's per-target master build (gfx1010, stock nixpkgs ROCm)
-  # because TheRock SDK there is gfx1151-only.
+  # llama.cpp HTTP server on the Navi 10 dGPU. Uses the Vulkan
+  # backend (RADV) because head-to-head bench on Qwen2.5-7B Q4_K_M
+  # showed it ~1.5x faster than nixpkgs ROCm on gfx1010 (Navi 10 is at
+  # the edge of supported ROCm territory; no matrix cores). TheRock
+  # SDK isn't an option here — it's gfx1151-only in nix-strix-halo.
   #
   # DynamicUser=true (from the upstream module) plus SupplementaryGroups
-  # is what gets the unit access to /dev/kfd + /dev/dri/renderD* — the
-  # ROCm runtime won't enumerate the GPU otherwise.
+  # is what gets the unit access to /dev/dri/renderD* for Vulkan and
+  # /dev/kfd for ROCm — the runtime won't enumerate the GPU otherwise.
   services.llama-cpp = {
     enable = true;
-    package = inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-rocm-gfx1010;
+    package = inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-vulkan;
     host = "0.0.0.0";
-    port = 8080;
+    # 8080 is taken by qBittorrent's webui above; use 8081 for llama-server.
+    port = 8081;
     openFirewall = true;
     modelsDir = "/mnt/models";
     extraFlags = [
-      "-ngl" "999"
-      "--flash-attn" "on"
+      "-ngl"
+      "999"
+      "--flash-attn"
+      "on"
     ];
   };
-  systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = [ "render" "video" ];
+  systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = ["render" "video"];
 
-  # Vulkan variant kept side-by-side so we can run `llama-bench` head-
-  # to-head against the same GGUF. Not exposed as a service (single
-  # GPU, only one backend can hold weights at a time in practice).
+  # ROCm variant kept side-by-side so we can re-run `llama-bench` to
+  # compare backends after upstream changes. Not exposed as a service.
   environment.systemPackages = [
-    inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-vulkan
+    inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-rocm
   ];
 
   services.nix-serve = {

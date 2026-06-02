@@ -68,6 +68,78 @@ in {
     "i8042"
   ]);
 
+  disko.devices = {
+    disk = {
+      disk1 = {
+        type = "disk";
+        device = "/dev/nvme0n1";
+        content = {
+          type = "gpt";
+          partitions = {
+            "boot-1" = {
+              size = "512M";
+              type = "EF00";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "umask=0077" ];
+              };
+            };
+            mdadm = {
+              size = "100%";
+              content = {
+                type = "mdraid";
+                name = "raid0";
+              };
+            };
+          };
+        };
+      };
+      disk2 = {
+        type = "disk";
+        device = "/dev/nvme1n1";
+        content = {
+          type = "gpt";
+          partitions = {
+            "boot-2" = {
+              size = "512M";
+              type = "EF00";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot-fallback";
+                mountOptions = [ "umask=0077" ];
+              };
+            };
+            mdadm = {
+              size = "100%";
+              content = {
+                type = "mdraid";
+                name = "raid0";
+              };
+            };
+          };
+        };
+      };
+    };
+    mdadm.raid0 = {
+      type = "mdadm";
+      level = 0;
+      content = {
+        type = "gpt";
+        partitions.primary = {
+          size = "100%";
+          content = {
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/";
+          };
+        };
+      };
+    };
+  };
+
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-gpu-amd
@@ -80,17 +152,16 @@ in {
     ../../../services/buildfarm-executor.nix
     ../../../profiles/nas-mounts.nix
     ../../../services/buildfarm-slave.nix
+    ../../../services/hydra-builder-slave.nix
 
     ../../../profiles/thunderbolt-bridge.nix
-    ../../../profiles/usb4-rdma-kernel.nix
+    ../../../profiles/thunderbolt-ibverbs-kernel.nix
 
+    inputs.disko.nixosModules.disko
     inputs.nix-strix-halo.nixosModules.default
-    inputs.nix-strix-halo.nixosModules.rocm-narrow
-    inputs.nix-strix-halo.nixosModules.tuning
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.nix-strix-halo.nixosModules.rpc-server
-    inputs.nix-strix-halo.nixosModules.fastflowlm-server
-    inputs.nix-strix-halo.nixosModules.disko-raid0
+    inputs.nix-strix-halo.nixosModules.fastflowlm
     inputs.nix-strix-halo.nixosModules.ec-su-axb35
     inputs.nix-strix-halo.nixosModules.ryzenadj
 
@@ -181,8 +252,6 @@ in {
       "kvm"
       "nixos-test"
       "big-parallel"
-      # XDNA2 NPU; used by nix-strix-halo's bench-flm-* derivations.
-      "npu-strix"
     ];
 
     # FastFlowLM bench derivations talk to the NPU via XRT, which opens
@@ -208,6 +277,30 @@ in {
     ];
   };
 
+  benchmark.runners.strix-halo = {
+    requireIommuOff = false;
+    gpus = [
+      {
+        type = "amd";
+        arch = "1151";
+      }
+    ];
+    npus = [
+      {
+        type = "amd";
+        arch = "xdna2";
+      }
+    ];
+    systemFeatures = [
+      "gccarch-znver5"
+      "rocm"
+      "aimax395"
+      "kvm"
+      "nixos-test"
+      "big-parallel"
+    ];
+  };
+
   # FastFlowLM pins NPU input/output buffers with mlock; on the default
   # 8 MB nixbld limit it warns and falls back to pageable memory, which
   # bench numbers depend on avoiding. nix-daemon spawns builders so the
@@ -222,10 +315,10 @@ in {
     SUBSYSTEM=="drm", KERNEL=="card[0-9]*", ATTRS{vendor}=="0x1002", MODE="0666"
   '';
 
-  # NPU server. The fastflowlm-server module installs a MODE=0666 udev
+  # NPU server. The fastflowlm module installs a MODE=0666 udev
   # rule on /dev/accel/accel0 so the service and the bench-flm-*
   # nixbld builders both have access without per-user group plumbing.
-  services.fastflowlm-server = {
+  services.fastflowlm = {
     enable = false;
     model = "gpt-oss:20b";
     openFirewall = false;
@@ -242,28 +335,30 @@ in {
 
   profiles.thunderbolt-bridge = {
     bridgeThunderboltNet = false;
-    enableThunderboltNet = lib.mkIf (builtins.elem index [1 2]) true;
+    enableThunderboltNet = lib.mkIf (builtins.elem index [1 2]) false;
   };
 
   hardware."thunderbolt-ibverbs" = lib.mkIf (builtins.elem index [1 2]) {
-    moduleOptions = {
+    blacklist.enable = true;
+
+    config = {
       profile = "mixed";
       compat = "auto";
       tbnet = "prefer_rdma";
-      tbnetIdentity = "minimal_packet";
-      tbnetIdentityTbnet = "thunderbolt0";
-      tbnetIdentityGid = "ardma0";
-      tbnetIdentityMinimalE2e = false;
-      roceNetdev = "br0.lan";
+      tbnet_identity = "minimal_packet";
+      tbnet_identity_tbnet = "thunderbolt0";
+      tbnet_identity_gid = "ardma0";
+      tbnet_identity_minimal_e2e = false;
+      roce_netdev = "br0.lan";
       lanes = "2";
-      bindServices = true;
-      allocateRings = true;
-      startRings = true;
-      negotiateNative = true;
-      enableTunnels = true;
-      nativeData = true;
-      appleData = true;
-      registerVerbs = true;
+      bind_services = true;
+      allocate_rings = true;
+      start_rings = true;
+      negotiate_native = true;
+      enable_tunnels = true;
+      native_data = true;
+      apple_data = true;
+      register_verbs = true;
     };
 
     check = {
@@ -303,7 +398,7 @@ in {
     lanBridge = "br0.lan";
     useArdma0 =
       builtins.elem index [1 2]
-      && config.hardware."thunderbolt-ibverbs".moduleOptions.tbnetIdentity == "minimal_packet";
+      && config.hardware."thunderbolt-ibverbs".config.tbnet_identity == "minimal_packet";
     thunderboltIp =
       if index == 1
       then "10.0.4.2/24"

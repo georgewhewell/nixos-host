@@ -5,6 +5,7 @@
 }: {
   imports = [
     ./darwin-configuration.nix
+    ../../services/hydra-builder-slave-darwin.nix
   ];
 
   networking.hostName = "mbp";

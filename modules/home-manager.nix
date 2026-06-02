@@ -1,13 +1,14 @@
-{
-  config,
-  lib,
-  pkgs,
-  inputs,
-  network,
-  ...
-}: let
+{ config
+, lib
+, pkgs
+, inputs
+, network
+, ...
+}:
+let
   cfg = config.sconfig.home-manager;
-in {
+in
+{
   imports = [
     inputs.home-manager.nixosModules.home-manager
   ];
@@ -23,13 +24,27 @@ in {
 
   config = lib.mkMerge [
     (lib.mkIf cfg.enable {
-      environment.systemPackages = [pkgs.home-manager];
+      environment.systemPackages = [ pkgs.home-manager ];
 
-      home-manager.extraSpecialArgs = {inherit inputs network;};
+      home-manager.extraSpecialArgs = { inherit inputs network; };
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
-      home-manager.backupFileExtension = "hm-backup";
-      home-manager.users.grw = {...}: {
+      home-manager.backupCommand = pkgs.writeShellScript "home-manager-backup-existing-file" ''
+        set -euo pipefail
+
+        target=$1
+        backup="$target.hm-backup"
+        if [[ -e "$backup" || -L "$backup" ]]; then
+          i=1
+          while [[ -e "$backup.$i" || -L "$backup.$i" ]]; do
+            i=$((i + 1))
+          done
+          backup="$backup.$i"
+        fi
+
+        mv -- "$target" "$backup"
+      '';
+      home-manager.users.grw = { ... }: {
         hostId = config.networking.hostName;
         imports =
           [
@@ -43,7 +58,7 @@ in {
               ../home/gpg.nix
               ../home/zed.nix
             ]
-            else [../home/headless.nix]
+            else [ ../home/headless.nix ]
           )
           ++ lib.optionals cfg.enableLaptop [
             ../home/laptop.nix

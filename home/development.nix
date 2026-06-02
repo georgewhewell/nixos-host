@@ -70,6 +70,23 @@
     enableZshIntegration = true;
     enableBashIntegration = true;
     nix-direnv.enable = true;
+    stdlib = ''
+      # Keep per-project direnv/nix-direnv layouts off shared source trees.
+      direnv_layout_dir() {
+        local dir base hash state_home
+
+        dir="$(pwd -P)"
+        base="''${dir##*/}"
+        if [ -z "$base" ]; then
+          base=root
+        fi
+
+        hash="$(printf '%s' "$dir" | ${pkgs.coreutils}/bin/sha256sum | ${pkgs.coreutils}/bin/cut -d ' ' -f 1)"
+        state_home="''${XDG_STATE_HOME:-$HOME/.local/state}"
+
+        echo "$state_home/direnv/layouts/$base-$hash"
+      }
+    '';
   };
 
   programs.git.lfs.enable = true;
@@ -83,7 +100,6 @@
 
   home.packages =
     (with pkgs; [
-      alejandra
       nixpkgs-fmt
 
       # platforms

@@ -1,8 +1,11 @@
-{pkgs, network, ...}: {
+{
+  pkgs,
+  network,
+  ...
+}: {
   imports = [./development.nix];
 
   home.packages = with pkgs; [
-    alejandra
     direnv
     fd
     git
@@ -84,7 +87,6 @@
         ms-vscode.makefile-tools
         github.vscode-github-actions
         github.codespaces
-        kamadorueda.alejandra
       ];
     };
   };

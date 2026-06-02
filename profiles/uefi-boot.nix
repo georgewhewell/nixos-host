@@ -6,11 +6,6 @@
     kernelParams = [
       "msr.allow_writes=on"
       "mitigations=off"
-      "panic=5"
-      # NMI watchdog for hard lockup detection (x86-specific)
-      # panic is part of nmi_watchdog= syntax; hardlockup_panic= is not a
-      # kernel command-line parameter on current Linux.
-      "nmi_watchdog=panic,1"
     ];
 
     loader = {

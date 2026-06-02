@@ -1,10 +1,10 @@
 # Common Nix settings for all systems (NixOS and Darwin)
-{lib, network, ...}: {
+{ lib, network, ... }: {
   nix = {
     optimise.automatic = lib.mkDefault true;
 
     settings = {
-      trusted-users = ["grw"];
+      trusted-users = [ "grw" ];
       extra-substituters = [
         "https://cache.numtide.com"
       ];
@@ -14,7 +14,8 @@
         "colmena.cachix.org-1:7BzpDnjjH8ki2CT3f6GdOk7QAzPOl+1t3LvTLXqYcSg="
         "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
       ];
-      experimental-features = ["nix-command" "flakes"];
+      build-users-group = lib.mkDefault "nixbld";
+      experimental-features = [ "nix-command" "flakes" ];
 
       # Reasonable defaults (https://jackson.dev/post/nix-reasonable-defaults/)
       connect-timeout = 5;

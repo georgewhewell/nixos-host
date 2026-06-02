@@ -5,7 +5,8 @@
   pkgs,
   ...
 }: let
-  usb4Packages = inputs.usb4-rdma.packages.${pkgs.stdenv.hostPlatform.system};
+  thunderboltIbverbs = inputs.nix-strix-halo.inputs.thunderbolt-ibverbs;
+  thunderboltIbverbsPackages = thunderboltIbverbs.packages.${pkgs.stdenv.hostPlatform.system};
 
   thunderboltIbverbsOptions = lib.concatStringsSep " " [
     "profile=mac_compat"
@@ -36,7 +37,7 @@
       stdenv.mkDerivation {
         pname = "thunderbolt-ibverbs";
         version = "0.1.0";
-        src = inputs.usb4-rdma;
+        src = thunderboltIbverbs;
         nativeBuildInputs = kernel.moduleBuildDependencies;
         buildPhase = ''
           runHook preBuild
@@ -117,9 +118,9 @@ in {
   environment.systemPackages = [
     thunderboltIbverbsModule
     thunderboltIbverbsReloadSystem
-    usb4Packages.rdma-core-usb4
-    usb4Packages.jaccl-examples
-    usb4Packages.uc-oneway
+    thunderboltIbverbsPackages.rdma-core-usb4
+    thunderboltIbverbsPackages.jaccl-examples
+    thunderboltIbverbsPackages.uc-oneway
   ];
 
   systemd.services.thunderbolt-ibverbs-mac-host = {
