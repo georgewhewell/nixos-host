@@ -19,8 +19,20 @@
       {
         platform = "esp32_rmt_led_strip";
         rgb_order = "GRB";
-        pin = "GPIO0";
+        pin = "GPIO5";
         num_leds = 64;
+        chipset = "ws2812";
+        name = "Office LED Strip 3";
+        id = "office_led_strip_3";
+        effects = [
+          {addressable_rainbow = {};}
+        ];
+      }
+      {
+        platform = "esp32_rmt_led_strip";
+        rgb_order = "GRB";
+        pin = "GPIO0";
+        num_leds = 160;
         chipset = "ws2812";
         name = "Office LED Strip 2";
         id = "office_led_strip_2";

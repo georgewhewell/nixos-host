@@ -25,20 +25,7 @@
   };
   networking.firewall.interfaces."br0.lan".allowedTCPPorts = [ 6052 ];
 
-  # Mac-RDMA bench test: allow uc_oneway / uc_write_verify metadata
-  # sockets on thunderbolt0 (point-to-point to mbp).
-  networking.firewall.interfaces."thunderbolt0".allowedTCPPortRanges = [
-    { from = 18000; to = 19999; }
-    { from = 29000; to = 29999; }
-  ];
-
-  # Mac-RDMA test mode: keep stock thunderbolt-net loaded (for the TBnet IP
-  # carrier that stock_proxy proxies the GID against) but DO NOT bridge
-  # thunderbolt0 into br0.lan. The 50-thunderbolt link match still uses
-  # IPv4LL+mDNS as a baseline; the 20-thunderbolt0 override below pins the
-  # mac-facing IP at 10.0.3.2/24, matching the 2026-05-17 e14 known-good
-  # router-VM/MBP topology.
-  profiles.thunderbolt-bridge.bridgeThunderboltNet = false;
+  profiles.thunderbolt-bridge.bridgeThunderboltNet = true;
 
   # Override testing kernel from radeon.nix - router doesn't need HDMI VRR patches
   # and ZFS doesn't support 6.19-rc yet
@@ -85,17 +72,11 @@
     ../../../profiles/zfs.nix
     ../../../profiles/common.nix
     ../../../profiles/home.nix
-    ../../../profiles/amd-npu.nix
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
     # ../../../profiles/router/ap.nix  # WiFi card not installed
     ../../../profiles/router/wireguard.nix
     ../../../profiles/thunderbolt-bridge.nix
-    # Keep router on the stock nixpkgs kernel while the custom USB4/RDMA
-    # patchset is not applying cleanly to the current kernel.
-    # ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
-    # ../../../profiles/thunderbolt-ibverbs-mac-host.nix
-
     ../../../services/buildfarm-slave.nix
     ../../../containers/unifi.nix
     ../../../services/p2pool.nix
@@ -132,75 +113,6 @@
       IgnoreCarrierLoss = true;
     };
     linkConfig.RequiredForOnline = "no";
-  };
-
-  # Mac-RDMA test bench: thunderbolt0 standalone at 10.0.3.2/24, paired with
-  # the MBP whose en3 we pin to 10.0.3.3/24. ardma0 is a dummy interface that
-  # carries the IPv4-mapped RDMA GID (10.0.3.44/32) — stable across cable
-  # replugs and independent of the TBnet IP carrier MAC. The thunderbolt_ibverbs
-  # module is configured below with roce_netdev=ardma0 + tbnet_identity_gid=
-  # ardma0, mirroring the 2026-05-17 e14 known-good setup.
-  systemd.network.netdevs."30-ardma0" = {
-    netdevConfig = {
-      Kind = "dummy";
-      Name = "ardma0";
-    };
-  };
-  systemd.network.networks."20-thunderbolt0-rdma-test" = {
-    matchConfig.Name = "thunderbolt0";
-    address = [ "10.0.3.2/24" ];
-    networkConfig = {
-      DHCP = "no";
-      IPv6AcceptRA = false;
-      LinkLocalAddressing = "no";
-      ConfigureWithoutCarrier = true;
-    };
-    linkConfig = {
-      MTUBytes = "9000";
-      RequiredForOnline = "no";
-    };
-  };
-  systemd.network.networks."30-ardma0" = {
-    matchConfig.Name = "ardma0";
-    address = [ "10.0.3.44/32" ];
-    networkConfig = {
-      DHCP = "no";
-      IPv6AcceptRA = false;
-      LinkLocalAddressing = "no";
-      ConfigureWithoutCarrier = true;
-    };
-    linkConfig.RequiredForOnline = "no";
-  };
-
-  hardware."thunderbolt-ibverbs" = {
-    enable = true;
-    config = {
-      profile = "mac_compat";
-      compat = "auto";
-      tbnet = "allow";
-      tbnet_identity = "stock_proxy";
-      tbnet_identity_tbnet = "thunderbolt0";
-      tbnet_identity_gid = "ardma0";
-      roce_netdev = "ardma0";
-      lanes = "1";
-      bind_services = true;
-      allocate_rings = true;
-      start_rings = true;
-      enable_tunnels = true;
-      native_data = false;
-      apple_data = true;
-      register_verbs = true;
-      apple_tx_max_inflight_wr = "1";
-      apple_tx_max_inflight_frames = "2";
-      apple_rx_pending_bytes = "16777216";
-      apple_rx_pending_slots = "4096";
-      apple_rx_pending_total_bytes = "67108864";
-    };
-    check = {
-      afterReload = true;
-      requireVerbs = true;
-      expectedNativeControl = null;
-    };
   };
 
   services.redis.servers.p2pool = {
@@ -275,27 +187,35 @@
     };
   };
 
-  # Enable switchdev mode on ConnectX-4 WAN port for hardware TC offload
-  # Must run before networkd configures the interface
-  # Note: Port 1 (LAN) stays in legacy mode - switchdev is incompatible with Linux bridge
-  # Wait on PCI device, not interface name — switchdev destroys/recreates the netdev
-  systemd.services.mlx5-switchdev-wan = {
+  # Enable switchdev mode on ConnectX-4 WAN port for hardware TC offload.
+  # Run this in initrd, before stage 2: the eswitch is a NIC-wide resource on
+  # ConnectX-4, so toggling it on PF0 (WAN) briefly drops the link on PF1 (LAN)
+  # as well. Doing it in initrd means nothing in userspace cares about the
+  # carrier yet — no bridge, no networkd — so the flap is invisible by the
+  # time stage 2 starts. Wait on the PCI device unit, not the netdev name,
+  # because switchdev destroys and recreates the netdev.
+  boot.initrd.systemd.services.mlx5-switchdev-wan = {
     description = "Enable switchdev mode on ConnectX-4 Lx WAN port";
-    before = [ "systemd-networkd.service" "network-pre.target" ];
-    after = [ "systemd-udevd.service" "sys-devices-pci0000:00-0000:00:01.1-0000:01:00.0.device" ];
-    wants = [ "sys-devices-pci0000:00-0000:00:01.1-0000:01:00.0.device" ];
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = [ "initrd.target" ];
+    before = [ "initrd-switch-root.target" ];
+    # Depend on the netdev unit, not the PCI device unit: PCI device units
+    # aren't tagged by udev in initrd and never activate, causing a 90s
+    # default-timeout wait. The netdev (after udev .link rename) is reliable.
+    after = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
+    wants = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
       ExecStart = "${pkgs.iproute2}/bin/devlink dev eswitch set pci/0000:01:00.0 mode switchdev";
     };
   };
+  # devlink is in iproute2 — pull it into the initrd image.
+  boot.initrd.systemd.storePaths = [ "${pkgs.iproute2}/bin/devlink" ];
 
   # Configure 25G interfaces (ConnectX-4) - requires manual speed/FEC settings
   systemd.services.ethtool-enp1s0f0np0 = {
     description = "Configure enp1s0f0np0 25G WAN link settings";
-    after = [ "sys-subsystem-net-devices-enp1s0f0np0.device" "mlx5-switchdev-wan.service" ];
+    after = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
     wants = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
@@ -337,13 +257,19 @@
     ${network.primaryIp network.hosts.trex} = [ "trex.${network.domains.public}" ];
   };
 
+  # Only `mlx5_core` actually needs to be in initrd — the switchdev devlink
+  # call depends on it. Everything else is fine to load in stage 2: the
+  # smaller initrd udev queue means systemd-udevd drains faster on
+  # initrd→stage-2 transition (saves ~20s of boot).
   boot.initrd.kernelModules = [
+    "mlx5_core"
+  ];
+  boot.kernelModules = [
     "nf_tables"
     "nft_compat"
     "igc"
     "ixgbe"
     "vfio"
-    "mlx5_core"
   ];
 
   fileSystems."/" = {

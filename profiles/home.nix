@@ -43,7 +43,7 @@ in {
   services.cadvisor = {
     enable = enableCadvisor;
     listenAddress = "0.0.0.0";
-    port = 58080;
+    port = 9188;
   };
 
   networking.firewall.allowedTCPPorts = lib.mkIf enableCadvisor [

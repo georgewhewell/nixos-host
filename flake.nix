@@ -50,10 +50,11 @@
     # NOTE: this flake pins its own nixpkgs fork (vitis-ai branch) because
     # xrt / xrt-plugin-amdxdna / xrt-amdxdna live there; do not add
     # `inputs.nixpkgs.follows = "nixpkgs"`.
-    # nix-amd-npu.url = "github:robcohen/nix-amd-npu";
+    nix-amd-npu.url = "github:robcohen/nix-amd-npu";
 
     hellas = {
-      url = "github:hellas-ai/node?ref=grw/feat/more-catgrad-integrated";
+      # Local deploy input while Codex Fetch support is ahead of the remote branch.
+      url = "git+file:///mnt/Home/src/node?shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -369,6 +370,15 @@
         specialArgs = { inherit inputs localOverlays mkSecret network; };
         modules = [
           ./machines/darwin-aarch64/mbp.nix
+          inputs.sops-nix.darwinModules.sops
+        ];
+      };
+
+      darwinConfigurations."goblin" = darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        specialArgs = { inherit inputs localOverlays mkSecret network; };
+        modules = [
+          ./machines/darwin-aarch64/goblin.nix
           inputs.sops-nix.darwinModules.sops
         ];
       };

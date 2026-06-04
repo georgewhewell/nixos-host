@@ -13,12 +13,10 @@
 
   nix.settings.trusted-users = lib.mkAfter [ "hydra-builder" ];
 
-  # macOS gates SSH login on com.apple.access_ssh group membership.
-  # extraActivation runs as root after the `users` activation script creates the user.
-  system.activationScripts.extraActivation.text = ''
-    if /usr/bin/id -u hydra-builder >/dev/null 2>&1; then
-      /usr/sbin/dseditgroup -o edit -a hydra-builder -t user com.apple.access_ssh \
-        2>/dev/null || true
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    if /usr/bin/id -u hydra-builder >/dev/null 2>&1 &&
+       ! /usr/sbin/dseditgroup -o checkmember -m hydra-builder com.apple.access_ssh >/dev/null 2>&1; then
+      /usr/sbin/dseditgroup -o edit -a hydra-builder -t user com.apple.access_ssh
     fi
   '';
 }

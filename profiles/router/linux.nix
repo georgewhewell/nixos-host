@@ -7,7 +7,6 @@
   lanBridge = routerPorts.lanBridge;
   lanMtu = toString network.vlans.lan.mtu;
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
-  lan25gAutoneg = if lan25gPort.autoNegotiation == "no" then "off" else "on";
 
   bridgeMemberNetwork = matchConfig: requiredForOnline: {
     inherit matchConfig;
@@ -108,6 +107,11 @@ in {
         };
         bridgeConfig = {
           STP = true;
+          # Default forward-delay is 15s, applied twice (listening → learning →
+          # forwarding) which adds 30s to network-online.target at every boot.
+          # Loop topology here is fixed and trusted, so we still want STP for
+          # the safety net but the long delays buy us nothing.
+          ForwardDelaySec = 2;
         };
       };
     };
@@ -127,11 +131,10 @@ in {
           TxBufferSize = 8192;
         };
       };
-      # LAN port (Mellanox CX-4 to Mikrotik 25G). Autoneg + FEC negotiation
-      # don't land cleanly on this peer — the link stays down until ethtool
-      # forces 25G/no-autoneg and disables FEC. Pin both here so a clean
-      # boot brings the bridge up without manual recovery via nanokvm. FEC
-      # has no .link option; handled by the lan-25g-fec.service below.
+      # LAN port (Mellanox CX-4 to MikroTik CRS510). MikroTik defaults all
+      # sfp28 ports to autoneg=yes, fec-mode=auto, so the router must match —
+      # forcing speed/FEC here leaves the peer unable to negotiate and the
+      # link trains intermittently or not at all on cold boot.
       "20-lan-25g" = {
         matchConfig = {
           Driver = "mlx5_core";
@@ -142,9 +145,6 @@ in {
           RxBufferSize = 8192;
           TxBufferSize = 8192;
           MTUBytes = lanMtu;
-          AutoNegotiation = lan25gPort.autoNegotiation;
-          BitsPerSecond = lan25gPort.bitsPerSecond;
-          Duplex = "full";
         };
       };
     };
@@ -211,31 +211,18 @@ in {
           PrefixDelegationHint = "::/56";
         };
         ipv6SendRAConfig.Managed = true;
-        linkConfig.RequiredFamilyForOnline = "both";
+        # Don't block network-online.target on IPv6 DHCP-PD — IPv4 lands in
+        # seconds, IPv6-PD often takes 30 s+. Saves boot time.
+        linkConfig.RequiredFamilyForOnline = "ipv4";
       };
+      # WireGuard tunnels don't need to be "online" for the router to be up.
+      # Default is RequiredForOnline=yes, which makes wait-online block on
+      # peer reachability.
+      "40-wg-home".linkConfig.RequiredForOnline = "no";
+      "40-wg-hydra-bld".linkConfig.RequiredForOnline = "no";
     };
   };
 
-  # Force the LAN 25G port to match the MikroTik CRS510 peer. The switch port
-  # is still in AN/FEC auto mode, and this ConnectX-4 link does not always come
-  # up cleanly unless both the speed and FEC are pinned.
-  systemd.services.lan-25g-fec = {
-    description = "Configure LAN 25G interface link settings";
-    after = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
-    before = ["systemd-networkd.service" "network-pre.target"];
-    bindsTo = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
-    wants = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
-    wantedBy = ["multi-user.target"];
-    path = [pkgs.ethtool];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      ethtool -s ${lan25gInterface} speed ${toString lan25gPort.speedMbps} autoneg ${lan25gAutoneg}
-      ethtool --set-fec ${lan25gInterface} encoding ${lan25gPort.fecEncoding}
-    '';
-  };
 
   # Linux-specific networking (base.nix has common settings)
   networking = {

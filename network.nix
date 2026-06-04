@@ -120,6 +120,15 @@ lib: rec {
         systemFeatures = [ "apple-virt" "benchmark" "big-parallel" "apple-m4" "metal" ];
         gpus = [ ];
       };
+      goblin = {
+        ipv4 = "192.168.23.247";
+        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRJYI4x/nKcftcIo6pmy9gRR0NznkFUQ3eliggcGY9N";
+        maxJobs = 1;
+        speedFactor = 96;
+        systems = [ "aarch64-darwin" ];
+        systemFeatures = [ "apple-virt" "benchmark" "big-parallel" "apple-m4" "metal" ];
+        gpus = [ ];
+      };
     };
 
   hydraBuilders = {
@@ -148,6 +157,9 @@ lib: rec {
       };
       mbp = {
         ipv4 = benchmarkBuildHosts.mbp.ipv4;
+      };
+      goblin = {
+        ipv4 = benchmarkBuildHosts.goblin.ipv4;
       };
     };
   };
@@ -240,6 +252,10 @@ lib: rec {
       mac = "c2:c5:7f:8c:7a:51";
       addresses = { lan = 24; };
     };
+    goblin = {
+      mac = "1c:1d:d3:eb:67:55";
+      addresses = { lan = 247; };
+    };
     "10g-onti" = {
       mac = "d0:aa:5f:01:45:a8";
       addresses = { lan = 20; };
@@ -273,10 +289,6 @@ lib: rec {
       lan25g = {
         linuxName = "enp1s0f1np1";
         mac = "50:6b:4b:03:04:cb";
-        speedMbps = 25000;
-        bitsPerSecond = "25G";
-        autoNegotiation = "no";
-        fecEncoding = "off";
       };
     };
   };

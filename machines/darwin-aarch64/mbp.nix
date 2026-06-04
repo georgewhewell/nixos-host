@@ -1,15 +1,18 @@
 {
   pkgs,
+  lib,
   inputs,
   ...
 }: {
   imports = [
     ./darwin-configuration.nix
+    ../../profiles/darwin-no-power-management.nix
     ../../services/hydra-builder-slave-darwin.nix
   ];
 
   networking.hostName = "mbp";
   ids.gids.nixbld = 350;
+  environment.enableAllTerminfo = lib.mkForce false;
 
   home-manager.users.grw = {...}: {
     imports = [
@@ -18,7 +21,10 @@
 
     programs.hellas = {
       enable = true;
-      serve.enable = true;
+      serve = {
+        enable = true;
+        port = 31145;
+      };
     };
   };
 

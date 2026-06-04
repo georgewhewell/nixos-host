@@ -374,11 +374,11 @@
       },
       "locked": {
         "dir": "pkgs/firefox-addons",
-        "lastModified": 1780286561,
-        "narHash": "sha256-73UvAlulbn6cSaoq+Wllj7WxKrhti8wkT+zYKvFD9d0=",
+        "lastModified": 1780373275,
+        "narHash": "sha256-wyOXYCVRwJbPriBi9GHdVGkzV4S9vFAcOR+f3ImfwZw=",
         "owner": "rycee",
         "repo": "nur-expressions",
-        "rev": "2838055f920c314b0731f71a53a6b878de0309cc",
+        "rev": "cc32ec3611bb3cd0443ed5479bbc009a1006db0b",
         "type": "gitlab"
       },
       "original": {
@@ -468,6 +468,24 @@
         "owner": "hercules-ci",
         "repo": "flake-parts",
         "rev": "f7c1a2d347e4c52d5fb8d10cb4d94b5884e546fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_3": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib_2"
+      },
+      "locked": {
+        "lastModified": 1767609335,
+        "narHash": "sha256-feveD98mQpptwrAEggBQKJTYbvwwglSbOv53uCfH9PY=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "250481aafeb741edfe23d29195671c19b36b6dca",
         "type": "github"
       },
       "original": {
@@ -611,18 +629,18 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1779809293,
-        "narHash": "sha256-ezw7UWWbCUCUzzHdqYSl4Re7u6oaFgJCDFAjreTZaHI=",
-        "owner": "hellas-ai",
-        "repo": "node",
-        "rev": "cb6a16c1ca8c7a880e4884a8936f5a435fc29a39",
-        "type": "github"
+        "lastModified": 1780448533,
+        "narHash": "sha256-nxzZuXa/niruEDWhOz5O7lTwR8dvcOv/JGzGNBMUFDk=",
+        "ref": "refs/heads/grw/feat/more-catgrad-integrated",
+        "rev": "1929b5640493fc50131d0907ae480b791c6e6429",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/node"
       },
       "original": {
-        "owner": "hellas-ai",
-        "ref": "grw/feat/more-catgrad-integrated",
-        "repo": "node",
-        "type": "github"
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/node"
       }
     },
     "home-manager": {
@@ -632,11 +650,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780347968,
-        "narHash": "sha256-I8ibSDQx+E8cgw6k3UxX6Bm7awmGoKSTXc8Gt1Zbpp4=",
+        "lastModified": 1780370888,
+        "narHash": "sha256-PRJj9RKTEf/sITycujP1c/BrvLJKMYXzcpwTsXNulXQ=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "d0af9b8bf3b4a1d449be7034bebc9f8f9fd6ee99",
+        "rev": "a7a415883195ffbd4dabec8f098f201e6eaaadf8",
         "type": "github"
       },
       "original": {
@@ -865,16 +883,35 @@
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
-        "lastModified": 1780352118,
-        "narHash": "sha256-S02yVTeoVpPm+DGvFVcBY6HPSJ1vnkdgqmLejb1uorA=",
+        "lastModified": 1780379877,
+        "narHash": "sha256-n58coAnv42rXda/GvoZh1D3TmfXikx9I8t3/msIXFn4=",
         "owner": "numtide",
         "repo": "nix-ai-tools",
-        "rev": "0030e3c712f6914dd8e5d59f31afebacbeec5a19",
+        "rev": "a531ef0f9dcbaed0f8026a9f82c32281c4a6dad2",
         "type": "github"
       },
       "original": {
         "owner": "numtide",
         "repo": "nix-ai-tools",
+        "type": "github"
+      }
+    },
+    "nix-amd-npu": {
+      "inputs": {
+        "flake-parts": "flake-parts_3",
+        "nixpkgs": "nixpkgs_10"
+      },
+      "locked": {
+        "lastModified": 1775660927,
+        "narHash": "sha256-x1EDOW47T7ph8z2AjPHJMkxWivn/Q04ZSr3JBOFEV9s=",
+        "owner": "robcohen",
+        "repo": "nix-amd-npu",
+        "rev": "8848c6f3382852290ac25fbe7634058c4e9c037e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "robcohen",
+        "repo": "nix-amd-npu",
         "type": "github"
       }
     },
@@ -1033,7 +1070,7 @@
     },
     "nixos-hardware": {
       "inputs": {
-        "nixpkgs": "nixpkgs_10"
+        "nixpkgs": "nixpkgs_11"
       },
       "locked": {
         "lastModified": 1780310866,
@@ -1096,6 +1133,21 @@
         "type": "github"
       }
     },
+    "nixpkgs-lib_2": {
+      "locked": {
+        "lastModified": 1765674936,
+        "narHash": "sha256-k00uTP4JNfmejrCLJOwdObYC9jHRrr/5M/a/8L2EIdo=",
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "rev": "2075416fcb47225d9b68ac469a5c4801a9c4dd85",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nixpkgs.lib",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1778869304,
@@ -1114,6 +1166,22 @@
     },
     "nixpkgs_10": {
       "locked": {
+        "lastModified": 1775660890,
+        "narHash": "sha256-hZoabmLFqWRyjJwwfzdpaJ+BpbNt5tI2ArkN7bIQCww=",
+        "owner": "robcohen",
+        "repo": "nixpkgs",
+        "rev": "9233c639efd91157644e73c7026b21e47a2c027c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "robcohen",
+        "ref": "vitis-ai",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_11": {
+      "locked": {
         "lastModified": 1767892417,
         "narHash": "sha256-8bW3q88CEg2u4hSP66Vf4lpbLonHz7hqDNBMcCY7E9U=",
         "rev": "3497aa5c9457a9d88d71fa93a4a8368816fbeeba",
@@ -1125,7 +1193,7 @@
         "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
       }
     },
-    "nixpkgs_11": {
+    "nixpkgs_12": {
       "locked": {
         "lastModified": 1780243769,
         "narHash": "sha256-x5UQuRsH3MqI0U9afaXSNqzTPSeZlRLvFAav2Ux1pNw=",
@@ -1141,7 +1209,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_12": {
+    "nixpkgs_13": {
       "locked": {
         "lastModified": 1744536153,
         "narHash": "sha256-awS2zRgF4uTwrOKwwiJcByDzDOdo3Q1rPZbiHQg/N38=",
@@ -1271,11 +1339,11 @@
     },
     "nixpkgs_9": {
       "locked": {
-        "lastModified": 1780246643,
-        "narHash": "sha256-4T1KWX7xWGQMs9hNZ24IOY3aYOi8D6+5WtkNRBSttB8=",
+        "lastModified": 1780336545,
+        "narHash": "sha256-vhVhuXzFrIOfcssC/9hDHx7MHzDKjF3keHuREOQqQiQ=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "3109eaae18e09d0b8aef23dc2579e7d94b8d4b4e",
+        "rev": "4df1b885d76a54e1aa1a318f8d16fd6005b6401f",
         "type": "github"
       },
       "original": {
@@ -1392,11 +1460,12 @@
         "mt7927": "mt7927",
         "nanokvm": "nanokvm",
         "nix-ai-tools": "nix-ai-tools",
+        "nix-amd-npu": "nix-amd-npu",
         "nix-bitcoin": "nix-bitcoin",
         "nix-github-actions": "nix-github-actions_2",
         "nix-strix-halo": "nix-strix-halo",
         "nixos-hardware": "nixos-hardware",
-        "nixpkgs": "nixpkgs_11",
+        "nixpkgs": "nixpkgs_12",
         "openzfs": "openzfs",
         "p2pool-exporter": "p2pool-exporter",
         "rust-overlay": "rust-overlay_2",
@@ -1425,14 +1494,14 @@
     },
     "rust-overlay_2": {
       "inputs": {
-        "nixpkgs": "nixpkgs_12"
+        "nixpkgs": "nixpkgs_13"
       },
       "locked": {
-        "lastModified": 1780284119,
-        "narHash": "sha256-y2wR4Mk6D/N1ID4FZa2oUMStCUxyIoRzmgOOpLzoWmo=",
+        "lastModified": 1780370483,
+        "narHash": "sha256-7mDa7OBAaf7MU6ZovT9ENfD62kH911SsSazBb4KTDF0=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "51390d0bfca0a68a8c337d215a4bbeddc2ca616e",
+        "rev": "4a408e1fc99ad517b4cb402fd0de7464f40c05e1",
         "type": "github"
       },
       "original": {
@@ -2580,12 +2649,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1780353237,
-        "narHash": "sha256-kr3hGFnjPZkF7kmZ3GeNNV0xIaAWKl+d/5JmVunqjHA=",
-        "owner": "hellas-ai",
-        "repo": "thunderbolt-ibverbs",
-        "rev": "0cfb28805d0661a6247c9f9b94ee1e6cbfd2b5b0",
-        "type": "github"
+        "lastModified": 1780506052,
+        "narHash": "sha256-7A7R1JkL94uohbNMyH3LizXz1UeeWJH5SFh6XCfykhY=",
+        "path": "/mnt/Home/src/thunderbolt-ibverbs-rewrite",
+        "type": "path"
       },
       "original": {
         "owner": "hellas-ai",

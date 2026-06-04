@@ -83,60 +83,6 @@
       "<all_urls>"
       "alarms"
     ];
-    # floccus = [
-    #   "*://*/*" "alarms" "bookmarks" "storage" "unlimitedStorage"
-    #   "tabs" "tabGroups" "identity"
-    # ];
-    ghostery = [
-      "alarms"
-      "cookies"
-      "storage"
-      "scripting"
-      "tabs"
-      "activeTab"
-      "webNavigation"
-      "webRequest"
-      "webRequestBlocking"
-      "unlimitedStorage"
-      "http://*/*"
-      "https://*/*"
-      "ws://*/*"
-      "wss://*/*"
-      "*://www.youtube.com/*"
-    ];
-    languagetool = [
-      "activeTab"
-      "storage"
-      "contextMenus"
-      "scripting"
-      "alarms"
-      "http://*/*"
-      "https://*/*"
-      "file:///*"
-      "*://docs.google.com/document/*"
-      "*://docs.google.com/presentation/*"
-      "*://languagetool.org/*"
-      "https://languagetool.org/*/webextension/premium-announcement*"
-      "https://languagetool.org/webextension/premium-announcement*"
-      "http://localhost:8000/*/webextension/premium-announcement*"
-      "http://localhost:8000/webextension/premium-announcement*"
-    ];
-    disconnect = [
-      "tabs"
-      "webNavigation"
-      "webRequest"
-      "webRequestBlocking"
-      "http://*/*"
-      "https://*/*"
-    ];
-    react-devtools = [
-      "scripting"
-      "storage"
-      "tabs"
-      "clipboardWrite"
-      "devtools"
-      "<all_urls>"
-    ];
     consent-o-matic = [
       "activeTab"
       "tabs"
@@ -219,12 +165,7 @@
       ublock-origin
       privacy-badger
       clearurls
-      decentraleyes
       duckduckgo-privacy-essentials
-      ghostery
-      languagetool
-      disconnect
-      react-devtools
       consent-o-matic
       multi-account-containers
       sponsorblock

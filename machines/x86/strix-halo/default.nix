@@ -39,6 +39,18 @@ in {
 
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
+
+  # strix-1 ONLY: experimental PCIe params for Thunderbolt-adapter lane-width
+  # testing. Appends to the base kernelParams list (NixOS merges lists).
+  # NOTE: these affect PCIe resource allocation / enumeration, NOT link-width
+  # negotiation (width is a hardware link-training outcome). Included to rule
+  # out any host-side enumeration contribution to the x1 ConnectX-4 link.
+  # Plug the TB adapter into strix-1, reboot into this, then recheck LnkSta.
+  boot.kernelParams = lib.mkIf (index == 1) [
+    "pci=realloc,assign-busses"
+    "pcie_ports=native"
+  ];
+
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
 
@@ -340,24 +352,23 @@ in {
 
   hardware."thunderbolt-ibverbs" = lib.mkIf (builtins.elem index [1 2]) {
     blacklist.enable = true;
+    loadOnBoot = false;
 
     config = {
-      profile = "mixed";
-      compat = "auto";
+      profile = "linux_perf";
+      compat = "off";
       tbnet = "prefer_rdma";
-      tbnet_identity = "minimal_packet";
-      tbnet_identity_tbnet = "thunderbolt0";
-      tbnet_identity_gid = "ardma0";
-      tbnet_identity_minimal_e2e = false;
+      tbnet_identity = "off";
       roce_netdev = "br0.lan";
-      lanes = "2";
+      lanes = "auto";
       bind_services = true;
       allocate_rings = true;
       start_rings = true;
       negotiate_native = true;
       enable_tunnels = true;
       native_data = true;
-      apple_data = true;
+      native_fragment_striping = true;
+      apple_data = false;
       register_verbs = true;
     };
 
@@ -365,6 +376,7 @@ in {
       afterReload = true;
       expectedNativeControl = "source_aware";
       requireVerbs = true;
+      minReadyRails = 2;
     };
   };
 

@@ -1,8 +1,7 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
+{ config
+, lib
+, pkgs
+, ...
 }:
 let
   cfg = config.hardware.strixHalo;
@@ -178,16 +177,25 @@ in
 
     gpuMemoryGiB = lib.mkOption {
       type = lib.types.ints.positive;
-      default = 110;
+      default = 124;
       example = 62;
       description = ''
         Upper bound on GPU-addressable GTT memory, in GiB. Sets
         `ttm.pages_limit` on the kernel cmdline.
 
-        Default 110: tuned for dedicated-inference Strix Halo boxes with
-        128 GiB total, leaving ~18 GiB for the OS. Required to fit large
-        quantised models (e.g. 92 GiB DS4 Flash Q2_K) in
+        Default 124: tuned for dedicated-inference Strix Halo boxes with
+        128 GiB total. Required to fit large quantised and FP8 models in
         device-allocated HIP tensors.
+      '';
+    };
+
+    noSystemMemLimit = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Disable amdgpu's SVM resident system memory guard. Large UMA model
+        loads can otherwise fail with "SVM mapping failed, exceeds resident
+        system memory limit" even when the GTT page cap is large enough.
       '';
     };
 
@@ -275,6 +283,7 @@ in
         "ttm.pages_limit=${toString (cfg.gpuMemoryGiB * pagesPerGiB)}"
         "transparent_hugepage=${cfg.hugePages}"
       ]
+      ++ lib.optional cfg.noSystemMemLimit "amdgpu.no_system_mem_limit=1"
       ++ lib.optional cfg.disableCwsr "amdgpu.cwsr_enable=0";
 
       tmp.useTmpfs = true;
@@ -336,8 +345,8 @@ in
 
     assertions = [
       {
-        assertion = cfg.gpuMemoryGiB <= 120;
-        message = "hardware.strixHalo.gpuMemoryGiB=${toString cfg.gpuMemoryGiB} leaves under 8 GiB for the OS on a 128 GiB box.";
+        assertion = cfg.gpuMemoryGiB <= 124;
+        message = "hardware.strixHalo.gpuMemoryGiB=${toString cfg.gpuMemoryGiB} leaves under 4 GiB for the OS on a 128 GiB box.";
       }
     ];
   };

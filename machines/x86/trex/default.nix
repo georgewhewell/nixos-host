@@ -92,6 +92,12 @@ in {
     preloadWeights = [
       "Qwen/Qwen3.5-0.8B"
     ];
+    trustedCallerPublicKeys = [
+      "03561852f0eda08f4b842cc800cf68845af1286c4881bf826a29fe87439e27eb08"
+      "02edec6b26cae32e9cd0bfbb90594066e60d0f9973b001af3ee15752162ab7dd99"
+    ];
+    fetchCodexResponses = true;
+    fetchCodexAuthPath = "/var/lib/hellas/.hellas/codex-auth.json";
     otel = {
       endpoint = "https://jaeger.lsd-ag.ch/v1/traces";
       serviceName = "executor-fuckup";

@@ -8,6 +8,19 @@
 }: let
   apcIp = network.primaryIp network.hosts."apc-ups";
   trexIp = network.primaryIp network.hosts.trex;
+  ipmiExporterConfig = pkgs.writeText "ipmi-local-fast.yml" ''
+    modules:
+      default:
+        collectors:
+          - bmc
+          - ipmi
+          - dcmi
+          - chassis
+        exclude_sensor_ids:
+          - 2
+          - 29
+          - 32
+  '';
 in {
   sops.secrets.nut-upsmon = mkSecret "nut-upsmon" {};
   sops.secrets.hass-prometheus-token = mkSecret "hass-prometheus-token" {};
@@ -104,7 +117,7 @@ in {
     serviceConfig = {
       ExecStart = ''
         ${pkgs.prometheus-ipmi-exporter}/bin/ipmi_exporter \
-          --config.file ${pkgs.prometheus-ipmi-exporter.src}/ipmi_local.yml \
+          --config.file ${ipmiExporterConfig} \
           --freeipmi.path ${pkgs.freeipmi}/bin/
       '';
     };

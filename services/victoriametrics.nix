@@ -7,6 +7,32 @@
   ...
 }: let
   trexIp = network.primaryIp network.hosts.trex;
+  nodeHosts = [
+    "router"
+    "trex"
+    "rock-5b"
+    "n100"
+    "strix-1"
+    "strix-2"
+    "fuckup"
+  ];
+  x86ExporterHosts = [
+    "router"
+    "trex"
+    "n100"
+    "strix-1"
+    "strix-2"
+    "fuckup"
+  ];
+  cadvisorHosts = [
+    "router"
+    "trex"
+  ];
+  mtailHosts = [
+    "router"
+    "trex"
+    "n100"
+  ];
   # Shared scrape configs used by both Prometheus and VictoriaMetrics
   # This allows running both in parallel during migration
   scrapeConfigs = [
@@ -14,18 +40,7 @@
       job_name = "node";
       static_configs = [
         {
-          targets = [
-            "nixhost:9100"
-            "router:9100"
-            "trex:9100"
-            "rock-5b:9100"
-            "n100:9100"
-            "prime:9100"
-            "neo2:9100"
-            "strix-1:9100"
-            "strix-2:9100"
-            "fuckup:9100"
-          ];
+          targets = map (host: "${host}:9100") nodeHosts;
         }
       ];
     }
@@ -33,12 +48,7 @@
       job_name = "cadvisor";
       static_configs = [
         {
-          targets = [
-            "nixhost:58080"
-            "router:58080"
-            "trex:58080"
-            "n100:58080"
-          ];
+          targets = map (host: "${host}:${builtins.toString config.services.cadvisor.port}") cadvisorHosts;
         }
       ];
     }
@@ -54,23 +64,7 @@
       job_name = "mtail";
       static_configs = [
         {
-          targets = [
-            "router:3903"
-            "trex:3903"
-            "fuckup:3903"
-            "rock-5b:3903"
-            "n100:3903"
-            "strix-1:3903"
-            "strix-2:3903"
-          ];
-        }
-      ];
-    }
-    {
-      job_name = "unifi";
-      static_configs = [
-        {
-          targets = ["127.0.0.1:9130"];
+          targets = map (host: "${host}:3903") mtailHosts;
         }
       ];
     }
@@ -110,10 +104,7 @@
       job_name = "smartctl";
       static_configs = [
         {
-          targets = [
-            "trex:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
-            "nixhost:${builtins.toString config.services.prometheus.exporters.smartctl.port}"
-          ];
+          targets = map (host: "${host}:${builtins.toString config.services.prometheus.exporters.smartctl.port}") x86ExporterHosts;
         }
       ];
     }
@@ -121,18 +112,7 @@
       job_name = "zfs";
       static_configs = [
         {
-          targets = [
-            "trex:${builtins.toString config.services.prometheus.exporters.zfs.port}"
-            "router:${builtins.toString config.services.prometheus.exporters.zfs.port}"
-          ];
-        }
-      ];
-    }
-    {
-      job_name = "p2pool";
-      static_configs = [
-        {
-          targets = ["router:8889"];
+          targets = map (host: "${host}:${builtins.toString config.services.prometheus.exporters.zfs.port}") x86ExporterHosts;
         }
       ];
     }
@@ -153,14 +133,6 @@
       static_configs = [
         {
           targets = ["router:8123"];
-        }
-      ];
-    }
-    {
-      job_name = "hostapd";
-      static_configs = [
-        {
-          targets = ["router:9551"];
         }
       ];
     }
