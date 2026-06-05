@@ -325,6 +325,9 @@
         });
 
       colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
+      imageOnlyNixosConfigurations = [ "router-usb" ];
+      deployableNixosConfigurations =
+        builtins.removeAttrs self.nixosConfigurations imageOnlyNixosConfigurations;
       colmena =
         {
           meta = {
@@ -337,15 +340,18 @@
               # for routine reliability work; znver5 can be reintroduced only
               # for focused performance A/B runs.
               strix-2 = pkgsForRocm "x86_64-linux";
-              # trex has an RX 5700 (gfx1010). Putting it on pkgsForRocm so
-              # config.rocmSupport flips on globally — that's what gets
-              # rocm-smi onto btop's rpath, makes pkgs.llama-cpp build with
-              # ROCm by default, and avoids per-package overrides scattered
-              # across the host config.
-              trex = pkgsForRocm "x86_64-linux";
+              # trex uses Vulkan/RADV for llama.cpp on Navi 10. Keep it on the
+              # base package set so Open WebUI/Torch and routine system rebuilds
+              # do not pull the ROCm package set unless a package asks for it.
+              trex = pkgsFor "x86_64-linux";
             };
             specialArgs = {
               inherit inputs mkSecret pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmZnver5 network;
+            };
+            nodeSpecialArgs = {
+              router = {
+                routerStorageProfile = ./profiles/router/impermanence.nix;
+              };
             };
           };
         }
@@ -354,7 +360,7 @@
             nixpkgs.system = value.config.nixpkgs.system;
             imports = value._module.args.modules;
           })
-          (self.nixosConfigurations);
+          deployableNixosConfigurations;
 
       darwinConfigurations."air" = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
@@ -482,6 +488,6 @@
             };
           };
         in
-        mkGithubMatrix self.nixosConfigurations;
+        mkGithubMatrix deployableNixosConfigurations;
     };
 }

@@ -1,4 +1,5 @@
-nixosModule: inputs: mkSecret: network: pkgsFns: let
+nixosModule: inputs: mkSecret: network: pkgsFns:
+let
   inherit (inputs.nixpkgs) lib;
   inherit (pkgsFns) pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmZnver5 allOverlays;
 
@@ -10,7 +11,7 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
     lib.nixosSystem {
       inherit system pkgs;
       modules = [
-        {_module.args = inputs;}
+        { _module.args = inputs; }
         nixosModule
         machine
       ];
@@ -20,6 +21,25 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
       specialArgs = {
         inherit inputs mkSecret network;
       };
+    };
+
+  sysWithSpecialArgs = system: extraSpecialArgs: machine:
+    let
+      pkgs = pkgsFor system;
+    in
+    lib.nixosSystem {
+      inherit system pkgs;
+      modules = [
+        { _module.args = inputs; }
+        nixosModule
+        machine
+      ];
+      extraModules = [
+        inputs.colmena.nixosModules.deploymentOptions
+      ];
+      specialArgs = {
+        inherit inputs mkSecret network;
+      } // extraSpecialArgs;
     };
 
   # Cross-compilation builder - builds on x86_64 for aarch64
@@ -36,7 +56,7 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
             allowBroken = true;
           };
         }
-        {_module.args = inputs;}
+        { _module.args = inputs; }
         nixosModule
         machine
       ];
@@ -56,7 +76,7 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
     lib.nixosSystem {
       inherit system pkgs;
       modules = [
-        {_module.args = inputs;}
+        { _module.args = inputs; }
         nixosModule
         machine
       ];
@@ -77,7 +97,7 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
       inherit pkgs;
       system = pkgs.stdenv.hostPlatform.system;
       modules = [
-        {_module.args = inputs;}
+        { _module.args = inputs; }
         nixosModule
         machine
       ];
@@ -91,18 +111,25 @@ nixosModule: inputs: mkSecret: network: pkgsFns: let
 
   sysRocm = system: machine: mkRocmSystem (pkgsForRocm system) machine;
   sysRocmZnver5 = system: machine: mkRocmSystem (pkgsForRocmZnver5 system) machine;
-in {
-  router = sys "x86_64-linux" ./x86/router;
+in
+{
+  router = sysWithSpecialArgs "x86_64-linux"
+    {
+      routerStorageProfile = ../profiles/router/impermanence.nix;
+    } ./x86/router;
+  router-usb = sysWithSpecialArgs "x86_64-linux"
+    {
+      routerStorageProfile = ../profiles/router/usb-btrfs.nix;
+    } ./x86/router;
   n100 = sys "x86_64-linux" ./x86/n100;
 
   # NVIDIA GPU machine
   fuckup = sysCuda "x86_64-linux" ./x86/fuckup;
 
-  # AMD GPU machines (ROCm). trex has a Navi 10 dGPU; the strix
-  # machines have gfx1151 iGPUs. They share the same pkgsForRocm
-  # base — anything per-target lives in the host config.
-  trex = sysRocm "x86_64-linux" ./x86/trex;
-  strix-1 = sysRocm       "x86_64-linux" (import ./x86/strix-halo 1);
+  # AMD GPU machines. trex uses Vulkan/RADV and stays on the base package set;
+  # the Strix machines use the ROCm package set for gfx1151 work.
+  trex = sys "x86_64-linux" ./x86/trex;
+  strix-1 = sysRocm "x86_64-linux" (import ./x86/strix-halo 1);
   # Keep both Strix machines on the same generic ROCm package set for
   # reliability work. The znver5 package set is useful for performance A/B
   # runs, but it makes routine system rebuilds depend on gccarch-specific

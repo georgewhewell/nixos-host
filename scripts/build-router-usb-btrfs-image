@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Build a btrfs router USB image and bake selected state from the live router.
+
+Usage:
+  scripts/build-router-usb-btrfs-image [output.raw]
+
+Environment:
+  ROUTER_HOST=router   SSH host to read state from
+  QUIESCE=1            Stop database-ish router services while copying state
+  FORCE=1              Overwrite an existing output file
+  COMPRESS=1           zstd-compress the final raw image
+  EXTRA_NIX_ARGS=...   Extra args passed before `nix build` flake reference
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+router_host="${ROUTER_HOST:-router}"
+out="${1:-$repo_root/router-usb-btrfs.raw}"
+tmp="$(mktemp -d)"
+loop=""
+mnt="$tmp/mnt"
+quiesced=0
+
+services_to_quiesce=(
+  podman-unifi
+  podman-unifi-db
+  home-assistant
+  frigate
+  mosquitto
+)
+
+cleanup() {
+  set +e
+  if mountpoint -q "$mnt"; then
+    sudo umount "$mnt"
+  fi
+  if [[ -n "$loop" ]]; then
+    sudo losetup -d "$loop"
+  fi
+  if [[ "$quiesced" == 1 ]]; then
+    ssh "$router_host" sudo systemctl start "${services_to_quiesce[@]}"
+  fi
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+[[ -e "$out" && "${FORCE:-0}" != 1 ]] && die "$out already exists; set FORCE=1 to overwrite"
+
+echo "building router-usb btrfs base image"
+# shellcheck disable=SC2206
+extra_nix_args=(${EXTRA_NIX_ARGS:-})
+nix build \
+  "${extra_nix_args[@]}" \
+  "$repo_root#nixosConfigurations.router-usb.config.system.build.diskoImages" \
+  --out-link "$tmp/result"
+
+raw="$(find -L "$tmp/result" -maxdepth 1 -type f -name '*.raw' | head -n1)"
+[[ -n "$raw" ]] || die "no raw image found in $tmp/result"
+
+mkdir -p "$(dirname "$out")"
+cp --reflink=auto --sparse=always "$raw" "$out"
+chmod u+w "$out"
+
+echo "attaching $out"
+loop="$(sudo losetup --find --partscan --show "$out")"
+sudo partprobe "$loop" >/dev/null 2>&1 || true
+sleep 1
+
+btrfs_part="$(lsblk -nrpo NAME,FSTYPE "$loop" | awk '$2 == "btrfs" { print $1; exit }')"
+if [[ -z "$btrfs_part" ]]; then
+  if [[ -e "${loop}p2" ]]; then
+    btrfs_part="${loop}p2"
+  elif [[ -e "${loop}2" ]]; then
+    btrfs_part="${loop}2"
+  else
+    die "could not find btrfs partition for $loop"
+  fi
+fi
+
+mkdir -p "$mnt"
+sudo mount -o subvol=/persist,compress=zstd,noatime "$btrfs_part" "$mnt"
+
+if [[ "${QUIESCE:-0}" == 1 ]]; then
+  echo "stopping router services for a cleaner state copy"
+  ssh "$router_host" sudo systemctl stop "${services_to_quiesce[@]}"
+  quiesced=1
+fi
+
+state_paths=(
+  etc/machine-id
+  etc/ssh
+  var/lib/nixos
+  var/lib/systemd/random-seed
+  var/lib/systemd/linger
+  var/lib/dnsmasq
+  var/lib/fail2ban
+  var/lib/frigate
+  var/cache/frigate
+  var/lib/fwupd
+  var/lib/hass
+  var/lib/mosquitto
+  var/lib/nftables
+  var/lib/tor
+  var/lib/unifi
+  var/lib/unifi-db
+)
+
+echo "copying live router state from $router_host into image"
+printf '%s\0' "${state_paths[@]}" |
+  ssh "$router_host" sudo tar \
+    -C / \
+    --null \
+    --files-from=- \
+    --ignore-failed-read \
+    --acls \
+    --xattrs \
+    --numeric-owner \
+    -cpf - |
+  sudo tar \
+    --acls \
+    --xattrs \
+    --numeric-owner \
+    -C "$mnt" \
+    -xpf -
+
+sudo sync
+sudo umount "$mnt"
+sudo losetup -d "$loop"
+loop=""
+
+if [[ "${COMPRESS:-0}" == 1 ]]; then
+  echo "compressing $out"
+  zstd -T0 -f --rm "$out"
+  echo "wrote $out.zst"
+else
+  echo "wrote $out"
+fi

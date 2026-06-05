@@ -1,0 +1,71 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Fri, 5 Jun 2026 00:00:00 +0200
+Subject: [PATCH] thunderbolt: validate XDomain properties responses
+
+The synchronous XDomain request matcher accepts packets by route and
+protocol UUID, but not by XDP packet type. During hub-mediated XDomain
+testing, a properties request can observe another matching XDomain packet
+and then parse it as a PROPERTIES_RESPONSE.
+
+Defensively reject non-PROPERTIES_RESPONSE packets and impossible property
+lengths before copying data into the accumulated property block.
+
+Signed-off-by: georgewhewell <georgerw@gmail.com>
+---
+ drivers/thunderbolt/xdomain.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -419,6 +419,16 @@ static int tb_xdp_properties_request(str
+ 			goto err;
+ 		}
+ 
++		if (res->hdr.type != PROPERTIES_RESPONSE) {
++			ret = -EPROTO;
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: unexpected properties response type route=%llx offset=%u type=%#x expected=%#x src=%pUb dst=%pUb\n",
++					route, req.offset, res->hdr.type,
++					PROPERTIES_RESPONSE, &res->src_uuid,
++					&res->dst_uuid);
++			goto err;
++		}
++
+ 		/*
+ 		 * Package length includes the whole payload without the
+ 		 * XDomain header. Validate first that the package is at
+@@ -454,6 +464,14 @@ static int tb_xdp_properties_request(str
+ 		 */
+ 		if (!data) {
+ 			data_len = res->data_length;
++			if (!data_len) {
++				ret = -EINVAL;
++				if (xdomain_debug)
++					pr_info("thunderbolt xdomain: zero-length properties response route=%llx offset=%u len=%u src=%pUb dst=%pUb\n",
++						route, req.offset, len,
++						&res->src_uuid, &res->dst_uuid);
++				goto err;
++			}
+ 			if (data_len > TB_XDP_PROPERTIES_MAX_LENGTH) {
+ 				ret = -E2BIG;
+ 				goto err;
+@@ -466,6 +484,15 @@ static int tb_xdp_properties_request(str
+ 			}
+ 		}
+ 
++		if (req.offset >= data_len || len > data_len - req.offset) {
++			ret = -EINVAL;
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: properties response overrun route=%llx offset=%u len=%u data_len=%u src=%pUb dst=%pUb\n",
++					route, req.offset, len, data_len,
++					&res->src_uuid, &res->dst_uuid);
++			goto err;
++		}
++
+ 		if (xdomain_debug)
+ 			pr_info("thunderbolt xdomain: rx properties response route=%llx offset=%u len=%u data_len=%u gen=%u src=%pUb dst=%pUb\n",
+ 				route, req.offset, len, res->data_length,
+-- 
+2.53.0
+

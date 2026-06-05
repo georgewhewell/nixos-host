@@ -1,0 +1,63 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Fri, 5 Jun 2026 00:00:00 +0200
+Subject: [PATCH] thunderbolt: add route-matched XDomain properties test knob
+
+When testing host-to-host XDomain links through a Thunderbolt hub, UUID
+exchange can succeed but PROPERTIES_REQUEST packets may arrive with a
+dst_uuid that is neither endpoint's local UUID. The route still matches the
+XDomain object, but Linux rejects the request as ERROR_UNKNOWN_DOMAIN before
+tbnet can be discovered.
+
+Add a default-off module parameter that lets a lab kernel answer
+route-matched properties requests even when dst_uuid does not match the local
+domain. This keeps stock behavior unless xdomain_route_properties=1 is set.
+
+Signed-off-by: georgewhewell <georgerw@gmail.com>
+---
+ drivers/thunderbolt/xdomain.c | 25 ++++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -60,6 +60,10 @@ MODULE_PARM_DESC(xdomain_lane_bonding,
+ module_param_named(xdomain_debug, xdomain_debug, bool, 0644);
+ MODULE_PARM_DESC(xdomain_debug,
+ 		 "log XDomain discovery packets and matching decisions");
++static bool xdomain_route_properties;
++module_param_named(xdomain_route_properties, xdomain_route_properties, bool, 0644);
++MODULE_PARM_DESC(xdomain_route_properties,
++		 "reply to route-matched XDomain properties requests even when dst_uuid is not local (default: false)");
+ 
+ struct xdomain_request_work {
+ 	struct work_struct work;
+@@ -504,13 +508,20 @@ static int tb_xdp_properties_response(st
+ 			 &req->dst_uuid, xd->local_uuid);
+ 
+ 	if (!uuid_equal(xd->local_uuid, &req->dst_uuid)) {
+-		if (xdomain_debug)
+-			dev_info(&xd->dev, "XDomain properties request unknown domain route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
+-				 xd->route, sequence, &req->src_uuid,
+-				 &req->dst_uuid, xd->local_uuid);
+-		tb_xdp_error_response(ctl, xd->route, sequence,
+-				      ERROR_UNKNOWN_DOMAIN);
+-		return 0;
++		if (!xdomain_route_properties) {
++			if (xdomain_debug)
++				dev_info(&xd->dev, "XDomain properties request unknown domain route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
++					 xd->route, sequence, &req->src_uuid,
++					 &req->dst_uuid, xd->local_uuid);
++			tb_xdp_error_response(ctl, xd->route, sequence,
++					      ERROR_UNKNOWN_DOMAIN);
++			return 0;
++		}
++
++		if (xdomain_debug)
++			dev_info(&xd->dev, "XDomain properties request route override route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
++				 xd->route, sequence, &req->src_uuid,
++				 &req->dst_uuid, xd->local_uuid);
+ 	}
+ 
+ 	mutex_lock(&xd->lock);
+-- 
+2.53.0

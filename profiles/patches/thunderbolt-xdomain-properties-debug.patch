@@ -1,0 +1,224 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Fri, 5 Jun 2026 00:00:00 +0200
+Subject: [PATCH] thunderbolt: instrument XDomain property exchange
+
+Add a debug module parameter that logs the XDomain discovery frames most
+relevant to the hub path: response matching, UUID discovery, properties
+requests, properties responses, and the no-matching-XDomain case in the
+request dispatcher.
+
+This is intended to diagnose asymmetric routed host-to-host links through
+Thunderbolt hubs where UUID exchange can progress but property exchange
+times out.
+
+Signed-off-by: georgewhewell <georgerw@gmail.com>
+---
+ drivers/thunderbolt/xdomain.c | 94 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 94 insertions(+)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -56,6 +56,10 @@
+ module_param_named(xdomain_lane_bonding, xdomain_lane_bonding, bool, 0644);
+ MODULE_PARM_DESC(xdomain_lane_bonding,
+ 		 "enable automatic XDomain lane bonding (default: true)");
++static bool xdomain_debug;
++module_param_named(xdomain_debug, xdomain_debug, bool, 0644);
++MODULE_PARM_DESC(xdomain_debug,
++		 "log XDomain discovery packets and matching decisions");
+ 
+ struct xdomain_request_work {
+ 	struct work_struct work;
+@@ -102,19 +106,50 @@
+ 		const struct tb_xdp_header *res_hdr = pkg->buffer;
+ 		const struct tb_xdp_header *req_hdr = req->request;
+ 
+-		if (pkg->frame.size < req->response_size / 4)
++		if (pkg->frame.size < req->response_size / 4) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop short response req_type=%#x res_type=%#x frame_dw=%u expected_dw=%zu req_route=%08x:%08x res_route=%08x:%08x\n",
++						    req_hdr->type, res_hdr->type,
++						    pkg->frame.size,
++						    req->response_size / 4,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    res_hdr->xd_hdr.route_hi,
++						    res_hdr->xd_hdr.route_lo);
+ 			return false;
++		}
+ 
+ 		/* Make sure route matches */
+ 		if ((res_hdr->xd_hdr.route_hi & ~BIT(31)) !=
+-		     req_hdr->xd_hdr.route_hi)
++		     req_hdr->xd_hdr.route_hi) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop response route_hi mismatch req_type=%#x res_type=%#x req=%08x:%08x res=%08x:%08x\n",
++						    req_hdr->type, res_hdr->type,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    res_hdr->xd_hdr.route_hi,
++						    res_hdr->xd_hdr.route_lo);
+ 			return false;
+-		if ((res_hdr->xd_hdr.route_lo) != req_hdr->xd_hdr.route_lo)
++		}
++		if ((res_hdr->xd_hdr.route_lo) != req_hdr->xd_hdr.route_lo) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop response route_lo mismatch req_type=%#x res_type=%#x req=%08x:%08x res=%08x:%08x\n",
++						    req_hdr->type, res_hdr->type,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    res_hdr->xd_hdr.route_hi,
++						    res_hdr->xd_hdr.route_lo);
+ 			return false;
++		}
+ 
+ 		/* Check that the XDomain protocol matches */
+-		if (!uuid_equal(&res_hdr->uuid, &req_hdr->uuid))
++		if (!uuid_equal(&res_hdr->uuid, &req_hdr->uuid)) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop response uuid mismatch req_type=%#x res_type=%#x req_uuid=%pUb res_uuid=%pUb\n",
++						    req_hdr->type, res_hdr->type,
++						    &req_hdr->uuid, &res_hdr->uuid);
+ 			return false;
++		}
+ 
+ 		return true;
+ 	}
+@@ -355,16 +390,30 @@
+ 	data_len = 0;
+ 
+ 	do {
++		if (xdomain_debug)
++			pr_info("thunderbolt xdomain: tx properties request route=%llx retry=%d offset=%u src=%pUb dst=%pUb\n",
++				route, retry, req.offset, &req.src_uuid,
++				&req.dst_uuid);
++
+ 		ret = __tb_xdomain_request(ctl, &req, sizeof(req),
+ 					   TB_CFG_PKG_XDOMAIN_REQ, res,
+ 					   total_size, TB_CFG_PKG_XDOMAIN_RESP,
+ 					   XDOMAIN_DEFAULT_TIMEOUT);
+-		if (ret)
++		if (ret) {
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: properties request route=%llx offset=%u transport ret=%d\n",
++					route, req.offset, ret);
+ 			goto err;
++		}
+ 
+ 		ret = tb_xdp_handle_error(&res->err);
+-		if (ret)
++		if (ret) {
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: properties request route=%llx offset=%u xdp error ret=%d res_type=%#x error=%u\n",
++					route, req.offset, ret, res->hdr.type,
++					res->err.error);
+ 			goto err;
++		}
+ 
+ 		/*
+ 		 * Package length includes the whole payload without the
+@@ -374,6 +423,11 @@
+ 		len = res->hdr.xd_hdr.length_sn & TB_XDOMAIN_LENGTH_MASK;
+ 		if (len < sizeof(*res) / 4) {
+ 			ret = -EINVAL;
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: bad properties response route=%llx len=%u min=%zu type=%#x src=%pUb dst=%pUb\n",
++					route, len, sizeof(*res) / 4,
++					res->hdr.type, &res->src_uuid,
++					&res->dst_uuid);
+ 			goto err;
+ 		}
+ 
+@@ -382,6 +436,11 @@
+ 
+ 		if (res->offset != req.offset) {
+ 			ret = -EINVAL;
++			if (xdomain_debug)
++				pr_info("thunderbolt xdomain: properties response offset mismatch route=%llx req=%u res=%u len=%u data_len=%u src=%pUb dst=%pUb\n",
++					route, req.offset, res->offset, len,
++					res->data_length, &res->src_uuid,
++					&res->dst_uuid);
+ 			goto err;
+ 		}
+ 
+@@ -403,6 +462,12 @@
+ 			}
+ 		}
+ 
++		if (xdomain_debug)
++			pr_info("thunderbolt xdomain: rx properties response route=%llx offset=%u len=%u data_len=%u gen=%u src=%pUb dst=%pUb\n",
++				route, req.offset, len, res->data_length,
++				res->generation, &res->src_uuid,
++				&res->dst_uuid);
++
+ 		memcpy(data + req.offset, res->data, len * 4);
+ 		req.offset += len;
+ 	} while (!data_len || req.offset < data_len);
+@@ -434,7 +499,16 @@
+ 	 * protocol supports forwarding, though which we might add
+ 	 * support later on.
+ 	 */
++	if (xdomain_debug)
++		dev_info(&xd->dev, "XDomain properties request route=%llx seq=%u offset=%u src=%pUb dst=%pUb local=%pUb\n",
++			 xd->route, sequence, req->offset, &req->src_uuid,
++			 &req->dst_uuid, xd->local_uuid);
++
+ 	if (!uuid_equal(xd->local_uuid, &req->dst_uuid)) {
++		if (xdomain_debug)
++			dev_info(&xd->dev, "XDomain properties request unknown domain route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
++				 xd->route, sequence, &req->src_uuid,
++				 &req->dst_uuid, xd->local_uuid);
+ 		tb_xdp_error_response(ctl, xd->route, sequence,
+ 				      ERROR_UNKNOWN_DOMAIN);
+ 		return 0;
+@@ -466,6 +540,12 @@
+ 	uuid_copy(&res->dst_uuid, &req->src_uuid);
+ 	memcpy(res->data, &xd->local_property_block[req->offset], len * 4);
+ 
++	if (xdomain_debug)
++		dev_info(&xd->dev, "XDomain properties response route=%llx seq=%u offset=%u len=%u data_len=%u gen=%u src=%pUb dst=%pUb\n",
++			 xd->route, sequence, req->offset, len,
++			 res->data_length, res->generation, &res->src_uuid,
++			 &res->dst_uuid);
++
+ 	mutex_unlock(&xd->lock);
+ 
+ 	ret = __tb_xdomain_response(ctl, res, total_size,
+@@ -787,10 +867,22 @@
+ 	xd = tb_xdomain_find_by_route_locked(tb, route);
+ 	if (xd)
+ 		update_property_block(xd);
++	if (xdomain_debug)
++		tb_info(tb, "%llx: XDomain request type=%#x seq=%u uuid=%pUb xd=%s\n",
++			route, pkg->type, sequence, &pkg->uuid,
++			xd ? dev_name(&xd->dev) : "none");
+ 
+ 	switch (pkg->type) {
+ 	case PROPERTIES_REQUEST:
+ 		tb_dbg(tb, "%llx: received XDomain properties request\n", route);
++		if (!xd && xdomain_debug) {
++			const struct tb_xdp_properties *req =
++				(const struct tb_xdp_properties *)pkg;
++
++			tb_info(tb, "%llx: no XDomain for properties request src=%pUb dst=%pUb local=%pUb offset=%u\n",
++				route, &req->src_uuid, &req->dst_uuid, uuid,
++				req->offset);
++		}
+ 		if (xd) {
+ 			ret = tb_xdp_properties_response(tb, ctl, xd, sequence,
+ 				(const struct tb_xdp_properties *)pkg);
+@@ -1349,6 +1441,10 @@
+ 
+ 	dev_dbg(&xd->dev, "got remote UUID %pUb\n", &uuid);
+ 
++	if (xdomain_debug)
++		dev_info(&xd->dev, "XDomain UUID response local=%pUb remote=%pUb local_route=%llx remote_route=%llx\n",
++			 xd->local_uuid, &uuid, xd->route, route);
++
+ 	if (uuid_equal(&uuid, xd->local_uuid)) {
+ 		if (route == xd->route)
+ 			dev_dbg(&xd->dev, "loop back detected\n");
+-- 
+2.53.0
+

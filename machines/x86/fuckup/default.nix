@@ -58,6 +58,10 @@ in
   hardware.enableAllHardware = true;
   nix.settings.system-features = [ "gccarch-znver5" "rtx4090" "9950x3d" ];
 
+  environment.systemPackages = [
+    pkgs.kexec-tools
+  ];
+
   services.hellas = {
     enable = true;
     # package = inputs.hellas.packages.x86_64-linux.server-cuda;
@@ -99,6 +103,8 @@ in
     ../../../profiles/graphical.nix
     ../../../profiles/displaylink.nix
     ../../../profiles/wayland-compositors-test.nix
+
+    ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
     ../../../profiles/thunderbolt-bridge.nix
 
     ../../../services/buildfarm-slave.nix
@@ -213,7 +219,35 @@ in
 
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom="CH"
+    options sp5100_tco heartbeat=30 nowayout=1 action=0
   '';
+
+  boot.kernelModules = [ "sp5100_tco" ];
+
+  boot.kernelParams = [
+    "panic=5"
+    "panic_on_oops=1"
+    "softlockup_panic=1"
+    "hung_task_panic=1"
+    "nmi_watchdog=panic,1"
+  ];
+
+  boot.kernel.sysctl = {
+    "kernel.panic" = 5;
+    "kernel.watchdog" = 1;
+    "kernel.panic_on_oops" = 1;
+    "kernel.softlockup_panic" = 1;
+    "kernel.hung_task_panic" = 1;
+    "kernel.nmi_watchdog" = 1;
+    "kernel.hardlockup_panic" = 1;
+    "kernel.panic_print" = 63;
+  };
+
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "15s";
+    RebootWatchdogSec = "30s";
+    KExecWatchdogSec = "30s";
+  };
 
   boot.loader = {
     systemd-boot.enable = true;
@@ -223,6 +257,31 @@ in
   powerManagement = {
     enable = true;
     cpuFreqGovernor = "performance";
+  };
+
+  profiles.thunderbolt-bridge = {
+    enableThunderboltNet = false;
+    bridgeThunderboltNet = false;
+  };
+
+  hardware.thunderbolt-ibverbs = {
+    enable = true;
+    loadOnBoot = false;
+    blacklist.enable = true;
+    config = {
+      profile = "linux_perf";
+      compat = "off";
+      tbnet = "prefer_rdma";
+      tbnet_identity = "off";
+      lanes = "2";
+      bind_services = true;
+      allocate_rings = true;
+      start_rings = true;
+      negotiate_native = true;
+      enable_tunnels = true;
+      register_verbs = true;
+      roce_netdev = "br0.lan";
+    };
   };
 
   networking = {

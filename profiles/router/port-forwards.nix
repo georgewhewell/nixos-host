@@ -18,11 +18,6 @@ network: {
         proto = "both";
         comment = "DNS (dnsmasq)";
       }
-      {
-        port = 3333;
-        proto = "tcp";
-        comment = "P2Pool stratum";
-      }
       # { port = 8123; proto = "tcp"; comment = "Home Assistant"; }
       # { port = 1883; proto = "tcp"; comment = "MQTT (mosquitto)"; }
       # { port = 6052; proto = "tcp"; comment = "ESPHome"; }
@@ -90,6 +85,11 @@ network: {
         port = 18141;
         proto = "both";
         comment = "Tari P2P";
+      }
+      {
+        port = 3333;
+        proto = "tcp";
+        comment = "P2Pool stratum";
       }
       {
         port = 37899;

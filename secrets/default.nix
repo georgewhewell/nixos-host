@@ -11,7 +11,7 @@
     mode = "0400";
   };
 
-  # P2Pool environment file for merge mining secrets (router)
+  # P2Pool environment file for merge mining secrets
   # Contains: TARI_WALLET_ADDRESS=<tari address>
   p2pool-env = {
     sopsFile = ./crypto.yaml;

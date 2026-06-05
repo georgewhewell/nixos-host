@@ -1,25 +1,26 @@
-{
-  pkgs,
-  lib,
-  inputs,
-  mkSecret,
-  config,
-  network,
-  ...
-}: let
+{ pkgs
+, lib
+, inputs
+, mkSecret
+, config
+, network
+, ...
+}:
+let
   self = network.hosts.trex;
   hellasGatewayCli = inputs.hellas.packages.${pkgs.stdenv.hostPlatform.system}.cli;
-in {
+in
+{
   /*
-  trex: trx90 system
+    trex: trx90 system
 
-  # fans:
-  # CPU_FAN1: AIO Radiator fans
-  # CPU_FAN2/WP: Pump
-  # CHA_FAN1/WP: 140mm intakes
-  # CHA_FAN2/WP: Unsure.. VRAM?
-  # CHA_FAN3/WP: Unsure.. exhaust?
-  # MOS_FAN1/MOS_FAN2: VRM
+    # fans:
+    # CPU_FAN1: AIO Radiator fans
+    # CPU_FAN2/WP: Pump
+    # CHA_FAN1/WP: 140mm intakes
+    # CHA_FAN2/WP: Unsure.. VRAM?
+    # CHA_FAN3/WP: Unsure.. exhaust?
+    # MOS_FAN1/MOS_FAN2: VRM
   */
   sconfig = {
     profile = "desktop";
@@ -36,17 +37,23 @@ in {
       enable = true;
       hostName = true;
     };
+    netconsole.collector = {
+      enable = true;
+      port = 6666;
+      logFile = "/var/log/netconsole/strix.log";
+      openFirewall = true;
+    };
   };
 
   # 7985WX - big parallel builder
   nix.settings = {
-    system-features = ["gccarch-znver4" "kvm" "big-parallel" "nixos-test"];
+    system-features = [ "gccarch-znver4" "kvm" "big-parallel" "nixos-test" ];
     download-buffer-size = 104857600; # 100 MiB
     http-connections = 64;
     # Sign locally-built store paths with our cache key so `nix copy` to
     # strix-1/strix-2 (which trust this key via modules/nix.nix) is
     # accepted without --no-check-sigs.
-    secret-key-files = [config.sops.secrets.nix-cache-key.path];
+    secret-key-files = [ config.sops.secrets.nix-cache-key.path ];
   };
 
   boot.kernel.sysctl = {
@@ -111,9 +118,9 @@ in {
 
   systemd.services.hellas-gateway = {
     description = "Hellas HTTP gateway passthrough to local llama.cpp";
-    wantedBy = ["multi-user.target"];
-    after = ["network-online.target" "llama-cpp.service"];
-    wants = ["network-online.target" "llama-cpp.service"];
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" "llama-cpp.service" ];
+    wants = [ "network-online.target" "llama-cpp.service" ];
     environment = {
       HOME = "/var/lib/hellas-gateway";
     };
@@ -174,6 +181,8 @@ in {
     ../../../services/grafana.nix
     ../../../services/victoriametrics.nix
     ../../../services/jellyfin.nix
+    ../../../services/p2pool.nix
+    ../../../services/p2pool-exporter.nix
     ../../../services/buildfarm-executor.nix
     ../../../services/hydra-builder-slave.nix
     ../../../services/buildfarm-slave.nix
@@ -182,6 +191,7 @@ in {
     ../../../services/apple-health-ingester.nix
 
     ../../../profiles/thunderbolt-bridge.nix
+    ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
   ];
 
   deployment = {
@@ -193,21 +203,14 @@ in {
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
 
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      rocmPackages.clr.icd
-    ];
-  };
-
-  sops.secrets.hf-token = mkSecret "hf-token" {};
+  sops.secrets.hf-token = mkSecret "hf-token" { };
   sops.templates."hellas-env".content = ''
     HF_TOKEN=${config.sops.placeholder."hf-token"}
   '';
   systemd.services.hellas.serviceConfig.EnvironmentFile =
     config.sops.templates."hellas-env".path;
 
-  sops.secrets.qui-session = mkSecret "qui-session" {};
+  sops.secrets.qui-session = mkSecret "qui-session" { };
   sops.secrets.mosquitto-password = mkSecret "mosquitto-password" {
     owner = "root";
     group = "root";
@@ -226,8 +229,8 @@ in {
 
   # Ensure qbittorrent waits for bpool media mount
   systemd.services.qbittorrent = {
-    bindsTo = ["mnt-Media.mount"];
-    after = ["mnt-Media.mount"];
+    bindsTo = [ "mnt-Media.mount" ];
+    after = [ "mnt-Media.mount" ];
   };
 
   services.qbittorrent = {
@@ -244,19 +247,19 @@ in {
   fileSystems."/var/lib/qbittorrent" = {
     device = "pool3d/root/downloads";
     fsType = "zfs";
-    options = ["nofail"];
+    options = [ "nofail" ];
   };
 
   fileSystems."/mnt/models" = {
     device = "pool3d/root/models";
     fsType = "zfs";
-    options = ["nofail"];
+    options = [ "nofail" ];
   };
 
   fileSystems."/mnt/victoriametrics" = {
     device = "pool3d/root/victoriametrics";
     fsType = "zfs";
-    options = ["nofail"];
+    options = [ "nofail" ];
   };
 
   system.stateVersion = "24.11";
@@ -268,7 +271,7 @@ in {
   fileSystems."/dev/hugepages1G" = {
     device = "hugetlbfs";
     fsType = "hugetlbfs";
-    options = ["pagesize=1G" "size=1G" "mode=1777"];
+    options = [ "pagesize=1G" "size=1G" "mode=1777" ];
   };
 
   powerManagement = {
@@ -351,8 +354,8 @@ in {
   };
 
   systemd.services.max-perf-mqtt = {
-    after = ["sops-install-secrets.service"];
-    wants = ["sops-install-secrets.service"];
+    after = [ "sops-install-secrets.service" ];
+    wants = [ "sops-install-secrets.service" ];
   };
 
   # L2ARC tuning for bpool Optane cache - no write rate limit
@@ -373,12 +376,13 @@ in {
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work
       "pcie=pcie_bus_perf"
       "pcie_acs_override=downstream"
+      "pcie_ports=native"
       "zswap.enabled=1"
       "zswap.compressor=zstd"
       "zswap.max_pool_percent=20"
     ];
-    initrd.kernelModules = ["mlx5_core" "lm92"];
-    blacklistedKernelModules = ["nouveau" "i915"];
+    initrd.kernelModules = [ "mlx5_core" "lm92" ];
+    blacklistedKernelModules = [ "nouveau" "i915" ];
   };
 
   # SR-IOV setup for Mellanox ConnectX-4 with switchdev mode
@@ -386,15 +390,15 @@ in {
   # (firmware-level ESWITCH_MODE not available on CX4)
   systemd.services.sriov-init = {
     description = "Configure Mellanox SR-IOV with switchdev mode";
-    wantedBy = ["network-pre.target"];
-    before = ["network-pre.target"];
-    after = ["sys-subsystem-net-devices-enp172s0np0.device"];
-    bindsTo = ["sys-subsystem-net-devices-enp172s0np0.device"];
+    wantedBy = [ "network-pre.target" ];
+    before = [ "network-pre.target" ];
+    after = [ "sys-subsystem-net-devices-enp172s0np0.device" ];
+    bindsTo = [ "sys-subsystem-net-devices-enp172s0np0.device" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
     };
-    path = [pkgs.iproute2 pkgs.ethtool];
+    path = [ pkgs.iproute2 pkgs.ethtool ];
     script = ''
       set -e
       PCI_DEV="pci/0000:ac:00.0"
@@ -430,20 +434,20 @@ in {
   networking.vswitches.ovs-mlx = {
     interfaces = {
       # Uplink (PF)
-      enp172s0np0 = {};
+      enp172s0np0 = { };
       # VF representors
-      enp172s0r0 = {};
-      enp172s0r1 = {};
-      enp172s0r2 = {};
-      enp172s0r3 = {};
-      enp172s0r4 = {};
-      enp172s0r5 = {};
-      enp172s0r6 = {};
-      enp172s0r7 = {};
+      enp172s0r0 = { };
+      enp172s0r1 = { };
+      enp172s0r2 = { };
+      enp172s0r3 = { };
+      enp172s0r4 = { };
+      enp172s0r5 = { };
+      enp172s0r6 = { };
+      enp172s0r7 = { };
 
       # i40e
-      enp11s0f0np0 = {};
-      enp11s0f1np1 = {};
+      enp11s0f0np0 = { };
+      enp11s0f1np1 = { };
 
       # Internal port for host
       ovs-host = {
@@ -455,9 +459,9 @@ in {
   # Set jumbo MTU on OVS internal port (must be done via ovs-vsctl)
   systemd.services.ovs-host-mtu = {
     description = "Set OVS ovs-host interface MTU to 9000";
-    after = ["ovsdb-server.service" "ovs-vswitchd.service" "ovs-mlx-netdev.service"];
-    requires = ["ovs-vswitchd.service" "ovs-mlx-netdev.service"];
-    wantedBy = ["multi-user.target"];
+    after = [ "ovsdb-server.service" "ovs-vswitchd.service" "ovs-mlx-netdev.service" ];
+    requires = [ "ovs-vswitchd.service" "ovs-mlx-netdev.service" ];
+    wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
@@ -490,8 +494,31 @@ in {
   #   options = "mode=1770,gid=kvm";
   #   wantedBy = [ "multi-user.target" ];
   # }];
-  services.avahi.allowInterfaces = lib.mkForce ["ovs-host" "thunderbolt0" "thunderbolt1"];
-  profiles.thunderbolt-bridge.bridgeThunderboltNet = false;
+  services.avahi.allowInterfaces = lib.mkForce [ "ovs-host" ];
+  profiles.thunderbolt-bridge = {
+    enableThunderboltNet = false;
+    bridgeThunderboltNet = false;
+  };
+
+  hardware.thunderbolt-ibverbs = {
+    enable = true;
+    loadOnBoot = false;
+    blacklist.enable = true;
+    config = {
+      profile = "linux_perf";
+      compat = "off";
+      tbnet = "prefer_rdma";
+      tbnet_identity = "off";
+      lanes = "2";
+      bind_services = true;
+      allocate_rings = true;
+      start_rings = true;
+      negotiate_native = true;
+      enable_tunnels = true;
+      register_verbs = true;
+      roce_netdev = "ovs-host";
+    };
+  };
 
   # environment.systemPackages = with pkgs; [
   #   tbtools
@@ -513,39 +540,39 @@ in {
   ];
 
   swapDevices = [
-    {device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc";}
-    {device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f";}
-    {device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895";}
-    {device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485";}
-    {device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5";}
-    {device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb";}
-    {device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb";}
-    {device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81";}
+    { device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc"; }
+    { device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f"; }
+    { device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895"; }
+    { device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485"; }
+    { device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5"; }
+    { device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb"; }
+    { device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb"; }
+    { device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81"; }
   ];
 
   fileSystems."/" = {
     device = "pool3d/root/trex-root";
     fsType = "zfs";
-    options = ["noatime"];
+    options = [ "atime" "relatime" ];
   };
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/FA84-F420";
     fsType = "vfat";
-    options = ["iocharset=iso8859-1" "fmask=0022" "dmask=0022"];
+    options = [ "iocharset=iso8859-1" "fmask=0022" "dmask=0022" ];
   };
 
   fileSystems."/home/grw" = {
     device = "pool3d/root/grw-home";
     fsType = "zfs";
-    options = ["noatime" "nofail"];
+    options = [ "noatime" "nofail" ];
   };
 
   # Bind mount for NFSv4 export
   fileSystems."/export/grw" = {
     device = "/home/grw";
     fsType = "none";
-    options = ["bind"];
+    options = [ "bind" ];
   };
 
   services = {
@@ -555,44 +582,48 @@ in {
     iperf3.enable = true;
 
     # ZFS snapshot management - short retention on source
-    sanoid = let
-      excluded = {
-        autosnap = false;
-        hourly = 0;
-        daily = 0;
-        weekly = 0;
-        monthly = 0;
+    sanoid =
+      let
+        excluded = {
+          autosnap = false;
+          hourly = 0;
+          daily = 0;
+          weekly = 0;
+          monthly = 0;
+        };
+      in
+      {
+        enable = true;
+        interval = "hourly";
+        datasets."pool3d" = {
+          recursive = true;
+          autosnap = true;
+          hourly = 24;
+          daily = 7;
+          weekly = 0;
+          monthly = 0;
+        };
+        datasets."pool3d/root/tari" = excluded;
+        datasets."pool3d/root/monero" = excluded;
       };
-    in {
-      enable = true;
-      interval = "hourly";
-      datasets."pool3d" = {
-        recursive = true;
-        autosnap = true;
-        hourly = 24;
-        daily = 7;
-        weekly = 0;
-        monthly = 0;
-      };
-      datasets."pool3d/root/tari" = excluded;
-      datasets."pool3d/root/monero" = excluded;
-    };
 
     # ZFS replication to fuckup
-    syncoid = let
-      excludedDatasets = ["tari" "monero"];
-    in {
-      enable = true;
-      interval = "hourly";
-      sshKey = "/var/lib/syncoid/.ssh/id_ed25519";
-      commands."pool3d-to-archive" = {
-        source = "pool3d";
-        target = "root@fuckup:archive/pool3d";
-        recursive = true;
-        sendOptions = "w";
-        extraArgs = lib.concatMap (d: ["--exclude" d]) excludedDatasets;
+    syncoid =
+      let
+        excludedDatasets = [ "tari" "monero" ];
+      in
+      {
+        enable = true;
+        interval = "hourly";
+        sshKey = "/var/lib/syncoid/.ssh/id_ed25519";
+        commands."pool3d-to-archive" = {
+          source = "pool3d";
+          target = "root@fuckup:archive/pool3d";
+          recursive = true;
+          sendOptions = "w";
+          extraArgs = lib.concatMap (d: [ "--exclude" d ]) excludedDatasets;
+        };
       };
-    };
   };
 
   networking = {
@@ -600,7 +631,7 @@ in {
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
     useNetworkd = true;
-    nameservers = [network.routerIp];
+    nameservers = [ network.routerIp ];
     firewall = {
       enable = false;
       allowedTCPPorts = [
@@ -643,6 +674,8 @@ in {
       ENABLE_OPENAI_API = "True";
       OPENAI_API_BASE_URL = "http://127.0.0.1:8081/v1";
       OPENAI_API_KEY = "sk-no-key-required";
+      HOME = "/var/lib/open-webui";
+      XDG_CACHE_HOME = "/var/lib/open-webui/.cache";
     };
   };
 
@@ -670,20 +703,14 @@ in {
       "on"
     ];
   };
-  systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = ["render" "video"];
-
-  # ROCm variant kept side-by-side so we can re-run `llama-bench` to
-  # compare backends after upstream changes. Not exposed as a service.
-  environment.systemPackages = [
-    inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-rocm
-  ];
+  systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = [ "render" "video" ];
 
   services.nix-serve = {
     enable = true;
     secretKeyFile = config.sops.secrets.nix-cache-key.path;
   };
 
-  sops.secrets.nix-cache-key = mkSecret "nix-cache-key" {};
+  sops.secrets.nix-cache-key = mkSecret "nix-cache-key" { };
 
   # # Enable rpcbind for NFS
   # services.rpcbind.enable = true;
@@ -756,85 +783,87 @@ in {
   #   };
   # };
 
-  systemd.network = let
-    bridgeName = "br0.lan";
-  in {
-    enable = true;
-    wait-online.anyInterface = true;
-    links = {
-      # PF: buffer settings
-      "20-mlx5-pf" = {
-        matchConfig.OriginalName = "enp172s0np0";
-        linkConfig = {
-          RxBufferSize = 8192;
-          TxBufferSize = 8192;
+  systemd.network =
+    let
+      bridgeName = "br0.lan";
+    in
+    {
+      enable = true;
+      wait-online.anyInterface = true;
+      links = {
+        # PF: buffer settings
+        "20-mlx5-pf" = {
+          matchConfig.OriginalName = "enp172s0np0";
+          linkConfig = {
+            RxBufferSize = 8192;
+            TxBufferSize = 8192;
+          };
+        };
+      };
+      netdevs = {
+        "20-${bridgeName}" = {
+          netdevConfig = {
+            Kind = "bridge";
+            Name = bridgeName;
+          };
+          bridgeConfig = {
+            STP = true;
+          };
+        };
+      };
+      networks = {
+        # Mellanox PF (100G): bring up for OVS with jumbo MTU
+        "10-lan-100g" = {
+          matchConfig.Name = "enp172s0np0";
+          linkConfig = {
+            ActivationPolicy = "up";
+            RequiredForOnline = "no";
+            MTUBytes = "9000";
+          };
+        };
+        # VFs: don't configure (will be passed to containers)
+        "10-mlx5-vf" = {
+          matchConfig.Name = "enp172s0v*";
+          linkConfig.Unmanaged = "yes";
+        };
+        # VF representors: bring up for OVS
+        "10-mlx5-rep" = {
+          matchConfig.Name = "enp172s0r*";
+          linkConfig = {
+            ActivationPolicy = "up";
+            RequiredForOnline = "no";
+          };
+        };
+        # OVS internal port for host connectivity
+        "10-ovs-host" = {
+          matchConfig.Name = "ovs-host";
+          address = [ (network.cidrOf "lan" self.addresses.lan) ];
+          routes = [{ Gateway = network.routerIp; }];
+          networkConfig = {
+            DNS = network.routerIp;
+          };
+          # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
+          # other devices on the LAN (e.g. Apple devices acting as Tailscale
+          # subnet routers) advertise ULA prefixes that briefly get autoconfigured
+          # and then trigger ICMPv6 "advertised our address" dmesg spam when the
+          # host's own NAs are reflected back through OVS/the Mellanox eswitch.
+          ipv6AcceptRAConfig = {
+            PrefixAllowList = "2a02:168:58b4::/64";
+          };
+          linkConfig.RequiredForOnline = "routable";
+        };
+        # br0.lan for non-Mellanox interfaces (Intel, thunderbolt, USB) - no IP, just L2
+        "05-${bridgeName}" = {
+          matchConfig.Name = bridgeName;
+          bridgeConfig = { };
+          networkConfig = {
+            ConfigureWithoutCarrier = true;
+            IgnoreCarrierLoss = true;
+          };
+          linkConfig.RequiredForOnline = "no";
         };
       };
     };
-    netdevs = {
-      "20-${bridgeName}" = {
-        netdevConfig = {
-          Kind = "bridge";
-          Name = bridgeName;
-        };
-        bridgeConfig = {
-          STP = true;
-        };
-      };
-    };
-    networks = {
-      # Mellanox PF (100G): bring up for OVS with jumbo MTU
-      "10-lan-100g" = {
-        matchConfig.Name = "enp172s0np0";
-        linkConfig = {
-          ActivationPolicy = "up";
-          RequiredForOnline = "no";
-          MTUBytes = "9000";
-        };
-      };
-      # VFs: don't configure (will be passed to containers)
-      "10-mlx5-vf" = {
-        matchConfig.Name = "enp172s0v*";
-        linkConfig.Unmanaged = "yes";
-      };
-      # VF representors: bring up for OVS
-      "10-mlx5-rep" = {
-        matchConfig.Name = "enp172s0r*";
-        linkConfig = {
-          ActivationPolicy = "up";
-          RequiredForOnline = "no";
-        };
-      };
-      # OVS internal port for host connectivity
-      "10-ovs-host" = {
-        matchConfig.Name = "ovs-host";
-        address = [(network.cidrOf "lan" self.addresses.lan)];
-        routes = [{Gateway = network.routerIp;}];
-        networkConfig = {
-          DNS = network.routerIp;
-        };
-        # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
-        # other devices on the LAN (e.g. Apple devices acting as Tailscale
-        # subnet routers) advertise ULA prefixes that briefly get autoconfigured
-        # and then trigger ICMPv6 "advertised our address" dmesg spam when the
-        # host's own NAs are reflected back through OVS/the Mellanox eswitch.
-        ipv6AcceptRAConfig = {
-          PrefixAllowList = "2a02:168:58b4::/64";
-        };
-        linkConfig.RequiredForOnline = "routable";
-      };
-      # br0.lan for non-Mellanox interfaces (Intel, thunderbolt, USB) - no IP, just L2
-      "05-${bridgeName}" = {
-        matchConfig.Name = bridgeName;
-        bridgeConfig = {};
-        networkConfig = {
-          ConfigureWithoutCarrier = true;
-          IgnoreCarrierLoss = true;
-        };
-        linkConfig.RequiredForOnline = "no";
-      };
-    };
-  };
 
   # Create needed directories (no-ops if already exist)
   systemd.tmpfiles.rules = [

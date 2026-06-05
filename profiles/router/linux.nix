@@ -132,9 +132,10 @@ in {
         };
       };
       # LAN port (Mellanox CX-4 to MikroTik CRS510). MikroTik defaults all
-      # sfp28 ports to autoneg=yes, fec-mode=auto, so the router must match —
-      # forcing speed/FEC here leaves the peer unable to negotiate and the
-      # link trains intermittently or not at all on cold boot.
+      # sfp28 ports to autoneg=yes, fec-mode=auto, so we negotiate too.
+      # BitsPerSecond + Duplex are required so mlx5 advertises 25G during
+      # autoneg — without them it defaults to advertising only 1G and the
+      # link won't train. (AutoNegotiation is unspecified → default "on".)
       "20-lan-25g" = {
         matchConfig = {
           Driver = "mlx5_core";
@@ -145,6 +146,8 @@ in {
           RxBufferSize = 8192;
           TxBufferSize = 8192;
           MTUBytes = lanMtu;
+          BitsPerSecond = "25G";
+          Duplex = "full";
         };
       };
     };

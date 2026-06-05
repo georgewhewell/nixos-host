@@ -1,17 +1,20 @@
-index: {
-  pkgs,
-  lib,
-  inputs,
-  mkSecret,
-  config,
-  network,
-  ...
-}: let
+index: { pkgs
+       , lib
+       , inputs
+       , mkSecret
+       , config
+       , network
+       , ...
+       }:
+let
   hostName = "strix-${toString index}";
   self = network.hosts.${hostName};
-in {
+  tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
+  tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
+in
+{
   /*
-  FEVM Strix Halo
+    FEVM Strix Halo
   */
   users.groups.video.members = map (n: "nixbld${toString n}") (lib.range 1 32);
   users.groups.render.members = map (n: "nixbld${toString n}") (lib.range 1 32);
@@ -21,6 +24,17 @@ in {
     home-manager = {
       enable = true;
       enableDevelopment = true;
+    };
+    netconsole.sender = {
+      enable = builtins.elem index [ 1 2 ];
+      name = "tbv-${hostName}";
+      device = "eno1";
+      localIp = network.primaryIp self;
+      targetIp = network.primaryIp network.hosts.trex;
+      targetPort = 6666;
+      # Strix resolves trex's OVS host interface to this MAC at runtime.
+      targetMac = "ae:6b:39:5c:92:6a";
+      extended = true;
     };
     xmrig = {
       enable = false;
@@ -35,21 +49,34 @@ in {
 
   environment.systemPackages = [
     pkgs.kexec-tools
-  ];
+  ] ++ lib.optional (tbvHipGdaProbes != null) tbvHipGdaProbes;
 
-  boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  boot.crashDump = lib.mkIf (builtins.elem index [ 1 2 ]) {
+    enable = true;
+    reservedMemory = "512M";
+    kernelParams = [
+      "1"
+      "boot.shell_on_fail"
+    ];
+  };
+
+  # boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
 
-  # strix-1 ONLY: experimental PCIe params for Thunderbolt-adapter lane-width
-  # testing. Appends to the base kernelParams list (NixOS merges lists).
-  # NOTE: these affect PCIe resource allocation / enumeration, NOT link-width
-  # negotiation (width is a hardware link-training outcome). Included to rule
-  # out any host-side enumeration contribution to the x1 ConnectX-4 link.
-  # Plug the TB adapter into strix-1, reboot into this, then recheck LnkSta.
-  boot.kernelParams = lib.mkIf (index == 1) [
-    "pci=realloc,assign-busses"
-    "pcie_ports=native"
-  ];
+  boot.kernelParams =
+    [
+      "panic=5"
+      "panic_on_oops=1"
+      "softlockup_panic=1"
+      "hung_task_panic=1"
+      "nmi_watchdog=panic,1"
+    ]
+    # Disabled after strix-1 amdgpu failed to fetch VBIOS from ACPI VFCT while
+    # booted with these experimental PCIe enumeration parameters.
+    ++ lib.optionals false [
+      "pci=realloc,assign-busses"
+      "pcie_ports=native"
+    ];
 
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
@@ -188,28 +215,30 @@ in {
     ];
   };
 
-  services.ec-su-axb35 = let
-    level = 2;
-  in {
-    enable = true;
-    monitor.enable = true;
-    powerMode = "performance";
-    fans = {
-      fan1 = {
-        mode = "fixed";
-        inherit level;
-      };
-      fan2 = {
-        mode = "fixed";
-        inherit level;
+  services.ec-su-axb35 =
+    let
+      level = 2;
+    in
+    {
+      enable = true;
+      monitor.enable = true;
+      powerMode = "performance";
+      fans = {
+        fan1 = {
+          mode = "fixed";
+          inherit level;
+        };
+        fan2 = {
+          mode = "fixed";
+          inherit level;
+        };
       };
     };
-  };
 
   services.max-perf = {
     enable = true;
     description = "Strix Halo EC fan max-performance";
-    after = ["ec-su-axb35-config.service"];
+    after = [ "ec-su-axb35-config.service" ];
     writes = [
       {
         path = "/sys/class/ec_su_axb35/fan1/mode";
@@ -237,8 +266,8 @@ in {
   };
 
   systemd.services.max-perf-mqtt = {
-    after = ["sops-install-secrets.service"];
-    wants = ["sops-install-secrets.service"];
+    after = [ "sops-install-secrets.service" ];
+    wants = [ "sops-install-secrets.service" ];
   };
 
   # services.ryzenadj = {
@@ -347,10 +376,10 @@ in {
 
   profiles.thunderbolt-bridge = {
     bridgeThunderboltNet = false;
-    enableThunderboltNet = lib.mkIf (builtins.elem index [1 2]) false;
+    enableThunderboltNet = lib.mkIf (builtins.elem index [ 1 2 ]) false;
   };
 
-  hardware."thunderbolt-ibverbs" = lib.mkIf (builtins.elem index [1 2]) {
+  hardware."thunderbolt-ibverbs" = lib.mkIf (builtins.elem index [ 1 2 ]) {
     blacklist.enable = true;
     loadOnBoot = false;
 
@@ -359,7 +388,7 @@ in {
       compat = "off";
       tbnet = "prefer_rdma";
       tbnet_identity = "off";
-      roce_netdev = "br0.lan";
+      roce_netdev = "eno1";
       lanes = "auto";
       bind_services = true;
       allocate_rings = true;
@@ -399,103 +428,101 @@ in {
 
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom=CH
-    options sp5100_tco heartbeat=30 nowayout=1
+    options sp5100_tco heartbeat=30 nowayout=1 action=0
   '';
 
-  boot.kernelModules = ["sp5100_tco"];
+  boot.kernelModules = [ "sp5100_tco" ];
 
-  users.users.grw.extraGroups = ["networkmanager"];
-
-  systemd.network = let
-    lanBridge = "br0.lan";
-    useArdma0 =
-      builtins.elem index [1 2]
-      && config.hardware."thunderbolt-ibverbs".config.tbnet_identity == "minimal_packet";
-    thunderboltIp =
-      if index == 1
-      then "10.0.4.2/24"
-      else "10.0.5.2/24";
-  in {
-    enable = true;
-    wait-online = {
-      enable = true;
-      anyInterface = true;
-    };
-    netdevs = {
-      "20-${lanBridge}" = {
-        netdevConfig = {
-          Kind = "bridge";
-          Name = lanBridge;
-        };
-        bridgeConfig = {
-          STP = true;
-          # 802.1D constraint: forward_delay >= (max_age/2) + 1
-          # With max_age=6s, min forward_delay=4s → ~8s convergence instead of 30s
-          MaxAgeSec = 6;
-          ForwardDelaySec = 4;
-        };
-      };
-    } // lib.optionalAttrs useArdma0 {
-      "30-ardma0" = {
-        netdevConfig = {
-          Kind = "dummy";
-          Name = "ardma0";
-        };
-      };
-    };
-    networks = {
-      "10-bridge" = {
-        matchConfig.Name = lanBridge;
-        address = [(network.cidrOf "lan" self.addresses.lan)];
-        gateway = [network.routerIp];
-        dns = [network.routerIp];
-        networkConfig = {
-          DHCP = "no";
-          IPv6AcceptRA = true;
-        };
-      };
-      "10-lan" = {
-        matchConfig.Driver = "r8169";
-        networkConfig = {
-          Bridge = lanBridge;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-      "10-aquantia" = {
-        matchConfig.Driver = "atlantic";
-        networkConfig = {
-          Bridge = lanBridge;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-      # Direct point-to-point link to Mac. Wins over the profile's
-      # 50-thunderbolt bridge match by lexical order on the iface name.
-      "20-thunderbolt0" = {
-        matchConfig.Name = "thunderbolt0";
-        address = [thunderboltIp];
-        networkConfig = {
-          LinkLocalAddressing = "no";
-          IPv6AcceptRA = false;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig = {
-          MTUBytes = "9000";
-          RequiredForOnline = "no";
-        };
-      };
-    } // lib.optionalAttrs useArdma0 {
-      "30-ardma0" = {
-        matchConfig.Name = "ardma0";
-        address = [(lib.replaceStrings ["/24"] ["/32"] thunderboltIp)];
-        networkConfig = {
-          LinkLocalAddressing = "no";
-          IPv6AcceptRA = false;
-          ConfigureWithoutCarrier = true;
-        };
-        linkConfig.RequiredForOnline = "no";
-      };
-    };
+  boot.kernel.sysctl = {
+    "kernel.panic" = 5;
+    "kernel.watchdog" = 1;
+    "kernel.panic_on_oops" = 1;
+    "kernel.softlockup_panic" = 1;
+    "kernel.hung_task_panic" = 1;
+    "kernel.nmi_watchdog" = 1;
+    "kernel.hardlockup_panic" = 1;
+    "kernel.panic_print" = 63;
   };
+
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "15s";
+    RebootWatchdogSec = "30s";
+    KExecWatchdogSec = "30s";
+  };
+
+  users.users.grw.extraGroups = [ "networkmanager" ];
+
+  systemd.network =
+    let
+      useArdma0 =
+        builtins.elem index [ 1 2 ]
+        && config.hardware."thunderbolt-ibverbs".config.tbnet_identity == "minimal_packet";
+      thunderboltIp =
+        if index == 1
+        then "10.0.4.2/24"
+        else "10.0.5.2/24";
+    in
+    {
+      enable = true;
+      wait-online = {
+        enable = true;
+        anyInterface = true;
+      };
+      netdevs = lib.optionalAttrs useArdma0 {
+        "30-ardma0" = {
+          netdevConfig = {
+            Kind = "dummy";
+            Name = "ardma0";
+          };
+        };
+      };
+      networks = {
+        "10-lan" = {
+          matchConfig.Name = "eno1";
+          address = [ (network.cidrOf "lan" self.addresses.lan) ];
+          gateway = [ network.routerIp ];
+          dns = [ network.routerIp ];
+          networkConfig = {
+            DHCP = "no";
+            IPv6AcceptRA = true;
+          };
+          linkConfig.RequiredForOnline = "routable";
+        };
+        "10-aquantia" = {
+          matchConfig.Driver = "atlantic";
+          networkConfig = {
+            DHCP = "no";
+            LinkLocalAddressing = "no";
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "no";
+        };
+        # Direct point-to-point link to Mac. Wins over the profile's
+        # 50-thunderbolt bridge match by lexical order on the iface name.
+        "20-thunderbolt0" = {
+          matchConfig.Name = "thunderbolt0";
+          address = [ thunderboltIp ];
+          networkConfig = {
+            LinkLocalAddressing = "no";
+            IPv6AcceptRA = false;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig = {
+            MTUBytes = "9000";
+            RequiredForOnline = "no";
+          };
+        };
+      } // lib.optionalAttrs useArdma0 {
+        "30-ardma0" = {
+          matchConfig.Name = "ardma0";
+          address = [ (lib.replaceStrings [ "/24" ] [ "/32" ] thunderboltIp) ];
+          networkConfig = {
+            LinkLocalAddressing = "no";
+            IPv6AcceptRA = false;
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig.RequiredForOnline = "no";
+        };
+      };
+    };
 }

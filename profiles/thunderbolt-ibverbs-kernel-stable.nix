@@ -5,14 +5,24 @@
 }:
 let
   thunderboltIbverbs = inputs.nix-strix-halo.inputs.thunderbolt-ibverbs;
-  usb4KernelPatches =
-    builtins.filter
-      (patch: patch.name != "usb4-nhi-ring-debugfs-instrumentation")
-      thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.usb4KernelPatches;
-  localKernelPatches = [
+  thunderboltKernelPatches =
+    thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.portableKernelPatches;
+  localThunderboltKernelPatches = [
     {
-      name = "thunderbolt-nhi-ring-throttling-helper";
-      patch = ./patches/thunderbolt-nhi-ring-throttling-helper.patch;
+      name = "thunderbolt-xdomain-lane-bonding-param";
+      patch = ./patches/thunderbolt-xdomain-lane-bonding-param.patch;
+    }
+    {
+      name = "thunderbolt-xdomain-properties-debug";
+      patch = ./patches/thunderbolt-xdomain-properties-debug.patch;
+    }
+    {
+      name = "thunderbolt-xdomain-route-properties-param";
+      patch = ./patches/thunderbolt-xdomain-route-properties-param.patch;
+    }
+    {
+      name = "thunderbolt-xdomain-properties-response-validate";
+      patch = ./patches/thunderbolt-xdomain-properties-response-validate.patch;
     }
   ];
 
@@ -23,7 +33,7 @@ let
   # whatever the base release ships.
   linuxPackagesUsb4 = pkgs.linuxPackages_latest.extend (self: super: {
     kernel = super.kernel.override {
-      kernelPatches = (super.kernel.kernelPatches or [ ]) ++ usb4KernelPatches ++ localKernelPatches;
+      kernelPatches = (super.kernel.kernelPatches or [ ]) ++ thunderboltKernelPatches ++ localThunderboltKernelPatches;
       structuredExtraConfig = with lib.kernel; {
         USB4_DEBUGFS_WRITE = yes;
       };
@@ -32,4 +42,7 @@ let
 in
 {
   boot.kernelPackages = lib.mkOverride 900 linuxPackagesUsb4;
+  boot.extraModprobeConfig = ''
+    options thunderbolt xdomain_lane_bonding=0 xdomain_debug=1 xdomain_route_properties=1
+  '';
 }

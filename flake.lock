@@ -2649,10 +2649,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1780506052,
-        "narHash": "sha256-7A7R1JkL94uohbNMyH3LizXz1UeeWJH5SFh6XCfykhY=",
-        "path": "/mnt/Home/src/thunderbolt-ibverbs-rewrite",
-        "type": "path"
+        "lastModified": 1780624365,
+        "narHash": "sha256-TC160PBeTGJyg7iHW8Z4OEP1TNmCwqIJ5KkRj8bW+3o=",
+        "owner": "hellas-ai",
+        "repo": "thunderbolt-ibverbs",
+        "rev": "869c83012463d6cae391a164805f7b91c37e97f3",
+        "type": "github"
       },
       "original": {
         "owner": "hellas-ai",
