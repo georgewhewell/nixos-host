@@ -2649,12 +2649,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1780624365,
-        "narHash": "sha256-TC160PBeTGJyg7iHW8Z4OEP1TNmCwqIJ5KkRj8bW+3o=",
-        "owner": "hellas-ai",
-        "repo": "thunderbolt-ibverbs",
-        "rev": "869c83012463d6cae391a164805f7b91c37e97f3",
-        "type": "github"
+        "lastModified": 1780700174,
+        "narHash": "sha256-m3WOot9+I0UjMy0G7r23+h3Gzg+vZJO2UnPwJ+H3ocA=",
+        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-deploy-a36a0b9",
+        "type": "path"
       },
       "original": {
         "owner": "hellas-ai",
