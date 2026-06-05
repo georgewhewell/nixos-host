@@ -24,6 +24,10 @@ let
       name = "thunderbolt-xdomain-properties-response-validate";
       patch = ./patches/thunderbolt-xdomain-properties-response-validate.patch;
     }
+    {
+      name = "thunderbolt-xdomain-bridge-hardening";
+      patch = ./patches/thunderbolt-xdomain-bridge-hardening.patch;
+    }
   ];
   linuxPackagesThunderbolt = pkgs.linuxPackages_latest.extend (self: super: {
     kernel = super.kernel.override {

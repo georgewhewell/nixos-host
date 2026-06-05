@@ -1,0 +1,184 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Fri, 5 Jun 2026 07:55:00 +0200
+Subject: [PATCH] thunderbolt: harden XDomain matching for routed bridge tests
+
+Hub-mediated host-to-host XDomain links can expose several routed peers at
+once. The generic XDomain matcher only checked route and protocol UUID, then
+copied the caller's maximum response size regardless of the actual frame size.
+That lets an unrelated XDP response with the same route/UUID complete an
+in-flight request, and can leave stale tail data in the response buffer.
+
+Match synchronous XDomain responses by XDP type and sequence number, copy only
+the received frame, and only allow route-matched properties override when the
+request source is the known remote UUID for that XDomain object.
+---
+ drivers/thunderbolt/xdomain.c | 96 ++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 79 insertions(+), 17 deletions(-)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -99,6 +99,51 @@
+ 	return tb_xdomain_enabled && tb_acpi_is_xdomain_allowed();
+ }
+
++static u8 tb_xdp_sequence(const struct tb_xdp_header *hdr)
++{
++	return (hdr->xd_hdr.length_sn & TB_XDOMAIN_SN_MASK) >>
++		TB_XDOMAIN_SN_SHIFT;
++}
++
++static enum tb_xdp_type tb_xdp_response_type(enum tb_xdp_type type)
++{
++	switch (type) {
++	case UUID_REQUEST_OLD:
++	case UUID_REQUEST:
++		return UUID_RESPONSE;
++	case PROPERTIES_REQUEST:
++		return PROPERTIES_RESPONSE;
++	case PROPERTIES_CHANGED_REQUEST:
++		return PROPERTIES_CHANGED_RESPONSE;
++	case LINK_STATE_STATUS_REQUEST:
++		return LINK_STATE_STATUS_RESPONSE;
++	case LINK_STATE_CHANGE_REQUEST:
++		return LINK_STATE_CHANGE_RESPONSE;
++	default:
++		return 0;
++	}
++}
++
++static size_t tb_xdp_min_response_size(enum tb_xdp_type type)
++{
++	switch (type) {
++	case ERROR_RESPONSE:
++		return sizeof(struct tb_xdp_error_response);
++	case UUID_RESPONSE:
++		return sizeof(struct tb_xdp_uuid_response);
++	case PROPERTIES_RESPONSE:
++		return sizeof(struct tb_xdp_properties_response);
++	case PROPERTIES_CHANGED_RESPONSE:
++		return sizeof(struct tb_xdp_properties_changed_response);
++	case LINK_STATE_STATUS_RESPONSE:
++		return sizeof(struct tb_xdp_link_state_status_response);
++	case LINK_STATE_CHANGE_RESPONSE:
++		return sizeof(struct tb_xdp_link_state_change_response);
++	default:
++		return sizeof(struct tb_xdp_header);
++	}
++}
++
+ static bool tb_xdomain_match(const struct tb_cfg_request *req,
+ 			     const struct ctl_pkg *pkg)
+ {
+@@ -109,17 +154,13 @@
+ 	case TB_CFG_PKG_XDOMAIN_RESP: {
+ 		const struct tb_xdp_header *res_hdr = pkg->buffer;
+ 		const struct tb_xdp_header *req_hdr = req->request;
++		enum tb_xdp_type expected_type;
++		size_t min_size;
+
+-		if (pkg->frame.size < req->response_size / 4) {
++		if (pkg->frame.size < sizeof(*res_hdr)) {
+ 			if (xdomain_debug)
+-				pr_info_ratelimited("thunderbolt xdomain: drop short response req_type=%#x res_type=%#x frame_dw=%u expected_dw=%zu req_route=%08x:%08x res_route=%08x:%08x\n",
+-						    req_hdr->type, res_hdr->type,
+-						    pkg->frame.size,
+-						    req->response_size / 4,
+-						    req_hdr->xd_hdr.route_hi,
+-						    req_hdr->xd_hdr.route_lo,
+-						    res_hdr->xd_hdr.route_hi,
+-						    res_hdr->xd_hdr.route_lo);
++				pr_info_ratelimited("thunderbolt xdomain: drop short response frame=%u min=%zu\n",
++						    pkg->frame.size, sizeof(*res_hdr));
+ 			return false;
+ 		}
+
+@@ -155,6 +196,43 @@
+ 			return false;
+ 		}
+
++		expected_type = tb_xdp_response_type(req_hdr->type);
++		if (res_hdr->type != expected_type &&
++		    res_hdr->type != ERROR_RESPONSE) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop response type mismatch req_type=%#x expected=%#x res_type=%#x route=%08x:%08x req_seq=%u res_seq=%u\n",
++						    req_hdr->type, expected_type,
++						    res_hdr->type,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    tb_xdp_sequence(req_hdr),
++						    tb_xdp_sequence(res_hdr));
++			return false;
++		}
++
++		if (tb_xdp_sequence(res_hdr) != tb_xdp_sequence(req_hdr)) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop response sequence mismatch req_type=%#x res_type=%#x route=%08x:%08x req_seq=%u res_seq=%u\n",
++						    req_hdr->type, res_hdr->type,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    tb_xdp_sequence(req_hdr),
++						    tb_xdp_sequence(res_hdr));
++			return false;
++		}
++
++		min_size = tb_xdp_min_response_size(res_hdr->type);
++		if (pkg->frame.size < min_size) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop short typed response req_type=%#x res_type=%#x frame=%u min=%zu route=%08x:%08x seq=%u\n",
++						    req_hdr->type, res_hdr->type,
++						    pkg->frame.size, min_size,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    tb_xdp_sequence(req_hdr));
++			return false;
++		}
++
+ 		return true;
+ 	}
+
+@@ -166,7 +244,12 @@
+ static bool tb_xdomain_copy(struct tb_cfg_request *req,
+ 			    const struct ctl_pkg *pkg)
+ {
+-	memcpy(req->response, pkg->buffer, req->response_size);
++	size_t size = min_t(size_t, req->response_size, pkg->frame.size);
++
++	if (req->response && req->response_size)
++		memset(req->response, 0, req->response_size);
++	if (req->response && size)
++		memcpy(req->response, pkg->buffer, size);
+ 	req->result.err = 0;
+ 	return true;
+ }
+@@ -531,20 +614,23 @@
+ 			 &req->dst_uuid, xd->local_uuid);
+
+ 	if (!uuid_equal(xd->local_uuid, &req->dst_uuid)) {
+-		if (!xdomain_route_properties) {
++		if (!xdomain_route_properties || !xd->remote_uuid ||
++		    !uuid_equal(xd->remote_uuid, &req->src_uuid)) {
+ 			if (xdomain_debug)
+-				dev_info(&xd->dev, "XDomain properties request unknown domain route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
++				dev_info(&xd->dev, "XDomain properties request unknown domain route=%llx seq=%u src=%pUb dst=%pUb local=%pUb remote=%pUb override=%d\n",
+ 					 xd->route, sequence, &req->src_uuid,
+-					 &req->dst_uuid, xd->local_uuid);
++					 &req->dst_uuid, xd->local_uuid,
++					 xd->remote_uuid, xdomain_route_properties);
+ 			tb_xdp_error_response(ctl, xd->route, sequence,
+ 					      ERROR_UNKNOWN_DOMAIN);
+ 			return 0;
+ 		}
+
+ 		if (xdomain_debug)
+-			dev_info(&xd->dev, "XDomain properties request route override route=%llx seq=%u src=%pUb dst=%pUb local=%pUb\n",
++			dev_info(&xd->dev, "XDomain properties request route override route=%llx seq=%u src=%pUb dst=%pUb local=%pUb remote=%pUb\n",
+ 				 xd->route, sequence, &req->src_uuid,
+-				 &req->dst_uuid, xd->local_uuid);
++				 &req->dst_uuid, xd->local_uuid,
++				 xd->remote_uuid);
+ 	}
+
+ 	mutex_lock(&xd->lock);
+--
+2.53.0

@@ -24,6 +24,10 @@ let
       name = "thunderbolt-xdomain-properties-response-validate";
       patch = ./patches/thunderbolt-xdomain-properties-response-validate.patch;
     }
+    {
+      name = "thunderbolt-xdomain-bridge-hardening";
+      patch = ./patches/thunderbolt-xdomain-bridge-hardening.patch;
+    }
   ];
 
   # Stable 7.0.x from nixpkgs (latest), patched. For hosts that need ZFS -
