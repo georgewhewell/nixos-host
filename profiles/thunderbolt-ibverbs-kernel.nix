@@ -28,6 +28,10 @@ let
       name = "thunderbolt-xdomain-bridge-hardening";
       patch = ./patches/thunderbolt-xdomain-bridge-hardening.patch;
     }
+    {
+      name = "thunderbolt-xdomain-bridge-resync";
+      patch = ./patches/thunderbolt-xdomain-bridge-resync.patch;
+    }
   ];
   linuxPackagesThunderbolt = pkgs.linuxPackages_latest.extend (self: super: {
     kernel = super.kernel.override {

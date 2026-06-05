@@ -1,0 +1,276 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Fri, 5 Jun 2026 14:25:00 +0200
+Subject: [PATCH] thunderbolt: resync bridged XDomain properties bodies
+
+Hub-mediated host-to-host XDomain packets can arrive with a valid outer XDP
+header and type but with extra routed dwords inserted before the properties
+body. The normal properties parser then reads the beginning of a UUID or an
+embedded XDP header as the offset/data_length word and aborts discovery.
+
+When the normal properties body is invalid, scan the received frame for a
+plausible properties body anchored by the expected offset/data_length pair.
+For the first chunk, additionally require the root property block magic. If
+the hub only delivered a partial chunk, copy the available dwords and request
+the next offset.
+
+Also retain the packet size for deferred XDomain request handling so
+route-matched properties requests can be resynchronized before answering.
+---
+ drivers/thunderbolt/xdomain.c | 154 ++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 130 insertions(+), 24 deletions(-)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -25,6 +25,7 @@
+ #define XDOMAIN_BONDING_TIMEOUT			10000	/* ms */
+ #define XDOMAIN_RETRIES				10
+ #define XDOMAIN_DEFAULT_MAX_HOPID		15
++#define XDOMAIN_PROPERTY_ROOTDIR_MAGIC		0x55584401
+
+ enum {
+ 	XDOMAIN_STATE_INIT,
+@@ -68,6 +69,7 @@
+ struct xdomain_request_work {
+ 	struct work_struct work;
+ 	struct tb_xdp_header *pkg;
++	size_t size;
+ 	struct tb *tb;
+ };
+
+@@ -387,6 +389,16 @@
+ 	return 0;
+ }
+
++static u16 tb_xdp_frame_dwords(const struct tb_xdp_header *hdr, size_t max_size)
++{
++	u16 frame_dw;
++
++	frame_dw = hdr->xd_hdr.length_sn & TB_XDOMAIN_LENGTH_MASK;
++	frame_dw += sizeof(hdr->xd_hdr) / 4;
++
++	return min_t(u16, frame_dw, max_size / 4);
++}
++
+ static int tb_xdp_uuid_request(struct tb_ctl *ctl, u64 route, int retry,
+ 			       uuid_t *uuid, u64 *remote_route)
+ {
+@@ -447,6 +459,82 @@
+ 				     TB_CFG_PKG_XDOMAIN_RESP);
+ }
+
++static bool tb_xdp_properties_response_valid(
++	const struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, u16 len, u16 data_len)
++{
++	if (res->offset != req->offset)
++		return false;
++	if (!res->data_length || res->data_length > TB_XDP_PROPERTIES_MAX_LENGTH)
++		return false;
++	if (data_len && res->data_length != data_len)
++		return false;
++	if (req->offset >= res->data_length)
++		return false;
++	if (!len || len > res->data_length - req->offset)
++		return false;
++	if (!req->offset && res->data[0] != XDOMAIN_PROPERTY_ROOTDIR_MAGIC)
++		return false;
++
++	return true;
++}
++
++static int tb_xdp_properties_response_resync(
++	struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, u16 data_len, size_t total_size,
++	u16 *len)
++{
++	const u32 *dw = (const u32 *)res;
++	u16 frame_dw, i;
++
++	*len = 0;
++	frame_dw = tb_xdp_frame_dwords(&res->hdr, total_size);
++	if (frame_dw < sizeof(*res) / 4)
++		return -EINVAL;
++
++	*len = frame_dw - sizeof(*res) / 4;
++	if (tb_xdp_properties_response_valid(res, req, *len, data_len))
++		return 0;
++
++	for (i = sizeof(res->hdr) / 4; i + 2 < frame_dw; i++) {
++		u16 offset = dw[i] & 0xffff;
++		u16 avail, property_len = dw[i] >> 16;
++
++		if (offset != req->offset)
++			continue;
++		if (!property_len || property_len > TB_XDP_PROPERTIES_MAX_LENGTH)
++			continue;
++		if (data_len && property_len != data_len)
++			continue;
++		if (offset >= property_len)
++			continue;
++
++		avail = frame_dw - i - 2;
++		avail = min_t(u16, avail, property_len - offset);
++		avail = min_t(u16, avail, TB_XDP_PROPERTIES_MAX_DATA_LENGTH);
++		if (!avail)
++			continue;
++		if (!offset && dw[i + 2] != XDOMAIN_PROPERTY_ROOTDIR_MAGIC)
++			continue;
++
++		if (xdomain_debug)
++			pr_info("thunderbolt xdomain: resynced properties response body route=%08x:%08x offset=%u data_len=%u body_dw=%u avail=%u\n",
++				res->hdr.xd_hdr.route_hi, res->hdr.xd_hdr.route_lo,
++				offset, property_len, i, avail);
++
++		uuid_copy(&res->src_uuid, &req->dst_uuid);
++		uuid_copy(&res->dst_uuid, &req->src_uuid);
++		res->offset = offset;
++		res->data_length = property_len;
++		res->generation = dw[i + 1];
++		memmove(res->data, &dw[i + 2], avail * 4);
++		*len = avail;
++		return 0;
++	}
++
++	return -EINVAL;
++}
++
+ static int tb_xdp_properties_request(struct tb_ctl *ctl, u64 route,
+ 	const uuid_t *src_uuid, const uuid_t *dst_uuid, int retry,
+ 	u32 **block, u32 *generation)
+@@ -507,13 +595,9 @@
+ 			goto err;
+ 		}
+
+-		/*
+-		 * Package length includes the whole payload without the
+-		 * XDomain header. Validate first that the package is at
+-		 * least size of the response structure.
+-		 */
+-		len = res->hdr.xd_hdr.length_sn & TB_XDOMAIN_LENGTH_MASK;
+-		if (len < sizeof(*res) / 4) {
++		ret = tb_xdp_properties_response_resync(res, &req, data_len,
++							total_size, &len);
++		if (ret) {
+ 			ret = -EINVAL;
+ 			if (xdomain_debug)
+ 				pr_info("thunderbolt xdomain: bad properties response route=%llx len=%u min=%zu type=%#x src=%pUb dst=%pUb\n",
+@@ -523,9 +607,6 @@
+ 			goto err;
+ 		}
+
+-		len += sizeof(res->hdr.xd_hdr) / 4;
+-		len -= sizeof(*res) / 4;
+-
+ 		if (res->offset != req.offset) {
+ 			ret = -EINVAL;
+ 			if (xdomain_debug)
+@@ -595,14 +676,89 @@
+ 	return ret;
+ }
+
++static bool tb_xdp_properties_request_usable(
++	const struct tb_xdomain *xd, const struct tb_xdp_properties *req)
++{
++	if (req->offset >= xd->local_property_block_len)
++		return false;
++
++	if (uuid_equal(xd->local_uuid, &req->dst_uuid))
++		return true;
++
++	return xdomain_route_properties && xd->remote_uuid &&
++	       uuid_equal(xd->remote_uuid, &req->src_uuid);
++}
++
++static void tb_xdp_properties_request_resync(struct tb_xdomain *xd,
++	const struct tb_xdp_properties *req, size_t size,
++	struct tb_xdp_properties *fixed)
++{
++	const u32 *dw = (const u32 *)req;
++	u16 frame_dw, i;
++
++	memcpy(fixed, req, sizeof(*fixed));
++	if (tb_xdp_properties_request_usable(xd, fixed))
++		return;
++
++	frame_dw = min_t(u16, size / 4, tb_xdp_frame_dwords(&req->hdr, size));
++
++	for (i = sizeof(req->hdr) / 4; i + 8 < frame_dw; i++) {
++		const uuid_t *src = (const uuid_t *)&dw[i];
++		const uuid_t *dst = (const uuid_t *)&dw[i + 4];
++		u16 offset = dw[i + 8] & 0xffff;
++
++		if (offset >= xd->local_property_block_len)
++			continue;
++		if (!uuid_equal(xd->local_uuid, dst) &&
++		    (!xdomain_route_properties || !xd->remote_uuid ||
++		     !uuid_equal(xd->remote_uuid, src)))
++			continue;
++
++		uuid_copy(&fixed->src_uuid, src);
++		uuid_copy(&fixed->dst_uuid, dst);
++		fixed->offset = offset;
++		if (xdomain_debug)
++			dev_info(&xd->dev, "XDomain properties request resynced body route=%llx body_dw=%u offset=%u src=%pUb dst=%pUb\n",
++				 xd->route, i, fixed->offset, &fixed->src_uuid,
++				 &fixed->dst_uuid);
++		return;
++	}
++
++	for (i = sizeof(req->hdr) / 4; i + sizeof(req->hdr) / 4 <= frame_dw; i++) {
++		const struct tb_xdp_header *hdr =
++			(const struct tb_xdp_header *)&dw[i];
++
++		if (!uuid_equal(&hdr->uuid, &tb_xdp_uuid))
++			continue;
++		if (hdr->type != PROPERTIES_REQUEST)
++			continue;
++		if (!xdomain_route_properties || !xd->remote_uuid)
++			continue;
++
++		uuid_copy(&fixed->src_uuid, xd->remote_uuid);
++		uuid_copy(&fixed->dst_uuid, xd->local_uuid);
++		fixed->offset = 0;
++		if (xdomain_debug)
++			dev_info(&xd->dev, "XDomain properties request synthesized body route=%llx inner_dw=%u src=%pUb dst=%pUb\n",
++				 xd->route, i, &fixed->src_uuid,
++				 &fixed->dst_uuid);
++		return;
++	}
++}
++
+ static int tb_xdp_properties_response(struct tb *tb, struct tb_ctl *ctl,
+-	struct tb_xdomain *xd, u8 sequence, const struct tb_xdp_properties *req)
++	struct tb_xdomain *xd, u8 sequence, const struct tb_xdp_properties *req,
++	size_t size)
+ {
++	struct tb_xdp_properties fixed_req;
+ 	struct tb_xdp_properties_response *res;
+ 	size_t total_size;
+ 	u16 len;
+ 	int ret;
+
++	tb_xdp_properties_request_resync(xd, req, size, &fixed_req);
++	req = &fixed_req;
++
+ 	/*
+ 	 * Currently we expect all requests to be directed to us. The
+ 	 * protocol supports forwarding, though which we might add
+@@ -985,7 +1141,8 @@
+ 		}
+ 		if (xd) {
+ 			ret = tb_xdp_properties_response(tb, ctl, xd, sequence,
+-				(const struct tb_xdp_properties *)pkg);
++				(const struct tb_xdp_properties *)pkg,
++				xw->size);
+ 		}
+ 		break;
+
+@@ -1089,6 +1246,7 @@
+ 		kfree(xw);
+ 		return false;
+ 	}
++	xw->size = size;
+ 	xw->tb = tb_domain_get(tb);
+
+ 	schedule_work(&xw->work);
