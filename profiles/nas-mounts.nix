@@ -1,6 +1,15 @@
 {network, ...}: let
   trexIp = network.primaryIp network.hosts.trex;
-  options = ["nofail" "_netdev" "x-systemd.automount" "rsize=32768" "wsize=32768" "nconnect=4"];
+  options = [
+    "nofail"
+    "_netdev"
+    "x-systemd.automount"
+    "x-systemd.after=network-online.target"
+    "x-systemd.requires=network-online.target"
+    "rsize=32768"
+    "wsize=32768"
+    "nconnect=4"
+  ];
 in {
   services.rpcbind.enable = true;
 

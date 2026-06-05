@@ -36,6 +36,10 @@ in
       targetMac = "ae:6b:39:5c:92:6a";
       extended = true;
     };
+    ramoops = lib.mkIf (builtins.elem index [ 1 2 ]) {
+      enable = true;
+      memAddress = "0x205d000000";
+    };
     xmrig = {
       enable = false;
       package = pkgs.xmrig-zen5;
