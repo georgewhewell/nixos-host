@@ -385,7 +385,7 @@ in
 
   hardware."thunderbolt-ibverbs" = lib.mkIf (builtins.elem index [ 1 2 ]) {
     blacklist.enable = true;
-    loadOnBoot = false;
+    loadOnBoot = true;
 
     config = {
       profile = "linux_perf";
@@ -406,6 +406,7 @@ in
     };
 
     check = {
+      enable = true;
       afterReload = true;
       expectedNativeControl = "source_aware";
       requireVerbs = true;
