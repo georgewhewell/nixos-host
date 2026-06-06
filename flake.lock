@@ -2649,13 +2649,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1780757209,
-        "narHash": "sha256-LMAeqfVtYUiu1KIwzn/uBkeXX+LwYTwJi+rQIdyZGaM=",
+        "lastModified": 1780758438,
+        "narHash": "sha256-1MYErLkM0wVPsuvPGOaESTiGs7h+QuFeM+C3VXBQEeQ=",
         "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-deploy-ackprobe",
         "type": "path"
       },
       "original": {
         "owner": "hellas-ai",
+        "ref": "grw/xdomain-foundation-patches",
         "repo": "thunderbolt-ibverbs",
         "type": "github"
       }
