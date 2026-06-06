@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: georgewhewell <georgerw@gmail.com>
+Date: Sat, 6 Jun 2026 05:48:00 +0200
+Subject: [PATCH] thunderbolt: ignore XDomain peers with the local UUID
+
+Hub-mediated host-to-host experiments can expose a routed XDomain entry whose
+UUID is the local host UUID. Upstream treats that as a loop and continues the
+handshake with lane bonding disabled, which makes the loop visible as a Linux
+host and lets services bind to a stale self route.
+
+For these bridge tests, do not enumerate self-UUID XDomains. Stop discovery
+after the UUID exchange so only real remote domains can reach properties and
+service binding.
+---
+ drivers/thunderbolt/xdomain.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -1218,12 +1218,16 @@ static int tb_xdomain_get_uuid(struct tb
+ 	dev_dbg(&xd->dev, "got remote UUID %pUb\n", &uuid);
+ 
+ 	if (uuid_equal(&uuid, xd->local_uuid)) {
+-		if (route == xd->route)
++		if (route == xd->route)
+ 			dev_dbg(&xd->dev, "loop back detected\n");
+ 		else
+ 			dev_dbg(&xd->dev, "intra-domain loop detected\n");
+ 
+ 		/* Don't bond lanes automatically for loops */
+ 		xd->bonding_possible = false;
++		dev_info(&xd->dev,
++			 "ignoring XDomain peer with local UUID %pUb route=%llx remote_route=%llx\n",
++			 &uuid, xd->route, route);
++		return -ENODEV;
+ 	}
+ 
+ 	/*
+-- 
+2.53.0
+
