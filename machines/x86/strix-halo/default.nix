@@ -401,6 +401,7 @@ in
       enable_tunnels = true;
       native_control_trace = true;
       native_ready_timeout_optimistic = true;
+      native_write_gap_rnr = true;
       native_data = true;
       native_fragment_striping = true;
       apple_data = false;
