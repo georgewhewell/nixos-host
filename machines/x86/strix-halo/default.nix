@@ -413,6 +413,7 @@ in
       expectedNativeControl = "source_aware";
       requireVerbs = true;
       minReadyRails = 4;
+      timeoutSeconds = 75;
     };
   };
 
