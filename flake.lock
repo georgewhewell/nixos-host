@@ -2649,10 +2649,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1780747903,
-        "narHash": "sha256-3jU7u6efJoowrVnNY3HCsWl6+zrp2lPA7WMmwPnseuQ=",
-        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-deploy-ackprobe",
-        "type": "path"
+        "lastModified": 1780748813,
+        "narHash": "sha256-eeUlUJNEJ7YQtQRTZ5jsquhnZcus+WPaywfSewFjb+g=",
+        "rev": "1459213098650103e4493bd34c939da1d670574a",
+        "revCount": 320,
+        "type": "git",
+        "url": "file:///mnt/Home/src/thunderbolt-ibverbs-gda-deploy-ackprobe"
       },
       "original": {
         "owner": "hellas-ai",
