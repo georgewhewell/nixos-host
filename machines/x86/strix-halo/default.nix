@@ -399,6 +399,8 @@ in
       start_rings = true;
       negotiate_native = true;
       enable_tunnels = true;
+      native_control_trace = true;
+      native_ready_timeout_optimistic = true;
       native_data = true;
       native_fragment_striping = true;
       apple_data = false;
@@ -410,7 +412,7 @@ in
       afterReload = true;
       expectedNativeControl = "source_aware";
       requireVerbs = true;
-      minReadyRails = 2;
+      minReadyRails = 4;
     };
   };
 
