@@ -43,7 +43,7 @@
     };
 
     thunderbolt-ibverbs-kernel = {
-      url = "path:/mnt/Home/src/thunderbolt-ibverbs-gda-iommu-revive";
+      url = "path:/mnt/Home/src/thunderbolt-ibverbs-native-fixes";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
