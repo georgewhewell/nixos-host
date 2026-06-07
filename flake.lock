@@ -2649,16 +2649,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1780758438,
-        "narHash": "sha256-1MYErLkM0wVPsuvPGOaESTiGs7h+QuFeM+C3VXBQEeQ=",
-        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-deploy-ackprobe",
+        "lastModified": 1780799680,
+        "narHash": "sha256-GpqyGskBKRHvJYXfq4QiwqxwkoMR3KpSGoKNMhj7S9Y=",
+        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-iommu-revive",
         "type": "path"
       },
       "original": {
-        "owner": "hellas-ai",
-        "ref": "grw/xdomain-foundation-patches",
-        "repo": "thunderbolt-ibverbs",
-        "type": "github"
+        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-iommu-revive",
+        "type": "path"
       }
     },
     "treefmt-nix": {

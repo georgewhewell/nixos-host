@@ -5,37 +5,13 @@
 }:
 let
   thunderboltIbverbs = inputs.thunderbolt-ibverbs-kernel;
+  thunderboltPatchSet =
+    thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   thunderboltKernelPatches =
-    thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.portableKernelPatches;
-  localThunderboltKernelPatches = [
-    {
-      name = "thunderbolt-xdomain-lane-bonding-param";
-      patch = ./patches/thunderbolt-xdomain-lane-bonding-param.patch;
-    }
-    {
-      name = "thunderbolt-xdomain-properties-debug";
-      patch = ./patches/thunderbolt-xdomain-properties-debug.patch;
-    }
-    {
-      name = "thunderbolt-xdomain-route-properties-param";
-      patch = ./patches/thunderbolt-xdomain-route-properties-param.patch;
-    }
-    {
-      name = "thunderbolt-xdomain-properties-response-validate";
-      patch = ./patches/thunderbolt-xdomain-properties-response-validate.patch;
-    }
-    {
-      name = "thunderbolt-xdomain-bridge-hardening";
-      patch = ./patches/thunderbolt-xdomain-bridge-hardening.patch;
-    }
-    {
-      name = "thunderbolt-xdomain-bridge-resync";
-      patch = ./patches/thunderbolt-xdomain-bridge-resync.patch;
-    }
-  ];
+    thunderboltPatchSet.portableKernelPatches or thunderboltPatchSet.kernelPatches;
   linuxPackagesThunderbolt = pkgs.linuxPackages_latest.extend (self: super: {
     kernel = super.kernel.override {
-      kernelPatches = (super.kernel.kernelPatches or [ ]) ++ thunderboltKernelPatches ++ localThunderboltKernelPatches;
+      kernelPatches = (super.kernel.kernelPatches or [ ]) ++ thunderboltKernelPatches;
       structuredExtraConfig = with lib.kernel; {
         USB4_DEBUGFS_WRITE = yes;
       };
@@ -51,7 +27,8 @@ in
 
   boot.kernelPackages = lib.mkOverride 900 linuxPackagesThunderbolt;
   boot.extraModprobeConfig = ''
-    options thunderbolt xdomain_lane_bonding=0 xdomain_debug=1 xdomain_route_properties=1
+    options thunderbolt xdomain_lane_bonding=0 xdomain_debug=1 xdomain_bridge_pad=0 xdomain_bridge_sideband=1 xdomain_bridge_properties_retries=1 xdomain_bridge_properties_chunk=0
+    options thunderbolt_net e2e=0 tx_e2e=0 throttling=32000
   '';
 
   hardware.thunderbolt-ibverbs.enable = true;

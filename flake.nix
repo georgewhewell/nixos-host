@@ -43,7 +43,7 @@
     };
 
     thunderbolt-ibverbs-kernel = {
-      url = "github:hellas-ai/thunderbolt-ibverbs";
+      url = "path:/mnt/Home/src/thunderbolt-ibverbs-gda-iommu-revive";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
