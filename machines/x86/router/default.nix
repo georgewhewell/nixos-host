@@ -3,7 +3,6 @@
 , lib
 , pkgs
 , network
-, routerStorageProfile ? ../../../profiles/router/impermanence.nix
 , ...
 }: {
   /*
@@ -75,7 +74,7 @@
     ../../../profiles/home.nix
     ../../../profiles/router/linux.nix
     ../../../profiles/router/services.nix
-    routerStorageProfile
+    ../../../profiles/router/usb-btrfs.nix
     # ../../../profiles/router/ap.nix  # WiFi card not installed
     ../../../profiles/router/wireguard.nix
     ../../../profiles/thunderbolt-bridge.nix

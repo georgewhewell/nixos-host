@@ -113,14 +113,8 @@ let
   sysRocmZnver5 = system: machine: mkRocmSystem (pkgsForRocmZnver5 system) machine;
 in
 {
-  router = sysWithSpecialArgs "x86_64-linux"
-    {
-      routerStorageProfile = ../profiles/router/impermanence.nix;
-    } ./x86/router;
-  router-usb = sysWithSpecialArgs "x86_64-linux"
-    {
-      routerStorageProfile = ../profiles/router/usb-btrfs.nix;
-    } ./x86/router;
+  router = sys "x86_64-linux" ./x86/router;
+  router-usb = sys "x86_64-linux" ./x86/router;
   n100 = sys "x86_64-linux" ./x86/n100;
 
   # NVIDIA GPU machine

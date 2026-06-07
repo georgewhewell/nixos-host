@@ -3,6 +3,7 @@ let
   persist = config.sconfig.impermanence.persistentStoragePath;
 
   persistentDirectories = [
+    { directory = "/var/log/journal"; user = "root"; group = "systemd-journal"; mode = "2755"; }
     { directory = "/var/lib/dnsmasq"; user = "dnsmasq"; group = "root"; mode = "0755"; }
     { directory = "/var/lib/fail2ban"; mode = "0750"; }
     { directory = "/var/lib/frigate"; user = "frigate"; group = "frigate"; mode = "0750"; }
@@ -24,6 +25,13 @@ let
   ) persistentDirectories;
 in
 {
+  # Persist journals across reboots to diagnose intermittent crashes;
+  # /var/log/journal is bind-mounted from btrfs /persist above so logs
+  # survive the ephemeral tmpfs root (overrides impermanence mkDefault).
+  services.journald.storage = "persistent";
+  # Cap on-disk journal so it cannot fill the small router USB /persist.
+  services.journald.extraConfig = "SystemMaxUse=64M";
+
   sconfig.impermanence = {
     enable = true;
     persistentStoragePath = "/persist";

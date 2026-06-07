@@ -348,11 +348,6 @@
             specialArgs = {
               inherit inputs mkSecret pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmZnver5 network;
             };
-            nodeSpecialArgs = {
-              router = {
-                routerStorageProfile = ./profiles/router/impermanence.nix;
-              };
-            };
           };
         }
         // builtins.mapAttrs

@@ -69,11 +69,6 @@ in
 
   boot.kernelParams =
     [
-      "panic=5"
-      "panic_on_oops=1"
-      "softlockup_panic=1"
-      "hung_task_panic=1"
-      "nmi_watchdog=panic,1"
     ]
     # Disabled after strix-1 amdgpu failed to fetch VBIOS from ACPI VFCT while
     # booted with these experimental PCIe enumeration parameters.
@@ -439,22 +434,7 @@ in
 
   boot.kernelModules = [ "sp5100_tco" ];
 
-  boot.kernel.sysctl = {
-    "kernel.panic" = 5;
-    "kernel.watchdog" = 1;
-    "kernel.panic_on_oops" = 1;
-    "kernel.softlockup_panic" = 1;
-    "kernel.hung_task_panic" = 1;
-    "kernel.nmi_watchdog" = 1;
-    "kernel.hardlockup_panic" = 1;
-    "kernel.panic_print" = 63;
-  };
 
-  systemd.settings.Manager = {
-    RuntimeWatchdogSec = "15s";
-    RebootWatchdogSec = "30s";
-    KExecWatchdogSec = "30s";
-  };
 
   users.users.grw.extraGroups = [ "networkmanager" ];
 

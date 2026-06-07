@@ -8,6 +8,7 @@
 in {
   imports = [
     ./users.nix
+    ./watchdog.nix
   ];
 
   # Expose `network` as a free function arg to every module in the same
