@@ -1,0 +1,33 @@
+From: Mantas Pucka <mantas@8devices.com>
+Date: Thu, 13 Mar 2025 11:00:56 +0200
+Subject: [PATCH] wifi: ath12k: fix 5GHz operation on wideband QCN9274 radios
+
+Currently ath12k_mac_setup_ht_vht_cap() incorrectly assumes that QCN9274
+radios with 6GHz band can't support 5GHz as well. This prevents the
+addition of HT and VHT capabilities for the 5GHz band. Since QCN9274 is
+capable of operating in multiple bands, remove the 6GHz support check and
+exception for single_pdev_only (i.e. WCN7850).
+
+Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.4.1-00199-QCAHKSWPL_SILICONZ-1
+
+Signed-off-by: Mantas Pucka <mantas@8devices.com>
+Link: https://github.com/openwrt/openwrt/commit/49e6e1daf4ae33536b9e26c34d248ffc23c9a0b4
+---
+ drivers/net/wireless/ath/ath12k/mac.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index d40ac14df23a..5aa8a93149cc 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -8544,9 +8544,7 @@ static void ath12k_mac_setup_ht_vht_cap(struct ath12k *ar,
+ 						    rate_cap_rx_chainmask);
+ 	}
+ 
+-	if (cap->supported_bands & WMI_HOST_WLAN_5GHZ_CAP &&
+-	    (ar->ab->hw_params->single_pdev_only ||
+-	     !ar->supports_6ghz)) {
++	if (cap->supported_bands & WMI_HOST_WLAN_5GHZ_CAP) {
+ 		band = &ar->mac.sbands[NL80211_BAND_5GHZ];
+ 		ht_cap = cap->band[NL80211_BAND_5GHZ].ht_cap_info;
+ 		if (ht_cap_info)
