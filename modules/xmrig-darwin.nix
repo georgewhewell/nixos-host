@@ -19,7 +19,7 @@ in {
 
     poolHost = lib.mkOption {
       type = lib.types.str;
-      default = network.routerIp;
+      default = network.primaryIp network.hosts.trex;
       description = "P2Pool/stratum host.";
     };
 
@@ -137,6 +137,82 @@ in {
     };
 
     xmrigMqttAgentPython = common.mkMqttAgentPython { inherit pkgs agentConfigJson; };
+
+    # Prometheus exporter for darwin: the linux miners expose xmrig metrics via
+    # mtail parsing journald, but macOS has no journald/mtail. Translate xmrig's
+    # local HTTP API to the same xmrig_* metrics on :3903 so trex's VM scrapes
+    # the Macs identically (same metric names, so existing dashboards just work).
+    xmrigExporterPython = pkgs.writeTextFile {
+      name = "xmrig-exporter";
+      destination = "/bin/xmrig-exporter";
+      executable = true;
+      text = ''
+        #!${pkgs.python3}/bin/python3
+        import json
+        import urllib.request
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        API = "http://${cfg.httpApi.host}:${toString cfg.httpApi.port}/2/summary"
+        TOKEN = "${cfg.httpApi.accessToken}"
+        PORT = 3903  # match the linux mtail xmrig exporter port
+
+
+        def render():
+            out = []
+
+            def emit(name, value, typ="gauge"):
+                out.append(f"# TYPE {name} {typ}")
+                out.append(f"{name} {value}")
+
+            try:
+                req = urllib.request.Request(
+                    API, headers={"Authorization": f"Bearer {TOKEN}"}
+                )
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    d = json.load(resp)
+            except Exception:
+                emit("xmrig_up", 0)
+                return "\n".join(out) + "\n"
+
+            def num(x):
+                return x if isinstance(x, (int, float)) else 0
+
+            hr = d.get("hashrate", {}).get("total") or [0, 0, 0]
+            emit("xmrig_hashrate_10s", num(hr[0] if len(hr) > 0 else 0))
+            emit("xmrig_hashrate_60s", num(hr[1] if len(hr) > 1 else 0))
+            emit("xmrig_hashrate_15m", num(hr[2] if len(hr) > 2 else 0))
+            emit("xmrig_hashrate_max", num(d.get("hashrate", {}).get("highest")))
+            res = d.get("results", {})
+            good = num(res.get("shares_good"))
+            total = num(res.get("shares_total"))
+            emit("xmrig_shares_accepted_total", int(good), "counter")
+            emit("xmrig_shares_rejected_total", int(max(0, total - good)), "counter")
+            emit("xmrig_difficulty_current", num(res.get("diff_current")))
+            emit("xmrig_paused", 1 if d.get("paused") else 0)
+            emit("xmrig_up", 1)
+            return "\n".join(out) + "\n"
+
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path.split("?")[0] != "/metrics":
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                body = render().encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; version=0.0.4")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+
+        ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+      '';
+    };
   in {
     sconfig.xmrig.mqttSwitch.enable = lib.mkDefault (mqttCfg.passwordFile != null);
 
@@ -149,7 +225,13 @@ in {
 
     environment.systemPackages = [cfg.package];
 
-    launchd.user.agents.xmrig = {
+    # Run as system daemons (root), NOT per-user GUI agents. macOS 15+/26 Local
+    # Network Privacy (TCC) blocks user-session processes from reaching LAN
+    # addresses until the user clicks an "allow local network" prompt — which is
+    # impossible on a headless build slave and silently dropped xmrig's pool SYN
+    # before it hit any interface. System daemons are exempt from that prompt, so
+    # this lets the miner reach the p2pool host on the LAN without any GUI grant.
+    launchd.daemons.xmrig = {
       path = [cfg.package];
       command = "${xmrigRunScript}";
       serviceConfig = {
@@ -160,7 +242,7 @@ in {
       };
     };
 
-    launchd.user.agents.xmrig-mqtt = lib.mkIf agentEnabled {
+    launchd.daemons.xmrig-mqtt = lib.mkIf agentEnabled {
       path = [pkgs.curl pkgs.coreutils];
       command = "${xmrigMqttAgentPython}/bin/xmrig-mqtt-agent";
       serviceConfig = {
@@ -168,6 +250,18 @@ in {
         RunAtLoad = true;
         StandardOutPath = "/tmp/xmrig-mqtt.out.log";
         StandardErrorPath = "/tmp/xmrig-mqtt.err.log";
+      };
+    };
+
+    # Prometheus exporter (xmrig HTTP API -> :3903) so trex's VictoriaMetrics
+    # collects hashrate/shares from the Macs like the linux mtail miners.
+    launchd.daemons.xmrig-exporter = lib.mkIf cfg.httpApi.enable {
+      command = "${xmrigExporterPython}/bin/xmrig-exporter";
+      serviceConfig = {
+        KeepAlive = true;
+        RunAtLoad = true;
+        StandardOutPath = "/tmp/xmrig-exporter.out.log";
+        StandardErrorPath = "/tmp/xmrig-exporter.err.log";
       };
     };
   });

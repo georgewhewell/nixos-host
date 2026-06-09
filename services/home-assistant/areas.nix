@@ -56,6 +56,8 @@
         entity = "light.office_lights";
         group = [
           "light.office_ceiling_3"
+          "light.office_led_strip_2_office_led_strip_2"
+          "light.office_led_strip_2_office_led_strip_3"
           "light.heltec_lora_v2_my_light"
           "light.esp32_c3_super_mini_1_my_light"
           "light.esp32_s3_nano_oled_onboard_led"
@@ -80,7 +82,7 @@
       lights = [{
         name = "All";
         entity = "light.living_room_lights";
-        group = ["light.corner_light" "light.hue_iris"];
+        group = ["light.corner_light" "light.hue_iris" "light.esp32_c3_super_mini_2_my_light"];
       }];
       motion = {
         sensor = "binary_sensor.presence";
@@ -178,6 +180,7 @@
       { name = "air";       maxPerf = null;                               xmrig = "switch.air_xmrig"; }
       { name = "mac";       maxPerf = null;                               xmrig = "switch.mac_xmrig"; }
       { name = "mbp";       maxPerf = null;                               xmrig = "switch.mbp_xmrig"; }
+      { name = "goblin";    maxPerf = null;                               xmrig = "switch.goblin_xmrig"; }
     ];
   };
 

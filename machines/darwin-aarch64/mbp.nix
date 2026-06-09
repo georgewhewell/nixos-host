@@ -14,6 +14,10 @@
   ids.gids.nixbld = 350;
   environment.enableAllTerminfo = lib.mkForce false;
 
+  # mbp is a laptop; `pmset autorestart` (power.restartAfterPowerFailure, set by
+  # darwin-no-power-management) isn't supported on portables and aborts activation.
+  power.restartAfterPowerFailure = lib.mkForce null;
+
   home-manager.users.grw = {...}: {
     imports = [
       inputs.hellas.homeManagerModules.default

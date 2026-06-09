@@ -56,6 +56,18 @@ lib: rec {
       };
       role = "mgmt";
     };
+    wifi = {
+      id = 50;
+      prefix = "192.168.50";
+      cidr = 24;
+      gatewayHost = 1;
+      dhcp = {
+        start = 32;
+        end = 249;
+        lease = "6h";
+      };
+      role = "trusted";
+    };
     # not 802.1Q but lives in the same model so consumers can iterate uniformly
     wireguard = {
       id = null;
@@ -175,6 +187,7 @@ lib: rec {
         iot = 1;
         guest = 1;
         mgmt = 1;
+        wifi = 1;
       };
       extraNames = [ "frigate" ];
     };
@@ -204,6 +217,11 @@ lib: rec {
     };
     trex = {
       mac = "50:6b:4b:03:04:cb";
+      # mlxlan0 (100G Mellanox PF) historically grabbed a dynamic lease as a
+      # standalone DHCP client before OVS enslaved it, registering trex -> a pool
+      # address and shadowing the static .8 in DNS. Reserve its MAC to .8 too so
+      # any stray lease resolves to the correct host instead of a dynamic IP.
+      extraMacs = [ "50:6b:4b:0d:24:86" ];
       addresses = { lan = 8; };
       extraNames = [ "jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" ];
     };
@@ -250,6 +268,10 @@ lib: rec {
     };
     mbp = {
       mac = "c2:c5:7f:8c:7a:51";
+      # mbp's LAN link is now the 2.5GbE Thunderbolt/USB ethernet (en11); reserve
+      # .24 to its MAC too so `mbp` resolves to a stable address it actually holds
+      # (bare `mbp` was a dead static record while it pulled a dynamic pool lease).
+      extraMacs = [ "88:c9:b3:b3:2a:da" ];
       addresses = { lan = 24; };
     };
     goblin = {
@@ -346,10 +368,13 @@ lib: rec {
       { }
       flat;
 
-  # dnsmasq dhcp-host shape: ["mac,ip" ...] for every host that has a MAC.
+  # dnsmasq dhcp-host shape: ["mac[,mac...],ip" ...] for every host that has a
+  # MAC. A host may list extraMacs (other NICs on the same box); dnsmasq accepts
+  # multiple hardware addresses sharing one reserved IP on a single dhcp-host
+  # line, so each NIC resolves to the host's primary IP rather than a pool lease.
   toDnsmasqDhcpHost =
     lib.mapAttrsToList
-      (name: h: "${h.mac},${primaryIp h}")
+      (name: h: "${lib.concatStringsSep "," ([ h.mac ] ++ (h.extraMacs or [ ]))},${primaryIp h}")
       (lib.filterAttrs (_: h: (h.mac or null) != null) hosts);
 
   # dnsmasq address shape: ["/fqdn/ip" ...]. Each host (and each of its

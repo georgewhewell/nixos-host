@@ -45,6 +45,20 @@ in {
 
   system.primaryUser = "grw";
 
+  # Prometheus node_exporter (host metrics) on macOS — node_exporter supports a
+  # darwin subset (cpu, loadavg, meminfo, filesystem, netdev, thermal, …). Run as
+  # a system daemon on :9100 so trex's VictoriaMetrics scrapes it like the linux
+  # nodes. Root daemon → exempt from Local Network Privacy.
+  launchd.daemons.node-exporter = {
+    command = "${pkgs.prometheus-node-exporter}/bin/node_exporter --web.listen-address=0.0.0.0:9100";
+    serviceConfig = {
+      KeepAlive = true;
+      RunAtLoad = true;
+      StandardOutPath = "/tmp/node-exporter.out.log";
+      StandardErrorPath = "/tmp/node-exporter.err.log";
+    };
+  };
+
   home-manager.useGlobalPkgs = true;
   home-manager.extraSpecialArgs = {inherit inputs network;};
   home-manager.users.grw = {...}: {

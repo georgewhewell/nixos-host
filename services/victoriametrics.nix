@@ -15,6 +15,9 @@
     "strix-1"
     "strix-2"
     "fuckup"
+    # Macs run prometheus-node-exporter on :9100 (darwin subset of collectors).
+    "goblin"
+    "mbp"
   ];
   x86ExporterHosts = [
     "router"
@@ -32,6 +35,14 @@
     "router"
     "trex"
     "n100"
+    # xmrig miners run mtail (xmrig log parser) — scrape their hashrate/share metrics.
+    "fuckup"
+    "strix-1"
+    "strix-2"
+    # Macs export the same xmrig_* metrics via a small HTTP exporter on :3903
+    # (no journald/mtail on darwin).
+    "goblin"
+    "mbp"
   ];
   # Shared scrape configs used by both Prometheus and VictoriaMetrics
   # This allows running both in parallel during migration
@@ -216,14 +227,18 @@ in {
     ];
   };
 
-  # Override systemd service to use our ZFS mount
-  systemd.services.victoriametrics.serviceConfig = {
-    # Disable DynamicUser since we're using a custom storage path
-    DynamicUser = lib.mkForce false;
-    User = "victoriametrics";
-    Group = "victoriametrics";
-    # Remove StateDirectory since we manage storage ourselves
-    StateDirectory = lib.mkForce "";
+  # Override systemd service to use our ZFS-managed mount.
+  systemd.services.victoriametrics = {
+    after = ["zfs-mount.service"];
+    wants = ["zfs-mount.service"];
+    serviceConfig = {
+      # Disable DynamicUser since we're using a custom storage path
+      DynamicUser = lib.mkForce false;
+      User = "victoriametrics";
+      Group = "victoriametrics";
+      # Remove StateDirectory since we manage storage ourselves
+      StateDirectory = lib.mkForce "";
+    };
   };
 
   users.users.victoriametrics = {

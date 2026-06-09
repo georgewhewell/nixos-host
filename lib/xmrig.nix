@@ -409,11 +409,18 @@
                                       f"failed to start xmrig.service: {start.stderr.strip()}"
                                   )
                       else:
-                          # Darwin: kickstart xmrig via launchd
+                          # Darwin: ensure xmrig is running via launchd, but do NOT
+                          # use `-k` — that kills and restarts a healthy miner, and on
+                          # busy build slaves the frequent reconciles turned into a
+                          # restart loop that never let xmrig hold a pool session.
+                          # KeepAlive keeps it up; plain kickstart is a no-op if running
+                          # and starts it if not. Resume is then just a JSON-RPC unpause.
                           label = self.system_cfg.get("launchdLabel", "org.nixos.xmrig")
-                          uid = str(os.getuid())
+                          # xmrig runs as a system daemon (system/ domain), not a
+                          # gui/<uid> agent — system daemons bypass macOS Local
+                          # Network Privacy so the miner can reach the LAN pool.
                           subprocess.run(
-                              ["/bin/launchctl", "kickstart", "-k", f"gui/{uid}/{label}"],
+                              ["/bin/launchctl", "kickstart", f"system/{label}"],
                               check=False,
                               stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL,
@@ -845,18 +852,15 @@
                       ]
 
                       def handler(line):
-                          m = self.nix_line_re.search(line)
-                          if m:
-                              try:
-                                  self.track_nix_client_pid(int(m.group(1)))
-                              except Exception:
-                                  pass
-                          m = self.nix_accept_re.search(line)
-                          if m:
-                              try:
-                                  self.track_nix_client_pid(int(m.group(1)))
-                              except Exception:
-                                  pass
+                          # Darwin has no reliable per-PID exit detection (no
+                          # /proc start-ticks; os.kill races PID reuse), so the old
+                          # indefinite PID tracking leaked — a reused PID looked
+                          # "alive" forever and pinned the inhibitor at "nix active",
+                          # permanently pausing mining. Treat any nix client activity
+                          # as a deadline-based signal that self-clears after
+                          # quietSeconds, so mining resumes once the box goes idle.
+                          if self.nix_line_re.search(line) or self.nix_accept_re.search(line):
+                              self.set_nix_build_activity()
 
                   self._run_log_watcher(cmd, handler)
 

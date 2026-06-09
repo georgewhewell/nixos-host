@@ -33,7 +33,7 @@ in {
 
     poolHost = lib.mkOption {
       type = lib.types.str;
-      default = network.routerIp;
+      default = (network.primaryIp network.hosts.trex);
       description = "P2Pool stratum host to connect to.";
     };
 

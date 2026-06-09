@@ -37,7 +37,11 @@ in {
   hardware.enableAllFirmware = true;
 
   services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="powercap", MODE="0666"
+    # powercap: MODE sets the device-node perms, but the kernel creates the
+    # `energy_uj` attribute as 0400 (Platypus side-channel mitigation), so btop
+    # and node_exporter's (default-on) rapl collector can't read CPU package
+    # power. chmod the attribute readable. (Local, trusted hosts.)
+    ACTION=="add", SUBSYSTEM=="powercap", MODE="0666", RUN+="${pkgs.coreutils}/bin/chmod -R a+r /sys%p"
     ACTION=="add", SUBSYSTEM=="nvme", KERNEL=="nvme[0-9]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
     ACTION=="add"  SUBSYSTEM=="block", KERNEL=="sd[a-z]*", RUN+="${pkgs.acl}/bin/setfacl -m g:smartctl-exporter-access:rw /dev/$kernel"
   '';
@@ -47,6 +51,19 @@ in {
 
   services.irqbalance.enable = lib.mkDefault true;
   services.fwupd.enable = lib.mkDefault config.boot.kernelPackages.stdenv.isx86_64;
+
+  # fwupd-refresh.service runs `fwupdmgr refresh` as the non-interactive
+  # `fwupd-refresh` user; polkit denies the metadata action by default
+  # ("Failed to obtain auth"), failing the timer. Allow that user the fwupd
+  # actions so the refresh succeeds.
+  security.polkit.extraConfig = lib.mkIf config.services.fwupd.enable ''
+    polkit.addRule(function(action, subject) {
+      if (action.id.indexOf("org.freedesktop.fwupd.") == 0 &&
+          subject.user == "fwupd-refresh") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
   environment.pathsToLink = ["/share/zsh"];
 

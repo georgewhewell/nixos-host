@@ -1,4 +1,8 @@
-{lib, ...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: {
   imports = [
     ./darwin-configuration.nix
     ../../profiles/darwin-no-power-management.nix
@@ -8,6 +12,15 @@
   networking.hostName = "goblin";
   ids.gids.nixbld = 350;
   environment.enableAllTerminfo = lib.mkForce false;
+
+  sconfig.xmrig = {
+    enable = true;
+    package = pkgs.xmrig;
+    rigId = "goblin";
+    httpApi.accessToken = "xmrig";
+    inhibit.nixBuilds.enable = true;
+    mqttSwitch.passwordFile = "/Users/grw/.config/xmrig/mosquitto-password";
+  };
 
   # Disable TCP segmentation offload. macOS bridge0 forwards TSO super-frames
   # (up to 14480 bytes) over Thunderbolt to the router, which can't bridge

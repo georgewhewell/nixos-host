@@ -16,6 +16,7 @@ let
     { directory = "/var/lib/tor"; user = "tor"; group = "tor"; mode = "0700"; }
     "/var/lib/unifi"
     "/var/lib/unifi-db"
+    { directory = "/root/.config/gcloud"; mode = "0700"; }
   ];
 
   seedDirectories = map (entry:
@@ -29,8 +30,10 @@ in
   # /var/log/journal is bind-mounted from btrfs /persist above so logs
   # survive the ephemeral tmpfs root (overrides impermanence mkDefault).
   services.journald.storage = "persistent";
-  # Cap on-disk journal so it cannot fill the small router USB /persist.
-  services.journald.extraConfig = "SystemMaxUse=64M";
+  # Cap on-disk journal so it cannot fill /persist, but keep enough history to
+  # span several boots — 64M vacuumed away the logs of the panic/watchdog
+  # reboots that truncated HA's .storage files, leaving them undiagnosable.
+  services.journald.extraConfig = "SystemMaxUse=256M";
 
   sconfig.impermanence = {
     enable = true;
@@ -74,6 +77,12 @@ in
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    # Flush dirty data before each metadata commit so a renamed
+                    # file (HA writes .storage via atomic rename without fsync)
+                    # can never be observed empty after a panic/watchdog reboot.
+                    # btrfs lacks ZFS's transactional crash-consistency, which is
+                    # why HA state started corrupting after the ZFS->btrfs move.
+                    "flushoncommit"
                   ];
                 };
                 "/nix" = {
