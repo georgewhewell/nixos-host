@@ -22,17 +22,14 @@ in
       enableCad = true;
     };
     xmrig = with pkgs; {
-      enable = false;
+      enable = true;
       package = xmrig-zen5;
-      # cudaPlugin = xmrig-cuda-plugin;
+      cudaPlugin = null;
       httpApi.enable = true;
       httpApi.accessToken = "xmrig";
       inhibit.dota2.enable = true;
     };
   };
-
-  # GPU-only mining for benchmarking
-  # services.xmrig.settings.cpu.enabled = lib.mkForce false;
 
   system.stateVersion = "25.05";
 
@@ -58,8 +55,60 @@ in
   hardware.enableAllHardware = true;
   nix.settings.system-features = [ "gccarch-znver5" "rtx4090" "9950x3d" ];
 
+  programs.gpu-screen-recorder.enable = true;
+
+  # Shared read-only model cache served by trex (same /models the strix
+  # netboot nodes mount), so GPU jobs here consume the same snapshot instead
+  # of a local HF cache. trex exports /export/strix-models to the LAN.
+  fileSystems."/models" = {
+    device = "${network.primaryIp network.hosts.trex}:/strix-models";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      "ro"
+      "nofail"
+      "_netdev"
+      "x-systemd.automount"
+      "rsize=1048576"
+      "wsize=1048576"
+      "nconnect=8"
+    ];
+  };
+  boot.supportedFilesystems = [ "nfs" ];
+
+  # Point HuggingFace tooling at the shared snapshot and stay offline w.r.t.
+  # the Hub — model acquisition belongs to trex (mirrors the strix nodes).
+  environment.variables = {
+    HF_HOME = "/models/.cache/huggingface";
+    HF_HUB_OFFLINE = "1";
+    TRANSFORMERS_OFFLINE = "1";
+    HF_HUB_DISABLE_TELEMETRY = "1";
+  };
+
   environment.systemPackages = [
     pkgs.kexec-tools
+    pkgs.gpu-screen-recorder-gtk
+    pkgs.wl-screenrec
+    (pkgs.writeShellScriptBin "wl-capture" ''
+      set -euo pipefail
+
+      output="''${WL_CAPTURE_OUTPUT:-DP-3}"
+      fps="''${WL_CAPTURE_FPS:-60}"
+      codec="''${WL_CAPTURE_CODEC:-h264}"
+      dir="''${WL_CAPTURE_DIR:-$HOME/Videos/Screencasts}"
+      mkdir -p "$dir"
+
+      file="$dir/wl-capture-$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S).mp4"
+      export PATH="/run/wrappers/bin:$PATH"
+      exec ${pkgs.gpu-screen-recorder}/bin/gpu-screen-recorder \
+        -w "$output" \
+        -f "$fps" \
+        -k "$codec" \
+        -encoder gpu \
+        -q high \
+        -cursor yes \
+        -o "$file"
+    '')
   ];
 
   services.hellas = {
@@ -131,6 +180,9 @@ in
     ];
     extraSandboxPaths = [
       "/proc/driver/nvidia"
+      "/run/opengl-driver"
+      "/run/opengl-driver-lib=/run/opengl-driver/lib"
+      "${config.hardware.nvidia.package}"
     ];
   };
 
@@ -257,6 +309,8 @@ in
       start_rings = true;
       negotiate_native = true;
       enable_tunnels = true;
+      native_control_trace = true;
+      native_ready_timeout_optimistic = true;
       register_verbs = true;
       roce_netdev = "br0.lan";
     };
