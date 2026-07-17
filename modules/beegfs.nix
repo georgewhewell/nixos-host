@@ -455,6 +455,7 @@ in
 
     boot.extraModulePackages =
       lib.mkIf cfg.client.enable [ cfg.client.modulePackage ];
+    boot.kernelModules = lib.mkIf cfg.client.enable [ "beegfs" ];
 
     # Explicit mount units rather than fileSystems: precise network deps,
     # and fileSystems is wholesale-overridden (mkVMOverride) inside NixOS
@@ -468,7 +469,7 @@ in
           name = lib.strings.sanitizeDerivationName mountPoint;
           inherit (mount) settings;
         }}";
-        after = [ "network-online.target" ];
+        after = [ "network-online.target" "systemd-modules-load.service" ];
         wants = [ "network-online.target" ];
         wantedBy = [ "remote-fs.target" ];
         mountConfig.TimeoutSec = "45s";

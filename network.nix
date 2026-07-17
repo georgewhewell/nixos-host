@@ -351,6 +351,13 @@ lib: rec {
       addresses = { wifi = 124; };
     };
     "poe-switch-10g" = { addresses = { lan = 23; }; };
+    # Per-host hardware facts for the Strix fleet live in `strix`:
+    #  - beegfsDiskSerial: each node's dedicated 4 TB BeeGFS NVMe, by serial
+    #    (CX5/SSD PCIe enumeration order differs between the four boxes, so
+    #    destructive disko runs must never address by nvme0n1).
+    #  - cx5Port: which port of the shared multi-host ConnectX-5 this node
+    #    owns (pairs 1+2 and 3+4 share a NIC; ports checked out per host).
+    #  - ryzenAdj: package power limits (1/2 sustain more than 3/4).
     "strix-1" = {
       # eno1 burned-in MAC (confirmed via ethtool -P); the firmware PXE
       # client identifies with this, so dnsmasq netboot tagging depends
@@ -362,6 +369,13 @@ lib: rec {
       };
       # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
       netboot = true;
+      strix = {
+        beegfsDiskSerial = "A632B32900OTVY";
+        beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
+        cx5Port = 1;
+        cx5FabricMac = "1c:34:da:61:12:9d";
+        ryzenAdj = { stapm = 132000; fast = 176000; slow = 154000; apuSlow = 154000; };
+      };
     };
     "strix-2" = {
       # Burned-in eno1 MAC observed from the firmware HTTPClient.
@@ -371,6 +385,13 @@ lib: rec {
         fabric = 102;
       };
       netboot = true;
+      strix = {
+        beegfsDiskSerial = "A632B32900P0HW";
+        beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
+        cx5Port = 0;
+        cx5FabricMac = "1c:34:da:61:12:98";
+        ryzenAdj = { stapm = 132000; fast = 176000; slow = 154000; apuSlow = 154000; };
+      };
     };
     "strix-3" = {
       mac = "84:47:09:80:64:50";
@@ -379,6 +400,14 @@ lib: rec {
         fabric = 103;
       };
       netboot = true;
+      strix = {
+        beegfsDiskSerial = "A632B32900OYLN";
+        beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
+        cx5Port = 1;
+        cx5FabricMac = "1c:34:da:61:12:b5";
+        # Strix 3/4 currently clamp package requests to these values.
+        ryzenAdj = { stapm = 120000; fast = 160000; slow = 140000; apuSlow = 140000; };
+      };
     };
     "strix-4" = {
       mac = "84:47:09:81:22:35";
@@ -387,6 +416,13 @@ lib: rec {
         fabric = 104;
       };
       netboot = true;
+      strix = {
+        beegfsDiskSerial = "A632B32900OZJS";
+        beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
+        cx5Port = 0;
+        cx5FabricMac = "1c:34:da:61:12:b0";
+        ryzenAdj = { stapm = 120000; fast = 160000; slow = 140000; apuSlow = 140000; };
+      };
     };
   };
 

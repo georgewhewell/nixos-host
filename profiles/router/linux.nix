@@ -56,7 +56,9 @@ in {
   router.lanInterface = lanBridge;
 
   services.usbmuxd.enable = true;
-  services.avahi.allowInterfaces = lib.mkForce [lanBridge];
+  # Include the WiFi VLAN so the avahi reflector (homekit.nix) can bridge
+  # mDNS between wired LAN and wireless clients (HomeKit, ESPHome discovery).
+  services.avahi.allowInterfaces = lib.mkForce [lanBridge wifiVlanIf];
 
   services.miniupnpd = {
     enable = true;

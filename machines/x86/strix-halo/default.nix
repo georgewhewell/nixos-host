@@ -13,7 +13,10 @@ let
   # flag lives in network.nix so the router (DHCP/TFTP) and trex
   # (exports/boot files) stay in sync with the machine config.
   netboot = self.netboot or false;
-  singleDisk = builtins.elem index [ 3 4 ];
+  # Per-host hardware facts (BeeGFS disk serial, CX5 port ownership, power
+  # limits) live in the network.nix host record — the single inventory.
+  beegfsDisk = "/dev/disk/by-id/nvme-Corsair_MP600_CORE_XT_${self.strix.beegfsDiskSerial}";
+  beegfsMountPoint = "/srv/beegfs";
   enableUsb4Rdma = builtins.elem index [ 1 2 3 4 ];
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
@@ -23,24 +26,12 @@ let
   enableSharedIb = false;
   enableUsb4Tcp = false;
   reserveThunderbolt0ForMac = false;
-  ryzenAdjLimits =
-    if builtins.elem index [ 1 2 ]
-    then {
-      stapm = 132000;
-      fast = 176000;
-      slow = 154000;
-      apuSlow = 154000;
-    }
-    else {
-      # Strix 3/4 currently clamp package requests to these values.
-      stapm = 120000;
-      fast = 160000;
-      slow = 140000;
-      apuSlow = 140000;
-    };
+  ryzenAdjLimits = self.strix.ryzenAdj;
   tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
   tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
-  isSecondCx5Host = builtins.elem index [ 2 4 ];
+  # On each shared multi-host CX5, the port-1 owner is the first host and the
+  # port-0 owner is the second (pairs 1+2 and 3+4).
+  isSecondCx5Host = self.strix.cx5Port == 0;
   expectedCx5PortOwner = if isSecondCx5Host then "True(1)" else "False(0)";
   expectedCx5RoceControl = if isSecondCx5Host then "ROCE_ENABLE(2)" else "DEVICE_DEFAULT(0)";
   opensmVirtualizedConfig = pkgs.writeText "opensm-virtualized.conf" ''
@@ -104,13 +95,19 @@ let
       pkgs.rccl-usb4-topology
     ];
   };
-  useCx5Port1 = builtins.elem index [ 1 3 ];
-  vllmFabricInterface = if useCx5Port1 then "enp195s0f1np1" else "enp195s0f0np0";
+  useCx5Port1 = self.strix.cx5Port == 1;
+  # PCI bus numbers differ between netboot and local UEFI boot on the second
+  # half of each SharedIO adapter. Rename the selected port by permanent MAC
+  # so BeeGFS, Gloo, NCCL, and networkd share one stable interface identity.
+  vllmFabricInterface = "cx5fabric0";
   vllmFabricHca = if useCx5Port1 then "mlx5_1" else "mlx5_0";
   vllmHostIp =
     if enableCx5Fabric
     then network.ipOf "fabric" self.addresses.fabric
     else "10.5.0.${toString index}";
+  beegfsFabricInterfaces = pkgs.writeText
+    "beegfs-fabric-interfaces-${hostName}"
+    "* ${vllmHostIp} 4\n";
   vllmMasterIp = network.ipOf "fabric" network.hosts.strix-4.addresses.fabric;
   # Resolve the shared, pre-staged snapshot directly. Having every distributed
   # rank resolve the Hub model ID against the same NFS cache can deadlock in
@@ -303,6 +300,70 @@ in
     mode = "0400";
   };
 
+  # Each Strix node contributes the large XFS partition of its dedicated
+  # NVMe as one BeeGFS storage target. Restrict the daemon to the selected
+  # ConnectX-5 fabric address so data connections use RoCE rather than
+  # falling back to the ordinary LAN. Filtering by inventory-derived address
+  # avoids coupling BeeGFS to PCI-enumeration-dependent Linux interface names.
+  services.beegfs-cluster = {
+    mgmtdHost = network.ipOf "fabric" network.hosts.bluefield2.addresses.fabric;
+    connAuthFile = config.sops.secrets.beegfs-conn-auth.path;
+    rdma = true;
+    meta = lib.mkIf (index == 1) {
+      enable = true;
+      # The metadata set is tiny for this cluster. Co-locate it on strix-1's
+      # NVMe-backed XFS target rather than putting latency-sensitive metadata
+      # on the BlueField's eMMC.
+      directory = "${beegfsMountPoint}/metadata";
+      allowFirstRunInit = false;
+      settings = {
+        connInterfacesFile = "${beegfsFabricInterfaces}";
+        connRestrictOutboundInterfaces = true;
+        storeFsUUID = self.strix.beegfsFsUUID;
+      };
+    };
+    storage = {
+      enable = true;
+      directories = [ beegfsMountPoint ];
+      # All four targets have been initialized and registered. Refuse to
+      # manufacture a new target if this directory is ever unexpectedly empty.
+      allowFirstRunInit = false;
+      settings = {
+        connInterfacesFile = "${beegfsFabricInterfaces}";
+        connRestrictOutboundInterfaces = true;
+        storeFsUUID = self.strix.beegfsFsUUID;
+      };
+    };
+    client = {
+      enable = true;
+      mounts."/mnt/beegfs".settings = {
+        connInterfacesFile = "${beegfsFabricInterfaces}";
+      };
+    };
+  };
+
+  systemd.services.beegfs-root-layout = lib.mkIf (index == 1) {
+    description = "Set the BeeGFS root stripe layout";
+    requires = [ "mnt-beegfs.mount" ];
+    after = [ "mnt-beegfs.mount" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      exec ${config.services.beegfs-cluster.ctlPackage}/bin/beegfs \
+        entry set /mnt/beegfs \
+        --pattern raid0 \
+        --num-targets 4 \
+        --chunk-size 4Mi \
+        --mgmtd-addr ${config.services.beegfs-cluster.mgmtdHost}:${toString config.services.beegfs-cluster.mgmtd.grpcPort} \
+        --tls-disable \
+        --auth-file ${config.sops.secrets.beegfs-conn-auth.path}
+    '';
+  };
+  sops.secrets.beegfs-conn-auth = mkSecret "beegfs-conn-auth" { };
+
   hardware.strixHalo = {
     enable = true;
     amdgpuDpmState = "performance";
@@ -322,122 +383,65 @@ in
   # benchmark runner or EngineCore before the kernel OOM killer would act.
   services.earlyoom.enable = lib.mkForce false;
 
-  boot.initrd.availableKernelModules = lib.mkIf (index == 2 && !netboot) (lib.mkForce [
-    "nvme"
-    "md_mod"
-    "raid0"
-    "ext4"
-    "xhci_hcd"
-    "xhci_pci"
-    "hid_generic"
-    "usbhid"
-    "atkbd"
-    "i8042"
-  ]);
-
-  disko.devices = lib.mkIf (!netboot) (
-    if singleDisk
-    then {
-      disk.disk1 = {
-        type = "disk";
-        device = "/dev/nvme0n1";
-        content = {
-          type = "gpt";
-          partitions = {
-            boot = {
-              size = "512M";
-              type = "EF00";
-              content = {
-                type = "filesystem";
-                format = "vfat";
-                mountpoint = "/boot";
-                mountOptions = [ "umask=0077" ];
-              };
-            };
-            root = {
-              size = "100%";
-              content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/";
-              };
-            };
-          };
-        };
-      };
-    }
-    else {
-      disk = {
-        disk1 = {
-          type = "disk";
-          device = "/dev/nvme0n1";
+  # One uniform layout replaces the old single-disk/RAID0 split. Disko does
+  # not run during nixos-rebuild: it only makes the destructive provisioning
+  # operation explicit and repeatable when invoked deliberately.
+  #
+  # Netboot nodes mount only the BeeGFS partition. Turning netboot off makes
+  # the already-provisioned root and ESP become an ordinary local NixOS boot
+  # disk without repartitioning or sacrificing the storage target.
+  disko.devices.disk.beegfs = {
+    type = "disk";
+    device = beegfsDisk;
+    content = {
+      type = "gpt";
+      partitions = {
+        ESP = {
+          label = "${hostName}-ESP";
+          size = "1G";
+          type = "EF00";
           content = {
-            type = "gpt";
-            partitions = {
-              "boot-1" = {
-                size = "512M";
-                type = "EF00";
-                content = {
-                  type = "filesystem";
-                  format = "vfat";
-                  mountpoint = "/boot";
-                  mountOptions = [ "umask=0077" ];
-                };
-              };
-              mdadm = {
-                size = "100%";
-                content = {
-                  type = "mdraid";
-                  name = "raid0";
-                };
-              };
-            };
+            type = "filesystem";
+            format = "vfat";
+            extraArgs = [ "-F" "32" "-n" "STRIX${toString index}ESP" ];
+            mountpoint = if netboot then null else "/boot";
+            mountOptions = [ "umask=0077" ];
           };
         };
-        disk2 = {
-          type = "disk";
-          device = "/dev/nvme1n1";
+        root = {
+          label = "${hostName}-root";
+          size = "128G";
+          type = "8304";
           content = {
-            type = "gpt";
-            partitions = {
-              "boot-2" = {
-                size = "512M";
-                type = "EF00";
-                content = {
-                  type = "filesystem";
-                  format = "vfat";
-                  mountpoint = "/boot-fallback";
-                  mountOptions = [ "umask=0077" ];
-                };
-              };
-              mdadm = {
-                size = "100%";
-                content = {
-                  type = "mdraid";
-                  name = "raid0";
-                };
-              };
+            type = "btrfs";
+            extraArgs = [ "-L" "${hostName}-root" ];
+            subvolumes."@root" = {
+              mountpoint = if netboot then null else "/";
+            } // lib.optionalAttrs (!netboot) {
+              mountOptions = [
+                "compress=zstd:1"
+                "discard=async"
+                "noatime"
+              ];
             };
           };
         };
-      };
-      mdadm.raid0 = {
-        type = "mdadm";
-        level = 0;
-        content = {
-          type = "gpt";
-          partitions.primary = {
-            size = "100%";
-            content = {
-              type = "filesystem";
-              format = "ext4";
-              mountpoint = "/";
-            };
+        beegfs = {
+          label = "${hostName}-beegfs";
+          size = "100%";
+          type = "8300";
+          content = {
+            type = "filesystem";
+            format = "xfs";
+            # XFS filesystem labels are limited to 12 characters.
+            extraArgs = [ "-L" "STRIX${toString index}BEEGFS" ];
+            mountpoint = beegfsMountPoint;
+            mountOptions = [ "noatime" ];
           };
         };
       };
-    }
-  );
+    };
+  };
 
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
@@ -609,9 +613,13 @@ in
     };
   };
 
+  # disko-install seeds the persistent host keys by copying a directory onto
+  # /etc/ssh. Keep that directory traversable so sshd can read per-user
+  # authorized_keys after dropping privileges from root.
+  #
   # On netboot hosts /models is an NFS automount from trex and the server
   # side owns directory creation (chown from an all_squash client fails).
-  systemd.tmpfiles.rules = lib.optionals (!netboot) [
+  systemd.tmpfiles.rules = [ "d /etc/ssh 0755 root root -" ] ++ lib.optionals (!netboot) [
     "d /models 0755 root root -"
     "d /models/.cache 0775 grw users -"
     "d /models/.cache/huggingface 0775 grw users -"
@@ -748,6 +756,12 @@ in
         enable = true;
         anyInterface = true;
       };
+      links = lib.optionalAttrs enableSharedCx5 {
+        "10-cx5-fabric" = {
+          matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
+          linkConfig.Name = vllmFabricInterface;
+        };
+      };
       netdevs =
         lib.optionalAttrs useArdma0
           {
@@ -820,8 +834,8 @@ in
         };
       } // lib.optionalAttrs enableSharedCx5 {
         # Raise both Ethernet PFs of the shared ConnectX-5, but put the fabric
-        # address on exactly one PF per host.  Addressing both physical ports
-        # in the same CRS804 VLAN would create ambiguous routes.
+        # address on the port renamed by permanent MAC. Addressing both
+        # physical ports in the same CRS804 VLAN would create ambiguous routes.
         "15-shared-cx5-fabric" = {
           matchConfig.Name = vllmFabricInterface;
           address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
@@ -837,23 +851,10 @@ in
           };
         };
         "16-shared-cx5-unaddressed" = {
-          matchConfig.Name = if useCx5Port1 then "enp195s0f0np0" else "enp195s0f1np1";
-          networkConfig = {
-            DHCP = "no";
-            IPv6AcceptRA = false;
-            LinkLocalAddressing = "no";
-            ConfigureWithoutCarrier = true;
-          };
-          linkConfig = {
-            MTUBytes = "9000";
-            RequiredForOnline = "no";
-          };
-        };
-      } // lib.optionalAttrs (index == 1) {
-        # Some firmware profiles expose a duplicate SharedIO PCIe view on
-        # strix-1. Keep it up but unaddressed; enp195s0f1np1 owns .101.
-        "17-strix1-cx5-port1-duplicate" = {
-          matchConfig.Name = "enp196s0f1np1";
+          # The earlier, name-specific fabric unit wins for cx5fabric0. This
+          # generic fallback keeps every other mlx5 Ethernet PF up without
+          # depending on PCI bus numbering.
+          matchConfig.Driver = "mlx5_core";
           networkConfig = {
             DHCP = "no";
             IPv6AcceptRA = false;

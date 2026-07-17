@@ -101,6 +101,11 @@ in {
       # The DPU firewall is enabled and neither interface is globally trusted.
       # Authentication still gates BeeMsg; gRPC remains on the private LAN.
       openFirewall = true;
+      # Advertise only the 200G fabric address to BeeGFS peers. The RShim and
+      # OOB addresses are management paths, not cluster data paths, and their
+      # higher default priority otherwise causes a five-second TCP fallback on
+      # every node registration.
+      extraArgs = [ "--interfaces" "enp3s0np0 * 4" ];
     };
   };
   sops.secrets.beegfs-conn-auth = mkSecret "beegfs-conn-auth" { };

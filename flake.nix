@@ -448,6 +448,12 @@
           meta = {
             description = "My personal machines";
             nixpkgs = pkgsFor "x86_64-linux";
+            # NOTE: do not be tempted to derive this as
+            #   mapAttrs (_: v: v.pkgs) deployableNixosConfigurations
+            # — nixosSystem's result.pkgs is not eval-identical to the pkgs
+            # instance passed in (observed: whitespace-level drift in the
+            # ROCm overlay's aiter derivation), which silently makes hive
+            # nodes diverge from their standalone configurations.
             nodeNixpkgs = {
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
@@ -592,6 +598,27 @@
           mkSecret
           network
           { inherit pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays; };
+
+      # The Strix fleet normally netboots, but every node also carries a
+      # complete local fallback installation. These configurations reuse the
+      # production host modules while changing only that host's boot mode;
+      # they are install artifacts, not additional Colmena deployment nodes.
+      localBootNixosConfigurations =
+        nixpkgs.lib.genAttrs
+          [ "strix-1" "strix-2" "strix-3" "strix-4" ]
+          (hostName:
+            let
+              localBootNetwork = network // {
+                hosts = network.hosts // {
+                  ${hostName} = network.hosts.${hostName} // {
+                    netboot = false;
+                  };
+                };
+              };
+            in
+            nixosConfigurations.${hostName}.extendModules {
+              specialArgs.network = localBootNetwork;
+            });
 
       githubActions =
         let

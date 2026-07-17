@@ -68,11 +68,32 @@
     };
   };
 
-  # One global instruction source for both coding agents. Codex reads
-  # ~/.codex/AGENTS.md and Claude Code reads ~/.claude/CLAUDE.md.
+  # One global instruction source for all coding agents. Codex reads
+  # ~/.codex/AGENTS.md, Claude Code reads ~/.claude/CLAUDE.md, and pi reads
+  # ~/.pi/agent/AGENTS.md.
   home.file = {
     ".codex/AGENTS.md".source = ./ai-agent-instructions.md;
     ".claude/CLAUDE.md".source = ./ai-agent-instructions.md;
+    ".pi/agent/AGENTS.md".source = ./ai-agent-instructions.md;
+
+    # pi-coding-agent global settings. No home-manager module exists yet, so
+    # manage the JSON directly. Note: the store symlink is read-only, so pi's
+    # /settings TUI can't persist changes — edit here instead.
+    ".pi/agent/settings.json".text = builtins.toJSON {
+      defaultProvider = "anthropic";
+      # Skip per-project trust prompts, same spirit as claude-code's
+      # bypassPermissions above.
+      defaultProjectTrust = "always";
+      # Anonymous install/update ping to pi.dev; update checks are disabled
+      # separately via PI_SKIP_VERSION_CHECK below.
+      enableInstallTelemetry = false;
+    };
+  };
+
+  home.sessionVariables = {
+    # pi is nix-managed; its self-updater and version check are useless here.
+    PI_SKIP_VERSION_CHECK = "1";
+    PI_TELEMETRY = "0";
   };
 
   programs.direnv = {
@@ -142,6 +163,9 @@
       # Self-improving AI agent by Nous Research — creates skills from
       # experience and runs anywhere.
       hermes-agent
+      # pi-coding-agent (Mario Zechner) — minimal terminal coding agent with
+      # multi-model support; configured via ~/.pi/agent above.
+      pi
       # opencode
       # codex
     ])

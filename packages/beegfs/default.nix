@@ -29,6 +29,8 @@ stdenv.mkDerivation rec {
     hash = "sha256-2ihlQ6dCfbivP+MnaIhBkfQHeNgvRJhkX4M8hvZdvuQ=";
   };
 
+  patches = [ ./mountinfo-optional-fields.patch ];
+
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ libnl openssl rdma-core util-linux curl xfsprogs ];
 
