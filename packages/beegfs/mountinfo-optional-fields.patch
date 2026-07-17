@@ -1,0 +1,28 @@
+diff --git a/common/source/common/system/System.cpp b/common/source/common/system/System.cpp
+index 00ff24fd8..9f3150f7e 100644
+--- a/common/source/common/system/System.cpp
++++ b/common/source/common/system/System.cpp
+@@ -391,8 +391,21 @@ Mutex System::strerrorMutex;
+    std::string line, device_path, device_majmin;
+    while (std::getline(mountInfo, line)) {
+       std::istringstream is(line);
+-      std::string dummy;
+-      is >> dummy >> dummy >> device_majmin >> dummy >> dummy >> dummy >> dummy >> dummy >> dummy >> device_path;
++      std::string dummy, field, fs_type;
++
++      // mountinfo has six mandatory fields followed by zero or more optional
++      // fields, a "-" separator, the filesystem type and the mount source.
++      // Do not assume a fixed optional-field count: systemd mount namespaces
++      // commonly add master:/propagate_from: fields.
++      is >> dummy >> dummy >> device_majmin >> dummy >> dummy >> dummy;
++      while (is >> field && field != "-")
++         ;
++
++      if (field != "-" || !(is >> fs_type >> device_path))
++      {
++         device_path.clear();
++         continue;
++      }
+ 
+       if (majmin_f.str() == device_majmin)
+          break;
