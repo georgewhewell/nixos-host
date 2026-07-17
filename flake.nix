@@ -1,4 +1,6 @@
 {
+  description = "satanic.link fleet: NixOS (x86/aarch64/riscv), nix-darwin, OpenWrt and RouterOS configs, deployed with colmena";
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     colmena.url = "github:zhaofengli/colmena";
@@ -323,15 +325,27 @@
       };
 
       # Base pkgs - no GPU acceleration
-      pkgsFor = system:
+      # Nix does not memoize function application: a bare
+      # `system: import nixpkgs { ... }` re-instantiates nixpkgs for every
+      # machine that calls it. genAttrs is lazy, so each variant/system pair
+      # is imported at most once and shared by all consumers (machine
+      # builders, packages, devShells, colmena meta).
+      memoizePerSystem =
+        mk:
+        let
+          instances = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ] mk;
+        in
+        system: instances.${system};
+
+      pkgsFor = memoizePerSystem (system:
         import nixpkgs {
           inherit system;
           overlays = allOverlays;
           config = baseConfig;
-        };
+        });
 
       # CUDA-enabled pkgs for NVIDIA machines
-      pkgsForCuda = system:
+      pkgsForCuda = memoizePerSystem (system:
         import nixpkgs {
           inherit system;
           overlays = allOverlays;
@@ -341,22 +355,22 @@
               cudaSupport = true;
               cudaCapabilities = [ "8.9" ];
             };
-        };
+        });
 
       # ROCm-enabled pkgs for AMD GPU machines
-      pkgsForRocm = system:
+      pkgsForRocm = memoizePerSystem (system:
         import nixpkgs {
           inherit system;
           overlays = allOverlays;
           config = baseConfig // { rocmSupport = true; };
-        };
+        });
 
-      pkgsForRocmStrixHalo = system:
+      pkgsForRocmStrixHalo = memoizePerSystem (system:
         import nixpkgs {
           inherit system;
           overlays = allOverlays ++ [ ryzenadjDragonRangeOverlay ];
           config = baseConfig // { rocmSupport = true; };
-        };
+        });
 
       # ROCm-enabled pkgs, rebuilt with `-march=znver5 -mtune=znver5`
       # for Strix Halo (Zen 5). Every C/C++ derivation in the closure
@@ -365,7 +379,7 @@
       # matching cascade: strix-1, strix-2, and fuckup. The `gccarch-*`
       # store-path divergence also keeps these binaries from being
       # accidentally substituted onto a weaker CPU.
-      pkgsForRocmZnver5 = system:
+      pkgsForRocmZnver5 = memoizePerSystem (_system:
         import nixpkgs {
           localSystem = {
             config = "x86_64-unknown-linux-gnu";
@@ -376,7 +390,7 @@
           };
           overlays = allOverlays;
           config = baseConfig // { rocmSupport = true; };
-        };
+        });
 
       forAllSystems = f:
         builtins.listToAttrs (
@@ -398,8 +412,10 @@
             value = import (./modules + "/${name}");
           })
           (builtins.readDir ./modules);
-    in
-    rec {
+
+      # ——— interdependent outputs, let-bound so the output set below needs
+      # neither `rec` nor self.outputs backreferences ———
+
       # Define mkSecret once and pass it to both machines and colmena
       secretsRegistry = import ./secrets/default.nix;
       mkSecret = name: overrides:
@@ -410,39 +426,33 @@
       # the standalone esphome generator.
       network = import ./network.nix nixpkgs.lib;
 
-      # expose local packages (using shared pkgsFor)
-      packages = forAllSystems (system:
-        let
-          pkgs = pkgsFor system;
-        in
-        (import ./packages pkgs)
-        // {
-          # Keep `nix run .#colmena` on the same Colmena input that provides
-          # `colmenaHive`; nixpkgs currently carries an older 0.4 CLI.
-          colmena = inputs.colmena.packages.${system}.colmena;
-          disko = inputs.disko.packages.${system}.disko;
-          disko-install = inputs.disko.packages.${system}.disko-install;
-        }
-        # OpenWrt "machines" (mips_24kc / ath79). ImageBuilder is x86-only.
-        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
-          openwrt-unifiac-pro = import ./machines/openwrt-mips/unifi-ac-pro {
-            inherit pkgs;
-            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
-          };
-          openwrt-10g-onti = import ./machines/openwrt-mips/xikestor-sks8300-8x {
-            inherit pkgs;
-            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
-          };
-        });
+      nixosModules = builtins.removeAttrs moduleAttrs [ "xmrig-darwin" ];
 
-      diskoConfigurations = {
-        trex-boot-ssds = import ./machines/x86/trex/boot-ssds.disko.nix;
+      nixosModule = {
+        imports =
+          builtins.attrValues nixosModules
+          ++ [
+            inputs.impermanence.nixosModules.impermanence
+            inputs.sops-nix.nixosModules.sops
+            inputs.disko.nixosModules.disko
+            ./profiles/sops.nix
+          ];
       };
 
-      colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
+      nixosConfigurations =
+        import ./machines
+          nixosModule
+          inputs
+          mkSecret
+          network
+          { inherit pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays; };
+
+      # Image artifacts (ISOs, SD cards, USB sticks) that evaluate as full
+      # NixOS systems but are never colmena deployment targets.
       imageOnlyNixosConfigurations = [ "router-usb" "strix-installer" "k3SdImage" ];
       deployableNixosConfigurations =
-        builtins.removeAttrs self.nixosConfigurations imageOnlyNixosConfigurations;
+        builtins.removeAttrs nixosConfigurations imageOnlyNixosConfigurations;
+
       colmena =
         {
           meta = {
@@ -450,10 +460,14 @@
             nixpkgs = pkgsFor "x86_64-linux";
             # NOTE: do not be tempted to derive this as
             #   mapAttrs (_: v: v.pkgs) deployableNixosConfigurations
-            # — nixosSystem's result.pkgs is not eval-identical to the pkgs
-            # instance passed in (observed: whitespace-level drift in the
-            # ROCm overlay's aiter derivation), which silently makes hive
-            # nodes diverge from their standalone configurations.
+            # — nixosSystem's result.pkgs is NOT the pkgs passed in. The
+            # nixpkgs module does `cfg.pkgs.appendOverlays cfg.overlays`
+            # (nixos/modules/misc/nixpkgs.nix), so any module-contributed
+            # nixpkgs.overlays (e.g. nix-strix-halo's) is already baked into
+            # result.pkgs. Handing that back to colmena re-appends the same
+            # overlay a second time when the node's modules re-evaluate,
+            # double-applying its overrides and drifting every derivation the
+            # overlay touches away from the standalone configuration.
             nodeNixpkgs = {
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
@@ -485,6 +499,49 @@
             imports = value._module.args.modules;
           })
           deployableNixosConfigurations;
+    in
+    {
+      inherit
+        secretsRegistry
+        mkSecret
+        network
+        nixosModules
+        nixosModule
+        nixosConfigurations
+        imageOnlyNixosConfigurations
+        deployableNixosConfigurations
+        colmena;
+
+      # expose local packages (using shared pkgsFor)
+      packages = forAllSystems (system:
+        let
+          pkgs = pkgsFor system;
+        in
+        (import ./packages pkgs)
+        // {
+          # Keep `nix run .#colmena` on the same Colmena input that provides
+          # `colmenaHive`; nixpkgs currently carries an older 0.4 CLI.
+          colmena = inputs.colmena.packages.${system}.colmena;
+          disko = inputs.disko.packages.${system}.disko;
+          disko-install = inputs.disko.packages.${system}.disko-install;
+        }
+        # OpenWrt "machines" (mips_24kc / ath79). ImageBuilder is x86-only.
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          openwrt-unifiac-pro = import ./machines/openwrt-mips/unifi-ac-pro {
+            inherit pkgs;
+            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+          };
+          openwrt-10g-onti = import ./machines/openwrt-mips/xikestor-sks8300-8x {
+            inherit pkgs;
+            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+          };
+        });
+
+      diskoConfigurations = {
+        trex-boot-ssds = import ./machines/x86/trex/boot-ssds.disko.nix;
+      };
+
+      colmenaHive = inputs.colmena.lib.makeHive colmena;
 
       darwinConfigurations."air" = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
@@ -514,21 +571,8 @@
       };
 
 
-      nixosModules = builtins.removeAttrs moduleAttrs [ "xmrig-darwin" ];
-
       darwinModules = {
         xmrig-darwin = moduleAttrs.xmrig-darwin;
-      };
-
-      nixosModule = {
-        imports =
-          builtins.attrValues self.nixosModules
-          ++ [
-            inputs.impermanence.nixosModules.impermanence
-            inputs.sops-nix.nixosModules.sops
-            inputs.disko.nixosModules.disko
-            ./profiles/sops.nix
-          ];
       };
 
       devShells = forAllSystems (system: {
@@ -590,14 +634,6 @@
             beegfs = pkgs.testers.runNixOSTest (import ./tests/beegfs.nix { inherit pkgs; });
           };
       };
-
-      nixosConfigurations =
-        import ./machines
-          self.nixosModule
-          inputs
-          mkSecret
-          network
-          { inherit pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays; };
 
       # The Strix fleet normally netboots, but every node also carries a
       # complete local fallback installation. These configurations reuse the
