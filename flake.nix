@@ -4,11 +4,13 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     colmena.url = "github:zhaofengli/colmena";
+    colmena.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-hardware.url = "github:NixOS/nixos-hardware";
+    nixos-hardware.inputs.nixpkgs.follows = "nixpkgs";
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
@@ -18,6 +20,7 @@
     impermanence.inputs.home-manager.follows = "home-manager";
 
     ethereum.url = "github:nix-community/ethereum.nix/8f01580481e88e169b7ada56f1500dccd6cefe61";
+    ethereum.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-bitcoin.url = "github:fort-nix/nix-bitcoin/release";
     nix-bitcoin.inputs.nixpkgs.follows = "nixpkgs";
@@ -29,8 +32,10 @@
     vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
+    nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs";
 
     mac-app-util.url = "github:hraban/mac-app-util";
+    mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
 
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
@@ -64,6 +69,7 @@
       # Local deploy input while Codex Fetch support is ahead of the remote branch.
       url = "git+file:///mnt/Home/src/hellas?shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
     };
 
     nanokvm = {
@@ -106,13 +112,17 @@
     };
 
     mt7927.url = "github:cmspam/mt7927-nixos";
+    mt7927.inputs.nixpkgs.follows = "nixpkgs";
 
     mlnx-ofed-nixos = {
       url = "github:codgician/mlnx-ofed-nixos";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Applied globally in allOverlays but consumed only by packages/tari
+    # (rust-bin.fromRustupToolchainFile); goes away if tari mining does.
     rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
 
     firefox-addons = {
       url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
