@@ -139,6 +139,12 @@ struct CameraImageSpec {
   operator Resolution() const { return Resolution{width, height}; }
 };
 
+class CameraListener {
+ public:
+  virtual void on_camera_image(const std::shared_ptr<CameraImage> &image) = 0;
+  virtual ~CameraListener() {}
+};
+
 /** Abstract camera base class. Collaborates with API.
  *  1) API server starts and installs callback (add_image_callback)
  *     which is called by the camera when a new image is available.
@@ -155,6 +161,7 @@ class Camera : public EntityBase, public Component {
   Camera();
   // Camera implementation invokes callback to publish a new image.
   virtual void add_image_callback(std::function<void(std::shared_ptr<CameraImage>)> &&callback);
+  virtual void add_listener(CameraListener *listener);
   // Camera implementation invokes callback when start_stream is called.
   virtual void add_stream_start_callback(std::function<void()> &&callback);
   // Camera implementation invokes callback when stop_stream is called.

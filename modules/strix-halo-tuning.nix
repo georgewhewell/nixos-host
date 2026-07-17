@@ -7,19 +7,34 @@ let
   cfg = config.hardware.strixHalo;
   runtimeCfg = cfg.runtimeAssertions;
   pagesPerGiB = 262144; # 1 GiB / 4 KiB
-  mesFirmwareRev = "3d5c8135206cef364e7d353711b3e7358a90d152";
-  fetchMesFirmware =
-    file: hash:
-    pkgs.fetchurl {
-      url = "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amdgpu/${file}?id=${mesFirmwareRev}";
-      inherit hash;
+  dpmClockLevelOption =
+    clock:
+    lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "2";
+      description = ''
+        Optional level mask written to amdgpu's `pp_dpm_${clock}` while the
+        device is in manual performance mode. Values use the kernel sysfs
+        format, for example "2" or "6 7".
+      '';
     };
-  mesFirmwarePackage = pkgs.runCommand "strix-halo-mes-firmware-0x80" { } ''
-    install -Dm644 ${fetchMesFirmware "gc_11_5_0_mes_2.bin" "sha256-XdxUTOMcScfvDxQQyo7oi3KmrARRS9Ec+v/gBJQ5ce0="} \
-      "$out/lib/firmware/amdgpu/gc_11_5_0_mes_2.bin"
-    install -Dm644 ${fetchMesFirmware "gc_11_5_1_mes_2.bin" "sha256-jgeDLBjYe3ZD/CIWM9hBpfo7rg59Kq0fKyEuGQ+WOgo="} \
-      "$out/lib/firmware/amdgpu/gc_11_5_1_mes_2.bin"
-  '';
+  configuredDpmClockLevels = lib.filterAttrs (_: value: value != null) cfg.amdgpuDpmClockLevels;
+  hasAmdgpuRuntimeConfig =
+    cfg.amdgpuPerformanceLevel != null
+    || cfg.amdgpuDpmState != null
+    || hasAmdgpuManualEdits;
+  hasAmdgpuManualEdits =
+    configuredDpmClockLevels != { }
+    || cfg.amdgpuOdSclk.min != null
+    || cfg.amdgpuOdSclk.max != null;
+  dpmClockLevelScript = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList
+      (clock: levels: ''
+        write_attr "$dev/pp_dpm_${clock}" ${lib.escapeShellArg levels} || true
+      '')
+      configuredDpmClockLevels
+  );
   efiValueAssertionType = lib.types.submodule {
     options = {
       variable = lib.mkOption {
@@ -170,6 +185,82 @@ let
       exit "$failed"
     '';
   };
+  amdgpuPerformanceSettingsScript = pkgs.writeShellApplication {
+    name = "strix-halo-amdgpu-performance-settings";
+    runtimeInputs = with pkgs; [
+      coreutils
+    ];
+    text = ''
+      set -euo pipefail
+
+      saw_device=0
+      wrote=0
+
+      write_attr() {
+        local path=$1
+        local value=$2
+
+        if [ ! -e "$path" ]; then
+          printf 'warning: missing %s\n' "$path" >&2
+          return 1
+        fi
+
+        if printf '%s\n' "$value" > "$path"; then
+          printf 'set %s to ' "$path"
+          cat "$path" 2>/dev/null || printf '%s' "$value"
+          printf '\n'
+          wrote=1
+          return 0
+        fi
+
+        printf 'warning: %s rejected %s\n' "$path" "$value" >&2
+        return 1
+      }
+
+      for _ in $(seq 1 30); do
+
+        for dev in /sys/class/drm/card*/device; do
+          [ -e "$dev/vendor" ] || continue
+          [ "$(cat "$dev/vendor" 2>/dev/null)" = "0x1002" ] || continue
+          saw_device=1
+
+          ${lib.optionalString (cfg.amdgpuDpmState != null) ''
+            write_attr "$dev/power_dpm_state" ${lib.escapeShellArg cfg.amdgpuDpmState} || true
+          ''}
+          ${lib.optionalString hasAmdgpuManualEdits ''
+            write_attr "$dev/power_dpm_force_performance_level" manual || true
+          ''}
+          ${dpmClockLevelScript}
+          ${lib.optionalString (cfg.amdgpuOdSclk.min != null) ''
+            write_attr "$dev/pp_od_clk_voltage" ${lib.escapeShellArg "s 0 ${toString cfg.amdgpuOdSclk.min}"} || true
+          ''}
+          ${lib.optionalString (cfg.amdgpuOdSclk.max != null) ''
+            write_attr "$dev/pp_od_clk_voltage" ${lib.escapeShellArg "s 1 ${toString cfg.amdgpuOdSclk.max}"} || true
+          ''}
+          ${lib.optionalString ((cfg.amdgpuOdSclk.min != null || cfg.amdgpuOdSclk.max != null) && cfg.amdgpuOdSclk.commit) ''
+            write_attr "$dev/pp_od_clk_voltage" c || true
+          ''}
+          ${lib.optionalString (
+            cfg.amdgpuPerformanceLevel != null
+            && (!hasAmdgpuManualEdits || cfg.amdgpuPerformanceLevel != "manual")
+          ) ''
+            write_attr "$dev/power_dpm_force_performance_level" ${lib.escapeShellArg cfg.amdgpuPerformanceLevel} || true
+          ''}
+        done
+
+        [ "$wrote" -eq 1 ] && exit 0
+        sleep 1
+      done
+
+      if [ "$saw_device" -eq 1 ]; then
+        echo "no AMD DRM device accepted Strix Halo amdgpu performance settings; continuing" >&2
+        exit 0
+      fi
+
+      echo "no AMD DRM device exposed amdgpu performance settings" >&2
+      exit 1
+    '';
+  };
 in
 {
   options.hardware.strixHalo = {
@@ -199,16 +290,6 @@ in
       '';
     };
 
-    mesFirmware0x80 = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = ''
-        Install uncompressed Strix Halo MES 0x80 firmware blobs ahead of
-        distro linux-firmware. MES 0x83 regresses ROCm queue creation on
-        gfx1151 with gfxhub CPF page faults.
-      '';
-    };
-
     disableCwsr = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -216,6 +297,64 @@ in
         Disable amdgpu compute wave save/restore. Leave off by default; enable
         only as a workaround for ROCm compute preemption instability.
       '';
+    };
+
+    amdgpuPerformanceLevel = lib.mkOption {
+      type = lib.types.nullOr (lib.types.enum [
+        "auto"
+        "low"
+        "high"
+        "manual"
+        "profile_standard"
+        "profile_min_sclk"
+        "profile_min_mclk"
+        "profile_peak"
+      ]);
+      default = null;
+      example = "high";
+      description = ''
+        Optional value for amdgpu's `power_dpm_force_performance_level`.
+        `high` asks firmware to prefer the highest exposed DPM clocks under
+        load; it does not overclock beyond the device's advertised ranges.
+      '';
+    };
+
+    amdgpuDpmState = lib.mkOption {
+      type = lib.types.nullOr (lib.types.enum [
+        "battery"
+        "balanced"
+        "performance"
+      ]);
+      default = null;
+      example = "performance";
+      description = "Optional value for amdgpu's legacy `power_dpm_state` sysfs knob.";
+    };
+
+    amdgpuDpmClockLevels = {
+      sclk = dpmClockLevelOption "sclk";
+      mclk = dpmClockLevelOption "mclk";
+      fclk = dpmClockLevelOption "fclk";
+      socclk = dpmClockLevelOption "socclk";
+    };
+
+    amdgpuOdSclk = {
+      min = lib.mkOption {
+        type = lib.types.nullOr lib.types.ints.positive;
+        default = null;
+        example = 2900;
+        description = "Optional OD_SCLK minimum clock in MHz for `pp_od_clk_voltage`.";
+      };
+      max = lib.mkOption {
+        type = lib.types.nullOr lib.types.ints.positive;
+        default = null;
+        example = 2900;
+        description = "Optional OD_SCLK maximum clock in MHz for `pp_od_clk_voltage`.";
+      };
+      commit = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Commit OD_SCLK edits by writing `c` to `pp_od_clk_voltage`.";
+      };
     };
 
     tuned = {
@@ -294,9 +433,6 @@ in
         "vm.swappiness" = 1;
       };
     };
-
-    hardware.firmware = lib.optional cfg.mesFirmware0x80 mesFirmwarePackage;
-
     # `hipHostRegister` pins large pages; default RLIMIT_MEMLOCK is 64 KiB.
     security.pam.loginLimits = [
       {
@@ -342,6 +478,22 @@ in
         ExecStart = "${pkgs.tuned}/bin/tuned-adm profile ${cfg.tuned.profile}";
       };
     };
+
+    systemd.services.strix-halo-amdgpu-performance-settings =
+      lib.mkIf hasAmdgpuRuntimeConfig {
+        description = "Set Strix Halo amdgpu performance settings";
+        after = [
+          "systemd-udev-settle.service"
+          "tuned-set-profile.service"
+        ];
+        wants = [ "systemd-udev-settle.service" ];
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${amdgpuPerformanceSettingsScript}/bin/strix-halo-amdgpu-performance-settings";
+        };
+      };
 
     assertions = [
       {

@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Trace Thunderbolt control-channel packets with kernel tracepoints.
+
+Usage:
+  scripts/tb-trace [options] <status|arm|dump|capture|reset> [hosts...]
+
+Actions:
+  status   Show tracepoint and buffer state.
+  arm      Clear the trace buffer, enable thunderbolt tb_tx/tb_rx/tb_event,
+           and write a timestamp marker.
+  dump     Stop tracing and write each host trace to --out-dir.
+  capture  Run arm, wait --duration seconds, then dump.
+  reset    Disable thunderbolt tracepoints and clear the trace buffer.
+
+Hosts:
+  Use "local" for the current host. Other names are reached with ssh.
+  Default: local
+
+Options:
+  --duration SECONDS  Capture duration for "capture". Default: 30.
+  --out-dir DIR       Output directory for "dump" and "capture".
+                      Default: traces/tb-YYYYmmdd-HHMMSS
+  --buffer-kb KB      Per-CPU trace buffer size used by "arm". Default: 16384.
+  --sudo CMD          Sudo command. Default: sudo.
+  --ssh-option OPT    Extra ssh -o option. May be repeated.
+  -h, --help          Show this help.
+
+Examples:
+  scripts/tb-trace status local fuckup
+  scripts/tb-trace arm local fuckup
+  scripts/tb-trace dump local fuckup
+  scripts/tb-trace --duration 45 capture local fuckup
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+action=""
+duration=30
+buffer_kb=16384
+sudo_cmd="sudo"
+out_dir=""
+ssh_opts=(-o BatchMode=yes -o ConnectTimeout=5)
+hosts=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --duration)
+      [ "$#" -ge 2 ] || die "--duration requires an argument"
+      duration="$2"
+      shift 2
+      ;;
+    --out-dir)
+      [ "$#" -ge 2 ] || die "--out-dir requires an argument"
+      out_dir="$2"
+      shift 2
+      ;;
+    --buffer-kb)
+      [ "$#" -ge 2 ] || die "--buffer-kb requires an argument"
+      buffer_kb="$2"
+      shift 2
+      ;;
+    --sudo)
+      [ "$#" -ge 2 ] || die "--sudo requires an argument"
+      sudo_cmd="$2"
+      shift 2
+      ;;
+    --ssh-option)
+      [ "$#" -ge 2 ] || die "--ssh-option requires an argument"
+      ssh_opts+=(-o "$2")
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      die "unknown option: $1"
+      ;;
+    *)
+      if [ -z "$action" ]; then
+        action="$1"
+      else
+        hosts+=("$1")
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ "$#" -gt 0 ]; then
+  hosts+=("$@")
+fi
+
+[ -n "$action" ] || die "missing action"
+case "$action" in
+  status|arm|dump|capture|reset) ;;
+  *) die "unknown action: $action" ;;
+esac
+
+case "$duration" in
+  ''|*[!0-9]*) die "--duration must be an integer number of seconds" ;;
+esac
+case "$buffer_kb" in
+  ''|*[!0-9]*) die "--buffer-kb must be an integer number of KiB" ;;
+esac
+
+if [ "${#hosts[@]}" -eq 0 ]; then
+  hosts=(local)
+fi
+
+if [ -z "$out_dir" ]; then
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  out_dir="$repo_root/traces/tb-$(date +%Y%m%d-%H%M%S)"
+fi
+
+remote_script='
+set -euo pipefail
+
+action="$1"
+buffer_kb="$2"
+marker="$3"
+trace=/sys/kernel/tracing
+events="$trace/events/thunderbolt"
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+[ -d "$trace" ] || die "tracefs is not mounted at $trace"
+[ -d "$events" ] || die "thunderbolt tracepoint group is not available"
+
+set_event() {
+  local event="$1"
+  local value="$2"
+
+  [ -e "$events/$event/enable" ] || die "missing thunderbolt event: $event"
+  printf "%s" "$value" > "$events/$event/enable"
+}
+
+show_status() {
+  printf "host=%s\n" "$(hostname)"
+  printf "tracing_on=%s\n" "$(cat "$trace/tracing_on")"
+  printf "buffer_size_kb=%s\n" "$(cat "$trace/buffer_size_kb")"
+  for event in tb_tx tb_rx tb_event; do
+    printf "%s=%s\n" "$event" "$(cat "$events/$event/enable")"
+  done
+}
+
+disable_events() {
+  set_event tb_tx 0
+  set_event tb_rx 0
+  set_event tb_event 0
+}
+
+case "$action" in
+  status)
+    show_status
+    ;;
+  arm)
+    printf "0" > "$trace/tracing_on"
+    disable_events
+    printf "%s" "$buffer_kb" > "$trace/buffer_size_kb"
+    : > "$trace/trace"
+    set_event tb_tx 1
+    set_event tb_rx 1
+    set_event tb_event 1
+    printf "1" > "$trace/tracing_on"
+    printf "%s host=%s time=%s\n" "$marker" "$(hostname)" "$(date --iso-8601=seconds)" |
+      tee "$trace/trace_marker" >/dev/null 2>/dev/null || true
+    printf "%s host=%s time=%s\n" "$marker" "$(hostname)" "$(date --iso-8601=seconds)" > /dev/kmsg
+    show_status
+    ;;
+  dump)
+    printf "0" > "$trace/tracing_on"
+    cat "$trace/trace"
+    ;;
+  reset)
+    printf "0" > "$trace/tracing_on"
+    disable_events
+    : > "$trace/trace"
+    show_status
+    ;;
+  *)
+    die "unknown remote action: $action"
+    ;;
+esac
+'
+
+run_host() {
+  local host="$1"
+  local remote_action="$2"
+  local marker="$3"
+
+  if [ "$host" = "local" ] || [ "$host" = "$(hostname)" ]; then
+    "$sudo_cmd" bash -s -- "$remote_action" "$buffer_kb" "$marker" <<<"$remote_script"
+  else
+    ssh "${ssh_opts[@]}" "$host" "$sudo_cmd bash -s -- '$remote_action' '$buffer_kb' '$marker'" <<<"$remote_script"
+  fi
+}
+
+safe_host_name() {
+  printf "%s" "$1" | sed 's/[^A-Za-z0-9_.@+-]/_/g'
+}
+
+marker="tb-trace $(date --iso-8601=seconds)"
+
+case "$action" in
+  status|arm|reset)
+    for host in "${hosts[@]}"; do
+      echo "== $host =="
+      run_host "$host" "$action" "$marker"
+    done
+    ;;
+  dump)
+    mkdir -p "$out_dir"
+    for host in "${hosts[@]}"; do
+      safe_host="$(safe_host_name "$host")"
+      out="$out_dir/$safe_host.trace"
+      echo "dumping $host -> $out"
+      run_host "$host" dump "$marker" > "$out"
+    done
+    echo "wrote $out_dir"
+    ;;
+  capture)
+    for host in "${hosts[@]}"; do
+      echo "== arming $host =="
+      run_host "$host" arm "$marker"
+    done
+    echo "capturing for ${duration}s; trigger the Thunderbolt event now"
+    sleep "$duration"
+    mkdir -p "$out_dir"
+    for host in "${hosts[@]}"; do
+      safe_host="$(safe_host_name "$host")"
+      out="$out_dir/$safe_host.trace"
+      echo "dumping $host -> $out"
+      run_host "$host" dump "$marker" > "$out"
+    done
+    echo "wrote $out_dir"
+    ;;
+esac

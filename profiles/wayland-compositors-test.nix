@@ -51,10 +51,7 @@ in {
   services.desktopManager.plasma6.enable = true;
 
   # GNOME (Wayland session). Mutter + gnome-shell + portals.
-  services.xserver.desktopManager.gnome.enable = true;
-
-  # COSMIC (System76, Smithay-based). Has its own start-cosmic launcher.
-  services.desktopManager.cosmic.enable = true;
+  services.desktopManager.gnome.enable = true;
 
   environment.systemPackages = [
     # niri ships its own `niri` binary; wrap it to match the start-* pattern.
@@ -75,12 +72,6 @@ in {
       desktop = "GNOME";
       # Use gnome-session with explicit "gnome" target.
       exec = "${pkgs.gnome-session}/bin/gnome-session --session=gnome";
-    })
-
-    (mkStart {
-      name = "cosmic";
-      desktop = "COSMIC";
-      exec = "${pkgs.cosmic-session}/bin/start-cosmic";
     })
   ]
   # Apps the niri default config binds to (otherwise Mod+T / Mod+D do nothing).

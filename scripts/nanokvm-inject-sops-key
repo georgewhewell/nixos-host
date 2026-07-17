@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+legacy_key_dir="$repo_root/../nixos-nanokvm"
+default_key_dir="$repo_root/.secrets/nanokvm-host-keys"
+if [[ -n "${NANOKVM_HOST_KEY_DIR:-}" ]]; then
+  key_dir="$NANOKVM_HOST_KEY_DIR"
+elif [[ -s "$legacy_key_dir/.ssh_host_ed25519_key" ]]; then
+  key_dir="$legacy_key_dir"
+else
+  key_dir="$default_key_dir"
+fi
+sd_host="${NANOKVM_SD_HOST:-root@rock-5b}"
+root_part="${NANOKVM_SD_ROOT_PART:-/dev/mmcblk1p2}"
+mount_point="${NANOKVM_SD_MOUNT:-/tmp/nanokvm-sd-root}"
+
+usage() {
+  cat >&2 <<EOF
+Usage:
+  $0
+  $0 recipient
+  $0 inject-sd [--ssh-host HOST] [--root-part DEV] [--mount-point DIR]
+
+Environment:
+  NANOKVM_HOST_KEY_DIR   Host-key directory, default .secrets/nanokvm-host-keys
+                         unless legacy keys exist in ../nixos-nanokvm.
+  NANOKVM_SD_HOST        SSH target holding the SD card, default root@rock-5b.
+  NANOKVM_SD_ROOT_PART   Root partition on that target, default /dev/mmcblk1p2.
+  NANOKVM_SD_MOUNT       Remote mount point, default /tmp/nanokvm-sd-root.
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+ed_key="$key_dir/.ssh_host_ed25519_key"
+rsa_key="$key_dir/.ssh_host_rsa_key"
+
+generate_key() {
+  local type="$1" path="$2" comment="$3"
+
+  if [[ -s "$path" && -s "$path.pub" ]]; then
+    return 0
+  fi
+
+  echo "[nanokvm-sops] generating host-$type key at $path" >&2
+  rm -f "$path" "$path.pub"
+  case "$type" in
+    ed25519) ssh-keygen -q -t ed25519 -N "" -C "$comment" -f "$path" ;;
+    rsa) ssh-keygen -q -t rsa -b 4096 -N "" -C "$comment" -f "$path" ;;
+    *) die "unsupported key type: $type" ;;
+  esac
+}
+
+ensure_keys() {
+  install -d -m 700 "$key_dir"
+
+  for kind in ed25519 rsa; do
+    local old="$key_dir/ssh_host_${kind}_key"
+    local new="$key_dir/.ssh_host_${kind}_key"
+    if [[ -s "$old" && -s "$old.pub" && ! -s "$new" && ! -s "$new.pub" ]]; then
+      cp -p "$old" "$new"
+      cp -p "$old.pub" "$new.pub"
+    fi
+  done
+
+  generate_key ed25519 "$ed_key" nanokvm-sops-host-key
+  generate_key rsa "$rsa_key" nanokvm-host-key
+  chmod 600 "$ed_key" "$rsa_key"
+  chmod 644 "$ed_key.pub" "$rsa_key.pub"
+}
+
+age_recipient() {
+  local ssh_to_age
+  if [[ -n "${SSH_TO_AGE:-}" ]]; then
+    ssh_to_age="$SSH_TO_AGE"
+  elif command -v ssh-to-age >/dev/null 2>&1; then
+    ssh_to_age="$(command -v ssh-to-age)"
+  else
+    ssh_to_age="$(nix build --no-link --print-out-paths nixpkgs#ssh-to-age)/bin/ssh-to-age"
+  fi
+  "$ssh_to_age" -i "$ed_key.pub"
+}
+
+inject_sd() {
+  local tmp mp_q part_q remote
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  cp "$ed_key" "$tmp/ssh_host_ed25519_key"
+  cp "$ed_key.pub" "$tmp/ssh_host_ed25519_key.pub"
+  cp "$rsa_key" "$tmp/ssh_host_rsa_key"
+  cp "$rsa_key.pub" "$tmp/ssh_host_rsa_key.pub"
+
+  mp_q="$(shell_quote "$mount_point")"
+  part_q="$(shell_quote "$root_part")"
+  remote="
+set -eu
+mp=$mp_q
+part=$part_q
+cleanup() { umount \"\$mp\" 2>/dev/null || true; }
+trap cleanup EXIT
+umount \"\$mp\" 2>/dev/null || true
+mkdir -p \"\$mp\"
+mount \"\$part\" \"\$mp\"
+install -d -m 0755 \"\$mp/etc/ssh\"
+tar -C \"\$mp/etc/ssh\" -xf -
+chown root:root \
+  \"\$mp/etc/ssh/ssh_host_ed25519_key\" \
+  \"\$mp/etc/ssh/ssh_host_ed25519_key.pub\" \
+  \"\$mp/etc/ssh/ssh_host_rsa_key\" \
+  \"\$mp/etc/ssh/ssh_host_rsa_key.pub\"
+chmod 600 \"\$mp/etc/ssh/ssh_host_ed25519_key\" \"\$mp/etc/ssh/ssh_host_rsa_key\"
+chmod 644 \"\$mp/etc/ssh/ssh_host_ed25519_key.pub\" \"\$mp/etc/ssh/ssh_host_rsa_key.pub\"
+sync
+"
+
+  echo "[nanokvm-sops] installing SSH host keys on $sd_host:$root_part" >&2
+  # The remote script is constructed from shell-quoted local values above.
+  # shellcheck disable=SC2029
+  tar -C "$tmp" -cf - \
+    ssh_host_ed25519_key ssh_host_ed25519_key.pub \
+    ssh_host_rsa_key ssh_host_rsa_key.pub |
+    ssh "$sd_host" "$remote"
+}
+
+mode="${1:-default}"
+if [[ "$mode" == "recipient" || "$mode" == "inject-sd" ]]; then
+  shift
+elif [[ "$mode" == "-h" || "$mode" == "--help" ]]; then
+  usage
+  exit 0
+elif [[ "$mode" != "default" ]]; then
+  usage
+  exit 2
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ssh-host)
+      sd_host="${2:?missing value for --ssh-host}"
+      shift 2
+      ;;
+    --root-part)
+      root_part="${2:?missing value for --root-part}"
+      shift 2
+      ;;
+    --mount-point)
+      mount_point="${2:?missing value for --mount-point}"
+      shift 2
+      ;;
+    --key-dir)
+      key_dir="${2:?missing value for --key-dir}"
+      ed_key="$key_dir/.ssh_host_ed25519_key"
+      rsa_key="$key_dir/.ssh_host_rsa_key"
+      shift 2
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+ensure_keys
+recipient="$(age_recipient)"
+expected_recipient="$(awk '/&nanokvm[[:space:]]+age1/ { print $3; exit }' "$repo_root/.sops.yaml")"
+if [[ -n "$expected_recipient" && "$recipient" != "$expected_recipient" ]]; then
+  cat >&2 <<EOF
+error: NanoKVM host-key recipient mismatch
+  key dir:    $key_dir
+  key age:    $recipient
+  sops age:   $expected_recipient
+
+Set NANOKVM_HOST_KEY_DIR to the key dir matching .sops.yaml, or rekey
+secrets/wifi.yaml before writing the SD card.
+EOF
+  exit 1
+fi
+
+if [[ "$mode" == "recipient" ]]; then
+  printf '%s\n' "$recipient"
+  exit 0
+fi
+
+printf 'NanoKVM age recipient: '
+printf '%s\n' "$recipient"
+inject_sd

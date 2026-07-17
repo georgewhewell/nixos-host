@@ -32,6 +32,17 @@
     ];
   };
 
+  systemd.services.nginx = {
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+  };
+
+  systemd.services.frigate.serviceConfig = {
+    # Frigate sometimes hangs during SIGTERM shutdown while unwinding ffmpeg
+    # workers. Do not let it hold router reboots for systemd's 90s default.
+    TimeoutStopSec = "15s";
+  };
+
   services.frigate = {
     enable = true;
     hostname = network.publicFqdn "frigate";

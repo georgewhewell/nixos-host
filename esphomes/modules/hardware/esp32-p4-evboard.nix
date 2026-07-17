@@ -75,7 +75,6 @@
         i2s_mclk_pin = "GPIO13";
         i2s_bclk_pin = "GPIO12";
         i2s_lrclk_pin = "GPIO10";
-        use_legacy = false;
       }
     ];
 
@@ -98,7 +97,6 @@
         id = "i2s_microphone";
         adc_type = "external";
         i2s_din_pin = "GPIO11";
-        bits_per_channel = "default";
       }
     ];
 

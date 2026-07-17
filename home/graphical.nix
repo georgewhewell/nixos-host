@@ -77,6 +77,7 @@
     bridge-utils
 
     # Terminal emulator terminfo
+    ghostty
     ghostty.terminfo
   ];
 }

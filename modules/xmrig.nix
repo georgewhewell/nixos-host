@@ -121,6 +121,9 @@ in {
     nixDaemonInhibitCfg = cfg.inhibit.nixDaemonBuilds;
     dota2InhibitCfg = cfg.inhibit.dota2;
     hostName = config.networking.hostName;
+    runStateFile = "/run/xmrig-mqtt/mining-enabled";
+    nixBuildInhibitFile = "/run/xmrig-mqtt/nix-build-active";
+    nixBuildCgroupRoot = "/sys/fs/cgroup/system.slice/nix-daemon.service";
     xmrigApiToken =
       if cfg.httpApi.accessToken != null
       then cfg.httpApi.accessToken
@@ -155,6 +158,7 @@ in {
         systemctl = "${pkgs.systemd}/bin/systemctl";
         journalctl = "${pkgs.systemd}/bin/journalctl";
         stateDir = "/var/lib/xmrig-mqtt";
+        inherit runStateFile nixBuildInhibitFile;
       };
     };
 
@@ -186,6 +190,34 @@ in {
         -t ${lib.escapeShellArg topics.availabilityTopic} \
         -m "$payload"
     '';
+
+    xmrigNixBuildCgroupSyncScript = pkgs.writeShellScript "xmrig-nix-build-cgroup-sync" ''
+      set -euo pipefail
+
+      runtime_dir=/run/xmrig-mqtt
+      marker=${lib.escapeShellArg nixBuildInhibitFile}
+      cgroup_root=${lib.escapeShellArg nixBuildCgroupRoot}
+
+      ${pkgs.coreutils}/bin/mkdir -p "$runtime_dir"
+
+      active=0
+      if [ -d "$cgroup_root" ]; then
+        for cgroup in "$cgroup_root"/nix-build-*; do
+          [ -d "$cgroup" ] || continue
+          ${pkgs.gnugrep}/bin/grep -qx "populated 1" "$cgroup/cgroup.events" || continue
+          active=1
+          break
+        done
+      fi
+
+      if [ "$active" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/touch "$marker"
+        ${pkgs.systemd}/bin/systemctl stop xmrig.service || true
+      else
+        ${pkgs.coreutils}/bin/rm -f "$marker"
+        ${pkgs.systemd}/bin/systemctl start xmrig.service || true
+      fi
+    '';
   in {
     sconfig.xmrig.httpApi.enable = lib.mkDefault mqttCfg.enable;
     sconfig.xmrig.mqttSwitch.enable = lib.mkDefault (mqttCfg.passwordFile != null);
@@ -208,7 +240,18 @@ in {
     ];
 
     environment.systemPackages = [cfg.package];
+    nix = lib.mkIf nixDaemonInhibitCfg.enable {
+      settings.use-cgroups = lib.mkDefault true;
+      extraOptions = lib.mkAfter ''
+        extra-experimental-features = cgroups
+      '';
+    };
+
     systemd.services.xmrig = {
+      unitConfig.ConditionPathExists = [
+        runStateFile
+        "!${nixBuildInhibitFile}"
+      ];
       environment = lib.mkIf (cfg.cudaPlugin != null) {
         LD_LIBRARY_PATH = "/run/opengl-driver/lib";
       };
@@ -236,10 +279,34 @@ in {
         Restart = "always";
         RestartSec = "2s";
         StateDirectory = "xmrig-mqtt";
+        RuntimeDirectory = "xmrig-mqtt";
+        RuntimeDirectoryMode = "0755";
         ExecStart = "${xmrigMqttAgentPython}/bin/xmrig-mqtt-agent";
         ExecStopPost = [ "-${xmrigPublishAvailabilityScript} offline" ];
       };
       path = [pkgs.mosquitto pkgs.coreutils pkgs.systemd pkgs.curl pkgs.gnugrep];
+    };
+
+    systemd.services.xmrig-nix-build-cgroup-sync = lib.mkIf nixDaemonInhibitCfg.enable {
+      description = "Synchronize XMRig Nix-build inhibition from Nix build cgroups";
+      wantedBy = ["multi-user.target"];
+      after = ["nix-daemon.service"];
+      wants = ["nix-daemon.service"];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = xmrigNixBuildCgroupSyncScript;
+      };
+    };
+
+    systemd.paths.xmrig-nix-build-cgroups = lib.mkIf nixDaemonInhibitCfg.enable {
+      description = "Watch Nix build cgroups for XMRig inhibition";
+      wantedBy = ["multi-user.target"];
+      after = ["nix-daemon.service"];
+      wants = ["nix-daemon.service"];
+      pathConfig = {
+        PathChanged = nixBuildCgroupRoot;
+        Unit = "xmrig-nix-build-cgroup-sync.service";
+      };
     };
 
     services.xmrig = {

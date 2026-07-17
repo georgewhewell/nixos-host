@@ -1,0 +1,51 @@
+diff --git a/client_module/source/app/App.c b/client_module/source/app/App.c
+index 6a4eefe..630d316 100644
+--- a/client_module/source/app/App.c
++++ b/client_module/source/app/App.c
+@@ -793,7 +793,7 @@ bool __App_initLocalNodeInfo(App* this)
+    // Truncate the generatedAlias at 32 characters before using it as the nodeID since it will be
+    // used as this client's alias by the management, and aliases are limited to 32 characters.
+    alias = os_kmalloc(33);
+-   strncpy(alias, generatedAlias, 32);
++   strscpy(alias, generatedAlias, 32);
+    alias[32] = '\0';
+ 
+    // note: numeric ID gets initialized with 0; will be set by management later in InternodeSyncer
+diff --git a/client_module/source/common/net/sock/NetworkInterfaceCard.c b/client_module/source/common/net/sock/NetworkInterfaceCard.c
+index db54a5d..64b190a 100644
+--- a/client_module/source/common/net/sock/NetworkInterfaceCard.c
++++ b/client_module/source/common/net/sock/NetworkInterfaceCard.c
+@@ -62,7 +62,7 @@ static void push_nic_address(NicAddressFilter *nicAddressFilter, NicAddressList*
+    NicAddress *nicAddr = NULL;
+ 
+    NicAddress nicAddrProto = {0};
+-   strncpy(nicAddrProto.name, dev->name, IFNAMSIZ);
++   strscpy(nicAddrProto.name, dev->name, IFNAMSIZ);
+    nicAddrProto.nicType = nicType;
+    nicAddrProto.ipAddr = ipAddr;
+ #ifdef BEEGFS_RDMA
+diff --git a/client_module/source/common/nodes/NodeConnPool.c b/client_module/source/common/nodes/NodeConnPool.c
+index 9299041..caaca8e 100644
+--- a/client_module/source/common/nodes/NodeConnPool.c
++++ b/client_module/source/common/nodes/NodeConnPool.c
+@@ -524,7 +524,7 @@ Socket* NodeConnPool_acquireStreamSocketEx(NodeConnPool* this, bool allowWaiting
+             else
+             {
+                srcAddr = in6addr_any;
+-               strncpy(from, "any", sizeof(from));
++               strscpy(from, "any", sizeof(from));
+             }
+ 
+             Logger_logTopFormatted(log, LogTopic_CONN, Log_DEBUG, logContext,
+diff --git a/client_module/source/filesystem/FhgfsOps_versions.h b/client_module/source/filesystem/FhgfsOps_versions.h
+index aaa747d..cdbf538 100644
+--- a/client_module/source/filesystem/FhgfsOps_versions.h
++++ b/client_module/source/filesystem/FhgfsOps_versions.h
+@@ -6,7 +6,6 @@
+ #include <linux/version.h>
+ #include <linux/fs.h>
+ #include <linux/vfs.h>
+-#include <linux/pagevec.h>
+ #include <linux/pagemap.h>
+ #include <linux/page-flags.h>
+ 

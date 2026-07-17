@@ -79,8 +79,9 @@ in
     # When Home Manager is disabled, create minimal zshrc to prevent zsh-newuser-install prompt
     (lib.mkIf (!cfg.enable) {
       system.activationScripts.zshrc-fallback = ''
-        if [ ! -e /home/grw/.zshrc ]; then
-          echo "# Minimal zshrc (Home Manager not enabled)" > /home/grw/.zshrc
+        if id -u grw >/dev/null 2>&1 && [ ! -e /home/grw/.zshrc ]; then
+          install -d -m 0700 -o grw -g users /home/grw
+          printf '%s\n' "# Minimal zshrc (Home Manager not enabled)" > /home/grw/.zshrc
           chown grw:users /home/grw/.zshrc
         fi
       '';

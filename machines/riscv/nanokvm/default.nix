@@ -1,0 +1,267 @@
+# Sipeed NanoKVM-PCIe (SG2002 / RISC-V C906).
+#
+# A regular fleet member: the board's hardware/boot stack (kernel,
+# DTB, SD image, nanokvm services) comes from the nanokvm flake as a
+# module, and the shared fleet base (`nixosModule`) plus the profiles
+# below provide everything else — see `sysRiscvNanokvm` in
+# ../../default.nix. The only special treatment is dietary:
+# fleet-core.nix instead of common.nix, because 256 MB has no room
+# for enableAllFirmware/terminfo/pcscd and friends.
+{
+  inputs,
+  lib,
+  network,
+  pkgs,
+  ...
+}: let
+  ethHost = network.hosts.nanokvm.addresses.lan;
+  wifiHost = network.hosts."nanokvm-wifi".addresses.wifi;
+in {
+  imports = [
+    inputs.nanokvm.nixosModules.extlinuxTryBoot
+    # Fleet identity: grw + sudo, ssh, zsh, /etc/hosts, locale.
+    ../../../profiles/fleet-core.nix
+    # Keep the 256 MB target out of the normal workstation/server default set:
+    # no manuals, installer tools, command-not-found, or default shell helpers.
+    ../../../profiles/headless.nix
+    # Fleet WiFi: wpa_supplicant on wlan0, PSK from secrets/wifi.yaml.
+    ../../../profiles/wireless.nix
+    ../../../profiles/watchdog.nix
+  ];
+
+  sconfig.profile = "server";
+
+  networking.hostName = "nanokvm";
+
+  # Keep WiFi available as a backup path, but prefer the wired OOB
+  # route via the lower metric configured below.
+  sg2002.wifi.enable = true;
+  nanokvm.oled.enable = lib.mkForce false;
+
+  # U-Boot/extlinux has no systemd-boot-style automatic boot assessment.
+  # This arms a new extlinux DEFAULT as a try-boot after Colmena rewrites
+  # extlinux.conf, then blesses it only after the boot survives long enough
+  # to be reachable on the wired OOB path.
+  boot.extlinuxTryBoot = {
+    enable = true;
+    timeoutSec = 10 * 60;
+    successCommand = ''
+      systemctl is-active --quiet sshd.service
+      test "$(cat /sys/class/net/eth0/carrier 2>/dev/null || echo 0)" = 1
+      ip -4 addr show dev eth0 | grep -Fq " ${network.ipOf "lan" ethHost}/"
+      ip -4 route get ${network.gatewayIp "lan"} >/dev/null
+    '';
+  };
+
+  # Lingering starts a per-user systemd manager at boot whether or not
+  # grw ever logs in — not worth the RAM here.
+  users.users.grw.linger = lib.mkForce false;
+
+  # Temporary stability profile while the 256 MB target is being brought
+  # up. The journal from the first successful SD boot showed no swap,
+  # repeated OOM kills of udev workers, coredump work under memory
+  # pressure, and networkd looping on an IPv6 RA MTU the MAC cannot apply.
+  zramSwap = {
+    enable = true;
+    memoryPercent = 75;
+  };
+  nix = {
+    # Colmena builds off-target and only needs the daemon while deploying.
+    # Do not run background Nix store maintenance on this SD-card target.
+    gc.automatic = lib.mkForce false;
+    optimise.automatic = lib.mkForce false;
+    registry = lib.mkForce {};
+    settings.auto-optimise-store = lib.mkForce false;
+  };
+  services = {
+    logrotate.enable = lib.mkForce false;
+    fstrim.enable = lib.mkForce false;
+    # baseline.nix default-enables earlyoom; not worth the resident
+    # daemon here — zram + the sshd/networkd OOMScoreAdjust floors
+    # below are the memory-pressure strategy on 256 MB.
+    earlyoom.enable = false;
+  };
+  security.pam.services.sshd.startSession = lib.mkForce false;
+  systemd.services = {
+    sshd.serviceConfig.OOMScoreAdjust = lib.mkForce (-1000);
+    systemd-networkd.serviceConfig.OOMScoreAdjust = lib.mkForce (-900);
+    wpa_supplicant.serviceConfig.OOMScoreAdjust = lib.mkForce (-900);
+  };
+  # Keep post-mortem evidence without turning the SD card into a log sink.
+  # journald stores warning-and-above messages only; persistent storage is
+  # capped tightly and notice/info/debug chatter stays out of the journal.
+  services.journald.extraConfig = ''
+    Storage=persistent
+    MaxLevelStore=warning
+    SystemMaxUse=8M
+    SystemMaxFileSize=2M
+    SystemKeepFree=64M
+    RuntimeMaxUse=16M
+    RuntimeMaxFileSize=4M
+    RateLimitIntervalSec=30s
+    RateLimitBurst=100
+    SyncIntervalSec=5m
+  '';
+  systemd.coredump.enable = lib.mkForce false;
+  services.nanokvm = {
+    enable = lib.mkForce true;
+    # Bring-up stability: the Go server is the largest resident process
+    # on this 256 MB board and the mainline LT6911 generation is
+    # reboot-looping in a way that smells like OOM. Keep the compat
+    # files/tmpfiles but no daemon until the kernel side is stable,
+    # then flip back to true to test HDMI capture.
+    server.enable = lib.mkForce false;
+    usbGadget.enable = lib.mkForce false;
+  };
+  # Normal SD boots are currently failing before stage 2 can persist a
+  # journal or bring up wired networking. Keep the SD image debuggable
+  # without swapping cards: expose the same USB ECM address used by the
+  # rescue image, plus a BusyBox shell in the initrd.
+  sg2002.usbGadget.initrd.network.enable = lib.mkForce true;
+  boot.initrd.systemd.network.enable = true;
+  boot.initrd.systemd.services.usb-debug-shell = {
+    description = "NanoKVM initrd debug shell over USB ECM";
+    wantedBy = ["initrd.target"];
+    after = [
+      "usb-gadget.service"
+      "systemd-networkd.service"
+    ];
+    wants = [
+      "usb-gadget.service"
+      "systemd-networkd.service"
+    ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.busybox}/bin/telnetd -F -b 10.55.0.1:2323 -l ${pkgs.busybox}/bin/sh";
+    };
+  };
+  systemd.network.wait-online.enable = lib.mkForce false;
+  systemd.network.networks = {
+    "20-eth0" = {
+      address = [
+        (network.cidrOf "lan" ethHost)
+      ];
+      dns = [network.routerIp];
+      routes = [
+        {
+          Gateway = network.gatewayIp "lan";
+          Metric = 10;
+        }
+      ];
+      networkConfig = {
+        DHCP = lib.mkForce "no";
+        IPv6AcceptRA = lib.mkForce false;
+      };
+      # The SG2002 GMAC has no fused MAC — without this the kernel
+      # generates a fresh one every boot. Pin it so neighbors, static
+      # DNS, and switch state all identify the OOB wired endpoint.
+      # Locally-administered: 02, then "KVM" + .17.
+      linkConfig.MACAddress = "02:4b:56:4d:00:17";
+    };
+    "20-wifi" = {
+      address = [
+        (network.cidrOf "wifi" wifiHost)
+      ];
+      dns = [(network.gatewayIp "wifi")];
+      routes = [
+        {
+          Gateway = network.gatewayIp "wifi";
+          Metric = 200;
+        }
+      ];
+      networkConfig = {
+        DHCP = lib.mkForce "no";
+        IPv6AcceptRA = lib.mkForce false;
+      };
+      linkConfig.RequiredForOnline = lib.mkForce "no";
+    };
+  };
+  # Keep the hardware watchdog, but relax the software panic paths while
+  # the board is still in bring-up. First boot can spend a long time
+  # resizing, loading SDIO WiFi firmware, and settling udev on 256 MB
+  # RAM; panic-on-stall paths make that indistinguishable from a real
+  # watchdog reset.
+  boot.kernelParams = lib.mkForce [
+    "root=/dev/disk/by-label/NIXOS_SD"
+    "rootwait"
+    "rw"
+    "rootfstype=ext4"
+    "console=ttyS0,115200"
+    "earlycon=sbi"
+    "ignore_loglevel"
+    "riscv.fwsz=0x80000"
+    "console=ttyGS0,115200"
+    "loglevel=4"
+    "panic=10"
+    "panic_on_oops=0"
+    "softlockup_panic=0"
+    "hung_task_panic=0"
+    "workqueue.panic_on_stall=0"
+    "workqueue.watchdog_thresh=360"
+    "rcupdate.rcu_cpu_stall_timeout=360"
+  ];
+  boot.kernel.sysctl = {
+    "kernel.panic" = lib.mkForce 10;
+    "kernel.panic_on_oops" = lib.mkForce 0;
+    "kernel.softlockup_panic" = lib.mkForce 0;
+    "kernel.hung_task_panic" = lib.mkForce 0;
+    "kernel.hardlockup_panic" = lib.mkForce 0;
+    "kernel.panic_on_rcu_stall" = lib.mkForce 0;
+    "kernel.max_rcu_stall_to_panic" = lib.mkForce 0;
+    "kernel.hung_task_timeout_secs" = lib.mkForce 600;
+    # This kernel accepts up to 60 here; larger values make
+    # systemd-sysctl fail the whole unit.
+    "kernel.watchdog_thresh" = lib.mkForce 60;
+  };
+  systemd.settings.Manager = {
+    # The largest SG2002 WDT TOP in the board DT is ~85 s at 25 MHz,
+    # so runtime cannot be doubled from 80 s. Keep it at the top end
+    # and double the reboot/kexec watchdog windows instead.
+    # Keep runtime watchdog active, but avoid the pre-timeout panic path
+    # until the boot is stable enough that we can collect logs.
+    RuntimeWatchdogSec = lib.mkForce "85s";
+    RuntimeWatchdogPreSec = lib.mkForce "off";
+    RebootWatchdogSec = lib.mkForce "240s";
+    KExecWatchdogSec = lib.mkForce "240s";
+  };
+
+  # sops-nix comes from the fleet base (nixosModule + profiles/sops.nix,
+  # which points it at the SSH host key). For fresh SD images, run
+  # `scripts/nanokvm-inject-sops-key` after writing the image; it
+  # installs the stable gitignored host key into /etc/ssh on the SD
+  # root so sops-nix can decrypt on first boot.
+  sops.useSystemdActivation = true;
+  systemd.services.wpa-supplicant-secrets = {
+    after = ["sops-install-secrets.service"];
+    wants = ["sops-install-secrets.service"];
+  };
+
+  # Cross-compiled on the x86_64 builder, so push the closure rather
+  # than building on the 256 MB target.
+  deployment = {
+    # WiFi may live on the isolated VLAN; keep Colmena on the wired OOB
+    # address and avoid depending on router DNS while debugging the router.
+    targetHost = lib.mkDefault (network.ipOf "lan" ethHost);
+    targetUser = "root";
+    sshOptions = [
+      "-S"
+      "none"
+      "-o"
+      "ControlMaster=no"
+      "-o"
+      "ControlPath=none"
+      "-o"
+      "IdentityAgent=none"
+      "-o"
+      "IdentitiesOnly=yes"
+      "-i"
+      "/home/grw/.ssh/id_rsa"
+      "-o"
+      "StrictHostKeyChecking=no"
+      "-o"
+      "UserKnownHostsFile=/dev/null"
+    ];
+    buildOnTarget = false;
+  };
+}

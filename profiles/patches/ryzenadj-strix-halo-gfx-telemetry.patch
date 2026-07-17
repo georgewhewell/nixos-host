@@ -1,0 +1,17 @@
+diff --git a/lib/api.c b/lib/api.c
+index 9f5d2f1..7b8c2f0 100644
+--- a/lib/api.c
++++ b/lib/api.c
+@@ -3141,7 +3141,11 @@ EXP float CALL get_gfx_power(ryzen_access ry) {
+ 		// Strix Point iGPU power (W); rises under FurMark, not memtester.
+ 		return read_valid_range(ry, 0x4B4, 0.001f, 300.0f);
+ 	case 0x0064020c:
+-		return read_valid_range(ry, 0x54C, 0.001f, 300.0f);
++		/*
++		 * Strix Halo: 0x54C is GFX voltage (~1.0 V under load), not
++		 * GFX power. No clean PM-table power offset is known yet.
++		 */
++		return NAN;
+ 	default:
+ 		break;
+ 	}

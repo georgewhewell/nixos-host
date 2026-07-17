@@ -6,15 +6,14 @@ in {
 
   systemd.services."container@arr-servers" = {
     bindsTo = ["mnt-Media.mount"];
-    after = ["mnt-Media.mount" "sriov-init.service"];
-    wants = ["sriov-init.service"];
+    after = ["mnt-Media.mount"];
   };
 
   containers.arr-servers = {
     autoStart = true;
     privateNetwork = true;
     # Use SR-IOV VF instead of bridge for dedicated hardware NIC
-    interfaces = ["enp172s0v0"];
+    interfaces = ["mlxlan0v0"];
 
     bindMounts = {
       "/run/autobrr.secret".hostPath = "/run/autobrr.secret";
@@ -43,6 +42,7 @@ in {
     config = {
       imports = [../profiles/container.nix];
 
+      system.stateVersion = "24.11";
       networking.hostName = "arr-servers";
 
       # Configure the SR-IOV VF interface (override DHCP from container.nix)
@@ -51,7 +51,7 @@ in {
       systemd.network = {
         enable = true;
         networks."10-vf" = {
-          matchConfig.Name = "enp172s0v0";
+          matchConfig.Name = "mlxlan0v0";
           address = [(network.cidrOf "lan" self.addresses.lan)];
           gateway = [network.routerIp];
           networkConfig = {

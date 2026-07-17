@@ -13,6 +13,9 @@
     .${config.networking.hostName} or "pci-0000:08:00.0";
 in {
   sops.secrets.wifi-password = mkSecret "wifi-password" {};
+  # Shared 802.11r FT key holder secret. This must match the UniFi AC-Pro so
+  # clients can fast-roam between rock-5b and the UniFi on VLAN 50.
+  sops.secrets.wifi-ft-key = mkSecret "wifi-ft-key" {};
 
   boot.kernelPackages = let
     openwrtAth12kPatches = [
@@ -115,6 +118,7 @@ in {
       set -euo pipefail
 
       password="$(${pkgs.coreutils}/bin/tr -d '\n' < ${config.sops.secrets.wifi-password.path})"
+      ftkey="$(${pkgs.coreutils}/bin/tr -d '\n' < ${config.sops.secrets.wifi-ft-key.path})"
 
       rm -f /run/hostapd/*
       ${pkgs.coreutils}/bin/chgrp wheel /run/hostapd
@@ -163,8 +167,18 @@ in {
       utf8_ssid=1
       wmm_enabled=1
       auth_algs=1
+      # 802.11r Fast BSS Transition (FT-SAE), 802.11k RRM, and 802.11v BSS
+      # transition. The mobility_domain and r0kh/r1kh key must match the UniFi.
+      mobility_domain=5246
+      ft_over_ds=0
+      nas_identifier=rock5b5g
+      reassociation_deadline=1000
+      rrm_neighbor_report=1
+      rrm_beacon_report=1
+      bss_transition=1
+      wnm_sleep_mode=1
       wpa=2
-      wpa_key_mgmt=SAE
+      wpa_key_mgmt=SAE FT-SAE
       wpa_pairwise=CCMP
       rsn_pairwise=CCMP
       ieee80211w=2
@@ -173,6 +187,8 @@ in {
       transition_disable=0x01
       EOF
       printf 'sae_password=%s\n' "$password" >> /run/hostapd/mld-5g.conf
+      printf 'r0kh=ff:ff:ff:ff:ff:ff * %s\n'                 "$ftkey" >> /run/hostapd/mld-5g.conf
+      printf 'r1kh=00:00:00:00:00:00 00:00:00:00:00:00 %s\n' "$ftkey" >> /run/hostapd/mld-5g.conf
 
       cat > /run/hostapd/mld-6g.conf <<'EOF'
       # AP MLD link 1: 6 GHz, 320 MHz, PSC channel 37.
@@ -212,8 +228,18 @@ in {
       utf8_ssid=1
       wmm_enabled=1
       auth_algs=1
+      # 802.11r Fast BSS Transition (FT-SAE), 802.11k RRM, and 802.11v BSS
+      # transition. Same mobility_domain and FT key as the 5 GHz link.
+      mobility_domain=5246
+      ft_over_ds=0
+      nas_identifier=rock5b6g
+      reassociation_deadline=1000
+      rrm_neighbor_report=1
+      rrm_beacon_report=1
+      bss_transition=1
+      wnm_sleep_mode=1
       wpa=2
-      wpa_key_mgmt=SAE
+      wpa_key_mgmt=SAE FT-SAE
       wpa_pairwise=CCMP
       rsn_pairwise=CCMP
       ieee80211w=2
@@ -222,6 +248,8 @@ in {
       transition_disable=0x01
       EOF
       printf 'sae_password=%s\n' "$password" >> /run/hostapd/mld-6g.conf
+      printf 'r0kh=ff:ff:ff:ff:ff:ff * %s\n'                 "$ftkey" >> /run/hostapd/mld-6g.conf
+      printf 'r1kh=00:00:00:00:00:00 00:00:00:00:00:00 %s\n' "$ftkey" >> /run/hostapd/mld-6g.conf
     '';
     serviceConfig = {
       ExecStart = "${pkgs.hostapd}/bin/hostapd /run/hostapd/mld-5g.conf /run/hostapd/mld-6g.conf";

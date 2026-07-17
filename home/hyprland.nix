@@ -11,6 +11,8 @@
 
   wayland.windowManager.hyprland = {
     enable = true;
+    configType = "hyprlang";
+    portalPackage = null;
     plugins = [
     ];
 

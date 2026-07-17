@@ -9,16 +9,17 @@ copied the caller's maximum response size regardless of the actual frame size.
 That lets an unrelated XDP response with the same route/UUID complete an
 in-flight request, and can leave stale tail data in the response buffer.
 
-Match synchronous XDomain responses by XDP type and sequence number, copy only
+Match synchronous XDomain responses by XDP type and either sequence number or,
+for property reads, the property source/destination/offset tuple. Copy only
 the received frame, and only allow route-matched properties override when the
 request source is the known remote UUID for that XDomain object.
 ---
- drivers/thunderbolt/xdomain.c | 96 ++++++++++++++++++++++++++++++++++--------
- 1 file changed, 79 insertions(+), 17 deletions(-)
+ drivers/thunderbolt/xdomain.c | 134 ++++++++++++++++++++++++++++++++---------
+ 1 file changed, 106 insertions(+), 28 deletions(-)
 
 --- a/drivers/thunderbolt/xdomain.c
 +++ b/drivers/thunderbolt/xdomain.c
-@@ -99,6 +99,51 @@
+@@ -99,6 +99,75 @@
  	return tb_xdomain_enabled && tb_acpi_is_xdomain_allowed();
  }
 
@@ -47,38 +48,62 @@ request source is the known remote UUID for that XDomain object.
 +	}
 +}
 +
-+static size_t tb_xdp_min_response_size(enum tb_xdp_type type)
++static size_t tb_xdp_dwords(size_t bytes)
++{
++	return DIV_ROUND_UP(bytes, sizeof(u32));
++}
++
++static size_t tb_xdp_min_response_dwords(enum tb_xdp_type type)
 +{
 +	switch (type) {
 +	case ERROR_RESPONSE:
-+		return sizeof(struct tb_xdp_error_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_error_response));
 +	case UUID_RESPONSE:
-+		return sizeof(struct tb_xdp_uuid_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_uuid_response));
 +	case PROPERTIES_RESPONSE:
-+		return sizeof(struct tb_xdp_properties_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_properties_response));
 +	case PROPERTIES_CHANGED_RESPONSE:
-+		return sizeof(struct tb_xdp_properties_changed_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_properties_changed_response));
 +	case LINK_STATE_STATUS_RESPONSE:
-+		return sizeof(struct tb_xdp_link_state_status_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_link_state_status_response));
 +	case LINK_STATE_CHANGE_RESPONSE:
-+		return sizeof(struct tb_xdp_link_state_change_response);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_link_state_change_response));
 +	default:
-+		return sizeof(struct tb_xdp_header);
++		return tb_xdp_dwords(sizeof(struct tb_xdp_header));
 +	}
++}
++
++static bool tb_xdp_properties_response_matches(
++	const struct tb_cfg_request *req, const struct ctl_pkg *pkg)
++{
++	const struct tb_xdp_properties *properties_req = req->request;
++	const struct tb_xdp_properties_response *properties_res = pkg->buffer;
++
++	if (pkg->frame.size <
++	    tb_xdp_dwords(sizeof(struct tb_xdp_properties_response)))
++		return false;
++	if (!uuid_equal(&properties_res->src_uuid, &properties_req->dst_uuid))
++		return false;
++	if (!uuid_equal(&properties_res->dst_uuid, &properties_req->src_uuid))
++		return false;
++	if (properties_res->offset != properties_req->offset)
++		return false;
++
++	return true;
 +}
 +
  static bool tb_xdomain_match(const struct tb_cfg_request *req,
  			     const struct ctl_pkg *pkg)
  {
-@@ -109,17 +154,13 @@
+@@ -109,17 +178,14 @@
  	case TB_CFG_PKG_XDOMAIN_RESP: {
  		const struct tb_xdp_header *res_hdr = pkg->buffer;
  		const struct tb_xdp_header *req_hdr = req->request;
 +		enum tb_xdp_type expected_type;
-+		size_t min_size;
++		size_t min_dwords;
 
 -		if (pkg->frame.size < req->response_size / 4) {
-+		if (pkg->frame.size < sizeof(*res_hdr)) {
++		if (pkg->frame.size < tb_xdp_dwords(sizeof(*res_hdr))) {
  			if (xdomain_debug)
 -				pr_info_ratelimited("thunderbolt xdomain: drop short response req_type=%#x res_type=%#x frame_dw=%u expected_dw=%zu req_route=%08x:%08x res_route=%08x:%08x\n",
 -						    req_hdr->type, res_hdr->type,
@@ -89,11 +114,12 @@ request source is the known remote UUID for that XDomain object.
 -						    res_hdr->xd_hdr.route_hi,
 -						    res_hdr->xd_hdr.route_lo);
 +				pr_info_ratelimited("thunderbolt xdomain: drop short response frame=%u min=%zu\n",
-+						    pkg->frame.size, sizeof(*res_hdr));
++						    pkg->frame.size,
++						    tb_xdp_dwords(sizeof(*res_hdr)));
  			return false;
  		}
 
-@@ -155,6 +196,43 @@
+@@ -155,6 +221,54 @@
  			return false;
  		}
 
@@ -111,7 +137,30 @@ request source is the known remote UUID for that XDomain object.
 +			return false;
 +		}
 +
-+		if (tb_xdp_sequence(res_hdr) != tb_xdp_sequence(req_hdr)) {
++		min_dwords = tb_xdp_min_response_dwords(res_hdr->type);
++		if (pkg->frame.size < min_dwords) {
++			if (xdomain_debug)
++				pr_info_ratelimited("thunderbolt xdomain: drop short typed response req_type=%#x res_type=%#x frame_dw=%u min_dw=%zu route=%08x:%08x seq=%u\n",
++						    req_hdr->type, res_hdr->type,
++						    pkg->frame.size, min_dwords,
++						    req_hdr->xd_hdr.route_hi,
++						    req_hdr->xd_hdr.route_lo,
++						    tb_xdp_sequence(req_hdr));
++			return false;
++		}
++
++		if (req_hdr->type == PROPERTIES_REQUEST &&
++		    res_hdr->type == PROPERTIES_RESPONSE) {
++			if (!tb_xdp_properties_response_matches(req, pkg)) {
++				if (xdomain_debug)
++					pr_info_ratelimited("thunderbolt xdomain: drop properties response identity mismatch route=%08x:%08x req_seq=%u res_seq=%u\n",
++							    req_hdr->xd_hdr.route_hi,
++							    req_hdr->xd_hdr.route_lo,
++							    tb_xdp_sequence(req_hdr),
++							    tb_xdp_sequence(res_hdr));
++				return false;
++			}
++		} else if (tb_xdp_sequence(res_hdr) != tb_xdp_sequence(req_hdr)) {
 +			if (xdomain_debug)
 +				pr_info_ratelimited("thunderbolt xdomain: drop response sequence mismatch req_type=%#x res_type=%#x route=%08x:%08x req_seq=%u res_seq=%u\n",
 +						    req_hdr->type, res_hdr->type,
@@ -122,27 +171,16 @@ request source is the known remote UUID for that XDomain object.
 +			return false;
 +		}
 +
-+		min_size = tb_xdp_min_response_size(res_hdr->type);
-+		if (pkg->frame.size < min_size) {
-+			if (xdomain_debug)
-+				pr_info_ratelimited("thunderbolt xdomain: drop short typed response req_type=%#x res_type=%#x frame=%u min=%zu route=%08x:%08x seq=%u\n",
-+						    req_hdr->type, res_hdr->type,
-+						    pkg->frame.size, min_size,
-+						    req_hdr->xd_hdr.route_hi,
-+						    req_hdr->xd_hdr.route_lo,
-+						    tb_xdp_sequence(req_hdr));
-+			return false;
-+		}
-+
  		return true;
  	}
 
-@@ -166,7 +244,12 @@
+@@ -166,7 +280,13 @@
  static bool tb_xdomain_copy(struct tb_cfg_request *req,
  			    const struct ctl_pkg *pkg)
  {
 -	memcpy(req->response, pkg->buffer, req->response_size);
-+	size_t size = min_t(size_t, req->response_size, pkg->frame.size);
++	size_t size = min_t(size_t, req->response_size,
++			    pkg->frame.size * sizeof(u32));
 +
 +	if (req->response && req->response_size)
 +		memset(req->response, 0, req->response_size);
@@ -151,7 +189,7 @@ request source is the known remote UUID for that XDomain object.
  	req->result.err = 0;
  	return true;
  }
-@@ -531,20 +614,23 @@
+@@ -531,20 +651,23 @@
  			 &req->dst_uuid, xd->local_uuid);
 
  	if (!uuid_equal(xd->local_uuid, &req->dst_uuid)) {

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${1:-root@192.168.23.20}"
+attr="${OPENWRT_10G_ONTI_ATTR:-openwrt-10g-onti}"
+ssh_opts=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+
+if [[ "${OPENWRT_10G_ONTI_CONFIRM_SYSUPGRADE:-}" != "1" ]]; then
+  cat >&2 <<'EOF'
+Refusing to sysupgrade without explicit confirmation.
+
+This writes firmware flash. For config-only changes, use:
+  scripts/openwrt-10g-onti-apply-config [root@192.168.23.20]
+
+To write a new firmware image anyway, set:
+  OPENWRT_10G_ONTI_CONFIRM_SYSUPGRADE=1
+EOF
+  exit 2
+fi
+
+if [[ -r "${HOME}/.ssh/id_rsa" ]]; then
+  ssh_opts+=(-o IdentityAgent=none -o IdentitiesOnly=yes -i "${HOME}/.ssh/id_rsa")
+fi
+
+nix build ${OPENWRT_ROOT_PASSWORD_HASH:+--impure} ".#${attr}"
+
+image="$(find -L result -maxdepth 1 -type f -name '*xikestor_sks8300-8x-squashfs-sysupgrade.bin' | head -n1)"
+if [[ -z "${image}" ]]; then
+  echo "No SKS8300-8X sysupgrade image found under ./result" >&2
+  exit 1
+fi
+
+scp -O "${ssh_opts[@]}" "${image}" "${host}:/tmp/openwrt-sysupgrade.bin"
+ssh "${ssh_opts[@]}" "${host}" 'sysupgrade -n /tmp/openwrt-sysupgrade.bin'

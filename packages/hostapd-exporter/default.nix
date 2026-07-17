@@ -3,7 +3,6 @@
   python3Packages,
   fetchFromGitHub,
   hostapd,
-  makeWrapper,
 }:
 python3Packages.buildPythonApplication rec {
   pname = "hostapd-exporter";
@@ -35,19 +34,19 @@ python3Packages.buildPythonApplication rec {
   '';
 
   installPhase = ''
-    mkdir -p $out/bin $out/libexec
-
-    # Install the Python script
-    install -Dm644 hostapd_exporter.py $out/libexec/hostapd-exporter.py
-
-    # Create wrapper that uses Python interpreter
-    makeWrapper ${python3Packages.python.interpreter} $out/bin/hostapd-exporter \
-      --add-flags "$out/libexec/hostapd-exporter.py" \
-      --prefix PATH : ${lib.makeBinPath [hostapd]} \
-      --prefix PYTHONPATH : "$PYTHONPATH"
+    install -Dm755 /dev/null $out/bin/hostapd-exporter
+    {
+      echo '#!${python3Packages.python.interpreter}'
+      cat hostapd_exporter.py
+    } > $out/bin/hostapd-exporter
   '';
 
-  nativeBuildInputs = [makeWrapper];
+  makeWrapperArgs = [
+    "--prefix"
+    "PATH"
+    ":"
+    (lib.makeBinPath [hostapd])
+  ];
 
   meta = with lib; {
     description = "Prometheus exporter for hostapd metrics";

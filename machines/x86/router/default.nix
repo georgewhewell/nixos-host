@@ -25,12 +25,9 @@
   };
   networking.firewall.interfaces."br0.lan".allowedTCPPorts = [ 6052 ];
 
-  profiles.thunderbolt-bridge.bridgeThunderboltNet = true;
-
-  # Override testing kernel from radeon.nix - router doesn't need HDMI VRR patches
-  # and ZFS doesn't support 6.19-rc yet
-  # boot.kernelPackages = lib.mkForce pkgs.linuxKernel.packages.linux_6_18;
-  # boot.kernelPatches = lib.mkForce [];
+  # Pin the router to the explicit RC package set instead of following
+  # nixpkgs' moving linuxPackages_latest from profiles/uefi-boot.nix.
+  boot.kernelPackages = lib.mkForce pkgs.linuxKernel.packages.linux_7_2_rc2;
 
   # Realtek RTL8127 10GbE out-of-tree driver with RSS/multi-queue support
   # The in-kernel r8169 driver only has single-queue support for this chip
@@ -40,15 +37,14 @@
   boot.blacklistedKernelModules = [ "r8169" ];
 
   boot.kernelParams = [
-    "video=HDMI-A-1:1920x1080@60e" # 'e' forces enable even without EDID
+    # "video=HDMI-A-1:1920x1080@60e" # 'e' forces enable even without EDID
     "iommu=pt"
+    # ACPI reboot reached systemd-shutdown but did not reset the board
+    # (AMI FMA01_P5C9V10, 2026-06-15). Use the chipset reset path instead.
+    "reboot=pci"
   ];
 
   deployment.targetHost = network.domains.public;
-  # deployment.targetHost = "10.86.167.2";
-  #  deployment.targetHost = network.routerIp;
-
-  # deployment.targetHost = "router.${network.domains.public}";
   deployment.targetUser = "grw";
 
   system.stateVersion = "24.11";
@@ -77,19 +73,57 @@
     ../../../profiles/router/usb-btrfs.nix
     # ../../../profiles/router/ap.nix  # WiFi card not installed
     ../../../profiles/router/wireguard.nix
-    ../../../profiles/thunderbolt-bridge.nix
+
     ../../../services/buildfarm-slave.nix
-    ../../../containers/unifi.nix
+    # UniFi controller removed 2026-06-14 — the last UniFi device (AC-Pro) now
+    # runs OpenWrt, so the controller is no longer needed.
     ../../../services/home-assistant/default.nix
     ../../../services/frigate.nix
   ];
 
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
+
+  # Declaratively authorize the IOCREST USB4 10GbE enclosure (atlantic,
+  # br0.lan port). Domain security is "user" and boltd's authorization store
+  # (/var/lib/boltd) doesn't survive impermanence, so without this the NIC
+  # stays unauthorized after every boot/re-plug and its LAN segment goes dark.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{unique_id}=="c8010000-00b1-bd08-2230-ad1cc6200123", ATTR{authorized}=="0", ATTR{authorized}="1"
+  '';
+
   environment.systemPackages = with pkgs; [
     ryzenadj
     mstflint
+    rdma-core
+    perftest
+    uhubctl
   ];
+
+  # hardware."thunderbolt-ibverbs" = {
+  #   blacklist.enable = true;
+  #   loadOnBoot = true;
+
+  #   config = {
+  #     profile = "mac_compat";
+  #     compat = "force";
+  #     tbnet = "block";
+  #     tbnet_identity = "minimal_packet";
+  #     tbnet_identity_minimal_e2e = true;
+  #     tbnet_identity_minimal_apple_only = true;
+  #     roce_netdev = "ardma0";
+  #     lanes = "1";
+  #     bind_services = true;
+  #     allocate_rings = true;
+  #     start_rings = true;
+  #     negotiate_native = false;
+  #     enable_tunnels = true;
+  #     native_data = false;
+  #     native_fragment_striping = false;
+  #     apple_data = true;
+  #     register_verbs = true;
+  #   };
+  # };
 
   # services.ryzenadj = {
   #   enable = true;
@@ -100,9 +134,12 @@
   # };
 
   systemd.network.networks."20-nanokvm" = {
-    matchConfig.Driver = "rndis_host";
+    matchConfig = {
+      Driver = "cdc_ether";
+      MACAddress = "02:1a:11:00:01:02";
+    };
     address = [
-      "10.86.167.2/24"
+      "10.55.0.2/24"
     ];
     networkConfig = {
       DHCP = "no";
@@ -221,11 +258,13 @@
     };
   };
 
-  # Realtek 10G tuning: GRO forwarding + RPS across all CPUs
-  systemd.services.ethtool-enp2s0 = {
-    description = "Configure enp2s0 Realtek 10G offload and RPS";
-    after = [ "sys-subsystem-net-devices-enp2s0.device" ];
-    wants = [ "sys-subsystem-net-devices-enp2s0.device" ];
+  # Realtek 10G tuning: GRO forwarding + RPS across all CPUs. The NIC is
+  # renamed to lan10g by MAC (profiles/router/linux.nix) because its kernel
+  # name flaps (enp2s0/enp7s0) when it drops off the PCIe bus across boots.
+  systemd.services.ethtool-lan10g = {
+    description = "Configure lan10g Realtek 10G offload and RPS";
+    after = [ "sys-subsystem-net-devices-lan10g.device" ];
+    wants = [ "sys-subsystem-net-devices-lan10g.device" ];
     wantedBy = [ "multi-user.target" ];
     path = [ pkgs.ethtool ];
     serviceConfig = {
@@ -233,8 +272,8 @@
       RemainAfterExit = true;
     };
     script = ''
-      ethtool -K enp2s0 rx-udp-gro-forwarding on
-      for q in /sys/class/net/enp2s0/queues/rx-*/rps_cpus; do
+      ethtool -K lan10g rx-udp-gro-forwarding on
+      for q in /sys/class/net/lan10g/queues/rx-*/rps_cpus; do
         echo ffff > "$q"
       done
     '';
@@ -257,13 +296,50 @@
   boot.initrd.kernelModules = [
     "mlx5_core"
   ];
+
   boot.kernelModules = [
     "nf_tables"
     "nft_compat"
     "igc"
     "ixgbe"
+    "it87"
     "vfio"
   ];
+
+  # The board's IT8613E is compatible with the IT8620E register layout but is
+  # not detected by the in-tree driver. This exact mapping was verified on the
+  # router: fan2_input tracks the system fan, and pwm2 controls it.
+  boot.extraModprobeConfig = ''
+    options it87 force_id=0x8620
+  '';
+
+  systemd.services.router-system-fan-max = {
+    description = "Set the verified router system fan to maximum speed";
+    after = [ "systemd-modules-load.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -eu
+
+      for hwmon in /sys/class/hwmon/hwmon*; do
+        [ -r "$hwmon/name" ] || continue
+        [ "$(cat "$hwmon/name")" = "it8620" ] || continue
+        [ -r "$hwmon/fan2_input" ] || continue
+        [ -w "$hwmon/pwm2_enable" ] || continue
+        [ -w "$hwmon/pwm2" ] || continue
+
+        echo 1 > "$hwmon/pwm2_enable"
+        echo 255 > "$hwmon/pwm2"
+        exit 0
+      done
+
+      echo "verified IT8620 hwmon fan2/pwm2 mapping was not found" >&2
+      exit 1
+    '';
+  };
 
   fileSystems."/" = {
     device = "zpool/root/nixos-router";

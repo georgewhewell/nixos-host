@@ -2,11 +2,22 @@
   routerPorts = network.ports.router;
   wanPort = routerPorts.wan;
   lan25gPort = routerPorts.lan25g;
+  lan10gPort = routerPorts.lan10g;
   wanInterface = wanPort.linuxName;
   lan25gInterface = lan25gPort.linuxName;
+  lan10gInterface = lan10gPort.linuxName;
   lanBridge = routerPorts.lanBridge;
   lanMtu = toString network.vlans.lan.mtu;
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+  fabricCidr = "${network.vlans.fabric.prefix}.0/${toString network.vlans.fabric.cidr}";
+
+  # Wi-Fi client VLAN (tagged 50): an SVI on the LAN bridge. Tagged frames from
+  # the AP (rock-5b) ride the flat switch as an overlay and terminate here.
+  wifiVlan = network.vlans.wifi;
+  wifiVlanIf = "${lanBridge}.${toString wifiVlan.id}";
+  wifiCidr = "${wifiVlan.prefix}.0/${toString wifiVlan.cidr}";
+  wifiMtu = "1500";
+  wifiUla = "fdde:ad:${toString wifiVlan.id}";
 
   bridgeMemberNetwork = matchConfig: requiredForOnline: {
     inherit matchConfig;
@@ -38,7 +49,9 @@
         ) hostCfg.forwards)
     ) hosts);
 in {
-  imports = [./base.nix];
+  imports = [
+    ./base.nix
+  ];
 
   router.lanInterface = lanBridge;
 
@@ -70,8 +83,11 @@ in {
 
   # Software flowtable for accelerated forwarding
   # Bypasses full netfilter stack for established connections
+  # Disabled: it breaks Wi-Fi VLAN clients in practice. iOS clients complete
+  # DHCP/DNS/TCP setup, then stall once larger TLS payloads enter the flowtable.
   # Note: Can't use networking.nftables.tables because validation fails without devices
   systemd.services.nftables-flowtable = {
+    enable = false;
     description = "nftables flowtable for accelerated forwarding";
     after = ["nftables.service" "network-online.target"];
     wants = ["network-online.target"];
@@ -96,6 +112,38 @@ in {
     };
   };
 
+  # mlx5 + this MikroTik combo is finicky: applying speed/autoneg/duplex via
+  # systemd-networkd's .link file is hit-or-miss — some boots the link trains,
+  # some it doesn't and needs a manual `ip link down/up` + ethtool to settle.
+  # 2026-07-16: after a crash-reboot the old recipe (autoneg on, fec off) would
+  # not train at all despite good light both directions; forced no-autoneg +
+  # RS-FEC trained instantly. Empirically the reliable sequence is:
+  #   ip link set <iface> down
+  #   ethtool -s <iface> autoneg off speed 25000 duplex full
+  #   ethtool --set-fec <iface> encoding rs
+  #   ip link set <iface> up
+  # which we run as a single oneshot service. MikroTik side is force 25G:
+  #   /interface ethernet set sfp28-1 \
+  #     auto-negotiation=no speed=25G-baseSR-LR fec-mode=fec91
+  systemd.services.lan-25g-link-config = {
+    description = "Configure LAN 25G interface link (speed/autoneg/FEC)";
+    after = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    bindsTo = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    wants = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
+    before = ["systemd-networkd.service" "network-pre.target"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.iproute2}/bin/ip link set ${lan25gInterface} down
+      ${pkgs.ethtool}/bin/ethtool -s ${lan25gInterface} autoneg off speed 25000 duplex full
+      ${pkgs.ethtool}/bin/ethtool --set-fec ${lan25gInterface} encoding rs
+      ${pkgs.iproute2}/bin/ip link set ${lan25gInterface} up
+    '';
+  };
+
   systemd.network = {
     wait-online.enable = true;
     netdevs = {
@@ -114,6 +162,14 @@ in {
           ForwardDelaySec = 2;
         };
       };
+      # Wi-Fi client VLAN SVI (tagged 50) on top of the LAN bridge.
+      "30-${wifiVlanIf}" = {
+        netdevConfig = {
+          Kind = "vlan";
+          Name = wifiVlanIf;
+        };
+        vlanConfig.Id = wifiVlan.id;
+      };
     };
     links = {
       "20-${wanInterface}" = {
@@ -131,11 +187,10 @@ in {
           TxBufferSize = 8192;
         };
       };
-      # LAN port (Mellanox CX-4 to MikroTik CRS510). MikroTik defaults all
-      # sfp28 ports to autoneg=yes, fec-mode=auto, so we negotiate too.
-      # BitsPerSecond + Duplex are required so mlx5 advertises 25G during
-      # autoneg — without them it defaults to advertising only 1G and the
-      # link won't train. (AutoNegotiation is unspecified → default "on".)
+      # LAN port (Mellanox CX-4 to MikroTik CRS510, 25G optical). Only Name +
+      # buffers here — speed/autoneg/duplex/FEC are applied by the
+      # lan-25g-link-config service after the netdev appears, because doing
+      # them via .link is unreliable on this mlx5/MikroTik combo.
       "20-lan-25g" = {
         matchConfig = {
           Driver = "mlx5_core";
@@ -146,18 +201,33 @@ in {
           RxBufferSize = 8192;
           TxBufferSize = 8192;
           MTUBytes = lanMtu;
-          BitsPerSecond = "25G";
-          Duplex = "full";
         };
+      };
+      # RTL8127 10G copper — pinned by MAC because its bus-drop flap renames it
+      # (enp2s0/enp7s0) across boots; see network.nix ports.router.lan10g.
+      "20-lan-10g" = {
+        matchConfig = {
+          Driver = "r8127";
+          PermanentMACAddress = lan10gPort.mac;
+        };
+        linkConfig.Name = lan10gInterface;
       };
     };
     networks = {
       "10-${lanBridge}" = {
         matchConfig.Name = lanBridge;
+        # Attach the Wi-Fi VLAN SVI to the bridge.
+        vlan = [wifiVlanIf];
         bridgeConfig = {};
         address = [
           (network.cidrOf "lan" network.vlans.lan.gatewayHost)
           "fdde:ad::1/64" # ULA for LAN
+        ];
+        routes = [
+          {
+            Destination = fabricCidr;
+            Gateway = network.primaryIp network.hosts."mikrotik-400g";
+          }
         ];
         networkConfig = {
           ConfigureWithoutCarrier = true;
@@ -182,6 +252,36 @@ in {
           RequiredFamilyForOnline = "ipv4";
         };
       };
+      # Wi-Fi client VLAN gateway (192.168.50.1). Routed + NAT'd like the LAN;
+      # "trusted" so wifi<->lan forwarding is allowed (no isolation ACL).
+      "30-${wifiVlanIf}" = {
+        matchConfig.Name = wifiVlanIf;
+        address = [
+          (network.cidrOf "wifi" wifiVlan.gatewayHost)
+          "${wifiUla}::1/64"
+        ];
+        networkConfig = {
+          ConfigureWithoutCarrier = true;
+          DHCPPrefixDelegation = true;
+          IPv6Forwarding = true;
+          IPv6SendRA = true;
+        };
+        dhcpPrefixDelegationConfig = {
+          SubnetId = toString wifiVlan.id;
+          Announce = true;
+        };
+        ipv6SendRAConfig = {
+          Managed = false;
+          EmitDNS = true;
+          DNS = ["${wifiUla}::1"];
+          Domains = network.domains.lan;
+        };
+        linkConfig = {
+          MTUBytes = wifiMtu;
+          RequiredForOnline = "no";
+        };
+      };
+
       "20-lan-25g" = bridgeMemberNetwork {Name = lan25gInterface;} "enslaved";
 
       "20-lan-10g" = bridgeMemberNetwork {Driver = "atlantic";} "no";
@@ -235,9 +335,12 @@ in {
       enable = true;
       internalIPs = [
         lanCidr
+        fabricCidr
+        wifiCidr
       ];
       internalInterfaces = [
         lanBridge
+        wifiVlanIf
       ];
       externalInterface = wanInterface;
       forwardPorts = toLinuxForwardPorts portForwardHosts;
@@ -246,7 +349,7 @@ in {
     firewall = {
       enable = true;
       checkReversePath = false;
-      trustedInterfaces = [lanBridge "wg-home"];
+      trustedInterfaces = [lanBridge "wg-home" wifiVlanIf];
       logRefusedConnections = false;
       logRefusedPackets = false;
       logReversePathDrops = false;

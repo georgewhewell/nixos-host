@@ -7,15 +7,24 @@ let
   thunderboltIbverbs = inputs.nix-strix-halo.inputs.thunderbolt-ibverbs;
   thunderboltPatchSet =
     thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-  thunderboltKernelPatches =
+  baseKernelPatches =
     (thunderboltPatchSet.portableKernelPatches or thunderboltPatchSet.kernelPatches)
     ++ (thunderboltPatchSet.integrationDebugKernelPatches or [ ]);
 
-  # Stable 7.0.x from nixpkgs (latest), patched. For hosts that need ZFS -
-  # ZFS upstream currently caps at kernel 7.0, so the 7.1-rc1 variant of this
-  # profile breaks the zfs-kernel build. The usb4-stream / CONFIGFS additions
-  # are still picked up because they're applied as kernelPatches on top of
-  # whatever the base release ships.
+  # `usb4-xdomain-property-identity-match` was upstreamed into Linux 7.1: the
+  # mainline tree already carries the pkg_len plumbing and the uuid_equal()
+  # identity check in tb_xdomain_match, so the out-of-tree patch reverse-applies
+  # and aborts the kernel build. Drop it on >= 7.1 (the other 29 patches still
+  # apply cleanly). Keep it on older kernels in case one is ever pinned back.
+  kernelVersion = pkgs.linuxPackages_latest.kernel.version;
+  thunderboltKernelPatches =
+    if lib.versionAtLeast kernelVersion "7.1"
+    then lib.filter (p: (p.name or "") != "usb4-xdomain-property-identity-match") baseKernelPatches
+    else baseKernelPatches;
+
+  # nixpkgs latest, patched, on kernel 7.1. ZFS support comes from the
+  # openzfs 2.4.99 override in flake.nix (Linux-Maximum: 7.1). The usb4-stream /
+  # CONFIGFS additions are applied as kernelPatches on top of the base release.
   linuxPackagesUsb4 = pkgs.linuxPackages_latest.extend (self: super: {
     kernel = super.kernel.override {
       kernelPatches = (super.kernel.kernelPatches or [ ]) ++ thunderboltKernelPatches;

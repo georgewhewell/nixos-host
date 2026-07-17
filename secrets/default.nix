@@ -72,6 +72,19 @@
     mode = "0400";
   };
 
+  # ACME DNS-01 credentials (trex)
+  # GCP Application Default Credentials (authorized_user) used by lego to solve
+  # DNS-01 for the internal-only certs (radarr/sonarr/autobrr). Referenced via
+  # GOOGLE_APPLICATION_CREDENTIALS in security.acme; readable by the acme user.
+  acme-gcp-adc = {
+    sopsFile = ./acme.yaml;
+    key = "gcp-adc";
+    path = "/run/secrets/acme-gcp-adc";
+    owner = "acme";
+    group = "acme";
+    mode = "0400";
+  };
+
   # Monitoring secrets (trex)
   # Used by Grafana for admin authentication
   grafana-password = {
@@ -141,6 +154,16 @@
     mode = "0400";
   };
 
+  # 802.11r Fast-Transition key-holder secret. Shared between the router/rock-5b
+  # hostapd AP and the OpenWrt UniFi AC-Pro so clients can fast-roam (FT-SAE)
+  # between them. Same value must be configured on both APs.
+  wifi-ft-key = {
+    sopsFile = ./wifi.yaml;
+    key = "wifi-ft-key";
+    path = "/run/secrets/wifi-ft-key";
+    mode = "0400";
+  };
+
   # Hugging Face token (trex + fuckup)
   # Used by hellas executor for gated model downloads
   hf-token = {
@@ -201,6 +224,14 @@
     sopsFile = ./wireguard.yaml;
     key = "wg-home-macbook-pro-psk";
     path = "/run/secrets/wg-home-macbook-pro-psk";
+    mode = "0400";
+  };
+  # BeeGFS cluster shared connection secret (conn.auth). Same bytes on every
+  # cluster member: mgmtd (BlueField-2), meta/storage/clients (trex, strix).
+  beegfs-conn-auth = {
+    sopsFile = ./beegfs.yaml;
+    key = "beegfs-conn-auth";
+    path = "/run/secrets/beegfs-conn-auth";
     mode = "0400";
   };
 }

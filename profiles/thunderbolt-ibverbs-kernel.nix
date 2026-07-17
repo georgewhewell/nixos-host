@@ -5,18 +5,16 @@
 }:
 let
   thunderboltIbverbs = inputs.thunderbolt-ibverbs-kernel;
-  thunderboltPatchSet =
-    thunderboltIbverbs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-  thunderboltKernelPatches =
-    thunderboltPatchSet.portableKernelPatches or thunderboltPatchSet.kernelPatches;
-  linuxPackagesThunderbolt = pkgs.linuxPackages_latest.extend (self: super: {
-    kernel = super.kernel.override {
-      kernelPatches = (super.kernel.kernelPatches or [ ]) ++ thunderboltKernelPatches;
-      structuredExtraConfig = with lib.kernel; {
-        USB4_DEBUGFS_WRITE = yes;
-      };
-    };
-  });
+  system = pkgs.stdenv.hostPlatform.system;
+  thunderboltPackages = thunderboltIbverbs.packages.${system};
+  linuxPackagesThunderbolt =
+    (pkgs.linuxPackagesFor thunderboltPackages.linux-thunderbolt).extend (self: super: {
+      ryzen-smu = super.ryzen-smu.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ lib.optionals
+          (lib.versionAtLeast super.kernel.version "7.2")
+          [ ./patches/ryzen-smu-linux-7.2-cpuid-header.patch ];
+      });
+    });
 in
 {
   # The thunderbolt-ibverbs NixOS module is brought in by
@@ -25,10 +23,10 @@ in
   # in the top-level flake. Re-importing it here causes an
   # already-declared error on `hardware.thunderbolt-ibverbs.enable`.
 
-  boot.kernelPackages = lib.mkOverride 900 linuxPackagesThunderbolt;
+  boot.kernelPackages = lib.mkForce linuxPackagesThunderbolt;
   boot.extraModprobeConfig = ''
-    options thunderbolt xdomain_lane_bonding=0 xdomain_debug=1
-    options thunderbolt_net e2e=0 tx_e2e=0 throttling=32000
+    options thunderbolt xdomain=1
+    options thunderbolt_net e2e=0 tx_e2e=0
   '';
 
   hardware.thunderbolt-ibverbs.enable = true;

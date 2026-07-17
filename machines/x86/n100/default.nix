@@ -51,6 +51,11 @@ in {
     };
   };
 
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
+
   # XMRig uses 1 GiB hugepages; reserve them at boot instead of trying to set
   # the non-existent vm.nr_hugepages_1gb sysctl.
   boot.kernelParams = [

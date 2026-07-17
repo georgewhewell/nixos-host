@@ -92,6 +92,15 @@
       src = "${linuxDrivers}/drivers/net/wireless/mediatek/mt76";
       nativeBuildInputs = kernel.moduleBuildDependencies ++ [pkgs.python3 pkgs.perl pkgs.kmod];
       patches = wifiPatches;
+      postPatch = lib.optionalString (lib.versionAtLeast kernel.version "7.1") ''
+        substituteInPlace mt76_connac_mac.c \
+          --replace-fail "skb->len >= IEEE80211_MIN_ACTION_SIZE + 1 + 1 + 2 &&" "skb->len >= IEEE80211_MIN_ACTION_SIZE(addba_req) &&" \
+          --replace-fail "mgmt->u.action.u.addba_req.action_code" "mgmt->u.action.action_code" \
+          --replace-fail "mgmt->u.action.u.addba_req.capab" "mgmt->u.action.addba_req.capab"
+        substituteInPlace mt7925/mac.c \
+          --replace-fail "skb->len >= IEEE80211_MIN_ACTION_SIZE + 1 &&" "skb->len >= IEEE80211_MIN_ACTION_SIZE(action_code) &&" \
+          --replace-fail "mgmt->u.action.u.addba_req.action_code" "mgmt->u.action.action_code"
+      '';
       buildPhase = ''
         runHook preBuild
         cat > Kbuild << 'KBUILD'

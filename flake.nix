@@ -36,15 +36,21 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Declarative OpenWrt image builder — used to build the custom UniFi AC-Pro
+    # firmware (full wpad-mbedtls for 802.11v, luci, baked dumb-AP config).
+    openwrt-imagebuilder.url = "github:astro/nix-openwrt-imagebuilder";
+    openwrt-imagebuilder.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-strix-halo = {
-      url = "github:hellas-ai/nix-strix-halo";
+      url = "path:/mnt/Home/src/nix-strix-halo";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel";
     };
 
     thunderbolt-ibverbs-kernel = {
-      url = "path:/mnt/Home/src/thunderbolt-ibverbs-native-fixes";
+      url = "path:/mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.linux-src.follows = "linux-src";
     };
 
     # NOTE: this flake pins its own nixpkgs fork (vitis-ai branch) because
@@ -54,13 +60,14 @@
 
     hellas = {
       # Local deploy input while Codex Fetch support is ahead of the remote branch.
-      url = "git+file:///mnt/Home/src/node?shallow=1";
+      url = "git+file:///mnt/Home/src/hellas?shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nanokvm = {
-      url = "git+ssh://trex/home/grw/src/nixos-nanokvm.git";
+      url = "path:/mnt/Home/src/nixos-nanokvm";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.disko.follows = "disko";
     };
 
     p2pool-exporter = {
@@ -69,13 +76,18 @@
     };
 
     ath-kernel = {
-      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git?ref=for-current&shallow=1";
+      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git?ref=for-next&shallow=1";
       flake = false;
     };
 
     # Collabora RK3588 hardware enablement kernel (rockchip-devel branch)
     linux-rockchip-src = {
       url = "git+https://gitlab.collabora.com/hardware-enablement/rockchip-3588/linux.git?ref=rockchip-devel&shallow=1";
+      flake = false;
+    };
+
+    linux-src = {
+      url = "git+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git?ref=refs/tags/v7.2-rc2&shallow=1";
       flake = false;
     };
 
@@ -92,6 +104,11 @@
     };
 
     mt7927.url = "github:cmspam/mt7927-nixos";
+
+    mlnx-ofed-nixos = {
+      url = "github:codgician/mlnx-ofed-nixos";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     rust-overlay.url = "github:oxalica/rust-overlay";
 
@@ -121,6 +138,10 @@
         (composeManyExtensions localOverlays)
         inputs.rust-overlay.overlays.default
         inputs.hellas.overlays.default
+        # Experimental NVIDIA DOCA-OFED packages. Keep the overlay before the
+        # custom kernel definitions so its packagesFor extension also applies
+        # to linux_7_2_rc2; hosts opt in to the modules separately.
+        inputs.mlnx-ofed-nixos.overlays.default
         (final: prev: {
           firefox-addons = final.callPackage "${inputs.firefox-addons}" {
             buildMozillaXpiAddon =
@@ -128,7 +149,7 @@
           };
           # Pull antigravity (Google's gemini-cli replacement) from nix-ai-tools
           # so it's available as a top-level pkg attribute.
-          antigravity = inputs.nix-ai-tools.packages.${final.stdenv.hostPlatform.system}.antigravity;
+          antigravity = inputs.nix-ai-tools.packages.${final.stdenv.hostPlatform.system}.antigravity-cli;
         })
         # Collabora RK3588 hardware enablement kernel
         (final: prev: {
@@ -137,13 +158,61 @@
           };
           linuxPackages_rockchip = prev.linuxKernel.packagesFor final.linux-rockchip;
         })
-        # OpenZFS 2.4.99 for kernel 7.0 support (remove when nixpkgs zfs_unstable >= 2.5)
+        # Torvalds release-candidate kernel used by the router while validating
+        # networking fixes ahead of the next nixpkgs linux_testing bump.
+        (final: prev: {
+          linux_7_2_rc2 = prev.linuxKernel.kernels.linux_testing.override {
+            structuredExtraConfig = with final.lib.kernel; {
+              CRYPTO_DRBG_CTR = final.lib.mkForce unset;
+              CRYPTO_DRBG_HASH = final.lib.mkForce unset;
+              RANDOM_KMALLOC_CACHES = final.lib.mkForce unset;
+            };
+            argsOverride = {
+              src = inputs.linux-src;
+              version = "7.2-rc2";
+              modDirVersion = "7.2.0-rc2";
+            };
+          };
+          linuxKernel =
+            prev.linuxKernel
+            // {
+              packages =
+                prev.linuxKernel.packages
+                // {
+                  linux_7_2_rc2 =
+                    (prev.linuxKernel.packagesFor final.linux_7_2_rc2).extend (lpFinal: lpPrev: {
+                      ryzen-smu = lpPrev.ryzen-smu.overrideAttrs (old: {
+                        patches = (old.patches or [ ]) ++ [
+                          ./profiles/patches/ryzen-smu-linux-7.2-cpuid-header.patch
+                        ];
+                      });
+                    });
+                };
+            };
+        })
+        # OpenZFS 2.4.99 for kernel 7.2-rc support (remove when nixpkgs zfs_unstable >= 2.5).
+        # nixpkgs' postPatch pins the Linux-Maximum META check to 7.0 and still
+        # references the pre-2.4.99 libshare paths; retarget both for the openzfs
+        # master snapshot, and temporarily lift its declared maximum for 7.2-rc.
         (final: prev:
           let
             fixPostPatch = pp:
               builtins.replaceStrings
-                [ "6\\.19" "./lib/libshare/os/linux/nfs.c" "./lib/libshare/smb.h" ]
-                [ "7\\.0" "./lib/libzfs/os/linux/libzfs_share_nfs.c" "./lib/libzfs/libzfs_share.h" ]
+                [
+                  "7\\.0"
+                  "./lib/libshare/os/linux/nfs.c"
+                  "./lib/libshare/smb.h"
+                  "echo 'Supported Kernel versions:'"
+                ]
+                [
+                  "7\\.2"
+                  "./lib/libzfs/os/linux/libzfs_share_nfs.c"
+                  "./lib/libzfs/libzfs_share.h"
+                  ''
+                    sed -i -E 's/^Linux-Maximum:.*/Linux-Maximum: 7.2/' META
+                    echo 'Supported Kernel versions:'
+                  ''
+                ]
                 pp;
             zfsOverride = old: {
               version = "2.4.99";
@@ -222,6 +291,28 @@
           })
       ];
 
+      ryzenadjDragonRangeOverlay = final: prev: {
+        ryzenadj = prev.ryzenadj.overrideAttrs (old: {
+          version = "0.19.0-dragon-range-a4a44eb";
+          src = final.fetchFromGitHub {
+            owner = "inode64";
+            repo = "RyzenAdj";
+            rev = "a4a44ebeb4d88f4dc22550bdf910737a5f1dc794";
+            hash = "sha256-uLnF+VNmQLQ0OFpWNKWLMKXNM9UB6eF9QEtbcSz1aVA=";
+          };
+          cmakeFlags = (old.cmakeFlags or [ ]) ++ [
+            "-DENABLE_IPO=OFF"
+          ];
+          patches = (old.patches or [ ]) ++ [
+            ./profiles/patches/ryzenadj-strix-halo-gfx-telemetry.patch
+            ./profiles/patches/ryzenadj-strix-halo-stapm-time.patch
+          ];
+          meta = (old.meta or { }) // {
+            homepage = "https://github.com/inode64/RyzenAdj/tree/feature/Dragon-Range";
+          };
+        });
+      };
+
       # Base config shared across all pkgs instantiations
       baseConfig = {
         allowUnfree = true;
@@ -257,6 +348,13 @@
         import nixpkgs {
           inherit system;
           overlays = allOverlays;
+          config = baseConfig // { rocmSupport = true; };
+        };
+
+      pkgsForRocmStrixHalo = system:
+        import nixpkgs {
+          inherit system;
+          overlays = allOverlays ++ [ ryzenadjDragonRangeOverlay ];
           config = baseConfig // { rocmSupport = true; };
         };
 
@@ -322,10 +420,27 @@
           # Keep `nix run .#colmena` on the same Colmena input that provides
           # `colmenaHive`; nixpkgs currently carries an older 0.4 CLI.
           colmena = inputs.colmena.packages.${system}.colmena;
+          disko = inputs.disko.packages.${system}.disko;
+          disko-install = inputs.disko.packages.${system}.disko-install;
+        }
+        # OpenWrt "machines" (mips_24kc / ath79). ImageBuilder is x86-only.
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          openwrt-unifiac-pro = import ./machines/openwrt-mips/unifi-ac-pro {
+            inherit pkgs;
+            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+          };
+          openwrt-10g-onti = import ./machines/openwrt-mips/xikestor-sks8300-8x {
+            inherit pkgs;
+            openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+          };
         });
 
+      diskoConfigurations = {
+        trex-boot-ssds = import ./machines/x86/trex/boot-ssds.disko.nix;
+      };
+
       colmenaHive = inputs.colmena.lib.makeHive self.outputs.colmena;
-      imageOnlyNixosConfigurations = [ "router-usb" ];
+      imageOnlyNixosConfigurations = [ "router-usb" "strix-installer" "k3SdImage" ];
       deployableNixosConfigurations =
         builtins.removeAttrs self.nixosConfigurations imageOnlyNixosConfigurations;
       colmena =
@@ -335,21 +450,29 @@
             nixpkgs = pkgsFor "x86_64-linux";
             nodeNixpkgs = {
               fuckup = pkgsForCuda "x86_64-linux";
-              strix-1 = pkgsForRocm "x86_64-linux";
+              strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
               # Keep the Strix machines on the same generic ROCm package set
               # for routine reliability work; znver5 can be reintroduced only
               # for focused performance A/B runs.
-              strix-2 = pkgsForRocm "x86_64-linux";
+              strix-2 = pkgsForRocmStrixHalo "x86_64-linux";
+              strix-3 = pkgsForRocmStrixHalo "x86_64-linux";
+              strix-4 = pkgsForRocmStrixHalo "x86_64-linux";
               # trex uses Vulkan/RADV for llama.cpp on Navi 10. Keep it on the
               # base package set so Open WebUI/Torch and routine system rebuilds
               # do not pull the ROCm package set unless a package asks for it.
               trex = pkgsFor "x86_64-linux";
             };
             specialArgs = {
-              inherit inputs mkSecret pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmZnver5 network;
+              inherit inputs mkSecret pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 network;
             };
           };
         }
+        # Colmena re-instantiates every node from `_module.args.modules`
+        # with the hive's specialArgs. All node module lists — including
+        # the nanokvm board stack, whose flake-level args ride inside the
+        # list as `_module.args` — are self-contained, so this is
+        # lossless and each hive node matches its standalone
+        # nixosConfiguration.
         // builtins.mapAttrs
           (name: value: {
             nixpkgs.system = value.config.nixpkgs.system;
@@ -458,6 +581,7 @@
           in
           {
             mtail-xmrig = pkgs.testers.runNixOSTest (import ./tests/mtail-xmrig.nix { inherit pkgs; });
+            beegfs = pkgs.testers.runNixOSTest (import ./tests/beegfs.nix { inherit pkgs; });
           };
       };
 
@@ -467,7 +591,7 @@
           inputs
           mkSecret
           network
-          { inherit pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmZnver5 allOverlays; };
+          { inherit pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays; };
 
       githubActions =
         let

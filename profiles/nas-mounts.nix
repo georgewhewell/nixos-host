@@ -6,8 +6,8 @@
     "x-systemd.automount"
     "x-systemd.after=network-online.target"
     "x-systemd.requires=network-online.target"
-    "rsize=32768"
-    "wsize=32768"
+    "rsize=1048576"
+    "wsize=1048576"
     "nconnect=4"
   ];
 in {

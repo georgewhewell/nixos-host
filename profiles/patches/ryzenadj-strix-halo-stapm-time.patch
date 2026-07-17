@@ -1,0 +1,12 @@
+diff --git a/lib/api.c b/lib/api.c
+index 9f5d2f1..f21ca8d 100644
+--- a/lib/api.c
++++ b/lib/api.c
+@@ -716,6 +716,7 @@ EXP int CALL set_stapm_time(ryzen_access ry, uint32_t value){
+ 	case FAM_STRIXPOINT:
+ 	case FAM_STRIXHALO:
+ 		_do_adjust(0x18);
++		break;
+ 	case FAM_DRAGONRANGE:
+ 	case FAM_FIRERANGE:
+ 		_do_adjust(0x4e);

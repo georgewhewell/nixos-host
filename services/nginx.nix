@@ -1,8 +1,28 @@
-{network, ...}: let
+{network, pkgs, config, mkSecret, ...}: let
   routerHa = "${network.routerIp}:8123";
   arrIp = network.primaryIp network.hosts."arr-servers";
+  trexIp = network.primaryIp network.hosts.trex;
+  # Restrict a vhost to LAN + wireguard clients; everyone else gets 403.
+  # The vhost still serves valid TLS internally; these names have no public DNS.
+  lanOnly = ''
+    allow ${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr};
+    allow ${network.vlans.wireguard.prefix}.0/${toString network.vlans.wireguard.cidr};
+    deny all;
+  '';
+
+  # Internal-only services: no public A/AAAA records, so HTTP-01 can't renew.
+  # Their certs use DNS-01 against Cloud DNS via lego's gcloud provider, reusing
+  # the GCP ADC (authorized_user) stored in sops as acme-gcp-adc.
+  internalCerts = ["radarr" "sonarr" "autobrr" "open-webui"];
+  gcpAcmeEnv = pkgs.writeText "acme-gcloud.env" ''
+    GCE_PROJECT=domain-owner
+    GOOGLE_APPLICATION_CREDENTIALS=${config.sops.secrets.acme-gcp-adc.path}
+  '';
 in {
   networking.firewall.allowedTCPPorts = [80 443];
+
+  # GCP ADC for lego DNS-01 (radarr/sonarr/autobrr internal certs).
+  sops.secrets.acme-gcp-adc = mkSecret "acme-gcp-adc" {};
 
   # Configure mtail for nginx log parsing
   services.mtail = {
@@ -85,6 +105,17 @@ in {
   security.acme = {
     acceptTerms = true;
     defaults.email = "georgerw@gmail.com";
+
+    # DNS-01 certs for the internal-only vhosts (no public DNS for HTTP-01).
+    # group = nginx so the webserver can read the issued cert/key.
+    certs = builtins.listToAttrs (map (name: {
+      name = network.publicFqdn name;
+      value = {
+        dnsProvider = "gcloud";
+        environmentFile = gcpAcmeEnv;
+        group = "nginx";
+      };
+    }) internalCerts);
   };
 
   services.nginx = {
@@ -97,11 +128,11 @@ in {
   };
 
   sconfig.gcp-ddns = let
+    # radarr/sonarr/autobrr are intentionally omitted: they are internal-only
+    # (LAN + wireguard) and resolve via dnsmasq to trex. No public A/AAAA records
+    # are published, and their certs renew via DNS-01 (see security.acme below).
     domains = map network.publicFqdn [
       "home"
-      "radarr"
-      "sonarr"
-      "autobrr"
       "static"
     ];
   in {
@@ -139,10 +170,11 @@ in {
 
   services.nginx.virtualHosts.${network.publicFqdn "radarr"} = {
     forceSSL = true;
-    enableACME = true;
+    useACMEHost = network.publicFqdn "radarr";
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
+        ${lanOnly}
       '';
       proxyPass = "http://${arrIp}:7878";
       proxyWebsockets = true;
@@ -151,10 +183,11 @@ in {
 
   services.nginx.virtualHosts.${network.publicFqdn "sonarr"} = {
     forceSSL = true;
-    enableACME = true;
+    useACMEHost = network.publicFqdn "sonarr";
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
+        ${lanOnly}
       '';
       proxyPass = "http://${arrIp}:8989";
       proxyWebsockets = true;
@@ -163,12 +196,26 @@ in {
 
   services.nginx.virtualHosts.${network.publicFqdn "autobrr"} = {
     forceSSL = true;
-    enableACME = true;
+    useACMEHost = network.publicFqdn "autobrr";
     locations."/" = {
       extraConfig = ''
         proxy_buffering off;
+        ${lanOnly}
       '';
       proxyPass = "http://${arrIp}:7474";
+      proxyWebsockets = true;
+    };
+  };
+
+  services.nginx.virtualHosts.${network.publicFqdn "open-webui"} = {
+    forceSSL = true;
+    useACMEHost = network.publicFqdn "open-webui";
+    locations."/" = {
+      extraConfig = ''
+        proxy_buffering off;
+        ${lanOnly}
+      '';
+      proxyPass = "http://${trexIp}:11111";
       proxyWebsockets = true;
     };
   };

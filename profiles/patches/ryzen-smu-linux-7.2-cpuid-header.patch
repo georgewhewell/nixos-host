@@ -1,0 +1,13 @@
+diff --git a/smu.c b/smu.c
+index 9d2e924..4a8572c 100644
+--- a/smu.c
++++ b/smu.c
+@@ -1,6 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ /* Copyright (C) 2020 Leonardo Gates <leogatesx9r@protonmail.com> */
+ /* Ryzen SMU Root Complex Communication */
+ 
++#include <asm/cpuid/api.h>
+ #include <asm/io.h>
+ #include <linux/delay.h>
+ #include <linux/module.h>

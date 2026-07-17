@@ -104,6 +104,26 @@ in {
           linkConfig.Unmanaged = "yes";
         };
 
+        # SpacemiT K3 USB management gadget. Keep it as a static
+        # point-to-point link instead of bridging it to the LAN.
+        "20-spacemit-k3-usb" = {
+          matchConfig = {
+            Driver = "cdc_ncm";
+            Property = "ID_VENDOR_ID=361c ID_MODEL_ID=0008";
+            MACAddress = "02:86:16:70:00:02";
+          };
+          address = [
+            "10.86.167.2/24"
+          ];
+          networkConfig = {
+            DHCP = "no";
+            IPv6AcceptRA = false;
+            LinkLocalAddressing = "no";
+            IgnoreCarrierLoss = true;
+          };
+          linkConfig.RequiredForOnline = "no";
+        };
+
         # USB network adapters - bridge to LAN
         # Note: Router has its own higher-priority 20-nanokvm config for NanoKVM
         "50-rndis" = { matchConfig.Driver = "rndis_host"; } // bridgeNetwork;

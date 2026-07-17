@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${MIKROTIK_400G_HOST:-192.168.23.27}"
+user="${MIKROTIK_400G_USER:-admin}"
+pass_entry="${MIKROTIK_400G_PASS_ENTRY:-mikrotik-400g.lan}"
+expected_fingerprint="SHA256:hvAzlvmnyO7enVVMdUU+SO/XH9yms4YtaWSswgCuwjU"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+config="${repo_root}/machines/routeros/crs804/config.rsc"
+remote_config="crs804-nixos-config.rsc"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/mikrotik-400g-apply-config [--dry-run|--apply]
+
+The password is read directly from `pass` and supplied to sshpass through its
+environment; it is never printed or placed in a process argument.
+EOF
+}
+
+mode="${1:---dry-run}"
+case "${mode}" in
+  --dry-run|--apply) ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+for command in pass ssh ssh-keyscan ssh-keygen scp; do
+  if ! command -v "${command}" >/dev/null 2>&1; then
+    echo "Missing required command: ${command}" >&2
+    exit 1
+  fi
+done
+
+sshpass_bin="${SSHPASS_BIN:-$(command -v sshpass || true)}"
+if [[ -z "${sshpass_bin}" ]]; then
+  if ! command -v nix >/dev/null 2>&1; then
+    echo "Missing required command: sshpass (and nix is unavailable to provide it)" >&2
+    exit 1
+  fi
+  sshpass_bin="$(nix build --no-link --print-out-paths nixpkgs#sshpass)/bin/sshpass"
+fi
+
+known_hosts="$(mktemp)"
+trap 'rm -f "${known_hosts}"' EXIT
+ssh-keyscan -T 5 "${host}" >"${known_hosts}" 2>/dev/null
+actual_fingerprint="$(ssh-keygen -lf "${known_hosts}" -E sha256 | awk 'NR == 1 { print $2 }')"
+if [[ "${actual_fingerprint}" != "${expected_fingerprint}" ]]; then
+  echo "Refusing connection: unexpected CRS804 SSH host-key fingerprint" >&2
+  echo "Expected: ${expected_fingerprint}" >&2
+  echo "Received: ${actual_fingerprint:-none}" >&2
+  exit 1
+fi
+
+export SSHPASS
+IFS= read -r SSHPASS < <(pass show "${pass_entry}")
+ssh_opts=(
+  -o StrictHostKeyChecking=yes
+  -o UserKnownHostsFile="${known_hosts}"
+  -o ConnectTimeout=10
+)
+
+"${sshpass_bin}" -e scp -O "${ssh_opts[@]}" "${config}" "${user}@${host}:${remote_config}"
+
+if [[ "${mode}" == "--dry-run" ]]; then
+  "${sshpass_bin}" -e ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/import file-name=${remote_config} verbose=yes dry-run"
+else
+  "${sshpass_bin}" -e ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/export file=crs804-before-nixos-config"
+  "${sshpass_bin}" -e ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/import file-name=${remote_config} verbose=yes"
+fi
+
+unset SSHPASS

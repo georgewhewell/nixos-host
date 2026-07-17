@@ -1,0 +1,1034 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Characterize Strix Halo waterblock mounting pressure by loading each CCD alone.
+
+Usage:
+  scripts/strix-halo-mount-probe [options] probe HOST
+  scripts/strix-halo-mount-probe [options] gpu HOST
+  scripts/strix-halo-mount-probe [options] tune HOST
+  scripts/strix-halo-mount-probe [options] diagram HOST CPU.csv
+  scripts/strix-halo-mount-probe compare BEFORE.csv AFTER.csv
+
+Probe options:
+  --duration SECONDS   Load each CCD for this long. Default: 12.
+  --interval SECONDS   Telemetry interval. Default: 1.
+  --cooldown SECONDS   Maximum cooldown between CCDs. Default: 60.
+  --order ORDER         CCD test order: 0,1 or 1,0. Default: 0,1.
+  --output PATH        Probe: output CSV file.
+                       Tune: directory for all interactive runs.
+                       Default: a timestamped path below traces/.
+  --force              Run even if a known CPU/GPU load is active.
+  --ssh-option OPT     Extra ssh -o option. May be repeated.
+  --turn-step TURNS    Tune: maximum adjustment step. Default: 0.125 (1/8 turn).
+  --balance-pct PCT    Tune: stop when CCD power differs by at most this much.
+                       Default: 5.
+  --ccd0-side SIDE     Diagram: physical side of CCD0: left or right.
+                       Default: left.
+  --screw-tl STATE     Diagram: top-left screw state. Default: unknown.
+  --screw-tr STATE     Diagram: top-right screw state. Default: unknown.
+  --screw-bl STATE     Diagram: bottom-left screw state. Default: unknown.
+  --screw-br STATE     Diagram: bottom-right screw state. Default: unknown.
+  -h, --help           Show this help.
+
+The probe discovers the two CCDs from L3 cache topology. It uses one pinned
+worker per physical core, so it does not depend on RyzenAdj's per-core
+temperature decoding. It compares thermal conductance (dynamic watts divided
+by Tctl rise), which covers both thermally throttled and platform-power-limited
+CCDs. A higher W/C score means better die-to-block heat transfer.
+
+Interactive tuning keeps the host running. Looking at the AXB35 as in the wiki
+board photo (external ports at left and right), the CPU CCDs are at the top of
+the package. Tune therefore controls the top-left and top-right waterblock
+screws. It first learns whether CCD0 is on the left or right, then tells you
+which screw to turn and by how much. A positive turn means tighten clockwise.
+
+Examples:
+  scripts/strix-halo-mount-probe probe strix-4
+  scripts/strix-halo-mount-probe gpu strix-4
+  scripts/strix-halo-mount-probe tune strix-4
+  scripts/strix-halo-mount-probe --screw-tl hand-tight --screw-tr hand-tight \
+    --screw-bl hand-tight --screw-br hand-tight diagram strix-1 /tmp/cpu.csv
+  scripts/strix-halo-mount-probe --duration 20 --output /tmp/before.csv probe strix-4
+  scripts/strix-halo-mount-probe compare /tmp/before.csv /tmp/after.csv
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+duration=12
+interval=1
+cooldown=60
+order="0,1"
+output=""
+force=0
+turn_step=0.125
+balance_pct=5
+ccd0_side=left
+screw_tl=unknown
+screw_tr=unknown
+screw_bl=unknown
+screw_br=unknown
+ssh_opts=(-o BatchMode=yes -o ConnectTimeout=8)
+positionals=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --duration)
+      [ "$#" -ge 2 ] || die "--duration requires an argument"
+      duration="$2"
+      shift 2
+      ;;
+    --interval)
+      [ "$#" -ge 2 ] || die "--interval requires an argument"
+      interval="$2"
+      shift 2
+      ;;
+    --cooldown)
+      [ "$#" -ge 2 ] || die "--cooldown requires an argument"
+      cooldown="$2"
+      shift 2
+      ;;
+    --order)
+      [ "$#" -ge 2 ] || die "--order requires an argument"
+      order="$2"
+      shift 2
+      ;;
+    --output)
+      [ "$#" -ge 2 ] || die "--output requires an argument"
+      output="$2"
+      shift 2
+      ;;
+    --force)
+      force=1
+      shift
+      ;;
+    --ssh-option)
+      [ "$#" -ge 2 ] || die "--ssh-option requires an argument"
+      ssh_opts+=(-o "$2")
+      shift 2
+      ;;
+    --turn-step)
+      [ "$#" -ge 2 ] || die "--turn-step requires an argument"
+      turn_step="$2"
+      shift 2
+      ;;
+    --balance-pct)
+      [ "$#" -ge 2 ] || die "--balance-pct requires an argument"
+      balance_pct="$2"
+      shift 2
+      ;;
+    --ccd0-side)
+      [ "$#" -ge 2 ] || die "--ccd0-side requires an argument"
+      ccd0_side="$2"
+      shift 2
+      ;;
+    --screw-tl|--screw-tr|--screw-bl|--screw-br)
+      [ "$#" -ge 2 ] || die "$1 requires an argument"
+      option_name=${1#--screw-}
+      printf -v "screw_$option_name" '%s' "$2"
+      shift 2
+      ;;
+    --)
+      shift
+      positionals+=("$@")
+      break
+      ;;
+    -*)
+      die "unknown option: $1"
+      ;;
+    *)
+      positionals+=("$1")
+      shift
+      ;;
+  esac
+done
+
+case "$ccd0_side" in
+  left|right) ;;
+  *) die "--ccd0-side must be left or right" ;;
+esac
+
+for value_name in turn_step balance_pct; do
+  value=${!value_name}
+  [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "--${value_name//_/-} must be a positive number"
+  awk -v value="$value" 'BEGIN { exit !(value > 0) }' || die "--${value_name//_/-} must be greater than zero"
+done
+
+case "$order" in
+  0,1|1,0) ;;
+  *) die "--order must be 0,1 or 1,0" ;;
+esac
+
+for value in "$duration" "$interval" "$cooldown"; do
+  case "$value" in
+    ''|*[!0-9]*) die "durations and intervals must be integer seconds" ;;
+  esac
+  [ "$value" -gt 0 ] || die "durations and intervals must be greater than zero"
+done
+
+action="${positionals[0]:-}"
+
+compare_results() {
+  local before="$1"
+  local after="$2"
+
+  [ -r "$before" ] || die "cannot read baseline: $before"
+  [ -r "$after" ] || die "cannot read comparison: $after"
+
+  awk '
+    function read_summary(file, target,    line,n,i,pair,key,value) {
+      while ((getline line < file) > 0) {
+        if (line !~ /^SUMMARY,/) continue
+        n = split(line, fields, ",")
+        delete row
+        for (i = 2; i <= n; i++) {
+          split(fields[i], pair, "=")
+          row[pair[1]] = pair[2]
+        }
+        key = row["host"] SUBSEP row["ccd"]
+        if (target == "before") {
+          rise = (row["capacity_tctl_mC"] - row["baseline_tctl_mC"]) / 1000
+          b_power[key] = row["dynamic_w"]
+          b_score[key] = row["cooling_W_per_C"] != "" ? row["cooling_W_per_C"] : row["dynamic_w"] / rise
+          hosts[row["host"]] = 1
+        } else {
+          rise = (row["capacity_tctl_mC"] - row["baseline_tctl_mC"]) / 1000
+          a_power[key] = row["dynamic_w"]
+          a_score[key] = row["cooling_W_per_C"] != "" ? row["cooling_W_per_C"] : row["dynamic_w"] / rise
+          hosts[row["host"]] = 1
+        }
+      }
+      close(file)
+    }
+    BEGIN {
+      read_summary(ARGV[1], "before")
+      read_summary(ARGV[2], "after")
+      for (host in hosts) {
+        printf "host=%s\n", host
+        best_ccd = ""
+        best_change = -1e9
+        for (i = 0; i < 2; i++) {
+          ccd = "ccd" i
+          key = host SUBSEP ccd
+          if (!(key in b_score) || !(key in a_score)) {
+            printf "  %s: missing comparable summary\n", ccd
+            continue
+          }
+          change = b_score[key] != 0 ? 100 * (a_score[key] - b_score[key]) / b_score[key] : 0
+          printf "  %s: %.3f -> %.3f W/C (%+.1f%%); dynamic %.1f -> %.1f W\n", \
+            ccd, b_score[key], a_score[key], change, b_power[key], a_power[key]
+          if (change > best_change) {
+            best_change = change
+            best_ccd = ccd
+          }
+        }
+        if (best_ccd != "")
+          printf "  strongest improvement: %s (%+.1f%%)\n", best_ccd, best_change
+      }
+    }
+  ' "$before" "$after"
+}
+
+result_metrics() {
+  local file="$1"
+
+  awk -F, '
+    /^SUMMARY,/ {
+      delete row
+      for (i = 2; i <= NF; i++) {
+        split($i, pair, "=")
+        row[pair[1]] = pair[2]
+      }
+      rise = (row["capacity_tctl_mC"] - row["baseline_tctl_mC"]) / 1000
+      score[row["ccd"]] = row["cooling_W_per_C"] != "" ? row["cooling_W_per_C"] : row["dynamic_w"] / rise
+    }
+    END {
+      if (!("ccd0" in score) || !("ccd1" in score)) exit 1
+      if (score["ccd0"] < score["ccd1"]) {
+        weaker = "ccd0"; better = "ccd1"
+      } else {
+        weaker = "ccd1"; better = "ccd0"
+      }
+      deficit = score[better] != 0 ? 100 * (score[better] - score[weaker]) / score[better] : 0
+      printf "%.6f %.6f %s %.6f\n", score["ccd0"], score["ccd1"], weaker, deficit
+    }
+  ' "$file"
+}
+
+relative_changes() {
+  local before="$1"
+  local after="$2"
+
+  awk -F, '
+    function collect(target,    i) {
+      delete row
+      for (i = 2; i <= NF; i++) {
+        split($i, pair, "=")
+        row[pair[1]] = pair[2]
+      }
+      if (target == "before")
+        before_score[row["ccd"]] = row["cooling_W_per_C"] != "" ? \
+          row["cooling_W_per_C"] : row["dynamic_w"] / ((row["capacity_tctl_mC"] - row["baseline_tctl_mC"]) / 1000)
+      else
+        after_score[row["ccd"]] = row["cooling_W_per_C"] != "" ? \
+          row["cooling_W_per_C"] : row["dynamic_w"] / ((row["capacity_tctl_mC"] - row["baseline_tctl_mC"]) / 1000)
+    }
+    FNR == NR && /^SUMMARY,/ { collect("before"); next }
+    /^SUMMARY,/ { collect("after") }
+    END {
+      for (i = 0; i < 2; i++) {
+        ccd = "ccd" i
+        if (!(ccd in before_score) || !(ccd in after_score) || before_score[ccd] == 0)
+          exit 1
+        change[i] = 100 * (after_score[ccd] - before_score[ccd]) / before_score[ccd]
+      }
+      printf "%.6f %.6f\n", change[0], change[1]
+    }
+  ' "$before" "$after"
+}
+
+float_lt() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a < b) }'; }
+float_le() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a <= b) }'; }
+float_ge() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a >= b) }'; }
+
+absolute_difference() {
+  awk -v a="$1" -v b="$2" 'BEGIN { difference = a - b; printf "%g\n", difference < 0 ? -difference : difference }'
+}
+
+signed_turn() {
+  awk -v value="$1" 'BEGIN { printf "+%g\n", value }'
+}
+
+negate_turn() {
+  awk -v value="$1" 'BEGIN { printf "%+g\n", -value }'
+}
+
+adaptive_step() {
+  local deficit="$1"
+
+  awk -v maximum="$turn_step" -v deficit="$deficit" '
+    BEGIN {
+      if (deficit >= 30) step = maximum
+      else if (deficit >= 15) step = maximum / 2
+      else step = maximum / 4
+      printf "%g\n", step
+    }
+  '
+}
+
+screw_for_ccd() {
+  local ccd="$1"
+  local left="$2"
+
+  if [ "$ccd" = "$left" ]; then
+    echo "top-left"
+  else
+    echo "top-right"
+  fi
+}
+
+draw_diagram() {
+  local diagram_host="$1"
+  local cpu_file="$2"
+  local c0_tctl c0_peak c0_power c0_freq c1_tctl c1_peak c1_power c1_freq
+  local live power tctl edge busy
+  local left_name left_tctl left_peak left_power left_freq
+  local right_name right_tctl right_peak right_power right_freq
+  local weak weak_corner deficit gpu_margin
+
+  [ -r "$cpu_file" ] || die "cannot read CPU results: $cpu_file"
+  read -r c0_tctl c0_peak c0_power c0_freq c1_tctl c1_peak c1_power c1_freq < <(
+    awk -F, '
+      /^SUMMARY,/ {
+        delete row
+        for (i = 2; i <= NF; i++) {
+          split($i, pair, "=")
+          row[pair[1]] = pair[2]
+        }
+        tctl[row["ccd"]] = row["capacity_tctl_mC"] / 1000
+        peak[row["ccd"]] = row["peak_tctl_mC"] / 1000
+        power[row["ccd"]] = row["capacity_power_uW"] / 1000000
+        frequency[row["ccd"]] = row["capacity_freq_kHz"] / 1000
+      }
+      END {
+        if (!("ccd0" in power) || !("ccd1" in power)) exit 1
+        printf "%.1f %.1f %.1f %.0f %.1f %.1f %.1f %.0f\n", \
+          tctl["ccd0"], peak["ccd0"], power["ccd0"], frequency["ccd0"], \
+          tctl["ccd1"], peak["ccd1"], power["ccd1"], frequency["ccd1"]
+      }
+    ' "$cpu_file"
+  )
+
+  # Prefer the live soak telemetry so the large GPU/I/O box reflects the
+  # current bounded mixed load rather than an older standalone GPU probe.
+  live=$(ssh "${ssh_opts[@]}" "$diagram_host" 'bash -s' <<'REMOTE_DIAGRAM'
+if systemctl is-active --quiet strix-halo-ptm-soak.service; then
+  file=$(ls -1t /var/lib/strix-halo-ptm-soak/telemetry-*.csv 2>/dev/null | head -1)
+  [ -n "$file" ] && tail -1 "$file" && exit 0
+fi
+
+for hwmon in /sys/class/hwmon/hwmon*; do
+  case "$(cat "$hwmon/name" 2>/dev/null || true)" in
+    amdgpu) amdgpu="$hwmon" ;;
+    k10temp) k10temp="$hwmon" ;;
+  esac
+done
+power=$(awk -v value="$(cat "$amdgpu/power1_average")" 'BEGIN { printf "%.1f", value / 1000000 }')
+tctl=$(awk -v value="$(cat "$k10temp/temp1_input")" 'BEGIN { printf "%.1f", value / 1000 }')
+edge=$(awk -v value="$(cat "$amdgpu/temp1_input")" 'BEGIN { printf "%.1f", value / 1000 }')
+busy=$(cat /sys/class/drm/card0/device/gpu_busy_percent)
+printf 'live,0,na,na,%s,%s,%s,%s\n' "$power" "$tctl" "$edge" "$busy"
+REMOTE_DIAGRAM
+)
+  IFS=, read -r _ _ _ _ power tctl edge busy <<<"$live"
+
+  if [ "$ccd0_side" = left ]; then
+    left_name=CCD0; left_tctl="$c0_tctl"; left_peak="$c0_peak"; left_power="$c0_power"; left_freq="$c0_freq"
+    right_name=CCD1; right_tctl="$c1_tctl"; right_peak="$c1_peak"; right_power="$c1_power"; right_freq="$c1_freq"
+  else
+    left_name=CCD1; left_tctl="$c1_tctl"; left_peak="$c1_peak"; left_power="$c1_power"; left_freq="$c1_freq"
+    right_name=CCD0; right_tctl="$c0_tctl"; right_peak="$c0_peak"; right_power="$c0_power"; right_freq="$c0_freq"
+  fi
+
+  if float_lt "$c0_power" "$c1_power"; then
+    weak=CCD0
+    deficit=$(awk -v weak="$c0_power" -v strong="$c1_power" 'BEGIN { printf "%.1f", 100 * (strong - weak) / strong }')
+  else
+    weak=CCD1
+    deficit=$(awk -v weak="$c1_power" -v strong="$c0_power" 'BEGIN { printf "%.1f", 100 * (strong - weak) / strong }')
+  fi
+  if { [ "$weak" = CCD0 ] && [ "$ccd0_side" = left ]; } || \
+     { [ "$weak" = CCD1 ] && [ "$ccd0_side" = right ]; }; then
+    weak_corner=top-left
+  else
+    weak_corner=top-right
+  fi
+  gpu_margin=$(awk -v cpu="$tctl" -v gpu="$edge" 'BEGIN { printf "%.1f", cpu - gpu }')
+
+  printf '\n%s -- AXB35 BOARD-PHOTO ORIENTATION\n' "$diagram_host"
+  printf '                 TOP / SMALL CPU CCD EDGE\n'
+  printf '       o %-18.18s             %-18.18s o\n' "TL: $screw_tl" "TR: $screw_tr"
+  printf '       | +----------------------+ +----------------------+ |\n'
+  printf '       | | %-20s | | %-20s | |\n' "$left_name / physical left" "$right_name / physical right"
+  printf '       | | isolated Tctl %5.1f C | | isolated Tctl %5.1f C | |\n' "$left_tctl" "$right_tctl"
+  printf '       | | peak          %5.1f C | | peak          %5.1f C | |\n' "$left_peak" "$right_peak"
+  printf '       | | package PPT   %5.1f W | | package PPT   %5.1f W | |\n' "$left_power" "$right_power"
+  printf '       | | CCD avg       %5.0f MHz| | CCD avg       %5.0f MHz| |\n' "$left_freq" "$right_freq"
+  printf '       | +----------------------+ +----------------------+ |\n'
+  printf '       |                                                        |\n'
+  printf '       | +----------------------------------------------------+ |\n'
+  printf '       | | LARGE GPU / I/O DIE                               | |\n'
+  printf '       | | mixed load: package %5.1f W   GPU edge %5.1f C     | |\n' "$power" "$edge"
+  printf '       | |             Tctl %5.1f C   GPU busy %3s%%          | |\n' "$tctl" "$busy"
+  printf '       | +----------------------------------------------------+ |\n'
+  printf '       o %-18.18s             %-18.18s o\n' "BL: $screw_bl" "BR: $screw_br"
+  printf '               BOTTOM / LARGE GPU-I/O DIE EDGE\n\n'
+  printf 'LIMITING CPU AREA: %s at %s (%s%% less isolated package capacity).\n' "$weak" "$weak_corner" "$deficit"
+  printf 'GPU HEADROOM: %.1f C below Tctl under the current mixed load.\n' "$gpu_margin"
+  printf 'NOTE: one GPU-edge sensor cannot distinguish bottom-left from bottom-right.\n'
+}
+
+case "$action" in
+  compare)
+    [ "${#positionals[@]}" -eq 3 ] || die "compare requires BEFORE.csv and AFTER.csv"
+    compare_results "${positionals[1]}" "${positionals[2]}"
+    exit 0
+    ;;
+  diagram)
+    [ "${#positionals[@]}" -eq 3 ] || die "diagram requires HOST and CPU.csv"
+    draw_diagram "${positionals[1]}" "${positionals[2]}"
+    exit 0
+    ;;
+  probe|gpu|tune)
+    [ "${#positionals[@]}" -eq 2 ] || die "$action requires exactly one HOST"
+    ;;
+  '')
+    usage >&2
+    exit 1
+    ;;
+  *)
+    die "unknown action: $action"
+    ;;
+esac
+
+host="${positionals[1]}"
+
+run_gpu_probe() {
+  local gpu_output tmp_output remote_gpu_script repo_root
+
+  if [ -n "$output" ]; then
+    gpu_output="$output"
+  else
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    gpu_output="$repo_root/traces/mount-gpu-${host//[^A-Za-z0-9_.-]/_}-$(date +%Y%m%d-%H%M%S).csv"
+  fi
+  mkdir -p "$(dirname "$gpu_output")"
+
+  # shellcheck disable=SC2016
+  remote_gpu_script=$(cat <<'REMOTE_GPU_SCRIPT'
+set -euo pipefail
+
+duration="$1"
+force="$2"
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+if [ "$force" -ne 1 ]; then
+  for process in xmrig rocblas-bench hipblas-bench clpeak yes stress-ng; do
+    if pgrep -x "$process" >/dev/null 2>&1; then
+      die "active load detected: $process (use --force to override)"
+    fi
+  done
+fi
+
+bench=""
+for candidate in /run/current-system/sw/bin/clpeak /nix/store/*-clpeak-*/bin/clpeak; do
+  if [ -x "$candidate" ]; then
+    bench="$candidate"
+    break
+  fi
+done
+[ -n "$bench" ] || die "clpeak is not installed; run: nix shell nixpkgs#clpeak --command true"
+
+amdgpu=""
+k10temp=""
+for hwmon in /sys/class/hwmon/hwmon*; do
+  case "$(cat "$hwmon/name" 2>/dev/null || true)" in
+    amdgpu) amdgpu="$hwmon" ;;
+    k10temp) k10temp="$hwmon" ;;
+  esac
+done
+[ -n "$amdgpu" ] || die "amdgpu hwmon not found"
+[ -n "$k10temp" ] || die "k10temp hwmon not found"
+[ -r /sys/class/drm/card0/device/gpu_busy_percent ] || die "GPU utilization telemetry not found"
+
+samples=$(mktemp)
+pid=""
+cleanup() {
+  if [ -n "$pid" ]; then
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  fi
+  rm -f "$samples"
+}
+trap cleanup EXIT INT TERM
+
+baseline_edge=$(cat "$amdgpu/temp1_input")
+baseline_tctl=$(cat "$k10temp/temp1_input")
+baseline_power=$(cat "$amdgpu/power1_average")
+iterations=$((duration * 100))
+
+"$bench" --opencl --fp-compute --single-precision-compute \
+  --iters "$iterations" --warmup 10 >/dev/null 2>&1 &
+pid=$!
+
+for ((sec = 0; sec <= duration; sec++)); do
+  kill -0 "$pid" 2>/dev/null || die "clpeak exited before the probe completed"
+  edge=$(cat "$amdgpu/temp1_input")
+  tctl=$(cat "$k10temp/temp1_input")
+  power=$(cat "$amdgpu/power1_average")
+  busy=$(cat /sys/class/drm/card0/device/gpu_busy_percent)
+  printf "GPU_SAMPLE,host=%s,sec=%d,edge_mC=%s,tctl_mC=%s,power_uW=%s,busy_pct=%s\n" \
+    "$(hostname)" "$sec" "$edge" "$tctl" "$power" "$busy" | tee -a "$samples"
+  [ "$sec" -eq "$duration" ] || sleep 1
+done
+
+kill "$pid" 2>/dev/null || true
+wait "$pid" 2>/dev/null || true
+pid=""
+
+awk -F, -v host="$(hostname)" -v baseline_edge="$baseline_edge" \
+  -v baseline_tctl="$baseline_tctl" -v baseline_power="$baseline_power" '
+    {
+      delete row
+      for (i = 1; i <= NF; i++) {
+        split($i, pair, "=")
+        row[pair[1]] = pair[2]
+      }
+      if (row["busy_pct"] >= 90) {
+        eligible++
+        edges[eligible] = row["edge_mC"]
+        tctls[eligible] = row["tctl_mC"]
+        powers[eligible] = row["power_uW"]
+        busies[eligible] = row["busy_pct"]
+      }
+    }
+    END {
+      if (!eligible) {
+        print "error: GPU never reached 90% utilization" > "/dev/stderr"
+        exit 1
+      }
+      start = eligible > 5 ? eligible - 4 : 1
+      for (i = start; i <= eligible; i++) {
+        edge += edges[i]
+        tctl += tctls[i]
+        power += powers[i]
+        busy += busies[i]
+        count++
+      }
+      average_edge = edge / count
+      average_power = power / count
+      dynamic_power = (average_power - baseline_power) / 1000000
+      temperature_rise = (average_edge - baseline_edge) / 1000
+      cooling = temperature_rise > 0 ? dynamic_power / temperature_rise : 0
+      printf "GPU_SUMMARY,host=%s,baseline_edge_mC=%d,baseline_tctl_mC=%d,baseline_power_uW=%d,capacity_edge_mC=%.0f,capacity_tctl_mC=%.0f,capacity_power_uW=%.0f,dynamic_w=%.1f,cooling_W_per_C=%.4f,busy_pct=%.1f\n", \
+        host, baseline_edge, baseline_tctl, baseline_power, average_edge, tctl / count, average_power, dynamic_power, cooling, busy / count
+    }
+  ' "$samples"
+REMOTE_GPU_SCRIPT
+)
+
+  tmp_output=$(mktemp)
+  trap 'rm -f "$tmp_output"' RETURN
+  ssh "${ssh_opts[@]}" "$host" bash -s -- "$duration" "$force" \
+    <<<"$remote_gpu_script" | tee "$tmp_output"
+  cp "$tmp_output" "$gpu_output"
+  echo "saved: $gpu_output" >&2
+}
+
+if [ "$action" = gpu ]; then
+  run_gpu_probe
+  exit 0
+fi
+
+run_interactive_tuning() {
+  local tune_dir previous current log run_number=0
+  local previous_deficit current_weaker current_deficit
+  local change0 change1 separation
+  local left_ccd="" right_ccd="" calibration_confidence=""
+  local next_screw next_turn phase bad_screw="" answer step
+  local -a probe_args
+
+  [ -r /dev/tty ] || die "tune requires an interactive terminal"
+
+  if [ -n "$output" ]; then
+    tune_dir="$output"
+  else
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    tune_dir="$repo_root/traces/mount-tune-${host//[^A-Za-z0-9_.-]/_}-$(date +%Y%m%d-%H%M%S)"
+  fi
+  mkdir -p "$tune_dir"
+
+  probe_args=(
+    --duration "$duration"
+    --interval "$interval"
+    --cooldown "$cooldown"
+    --order "$order"
+  )
+  [ "$force" -eq 0 ] || probe_args+=(--force)
+  for ((i = 1; i < ${#ssh_opts[@]}; i += 2)); do
+    probe_args+=(--ssh-option "${ssh_opts[i]}")
+  done
+
+  previous="$tune_dir/run-000-baseline.csv"
+  log="$tune_dir/run-000-baseline.log"
+  echo "Collecting baseline for $host..."
+  if ! "$0" "${probe_args[@]}" --output "$previous" probe "$host" >"$log"; then
+    cat "$log"
+    die "baseline probe failed"
+  fi
+  grep -E '^(SUMMARY|RESULT)' "$log"
+
+  read -r _ _ _ previous_deficit < <(result_metrics "$previous")
+  if float_le "$previous_deficit" "$balance_pct"; then
+    printf '\nHOLD: CCD pressure is already balanced (%.1f%% deficit; limit %.1f%%).\n' \
+      "$previous_deficit" "$balance_pct"
+    echo "No CPU-side screw turn is indicated by this test."
+    echo "session saved: $tune_dir"
+    return
+  fi
+
+  next_screw="top-left"
+  next_turn=$(signed_turn "$turn_step")
+  phase="calibrate-left"
+
+  while true; do
+    printf '\nLoad is stopped and %s has recovered.\n' "$host"
+    printf 'NEXT: %s %s turns\n' "$next_screw" "$next_turn"
+    printf 'Looking at the board as in axb35-02-v30.jpeg; + means clockwise/tighten.\n'
+    printf 'Make exactly that adjustment, then press Enter (q quits): '
+    IFS= read -r answer </dev/tty || die "could not read confirmation"
+    case "$answer" in
+      q|Q|quit|QUIT) break ;;
+    esac
+
+    run_number=$((run_number + 1))
+    current=$(printf '%s/run-%03d.csv' "$tune_dir" "$run_number")
+    log=$(printf '%s/run-%03d.log' "$tune_dir" "$run_number")
+    echo "Testing adjustment: $next_screw $next_turn turns"
+    if ! "$0" "${probe_args[@]}" --output "$current" probe "$host" >"$log"; then
+      cat "$log"
+      die "probe failed after adjustment: $next_screw $next_turn turns"
+    fi
+    printf 'ADJUSTMENT,host=%s,screw=%s,turns=%s,phase=%s\n' \
+      "$host" "$next_screw" "$next_turn" "$phase" >>"$current"
+    grep -E '^(SUMMARY|RESULT)' "$log"
+    echo "Change from previous run:"
+    "$0" compare "$previous" "$current"
+
+    read -r _ _ current_weaker current_deficit < <(result_metrics "$current")
+    read -r change0 change1 < <(relative_changes "$previous" "$current")
+
+    case "$phase" in
+      calibrate-left|calibrate-right)
+        # Tightening can improve the nearby CCD while making the other CCD
+        # worse through block tilt. Map the screw by relative signed response,
+        # not by whichever CCD changed most in either direction.
+        separation=$(absolute_difference "$change0" "$change1")
+
+        if [ "$phase" = calibrate-left ] && float_lt "$separation" 3; then
+          echo "Calibration response was too similar across CCDs; restoring top-left before testing top-right."
+          next_screw="top-left"
+          next_turn=$(negate_turn "$next_turn")
+          phase="restore-before-right-calibration"
+        else
+          if float_ge "$change0" "$change1"; then
+            if [ "$phase" = calibrate-left ]; then
+              left_ccd="ccd0"; right_ccd="ccd1"
+            else
+              right_ccd="ccd0"; left_ccd="ccd1"
+            fi
+          else
+            if [ "$phase" = calibrate-left ]; then
+              left_ccd="ccd1"; right_ccd="ccd0"
+            else
+              right_ccd="ccd1"; left_ccd="ccd0"
+            fi
+          fi
+          if float_ge "$separation" 3; then
+            calibration_confidence="clear"
+          else
+            calibration_confidence="low-confidence"
+          fi
+          printf 'MAPPING: left=%s, right=%s (%s; response separation %.1f%%).\n' \
+            "$left_ccd" "$right_ccd" "$calibration_confidence" "$separation"
+
+          if float_le "$current_deficit" "$balance_pct"; then
+            printf 'HOLD: CCD pressure is balanced (%.1f%% deficit; limit %.1f%%).\n' \
+              "$current_deficit" "$balance_pct"
+            previous="$current"
+            break
+          fi
+
+          # Always remove the calibration perturbation. The subsequent advice
+          # starts from the measured baseline instead of retaining a turn on
+          # what may have been the already-strong side.
+          next_turn=$(negate_turn "$next_turn")
+          phase="restore-after-calibration"
+        fi
+        ;;
+      restore-before-right-calibration)
+        next_screw="top-right"
+        next_turn=$(signed_turn "$turn_step")
+        phase="calibrate-right"
+        ;;
+      restore-after-calibration)
+        step=$(adaptive_step "$current_deficit")
+        next_screw=$(screw_for_ccd "$current_weaker" "$left_ccd")
+        next_turn=$(signed_turn "$step")
+        phase="control"
+        ;;
+      control)
+        if float_le "$current_deficit" "$balance_pct"; then
+          printf 'HOLD: CCD pressure is balanced (%.1f%% deficit; limit %.1f%%).\n' \
+            "$current_deficit" "$balance_pct"
+          previous="$current"
+          break
+        elif float_lt "$current_deficit" "$previous_deficit"; then
+          step=$(adaptive_step "$current_deficit")
+          next_screw=$(screw_for_ccd "$current_weaker" "$left_ccd")
+          next_turn=$(signed_turn "$step")
+          phase="control"
+        else
+          printf 'The imbalance worsened from %.1f%% to %.1f%%; undoing the last turn.\n' \
+            "$previous_deficit" "$current_deficit"
+          bad_screw="$next_screw"
+          next_turn=$(negate_turn "$next_turn")
+          phase="restore-after-worse"
+        fi
+        ;;
+      restore-after-worse)
+        step=$(adaptive_step "$current_deficit")
+        next_screw=$(screw_for_ccd "$current_weaker" "$left_ccd")
+        if [ "$next_screw" = "$bad_screw" ]; then
+          next_turn=$(negate_turn "$step")
+        else
+          next_turn=$(signed_turn "$step")
+        fi
+        phase="control"
+        ;;
+      *) die "internal error: unknown tuning phase: $phase" ;;
+    esac
+
+    previous="$current"
+    previous_deficit="$current_deficit"
+  done
+
+  echo "session saved: $tune_dir"
+}
+
+if [ "$action" = tune ]; then
+  run_interactive_tuning
+  exit 0
+fi
+
+if [ -z "$output" ]; then
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  output="$repo_root/traces/mount-${host//[^A-Za-z0-9_.-]/_}-$(date +%Y%m%d-%H%M%S).csv"
+fi
+mkdir -p "$(dirname "$output")"
+
+# shellcheck disable=SC2016
+remote_script=$(cat <<'REMOTE_SCRIPT'
+set -euo pipefail
+
+duration="$1"
+interval="$2"
+cooldown="$3"
+force="$4"
+order="$5"
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+for command in awk sort taskset yes; do
+  command -v "$command" >/dev/null || die "missing command: $command"
+done
+
+if [ "$force" -ne 1 ]; then
+  for process in xmrig rocblas-bench hipblas-bench yes stress-ng; do
+    if pgrep -x "$process" >/dev/null 2>&1; then
+      die "active load detected: $process (use --force to override)"
+    fi
+  done
+fi
+
+read_hwmon() {
+  local wanted="$1"
+  local hwmon name
+
+  for hwmon in /sys/class/hwmon/hwmon*; do
+    name=$(cat "$hwmon/name" 2>/dev/null || true)
+    case "$name:$wanted" in
+      k10temp:tctl) cat "$hwmon/temp1_input"; return ;;
+      amdgpu:power) cat "$hwmon/power1_average"; return ;;
+    esac
+  done
+  die "missing hwmon metric: $wanted"
+}
+
+declare -A first_thread=()
+declare -A ccd_cpus=()
+
+for cpu_path in /sys/devices/system/cpu/cpu[0-9]*; do
+  cpu="${cpu_path##*cpu}"
+  [ "$(cat "$cpu_path/online" 2>/dev/null || echo 1)" = 1 ] || continue
+  core=$(cat "$cpu_path/topology/core_id")
+  package=$(cat "$cpu_path/topology/physical_package_id")
+  key="$package:$core"
+  if [ -z "${first_thread[$key]+x}" ] || [ "$cpu" -lt "${first_thread[$key]}" ]; then
+    first_thread[$key]="$cpu"
+  fi
+done
+
+for key in "${!first_thread[@]}"; do
+  cpu="${first_thread[$key]}"
+  llc=$(cat "/sys/devices/system/cpu/cpu$cpu/cache/index3/id")
+  ccd_cpus[$llc]="${ccd_cpus[$llc]:-} $cpu"
+done
+
+mapfile -t llc_ids < <(printf "%s\n" "${!ccd_cpus[@]}" | sort -n)
+[ "${#llc_ids[@]}" -eq 2 ] || die "expected two L3/CCD groups, found ${#llc_ids[@]}"
+
+for llc in "${llc_ids[@]}"; do
+  ccd_cpus[$llc]=$(printf "%s\n" ${ccd_cpus[$llc]} | sort -n | xargs)
+  count=$(wc -w <<<"${ccd_cpus[$llc]}")
+  [ "$count" -eq 8 ] || die "expected eight physical cores in L3 group $llc, found $count"
+done
+
+host=$(hostname)
+tmp=$(mktemp)
+pids=""
+cleanup() {
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    wait $pids 2>/dev/null || true
+    pids=""
+  fi
+  rm -f "$tmp"
+}
+trap cleanup EXIT INT TERM
+
+average_frequency() {
+  local cpus="$1"
+  local cpu path value sum=0 count=0
+
+  for cpu in $cpus; do
+    path="/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_cur_freq"
+    [ -r "$path" ] || continue
+    value=$(cat "$path")
+    sum=$((sum + value))
+    count=$((count + 1))
+  done
+  [ "$count" -gt 0 ] || { echo 0; return; }
+  echo $((sum / count))
+}
+
+run_ccd() {
+  local label="$1"
+  local llc="$2"
+  local cpus="${ccd_cpus[$llc]}"
+  local baseline_tctl baseline_power cpu elapsed tctl power frequency
+
+  baseline_tctl=$(read_hwmon tctl)
+  baseline_power=$(read_hwmon power)
+  : > "$tmp"
+
+  for cpu in $cpus; do
+    taskset -c "$cpu" yes >/dev/null &
+    pids="$pids $!"
+  done
+
+  elapsed=0
+  while [ "$elapsed" -le "$duration" ]; do
+    tctl=$(read_hwmon tctl)
+    power=$(read_hwmon power)
+    frequency=$(average_frequency "$cpus")
+    printf "SAMPLE,host=%s,ccd=%s,llc=%s,sec=%s,tctl_mC=%s,power_uW=%s,avg_freq_kHz=%s\n" \
+      "$host" "$label" "$llc" "$elapsed" "$tctl" "$power" "$frequency" | tee -a "$tmp"
+    [ "$elapsed" -eq "$duration" ] && break
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+    [ "$elapsed" -le "$duration" ] || elapsed="$duration"
+  done
+
+  kill $pids 2>/dev/null || true
+  wait $pids 2>/dev/null || true
+  pids=""
+
+  awk -F, -v host="$host" -v ccd="$label" \
+    -v llc="$llc" -v baseline_tctl="$baseline_tctl" -v baseline_power="$baseline_power" '
+      {
+        for (i = 1; i <= NF; i++) {
+          split($i, pair, "=")
+          row[pair[1]] = pair[2]
+        }
+        if (row["tctl_mC"] > peak) peak = row["tctl_mC"]
+        if (row["sec"] > 0 && row["avg_freq_kHz"] >= 1000000) {
+          eligible++
+          eligible_tctl[eligible] = row["tctl_mC"]
+          eligible_power[eligible] = row["power_uW"]
+          eligible_frequency[eligible] = row["avg_freq_kHz"]
+        }
+        if (row["sec"] > 0 && row["avg_freq_kHz"] < 1000000)
+          latched = 1
+        delete row
+      }
+      END {
+        if (!eligible) {
+          printf "error: %s never produced a loaded, non-latched sample\n", ccd > "/dev/stderr"
+          exit 1
+        }
+        start = eligible > 5 ? eligible - 4 : 1
+        for (i = start; i <= eligible; i++) {
+          tctl += eligible_tctl[i]
+          power += eligible_power[i]
+          frequency += eligible_frequency[i]
+          count++
+        }
+        average_power = power / count
+        average_tctl = tctl / count
+        dynamic_power = (average_power - baseline_power) / 1000000
+        temperature_rise = (average_tctl - baseline_tctl) / 1000
+        cooling = temperature_rise > 0 ? dynamic_power / temperature_rise : 0
+        printf "SUMMARY,host=%s,ccd=%s,llc=%s,baseline_tctl_mC=%d,baseline_power_uW=%d,capacity_tctl_mC=%.0f,peak_tctl_mC=%d,capacity_power_uW=%.0f,dynamic_w=%.1f,cooling_W_per_C=%.4f,capacity_freq_kHz=%.0f,latched=%d\n", \
+          host, ccd, llc, baseline_tctl, baseline_power, average_tctl, peak, average_power, dynamic_power, cooling, frequency / count, latched
+      }
+    ' "$tmp"
+}
+
+cool_down() {
+  local target="$1"
+  local cpus="$2"
+  local elapsed=0
+  local healthy=0
+  local tctl frequency
+
+  while [ "$elapsed" -lt "$cooldown" ]; do
+    tctl=$(read_hwmon tctl)
+    frequency=$(average_frequency "$cpus")
+    if [ "$tctl" -le "$target" ] && [ "$frequency" -ge 1000000 ]; then
+      healthy=$((healthy + 1))
+      [ "$healthy" -ge 3 ] && return
+    else
+      healthy=0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  die "protection state did not clear during cooldown: Tctl=$(read_hwmon tctl) mC, next-CCD frequency=$(average_frequency "$cpus") kHz; reboot before probing the other CCD"
+}
+
+printf "META,host=%s,kernel=%s,ccd0_llc=%s,ccd0_cpus=%s,ccd1_llc=%s,ccd1_cpus=%s\n" \
+  "$host" "$(uname -r)" "${llc_ids[0]}" "$(xargs <<<"${ccd_cpus[${llc_ids[0]}]}")" \
+  "${llc_ids[1]}" "$(xargs <<<"${ccd_cpus[${llc_ids[1]}]}")"
+
+initial_tctl=$(read_hwmon tctl)
+first=${order%,*}
+second=${order#*,}
+run_ccd "ccd$first" "${llc_ids[$first]}"
+cool_down $((initial_tctl + 5000)) "${ccd_cpus[${llc_ids[$second]}]}"
+run_ccd "ccd$second" "${llc_ids[$second]}"
+cool_down $((initial_tctl + 5000)) "${first_thread[*]}"
+REMOTE_SCRIPT
+)
+
+tmp_output=$(mktemp)
+trap 'rm -f "$tmp_output"' EXIT
+
+ssh "${ssh_opts[@]}" "$host" bash -s -- "$duration" "$interval" "$cooldown" "$force" "$order" \
+  <<<"$remote_script" | tee "$tmp_output"
+
+cp "$tmp_output" "$output"
+echo "saved: $output" >&2
+
+awk -F, '
+  /^SUMMARY,/ {
+    delete row
+    for (i = 2; i <= NF; i++) {
+      split($i, pair, "=")
+      row[pair[1]] = pair[2]
+    }
+    power[row["ccd"]] = row["dynamic_w"]
+    cooling[row["ccd"]] = row["cooling_W_per_C"]
+    frequency[row["ccd"]] = row["capacity_freq_kHz"] / 1000
+    latched[row["ccd"]] = row["latched"]
+    host = row["host"]
+  }
+  END {
+    if (!("ccd0" in power) || !("ccd1" in power)) exit 1
+    if (cooling["ccd0"] < cooling["ccd1"]) {
+      worse = "ccd0"; better = "ccd1"
+    } else {
+      worse = "ccd1"; better = "ccd0"
+    }
+    deficit = cooling[better] != 0 ? 100 * (cooling[better] - cooling[worse]) / cooling[better] : 0
+    printf "RESULT,host=%s,ccd0_dynamic_w=%.1f,ccd1_dynamic_w=%.1f,ccd0_cooling_W_per_C=%.4f,ccd1_cooling_W_per_C=%.4f,ccd0_freq_MHz=%.0f,ccd1_freq_MHz=%.0f,ccd0_latched=%d,ccd1_latched=%d,weaker=%s,deficit_pct=%.1f\n", \
+      host, power["ccd0"], power["ccd1"], cooling["ccd0"], cooling["ccd1"], frequency["ccd0"], frequency["ccd1"], latched["ccd0"], latched["ccd1"], worse, deficit
+  }
+' "$tmp_output" | tee -a "$output"

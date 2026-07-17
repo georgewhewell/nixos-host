@@ -44,6 +44,9 @@
       };
       effortLevel = "max";
       skipDangerousModePermissionPrompt = true;
+      # Never prune session transcripts (default is 30 days); we lost the
+      # March 2026 kitten-video sessions to this.
+      cleanupPeriodDays = 99999;
       enabledPlugins = {
         "rust-analyzer-lsp@claude-plugins-official" = true;
       };
@@ -63,6 +66,13 @@
         DISABLE_TELEMETRY = "1";
       };
     };
+  };
+
+  # One global instruction source for both coding agents. Codex reads
+  # ~/.codex/AGENTS.md and Claude Code reads ~/.claude/CLAUDE.md.
+  home.file = {
+    ".codex/AGENTS.md".source = ./ai-agent-instructions.md;
+    ".claude/CLAUDE.md".source = ./ai-agent-instructions.md;
   };
 
   programs.direnv = {
@@ -128,7 +138,10 @@
     ++ (with inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}; [
       # gemini-cli is being deprecated (June 18, 2026) for unpaid/Google One
       # users; antigravity is Google's unified multi-agent replacement.
-      antigravity
+      antigravity-cli
+      # Self-improving AI agent by Nous Research — creates skills from
+      # experience and runs anywhere.
+      hermes-agent
       # opencode
       # codex
     ])

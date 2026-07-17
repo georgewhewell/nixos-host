@@ -220,26 +220,20 @@
   };
 
   # GPG agent forwarding only to LAN machines (they have /run/user/1000/gnupg/)
-  programs.ssh.matchBlocks = {
+  programs.ssh.settings = {
     "*.${network.domains.lan}" = {
-      extraOptions = {
-        StreamLocalBindUnlink = "yes";
-      };
-      remoteForwards = [
-        {
-          bind.address = "/run/user/1000/gnupg/S.gpg-agent";
-          host.address =
-            if pkgs.stdenv.isDarwin
-            then "/Users/grw/.gnupg/S.gpg-agent.extra"
-            else "/run/user/1000/gnupg/S.gpg-agent.extra";
-        }
-        {
-          bind.address = "/run/user/1000/gnupg/S.gpg-agent.ssh";
-          host.address =
-            if pkgs.stdenv.isDarwin
-            then "/Users/grw/.gnupg/S.gpg-agent.ssh"
-            else "/run/user/1000/gnupg/S.gpg-agent.ssh";
-        }
+      StreamLocalBindUnlink = "yes";
+      RemoteForward = [
+        "/run/user/1000/gnupg/S.gpg-agent ${
+          if pkgs.stdenv.isDarwin
+          then "/Users/grw/.gnupg/S.gpg-agent.extra"
+          else "/run/user/1000/gnupg/S.gpg-agent.extra"
+        }"
+        "/run/user/1000/gnupg/S.gpg-agent.ssh ${
+          if pkgs.stdenv.isDarwin
+          then "/Users/grw/.gnupg/S.gpg-agent.ssh"
+          else "/run/user/1000/gnupg/S.gpg-agent.ssh"
+        }"
       ];
     };
   };

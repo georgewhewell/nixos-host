@@ -20,6 +20,8 @@
 {lib}: let
   inherit (lib) attrValues concatLists concatMap filter mapAttrsToList optional optionals;
 
+  georgeInBedEntity = "binary_sensor.withings_in_bed_george";
+
   # ── Rooms ────────────────────────────────────────────────────────────────
   rooms = {
     bedroom = {
@@ -175,6 +177,8 @@
       { name = "trex";      maxPerf = "switch.trex_max_performance";      xmrig = "switch.trex_xmrig"; }
       { name = "strix-1";   maxPerf = "switch.strix_1_max_performance";   xmrig = "switch.strix_1_xmrig"; }
       { name = "strix-2";   maxPerf = "switch.strix_2_max_performance";   xmrig = "switch.strix_2_xmrig"; }
+      { name = "strix-3";   maxPerf = "switch.strix_3_max_performance";   xmrig = "switch.strix_3_xmrig"; }
+      { name = "strix-4";   maxPerf = "switch.strix_4_max_performance";   xmrig = "switch.strix_4_xmrig"; }
       { name = "cerberus";  maxPerf = "switch.cerberus_max_performance";  xmrig = null; }
       { name = "fuckup";    maxPerf = null;                               xmrig = "switch.fuckup_xmrig"; }
       { name = "air";       maxPerf = null;                               xmrig = "switch.air_xmrig"; }
@@ -187,6 +191,7 @@
   # ── Derived structures for consumers ─────────────────────────────────────
 
   allFixtures = concatMap (room: room.lights) (attrValues rooms);
+  allLightEntities = map (fixture: fixture.entity) allFixtures;
 
   # Light groups to synthesize as `platform = "group"`. Entity_id is derived
   # from the fixture's `entity` (must be "light.<key>").
@@ -215,10 +220,18 @@
           no_motion_wait = room.motion.timeout or 120;
         };
       };
-      condition = room.motion.conditions or null;
+      condition =
+        [
+          {
+            condition = "state";
+            entity_id = georgeInBedEntity;
+            state = "off";
+          }
+        ]
+        ++ (room.motion.conditions or []);
     })
     (lib.filterAttrs (_: r: r.motion != null) rooms);
 in {
-  inherit rooms mora cerberus miners;
-  inherit lightGroups adaptiveLights motionAutomations;
+  inherit rooms mora cerberus miners georgeInBedEntity;
+  inherit allLightEntities lightGroups adaptiveLights motionAutomations;
 }

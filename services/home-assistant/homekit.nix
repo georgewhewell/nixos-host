@@ -1,8 +1,5 @@
 {...}: {
-  services.avahi = {
-    enable = true;
-    reflector = true;
-  };
+  services.avahi.enable = true;
 
   networking.firewall.allowedUDPPorts = [5353];
   networking.firewall.allowedTCPPorts = [21063];

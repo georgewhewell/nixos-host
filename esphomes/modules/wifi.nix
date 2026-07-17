@@ -1,20 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}: let
-  hasNameSub = lib.hasAttrByPath ["esphome" "settings" "substitutions" "name"] config;
-in {
-  assertions = [
-    {
-      assertion = hasNameSub;
-      message = ''
-        The ESPHome wifi module requires `esphome.settings.substitutions.name`
-        because it sets `wifi.use_address = "''${name}.local"`.
-      '';
-    }
-  ];
-
+{...}: {
   esphome.requiredSubstitutions = [
     "wifi_ssid"
     "wifi_password"
@@ -29,7 +13,7 @@ in {
     wifi_password = {
       type = "sops-yaml";
       file = "secrets/wifi.yaml";
-      key = "wifi-password-backup";
+      key = "wifi-password";
     };
   };
 
@@ -39,7 +23,8 @@ in {
       password = "\${wifi_password}";
       power_save_mode = "none";
       fast_connect = true;
-      use_address = "\${name}.local";
+      # No use_address: with this domain the default upload address becomes
+      # <name>.lan.satanic.link (unicast DNS from DHCP), no mDNS needed.
       domain = ".lan.satanic.link";
     };
 

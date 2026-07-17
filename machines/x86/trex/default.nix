@@ -9,6 +9,64 @@
 let
   self = network.hosts.trex;
   hellasGatewayCli = inputs.hellas.packages.${pkgs.stdenv.hostPlatform.system}.cli;
+
+  # ConnectX-4 switchdev: pin interface names to the ASIC's phys_switch_id so
+  # they survive PCIe re-enumeration. The card's bus number moves whenever the
+  # PCIe tree is re-walked (e.g. toggling the BMC's shared-NIC mode), and with
+  # `pci=realloc=off` the kernel-assigned enpXsY names move with it. Anchoring
+  # on the switch id (stable, ASIC-derived) instead of the bus keeps OVS,
+  # sriov-init and networkd matching the right device every boot.
+  mlxSwitchId = "86240d00034b6b50";
+  mlxPfMac = "50:6b:4b:0d:24:86";
+  mlxPfName = "mlxlan0";
+  # VF7 currently enumerates as 0000:aa:01.0 and times out in mlx5_core
+  # ENABLE_HCA, adding about a minute to initrd. Use the seven working VFs.
+  mlxVfCount = 7;
+  # Representor names, index-aligned with phys_port_name pf0vf0..pf0vf{N-1}.
+  mlxRepNames = lib.genList (i: "${mlxPfName}r${toString i}") mlxVfCount;
+  # i40e ports also move when the PCIe tree is re-walked. Keep OVS pointed at
+  # MAC-pinned names instead of enpXsY names.
+  i40ePorts = {
+    i40e0 = "9c:6b:00:57:30:60";
+    i40e1 = "9c:6b:00:57:30:61";
+  };
+  i40eNames = builtins.attrNames i40ePorts;
+  mlxVfName = pkgs.writeShellScript "mlx-vf-name" ''
+    set -eu
+
+    devpath="/sys/$1"
+    vf_device="$(${pkgs.coreutils}/bin/readlink -f "$devpath/device")"
+    physfn="$vf_device/physfn"
+
+    [ -e "$physfn/net/${mlxPfName}" ] || exit 1
+
+    for virtfn in "$physfn"/virtfn*; do
+      [ -e "$virtfn" ] || continue
+      if [ "$(${pkgs.coreutils}/bin/readlink -f "$virtfn")" = "$vf_device" ]; then
+        idx="''${virtfn##*virtfn}"
+        case "$idx" in
+          ""|*[!0-9]*) exit 1 ;;
+        esac
+        [ "$idx" -lt ${toString mlxVfCount} ] || exit 1
+        printf '%s\n' "${mlxPfName}v$idx"
+        exit 0
+      fi
+    done
+
+    exit 1
+  '';
+  mlxUdevRules = pkgs.writeTextFile {
+    name = "75-mlx-switchdev-names";
+    destination = "/etc/udev/rules.d/75-mlx-switchdev-names.rules";
+    text = ''
+      SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="p0", NAME="${mlxPfName}"
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTRS{vendor}=="0x15b3", ATTRS{device}=="0x1014", PROGRAM="${mlxVfName} %p", NAME="%c"
+    '' + lib.concatStrings (lib.genList
+      (i: ''
+        SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="pf0vf${toString i}", NAME="${mlxPfName}r${toString i}"
+      '')
+      mlxVfCount);
+  };
 in
 {
   /*
@@ -45,6 +103,9 @@ in
     };
   };
 
+  systemd.timers.gcp-ddns.timerConfig.OnActiveSec = lib.mkForce "15min";
+  systemd.services.gcp-ddns.serviceConfig.TimeoutStartSec = "15min";
+
   # 7985WX - big parallel builder
   nix.settings = {
     system-features = [ "gccarch-znver4" "kvm" "big-parallel" "nixos-test" ];
@@ -55,6 +116,12 @@ in
     # accepted without --no-check-sigs.
     secret-key-files = [ config.sops.secrets.nix-cache-key.path ];
   };
+
+  # The Strix clients are netbooted with a read-only /nix/store, so they cannot
+  # act as writable Nix builders for trex. Keep the other remote builders (in
+  # particular the AArch64 and Darwin machines) available.
+  benchmark.executor.builders."strix-1".enable = lib.mkForce false;
+  benchmark.executor.builders."strix-2".enable = lib.mkForce false;
 
   boot.kernel.sysctl = {
     # Network buffer defaults
@@ -99,12 +166,12 @@ in
     preloadWeights = [
       "Qwen/Qwen3.5-0.8B"
     ];
-    trustedCallerPublicKeys = [
-      "03561852f0eda08f4b842cc800cf68845af1286c4881bf826a29fe87439e27eb08"
-      "02edec6b26cae32e9cd0bfbb90594066e60d0f9973b001af3ee15752162ab7dd99"
-    ];
-    fetchCodexResponses = true;
-    fetchCodexAuthPath = "/var/lib/hellas/.hellas/codex-auth.json";
+    # trustedCallerPublicKeys = [
+    #   "03561852f0eda08f4b842cc800cf68845af1286c4881bf826a29fe87439e27eb08"
+    #   "02edec6b26cae32e9cd0bfbb90594066e60d0f9973b001af3ee15752162ab7dd99"
+    # ];
+    # fetchCodexResponses = true;
+    # fetchCodexAuthPath = "/var/lib/hellas/.hellas/codex-auth.json";
     otel = {
       endpoint = "https://jaeger.lsd-ag.ch/v1/traces";
       serviceName = "executor-fuckup";
@@ -150,6 +217,75 @@ in
     };
   };
 
+  services.hermes-agent = {
+    enable = true;
+    package = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
+    user = "grw";
+    group = "users";
+    createUser = false;
+    createGroup = false;
+    stateDir = "/home/grw/.hermes";
+    homeDir = "/home/grw";
+  };
+
+  # Signal transport for hermes-gateway. signal-cli runs as an HTTP daemon
+  # that the gateway polls; account state lives in ~grw/.local/share/signal-cli
+  # (link once with `signal-cli link -n HermesAgent`). 8080 is qBittorrent and
+  # 8081 llama-server, so the daemon listens on 8082.
+  systemd.services.signal-cli-daemon = {
+    description = "signal-cli HTTP daemon for Hermes gateway";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      User = "grw";
+      Group = "users";
+      ExecStart = "${pkgs.signal-cli}/bin/signal-cli daemon --http 127.0.0.1:8082";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
+
+  environment.systemPackages = with pkgs; [
+    signal-cli
+    qrencode # render the signal-cli link URI as a terminal QR code
+    python312Packages.huggingface-hub
+    # Scriptable BIOS setup vars (PCIe bifurcation for the 4x4x4x4 riser in
+    # slot 2, etc.). Build the map once from a BIOS dump with
+    # `bios-setup-var build-db <rom> -o /var/lib/bios-setup-var/db.json`.
+    bios-setup-var
+  ];
+
+  # This box runs an aggressive CPU + memory overclock and is the fleet's NAS
+  # and NFS root, so RAS visibility is not optional: rasdaemon logs per-DIMM
+  # correctable/uncorrectable ECC counts and decodes SMCA machine checks to
+  # /var/lib/rasdaemon (persistent root here — no impermanence). A rising CE
+  # count on one DIMM is the early-warning that the memory OC has gone
+  # marginal (usually thermal); WHEA/MCE catches core/fabric-OC errors that
+  # ECC does NOT cover. `ras-mc-ctl --summary` / `--error-count` to read.
+  hardware.rasdaemon.enable = true;
+
+  # Trex is the sole writer for the Strix model tree. The Strix machines mount
+  # this cache read-only, which avoids cross-node Hub/file-lock races during
+  # distributed vLLM startup.
+  systemd.services.strix-model-qwen3-0-6b = {
+    description = "Pre-stage Qwen3-0.6B for the Strix vLLM cluster";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" "models.mount" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "grw";
+      Group = "users";
+      RemainAfterExit = true;
+      Environment = [
+        "HF_HOME=/models/.cache/huggingface"
+        "HF_HUB_DISABLE_TELEMETRY=1"
+      ];
+      ExecStart = "${pkgs.python312Packages.huggingface-hub}/bin/hf download Qwen/Qwen3-0.6B --revision c1899de289a04d12100db370d81485cdf75e47ca --cache-dir /models/.cache/huggingface/hub";
+    };
+  };
+
   nix.settings.build-cores = lib.mkDefault 48;
   nix.settings.max-jobs = lib.mkDefault 4;
 
@@ -173,6 +309,7 @@ in
     ../../../profiles/uefi-boot.nix
     ../../../profiles/zfs.nix
     ../../../profiles/nas.nix
+    ../../../profiles/netboot-server.nix
     ../../../profiles/crypto
     ../../../profiles/logserver.nix
     ../../../profiles/radeon.nix
@@ -190,8 +327,6 @@ in
     ../../../services/virt/vfio.nix
     ../../../services/apple-health-ingester.nix
 
-    ../../../profiles/thunderbolt-bridge.nix
-    ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
   ];
 
   deployment = {
@@ -200,8 +335,8 @@ in
     # buildOnTarget = true;
   };
 
-  hardware.cpu.amd.ryzen-smu.enable = true;
-  programs.ryzen-monitor-ng.enable = true;
+  hardware.cpu.amd.ryzen-smu.enable = false;
+  programs.ryzen-monitor-ng.enable = false;
 
   sops.secrets.hf-token = mkSecret "hf-token" { };
   sops.templates."hellas-env".content = ''
@@ -250,23 +385,13 @@ in
     options = [ "nofail" ];
   };
 
-  fileSystems."/mnt/models" = {
+  fileSystems."/models" = {
     device = "pool3d/root/models";
     fsType = "zfs";
     options = [ "nofail" ];
   };
 
-  fileSystems."/mnt/victoriametrics" = {
-    device = "pool3d/root/victoriametrics";
-    fsType = "zfs";
-    options = [ "nofail" ];
-  };
-
   system.stateVersion = "24.11";
-
-  boot.kernel.sysctl = {
-    "vm.nr_hugepages_1gb" = 1;
-  };
 
   fileSystems."/dev/hugepages1G" = {
     device = "hugetlbfs";
@@ -360,7 +485,7 @@ in
 
   # L2ARC tuning for bpool Optane cache - no write rate limit
   boot.extraModprobeConfig = ''
-    options zfs l2arc_write_max=9223372036854775807 l2arc_write_boost=9223372036854775807
+    options zfs l2arc_write_max=9223372036854775807
   '';
 
   boot = {
@@ -369,8 +494,17 @@ in
       "ipmi_si"
     ];
     kernelParams = [
+      # Serial console for BMC Serial-over-LAN. Keep tty0 first so the ASPEED
+      # video console still shows everything (BMC HTML5 KVM); ttyS1 last makes
+      # it /dev/console and gets a login getty. ttyS1 (0x2F8 = COM2) is the
+      # ASRock-Rack SOL UART by convention — confirm against the ACPI SPCR
+      # table once BIOS Console Redirection (menu 3.4.8, COM0, VT-UTF8,
+      # 115200 8N1) is enabled, and swap to ttyS0 here if SPCR says 0x3F8.
+      "console=tty0"
+      "console=ttyS1,115200n8"
       "amd_pstate=passive"
-      # "hugepages=40960" # 80GB of hugepages
+      "hugepagesz=1G"
+      "hugepages=1"
       "transparent_hugepages=madvise"
       # amd_iommu handled by VFIO config (services/virt/vfio.nix)
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work
@@ -381,80 +515,136 @@ in
       "zswap.compressor=zstd"
       "zswap.max_pool_percent=20"
     ];
-    initrd.kernelModules = [ "mlx5_core" "lm92" ];
+    initrd = {
+      kernelModules = [ "mlx5_core" "lm92" ];
+      services.udev.packages = [ mlxUdevRules ];
+      systemd = {
+        storePaths = [
+          "${pkgs.iproute2}/bin/devlink"
+          "${pkgs.ethtool}/bin/ethtool"
+          "${mlxVfName}"
+        ];
+        services.mlx5-switchdev = {
+          description = "Configure Mellanox switchdev and SR-IOV in initrd";
+          wantedBy = [ "initrd.target" ];
+          before = [ "initrd-switch-root.target" ];
+          after = [ "systemd-udev-trigger.service" "systemd-udevd.service" ];
+          wants = [ "systemd-udev-trigger.service" "systemd-udevd.service" ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          path = [
+            pkgs.coreutils
+            pkgs.ethtool
+            pkgs.gnugrep
+            pkgs.iproute2
+            config.boot.initrd.systemd.package
+          ];
+          script = ''
+            set -eu
+
+            PF_MAC=${mlxPfMac}
+            VF_COUNT=${toString mlxVfCount}
+            COMBINED_CHANNELS=32
+
+            find_pf() {
+              for netdev in /sys/class/net/*; do
+                [ -e "$netdev/address" ] || continue
+                [ "$(cat "$netdev/address")" = "$PF_MAC" ] || continue
+                basename "$netdev"
+                return 0
+              done
+              return 1
+            }
+
+            PF=""
+            for _ in 1 2 3 4 5 6 7 8 9 10; do
+              if PF="$(find_pf)"; then
+                break
+              fi
+              udevadm settle --timeout=2 || true
+              sleep 1
+            done
+
+            if [ -z "$PF" ]; then
+              echo "Mellanox PF with MAC $PF_MAC not found"
+              exit 1
+            fi
+
+            PCI_BDF="$(basename "$(readlink -f "/sys/class/net/$PF/device")")"
+            PCI_SYS="/sys/bus/pci/devices/$PCI_BDF"
+            PCI_DEV="pci/$PCI_BDF"
+
+            echo 0 > "$PCI_SYS/sriov_numvfs" || true
+            sleep 1
+
+            devlink dev eswitch set "$PCI_DEV" mode legacy || true
+            sleep 1
+
+            if PF="$(find_pf)"; then
+              ethtool -L "$PF" combined "$COMBINED_CHANNELS" || true
+            fi
+
+            devlink dev eswitch set "$PCI_DEV" mode switchdev
+            sleep 2
+
+            echo "$VF_COUNT" > "$PCI_SYS/sriov_numvfs"
+
+            for _ in $(seq 1 10); do
+              udevadm settle --timeout=1 || true
+
+              rep_count=0
+              for rep in /sys/class/net/${mlxPfName}r*; do
+                [ -e "$rep" ] || continue
+                rep_count=$((rep_count + 1))
+              done
+
+              vf_count=0
+              for vf in /sys/class/net/${mlxPfName}v*; do
+                [ -e "$vf" ] || continue
+                vf_count=$((vf_count + 1))
+              done
+
+              [ "$rep_count" -ge "$VF_COUNT" ] && [ "$vf_count" -ge "$VF_COUNT" ] && break
+              sleep 1
+            done
+
+            echo "Mellanox switchdev initialized on $PCI_DEV with $VF_COUNT VFs"
+          '';
+        };
+      };
+    };
     blacklistedKernelModules = [ "nouveau" "i915" ];
   };
 
-  # SR-IOV setup for Mellanox ConnectX-4 with switchdev mode
-  # ConnectX-4 requires reset cycle: destroy VFs → legacy → switchdev → create VFs
-  # (firmware-level ESWITCH_MODE not available on CX4)
-  systemd.services.sriov-init = {
-    description = "Configure Mellanox SR-IOV with switchdev mode";
-    wantedBy = [ "network-pre.target" ];
-    before = [ "network-pre.target" ];
-    after = [ "sys-subsystem-net-devices-enp172s0np0.device" ];
-    bindsTo = [ "sys-subsystem-net-devices-enp172s0np0.device" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    path = [ pkgs.iproute2 pkgs.ethtool ];
-    script = ''
-      set -e
-      PCI_DEV="pci/0000:ac:00.0"
-      VF_COUNT=8
-      COMBINED_CHANNELS=32
-
-      # Destroy any existing VFs first
-      echo 0 > /sys/class/net/enp172s0np0/device/sriov_numvfs || true
-      sleep 1
-
-      # Reset to legacy mode (ensures clean eswitch state)
-      devlink dev eswitch set $PCI_DEV mode legacy || true
-      sleep 1
-
-      # Set combined channels before switchdev mode (must be done in legacy mode)
-      echo "Setting combined channels to $COMBINED_CHANNELS"
-      ethtool -L enp172s0np0 combined $COMBINED_CHANNELS || true
-
-      # Set switchdev mode
-      devlink dev eswitch set $PCI_DEV mode switchdev
-      sleep 2
-
-      # Create VFs (now works because eswitch is properly initialized)
-      echo $VF_COUNT > /sys/class/net/enp172s0np0/device/sriov_numvfs
-
-      echo "SR-IOV initialized: $VF_COUNT VFs in switchdev mode with $COMBINED_CHANNELS channels"
-    '';
-  };
+  # Stable names for the ConnectX-4 PF and its switchdev VF representors.
+  # Keyed on phys_switch_id (ASIC-stable) so they don't follow the PCIe bus.
+  # Numbered 75- so it runs before 80-net-setup-link.rules, whose predictable
+  # naming only fires when NAME is still empty. VFs have no phys_switch_id, so a
+  # helper derives their mlxlan0vN names from the PF virtfnN symlinks.
+  services.udev.packages = [ mlxUdevRules ];
+  services.udev.extraRules = ''
+    # Auto-authorize IOCREST 40Gbps Thunderbolt NIC on plug-in
+    ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{unique_id}=="c8010000-00b1-bd08-2230-ad1cc6200123", ATTR{authorized}="1"
+  '';
 
   # OVS for Mellanox switchdev mode
   virtualisation.vswitch.enable = true;
 
   networking.vswitches.ovs-mlx = {
     interfaces = {
-      # Uplink (PF)
-      enp172s0np0 = { };
-      # VF representors
-      enp172s0r0 = { };
-      enp172s0r1 = { };
-      enp172s0r2 = { };
-      enp172s0r3 = { };
-      enp172s0r4 = { };
-      enp172s0r5 = { };
-      enp172s0r6 = { };
-      enp172s0r7 = { };
-
-      # i40e
-      enp11s0f0np0 = { };
-      enp11s0f1np1 = { };
-
+      # Uplink (PF) + VF representors — stable switchdev names (see mlx* lets).
+      ${mlxPfName} = { };
+    } // lib.genAttrs mlxRepNames (_: { }) // lib.genAttrs i40eNames (_: { }) // {
       # Internal port for host
       ovs-host = {
         type = "internal";
       };
     };
   };
+
+  networking.useDHCP = false;
 
   # Set jumbo MTU on OVS internal port (must be done via ovs-vsctl)
   systemd.services.ovs-host-mtu = {
@@ -495,30 +685,6 @@ in
   #   wantedBy = [ "multi-user.target" ];
   # }];
   services.avahi.allowInterfaces = lib.mkForce [ "ovs-host" ];
-  profiles.thunderbolt-bridge = {
-    enableThunderboltNet = false;
-    bridgeThunderboltNet = false;
-  };
-
-  hardware.thunderbolt-ibverbs = {
-    enable = true;
-    loadOnBoot = false;
-    blacklist.enable = true;
-    config = {
-      profile = "linux_perf";
-      compat = "off";
-      tbnet = "prefer_rdma";
-      tbnet_identity = "off";
-      lanes = "2";
-      bind_services = true;
-      allocate_rings = true;
-      start_rings = true;
-      negotiate_native = true;
-      enable_tunnels = true;
-      register_verbs = true;
-      roce_netdev = "ovs-host";
-    };
-  };
 
   # environment.systemPackages = with pkgs; [
   #   tbtools
@@ -557,10 +723,35 @@ in
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/FA84-F420";
+    device = "/dev/disk/by-label/TREXBOOTA";
     fsType = "vfat";
-    options = [ "iocharset=iso8859-1" "fmask=0022" "dmask=0022" ];
+    options = [ "iocharset=iso8859-1" "fmask=0077" "dmask=0077" ];
   };
+
+  boot.loader.systemd-boot.extraInstallCommands = ''
+    backup_esp=/dev/disk/by-label/TREXBOOTB
+
+    if [ -e "$backup_esp" ]; then
+      backup_mount="$(${pkgs.coreutils}/bin/mktemp -d /tmp/trex-boot-b.XXXXXX)"
+      cleanup_backup_esp() {
+        ${pkgs.util-linux}/bin/umount "$backup_mount" 2>/dev/null || true
+        ${pkgs.coreutils}/bin/rmdir "$backup_mount" 2>/dev/null || true
+      }
+      trap cleanup_backup_esp EXIT
+
+      ${pkgs.util-linux}/bin/mount -t vfat \
+        -o iocharset=iso8859-1,fmask=0077,dmask=0077 \
+        "$backup_esp" "$backup_mount"
+      ${pkgs.rsync}/bin/rsync -aH --delete \
+        --no-owner --no-group --no-perms \
+        --exclude=loader/random-seed \
+        /boot/ "$backup_mount/"
+      cleanup_backup_esp
+      trap - EXIT
+    else
+      echo "TREXBOOTB backup ESP not present; skipping mirror sync"
+    fi
+  '';
 
   fileSystems."/home/grw" = {
     device = "pool3d/root/grw-home";
@@ -674,6 +865,7 @@ in
       ENABLE_OPENAI_API = "True";
       OPENAI_API_BASE_URL = "http://127.0.0.1:8081/v1";
       OPENAI_API_KEY = "sk-no-key-required";
+      WEBUI_URL = "https://${network.publicFqdn "open-webui"}";
       HOME = "/var/lib/open-webui";
       XDG_CACHE_HOME = "/var/lib/open-webui/.cache";
     };
@@ -691,17 +883,15 @@ in
   services.llama-cpp = {
     enable = true;
     package = inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-vulkan;
-    host = "0.0.0.0";
     # 8080 is taken by qBittorrent's webui above; use 8081 for llama-server.
-    port = 8081;
     openFirewall = true;
-    modelsDir = "/mnt/models";
-    extraFlags = [
-      "-ngl"
-      "999"
-      "--flash-attn"
-      "on"
-    ];
+    settings = {
+      host = "0.0.0.0";
+      port = 8081;
+      models-dir = "/models";
+      n-gpu-layers = 999;
+      flash-attn = "on";
+    };
   };
   systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = [ "render" "video" ];
 
@@ -791,15 +981,22 @@ in
       enable = true;
       wait-online.anyInterface = true;
       links = {
-        # PF: buffer settings
+        # PF: buffer settings. Matched by permanent MAC so it applies
+        # regardless of the kernel's pre-rename name.
         "20-mlx5-pf" = {
-          matchConfig.OriginalName = "enp172s0np0";
+          matchConfig.PermanentMACAddress = mlxPfMac;
           linkConfig = {
+            Name = mlxPfName;
             RxBufferSize = 8192;
             TxBufferSize = 8192;
           };
         };
-      };
+      } // lib.mapAttrs'
+        (name: mac: lib.nameValuePair "20-${name}" {
+          matchConfig.PermanentMACAddress = mac;
+          linkConfig.Name = name;
+        })
+        i40ePorts;
       netdevs = {
         "20-${bridgeName}" = {
           netdevConfig = {
@@ -812,23 +1009,52 @@ in
         };
       };
       networks = {
+        # BMC virtual USB NIC (AMI MegaRAC, idVendor 046b) — the in-band
+        # Redfish/IPMI host interface exposed by the AST2600. SMBIOS type 42
+        # pins the host side at 169.254.0.18/16 and the BMC at 169.254.0.17
+        # (Redfish on :443, SSH on :22, no DHCP server on the link). Priority
+        # 20 beats the thunderbolt-bridge profile's 49-bmc-exclude (Unmanaged)
+        # and 50-cdc-ether (Bridge=br0.lan), mirroring how the router pins its
+        # NanoKVM with 20-nanokvm. NB: unlike the NanoKVM, the BMC does NOT
+        # route between this USB link and its dedicated LAN, so this is a
+        # host->BMC management path only, not an inbound backdoor to trex. The
+        # out-of-band console to trex is the BMC LAN (192.168.23.10) via IPMI
+        # SOL / iKVM.
+        "20-bmc-usb" = {
+          matchConfig = {
+            Driver = "cdc_ether";
+            Property = "ID_VENDOR_ID=046b";
+          };
+          address = [ "169.254.0.18/16" ];
+          networkConfig = {
+            DHCP = "no";
+            LinkLocalAddressing = "ipv6";
+            IPv6AcceptRA = false;
+          };
+          linkConfig.RequiredForOnline = "no";
+        };
+
         # Mellanox PF (100G): bring up for OVS with jumbo MTU
         "10-lan-100g" = {
-          matchConfig.Name = "enp172s0np0";
+          matchConfig.Name = mlxPfName;
           linkConfig = {
             ActivationPolicy = "up";
             RequiredForOnline = "no";
             MTUBytes = "9000";
           };
         };
-        # VFs: don't configure (will be passed to containers)
+        # VFs: don't configure (will be passed to containers). They carry no
+        # phys_switch_id so they keep their enpXsYvZ names.
         "10-mlx5-vf" = {
-          matchConfig.Name = "enp172s0v*";
+          matchConfig = {
+            Driver = "mlx5_core";
+            Name = "${mlxPfName}v*";
+          };
           linkConfig.Unmanaged = "yes";
         };
         # VF representors: bring up for OVS
         "10-mlx5-rep" = {
-          matchConfig.Name = "enp172s0r*";
+          matchConfig.Name = "${mlxPfName}r*";
           linkConfig = {
             ActivationPolicy = "up";
             RequiredForOnline = "no";
@@ -852,6 +1078,16 @@ in
           };
           linkConfig.RequiredForOnline = "routable";
         };
+        # IOCREST 40Gbps TB NIC (AQC113, tunneled PCIe via Thunderbolt): bridge to LAN
+        "30-aqc-bridge" = {
+          matchConfig.Driver = "atlantic";
+          networkConfig.Bridge = bridgeName;
+          linkConfig = {
+            MTUBytes = "9000";
+            RequiredForOnline = "no";
+          };
+        };
+
         # br0.lan for non-Mellanox interfaces (Intel, thunderbolt, USB) - no IP, just L2
         "05-${bridgeName}" = {
           matchConfig.Name = bridgeName;
@@ -871,9 +1107,5 @@ in
     "d /var/lib/qbittorrent 0775 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/incomplete 0775 qbittorrent qbittorrent -"
 
-    # Completed download roots on HDD (bpool)
-    "d /mnt/Media/downloads 0777 - - -"
-    "d /mnt/Media/downloads/sonarr 0777 - - -"
-    "d /mnt/Media/downloads/radarr 0777 - - -"
   ];
 }

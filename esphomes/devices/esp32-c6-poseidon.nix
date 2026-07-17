@@ -143,12 +143,9 @@ in {
               option = "20V";
             };
           }
-          {
-            "fan.turn_on" = {
-              id = "mora_pumps";
-              speed = 75;
-            };
-          }
+          # Ensure pumps run after boot, but keep the restored speed rather
+          # than stomping Manual/Max settings with a fixed value.
+          {"fan.turn_on" = "mora_pumps";}
         ];
       };
     };
@@ -315,7 +312,7 @@ in {
         id = "cooling_mode";
         name = "Cooling Mode";
         optimistic = true;
-        restore_value = false;
+        restore_value = true;
         initial_option = "Auto";
         options = ["Manual" "Auto" "Max"];
         set_action = [

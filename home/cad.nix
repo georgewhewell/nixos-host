@@ -59,8 +59,17 @@ in {
     ngspice
 
     # 3D CAD / Modeling
-#    freecad-wayland
-#    openscad-unstable
+    freecad-wayland
+    openscad-unstable
+
+    # FreeCAD <-> AI via the Robust MCP bridge. Provides the `freecad-mcp`
+    # server; install the matching "Robust MCP Bridge" workbench inside
+    # FreeCAD via Tools -> Addon Manager.
+    freecad-robust-mcp
+
+    # OCP CAD Viewer backend for build123d/cadquery. `ocp-cad-viewer` drops
+    # into a venv shell; `ocp-cad-viewer serve` runs the viewer on :3939.
+    ocp-cad-viewer
 
   ];
 

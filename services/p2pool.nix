@@ -46,7 +46,10 @@
     port = 6379;
   };
 
-  # Ensure p2pool starts after ZFS mount and secrets are available
-  systemd.services.p2pool.unitConfig.RequiresMountsFor = [config.services.p2pool.dataDir];
-  systemd.services.p2pool.after = ["sops-nix.service"];
+  # Ensure p2pool starts after its local merge-mining dependencies are ready.
+  systemd.services.p2pool = {
+    unitConfig.RequiresMountsFor = [config.services.p2pool.dataDir];
+    after = ["sops-nix.service" "monero.service" "podman-tari.service" "network-online.target"];
+    wants = ["monero.service" "podman-tari.service" "network-online.target"];
+  };
 }

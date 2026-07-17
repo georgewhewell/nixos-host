@@ -20,6 +20,12 @@ void Camera::add_image_callback(std::function<void(std::shared_ptr<CameraImage>)
   this->new_image_callback_.add(std::move(callback));
 }
 
+void Camera::add_listener(CameraListener *listener) {
+  this->new_image_callback_.add([listener](const std::shared_ptr<CameraImage> &image) {
+    listener->on_camera_image(image);
+  });
+}
+
 void Camera::add_stream_start_callback(std::function<void()> &&callback) {
   this->stream_start_callback_.add(std::move(callback));
 }

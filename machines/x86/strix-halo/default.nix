@@ -140,12 +140,15 @@ let
     "HSA_OVERRIDE_GFX_VERSION=11.5.1"
     "HSA_ENABLE_DMABUF=0"
     "HIP_VISIBLE_DEVICES=0"
-    # Ray 2.55's compiled-DAG accelerator context loses the ROCm-visible
-    # device mapping after vLLM creates its actors (`HIP_VISIBLE_DEVICES`
-    # becomes an empty list while Ray still assigns GPU 0).  The ordinary
-    # Ray executor retains RCCL/RoCE tensor parallelism without that broken
-    # control path.
-    "VLLM_USE_RAY_COMPILED_DAG=0"
+    # The in-cluster driver uses Ray's v1 executor. Ray-v2 currently stalls in
+    # its cross-process shared-memory broadcaster on this four-node ROCm
+    # topology. Keep compiled DAG enabled, but let Ray assign HIP device 0 to
+    # each actor; suppressing that assignment leaves its accelerator context
+    # with an empty visible-device list on the first request.
+    "VLLM_USE_RAY_V2_EXECUTOR_BACKEND=0"
+    "VLLM_USE_RAY_COMPILED_DAG=1"
+    "VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM=0"
+    "RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES=0"
     "NCCL_SOCKET_IFNAME=${vllmFabricInterface}"
     "GLOO_SOCKET_IFNAME=${vllmFabricInterface}"
     "NCCL_IB_HCA=${vllmFabricHca}"
@@ -313,48 +316,6 @@ in
     enable = enableCx5Fabric;
     guids = lib.optionals (enableSharedIb && index == 4) [ "0x1c34da03006112b0" ];
   };
-  systemd.services."opensm@".after = lib.optionals enableSharedIb [
-    "systemd-modules-load.service"
-  ];
-  systemd.services."opensm@".serviceConfig.ExecStart = lib.mkIf (enableSharedIb && index == 4) (lib.mkForce
-    "${pkgs.mlnx-opensm}/bin/opensm --config ${opensmVirtualizedConfig} --guid %I --log_file /var/log/opensm.%I.log");
-  systemd.services.cx5-shared-ethernet-profile = lib.mkIf enableSharedCx5 {
-    description = "Assert the ConnectX-5 SharedIO Ethernet/RoCE profile";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-modules-load.service" ];
-    unitConfig.ConditionPathExists = "/sys/bus/pci/devices/0000:c3:00.0";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = assertCx5SharedEthernetProfile;
-    };
-  };
-  # Intentionally not boot-enabled: this is a reproducible two-node smoke
-  # target, while the production model and memory reservation remain a user
-  # choice. Start strix-3 first, then strix-4.
-  systemd.services.vllm-tp2-smoke = lib.mkIf enableVllmTp2 {
-    description = "Two-node vLLM ROCm TP=2 smoke over ConnectX-5 RoCE";
-    wants = [ "network-online.target" ];
-    after = [
-      "network-online.target"
-      "cx5-shared-ethernet-profile.service"
-    ];
-    unitConfig.ConditionPathExists = "${vllmSmokeModel}/model.safetensors";
-    path = vllmServicePath;
-    serviceConfig = {
-      Type = "simple";
-      User = "grw";
-      Restart = "on-failure";
-      RestartSec = 5;
-      LimitMEMLOCK = "infinity";
-      TimeoutStopSec = 120;
-      Environment = vllmServiceEnvironment "vllm-tp2";
-      # Explicit KV sizing skips vLLM's fragile UMA free-memory profiler. The
-      # utilization value remains as the startup admission limit.
-      ExecStart = "${vllmStrix}/bin/vllm serve ${vllmSmokeModel} --served-model-name qwen3-0.6b-tp2 --tensor-parallel-size 2 --distributed-executor-backend mp --nnodes 2 --node-rank ${if index == 3 then "1" else "0"} --master-addr ${vllmMasterIp} --master-port 29502 ${lib.optionalString (index == 3) "--headless"} ${lib.optionalString (index == 4) "--host 0.0.0.0 --port 8000"} --max-model-len 4096 --gpu-memory-utilization 0.35 --kv-cache-memory-bytes 34359738368 --enforce-eager";
-      CacheDirectory = "vllm-tp2/aiter";
-      CacheDirectoryMode = "0755";
-    };
-  };
 
   # Strix Halo GPU workloads use UMA heavily. Large vLLM runs can leave
   # little "available" RAM while still being healthy, so earlyoom kills the
@@ -509,10 +470,6 @@ in
      else ../../../profiles/uefi-boot.nix)
   ] ++ lib.optionals enableUsb4Rdma [
     ../../../profiles/thunderbolt-ibverbs-kernel.nix
-  ] ++ lib.optionals (index == 2) [
-    # strix-2 hosts the BlueField-2 DPU (also at PCI c3:00, like the CX5
-    # SharedIO on strix-3/4 — the profile matches by device ID).
-    ../../../profiles/bluefield-host.nix
   ];
 
   hardware.graphics = {
@@ -670,9 +627,10 @@ in
     HF_HUB_OFFLINE = "1";
     TRANSFORMERS_OFFLINE = "1";
     HF_HUB_DISABLE_TELEMETRY = "1";
-    # Keep interactive Ray-backed vLLM runs on the same known-good executor
-    # path as the declarative service environment above.
-    VLLM_USE_RAY_COMPILED_DAG = "0";
+    VLLM_USE_RAY_V2_EXECUTOR_BACKEND = "0";
+    VLLM_USE_RAY_COMPILED_DAG = "1";
+    VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM = "0";
+    RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES = "0";
   };
 
   profiles.thunderbolt-bridge = {
@@ -740,12 +698,6 @@ in
     useDHCP = lib.mkForce false;
     firewall = {
       enable = false;
-    };
-    # Temporary: NetworkManager for cloudcutter (Tuya flashing)
-    networkmanager = {
-      enable = true;
-      settings.keyfile.unmanaged-devices = "*,except:interface-name:wlp195s0";
-      connectionConfig."connection.autoconnect" = "false";
     };
   };
 

@@ -5,6 +5,45 @@
   ...
 }: let
   haDomain = network.publicFqdn "home";
+  philipsSonicareBle = pkgs.buildHomeAssistantComponent rec {
+    owner = "mtheli";
+    domain = "philips_sonicare_ble";
+    version = "0.11.3";
+
+    src = pkgs.fetchFromGitHub {
+      inherit owner;
+      repo = "philips_sonicare_ble";
+      tag = "v${version}";
+      hash = "sha256-0Jx13b/F4JAcrauCZSagkbbNmQuT29ssIgXJmnpG4ac=";
+    };
+
+    nativeBuildInputs = [pkgs.python3];
+
+    postPatch = ''
+      python - <<'PY'
+      import json
+      from pathlib import Path
+
+      manifest = Path("custom_components/philips_sonicare_ble/manifest.json")
+      data = json.loads(manifest.read_text())
+      data.pop("bluetooth", None)
+      manifest.write_text(json.dumps(data, indent=2) + "\n")
+      PY
+    '';
+
+    dependencies = with pkgs.home-assistant.python3Packages; [
+      bleak
+      bleak-retry-connector
+      dbus-fast
+      packaging
+    ];
+
+    meta = with lib; {
+      description = "Local BLE Home Assistant integration for Philips Sonicare toothbrushes";
+      homepage = "https://github.com/mtheli/philips_sonicare_ble";
+      license = licenses.mit;
+    };
+  };
 in {
   imports = [
     ./lights.nix
@@ -69,10 +108,12 @@ in {
       frigate
       roborock_custom_map
       tuya_local
-    ];
+    ] ++ [philipsSonicareBle];
     extraPackages = ps:
       with ps; [
         defusedxml
+        isal
+        zlib-ng
         python-miio
         netdisco
         aiounifi
@@ -83,6 +124,8 @@ in {
         # withings-api
         # withings-sync
         aiowithings
+        ibeacon-ble
+        kegtron-ble
         python-otbr-api
         pyipp
         pysnmp
@@ -117,7 +160,6 @@ in {
       mobile_app = {};
       frontend = {};
       lovelace = {
-        mode = "storage";
         resource_mode = "yaml";
         dashboards = {
           lovelace = {

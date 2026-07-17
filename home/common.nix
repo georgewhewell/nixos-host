@@ -5,7 +5,8 @@
   inputs,
   network,
   ...
-}: {
+}:
+{
   imports = [
     ./btop.nix
     ./hostid.nix
@@ -54,6 +55,8 @@
     pwgen
     mosh
     mtr
+    perl
+    python3
   ];
 
   manual.manpages.enable = false;
@@ -61,17 +64,17 @@
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
-    matchBlocks = {
+    settings = {
       "*" = {
-        controlMaster = "auto";
-        controlPersist = "60m";
-        serverAliveInterval = 60;
-        serverAliveCountMax = 5;
-        hashKnownHosts = true;
-        forwardAgent = true;
+        ControlMaster = "auto";
+        ControlPersist = "60m";
+        ServerAliveInterval = 60;
+        ServerAliveCountMax = 5;
+        HashKnownHosts = true;
+        ForwardAgent = true;
       };
       ${network.publicFqdn "trex"} = {
-        user = "grw";
+        User = "grw";
       };
     };
   };

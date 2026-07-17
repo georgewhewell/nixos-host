@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Condition phase-change TIM on a Strix Halo host under bounded full-chip load.
+
+Usage:
+  scripts/strix-halo-ptm-soak [options] start HOST
+  scripts/strix-halo-ptm-soak status HOST
+  scripts/strix-halo-ptm-soak stop HOST
+  scripts/strix-halo-ptm-soak logs HOST
+
+Start options:
+  --hours HOURS       Total soak duration. Default: 48.
+  --start-w WATTS     Initial package-power limit. Default: 55.
+  --end-w WATTS       Final requested package-power limit. Default: 132.
+  --temp-c CELSIUS    Firmware Tctl temperature limit. Default: 70.
+  --sample-s SECONDS  Telemetry/control interval. Default: 60.
+  --ssh-option OPT    Extra ssh -o option. May be repeated.
+  -h, --help          Show this help.
+
+The requested package-power limit rises linearly over the soak. The firmware
+temperature limit remains authoritative, so actual power rises only when the
+cooling interface can carry it. Stop and failure paths restore the host's
+declarative ryzenadj settings by restarting ryzenadj.service.
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+hours=48
+start_w=55
+end_w=132
+temp_c=70
+sample_s=60
+ssh_opts=(-o BatchMode=yes -o ConnectTimeout=8)
+positionals=()
+unit=strix-halo-ptm-soak
+remote_runner=/run/strix-halo-ptm-soak-runner
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --hours)
+      [ "$#" -ge 2 ] || die "--hours requires an argument"
+      hours="$2"
+      shift 2
+      ;;
+    --start-w)
+      [ "$#" -ge 2 ] || die "--start-w requires an argument"
+      start_w="$2"
+      shift 2
+      ;;
+    --end-w)
+      [ "$#" -ge 2 ] || die "--end-w requires an argument"
+      end_w="$2"
+      shift 2
+      ;;
+    --temp-c)
+      [ "$#" -ge 2 ] || die "--temp-c requires an argument"
+      temp_c="$2"
+      shift 2
+      ;;
+    --sample-s)
+      [ "$#" -ge 2 ] || die "--sample-s requires an argument"
+      sample_s="$2"
+      shift 2
+      ;;
+    --ssh-option)
+      [ "$#" -ge 2 ] || die "--ssh-option requires an argument"
+      ssh_opts+=(-o "$2")
+      shift 2
+      ;;
+    --)
+      shift
+      positionals+=("$@")
+      break
+      ;;
+    -*) die "unknown option: $1" ;;
+    *) positionals+=("$1"); shift ;;
+  esac
+done
+
+[ "${#positionals[@]}" -eq 2 ] || { usage >&2; exit 1; }
+action="${positionals[0]}"
+host="${positionals[1]}"
+
+case "$action" in
+  start|status|stop|logs) ;;
+  *) die "unknown action: $action" ;;
+esac
+
+if [ "$action" = start ]; then
+  for value_name in hours start_w end_w temp_c sample_s; do
+    value=${!value_name}
+    [[ "$value" =~ ^[0-9]+$ ]] || die "--${value_name//_/-} must be a positive integer"
+    [ "$value" -gt 0 ] || die "--${value_name//_/-} must be greater than zero"
+  done
+  [ "$start_w" -le "$end_w" ] || die "--start-w must not exceed --end-w"
+  [ "$temp_c" -ge 50 ] && [ "$temp_c" -le 98 ] || die "--temp-c must be between 50 and 98"
+fi
+
+case "$action" in
+  status)
+    # shellcheck disable=SC2029
+    ssh "${ssh_opts[@]}" "$host" \
+      "sudo -n systemctl status '$unit.service' --no-pager || true; echo; sudo -n journalctl -u '$unit.service' -n 12 --no-pager"
+    exit 0
+    ;;
+  logs)
+    exec ssh "${ssh_opts[@]}" "$host" "sudo -n journalctl -u '$unit.service' -f"
+    ;;
+  stop)
+    # shellcheck disable=SC2029
+    ssh "${ssh_opts[@]}" "$host" \
+      "sudo -n systemctl stop '$unit.service' 2>/dev/null || true; sudo -n systemctl restart ryzenadj.service"
+    echo "stopped $unit on $host; declarative ryzenadj limits restored"
+    exit 0
+    ;;
+esac
+
+read -r -d '' runner <<'REMOTE_RUNNER' || true
+#!/run/current-system/sw/bin/bash
+set -euo pipefail
+export PATH=/run/current-system/sw/bin:/run/current-system/sw/sbin
+
+hours="$1"
+start_w="$2"
+end_w="$3"
+temp_c="$4"
+sample_s="$5"
+unit="$6"
+
+duration_s=$((hours * 3600))
+state_dir=/var/lib/strix-halo-ptm-soak
+csv="$state_dir/telemetry-$(date +%Y%m%d-%H%M%S).csv"
+pids=""
+gpu_loop_pid=""
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"
+}
+
+restore_limits() {
+  log "restoring declarative ryzenadj settings"
+  systemctl restart ryzenadj.service || true
+}
+
+cleanup() {
+  trap - EXIT INT TERM
+  [ -z "$pids" ] || kill $pids 2>/dev/null || true
+  [ -z "$gpu_loop_pid" ] || kill "$gpu_loop_pid" 2>/dev/null || true
+  [ -z "$pids" ] || wait $pids 2>/dev/null || true
+  [ -z "$gpu_loop_pid" ] || wait "$gpu_loop_pid" 2>/dev/null || true
+  rm -f /run/strix-halo-ptm-soak-clpeak-root
+  restore_limits
+}
+trap cleanup EXIT INT TERM
+
+for process in xmrig rocblas-bench hipblas-bench clpeak yes stress-ng; do
+  if pgrep -x "$process" >/dev/null 2>&1; then
+    log "active load detected before soak: $process"
+    exit 1
+  fi
+done
+
+bench=""
+for candidate in /run/current-system/sw/bin/clpeak /nix/store/*-clpeak-*/bin/clpeak; do
+  if [ -x "$candidate" ]; then
+    bench="$candidate"
+    break
+  fi
+done
+[ -n "$bench" ] || { log "clpeak is not installed"; exit 1; }
+bench_store=${bench%/bin/clpeak}
+nix-store --add-root /run/strix-halo-ptm-soak-clpeak-root \
+  --realise "$bench_store" >/dev/null
+
+amdgpu=""
+k10temp=""
+for hwmon in /sys/class/hwmon/hwmon*; do
+  case "$(cat "$hwmon/name" 2>/dev/null || true)" in
+    amdgpu) amdgpu="$hwmon" ;;
+    k10temp) k10temp="$hwmon" ;;
+  esac
+done
+[ -n "$amdgpu" ] && [ -n "$k10temp" ] || { log "required hwmon telemetry is missing"; exit 1; }
+
+mkdir -p "$state_dir"
+printf 'timestamp,elapsed_s,requested_w,limit_w,power_w,tctl_c,gpu_edge_c,gpu_busy_pct\n' >"$csv"
+
+apply_limits() {
+  local watts="$1"
+  local milliwatts=$((watts * 1000))
+
+  ryzenadj --stapm-limit="$milliwatts" --fast-limit="$milliwatts" \
+    --slow-limit="$milliwatts" --apu-slow-limit="$milliwatts" \
+    --tctl-temp="$temp_c" >/dev/null 2>&1
+}
+
+gpu_loop() {
+  local child=""
+  trap '[ -z "$child" ] || kill "$child" 2>/dev/null || true; exit 0' TERM INT
+  while true; do
+    "$bench" --opencl --fp-compute --single-precision-compute \
+      --iters 100000 --warmup 10 >/dev/null 2>&1 &
+    child=$!
+    wait "$child" || true
+    child=""
+  done
+}
+
+apply_limits "$start_w"
+for cpu in $(seq 0 $(( $(nproc) - 1 ))); do
+  taskset -c "$cpu" yes >/dev/null &
+  pids="$pids $!"
+done
+gpu_loop &
+gpu_loop_pid=$!
+
+started=$(date +%s)
+current_w="$start_w"
+last_applied="$start_w"
+log "started: duration=${hours}h ramp=${start_w}-${end_w}W temp_limit=${temp_c}C telemetry=$csv"
+
+while true; do
+  now=$(date +%s)
+  elapsed=$((now - started))
+  [ "$elapsed" -lt "$duration_s" ] || break
+
+  requested_w=$((start_w + (end_w - start_w) * elapsed / duration_s))
+  power_uW=$(cat "$amdgpu/power1_average")
+  tctl_mC=$(cat "$k10temp/temp1_input")
+  edge_mC=$(cat "$amdgpu/temp1_input")
+  busy=$(cat /sys/class/drm/card0/device/gpu_busy_percent)
+
+  # The SMU temperature limit is primary. This second layer backs the power
+  # request down if either reported die temperature exceeds its guard band.
+  if [ "$tctl_mC" -gt $(((temp_c + 2) * 1000)) ] || \
+     [ "$edge_mC" -gt $(((temp_c + 5) * 1000)) ]; then
+    current_w=$((current_w - 5))
+    [ "$current_w" -ge "$start_w" ] || current_w="$start_w"
+  elif [ "$current_w" -lt "$requested_w" ]; then
+    current_w=$((current_w + 1))
+    [ "$current_w" -le "$requested_w" ] || current_w="$requested_w"
+  elif [ "$current_w" -gt "$requested_w" ]; then
+    current_w="$requested_w"
+  fi
+
+  if [ "$current_w" -ne "$last_applied" ]; then
+    apply_limits "$current_w"
+    last_applied="$current_w"
+  fi
+
+  power_w=$(awk -v value="$power_uW" 'BEGIN { printf "%.1f", value / 1000000 }')
+  tctl_c=$(awk -v value="$tctl_mC" 'BEGIN { printf "%.1f", value / 1000 }')
+  edge_c=$(awk -v value="$edge_mC" 'BEGIN { printf "%.1f", value / 1000 }')
+  timestamp=$(date --iso-8601=seconds)
+  printf '%s,%d,%d,%d,%s,%s,%s,%s\n' \
+    "$timestamp" "$elapsed" "$requested_w" "$current_w" \
+    "$power_w" "$tctl_c" "$edge_c" "$busy" >>"$csv"
+  log "elapsed=${elapsed}s requested=${requested_w}W limit=${current_w}W actual=${power_w}W tctl=${tctl_c}C gpu_edge=${edge_c}C gpu_busy=${busy}%"
+  sleep "$sample_s"
+done
+
+log "completed ${hours}h soak"
+REMOTE_RUNNER
+
+# shellcheck disable=SC2029
+printf '%s\n' "$runner" | ssh "${ssh_opts[@]}" "$host" \
+  "sudo -n install -m 0755 /dev/stdin '$remote_runner'"
+
+# shellcheck disable=SC2029
+ssh "${ssh_opts[@]}" "$host" \
+  "if sudo -n systemctl is-active --quiet '$unit.service'; then echo 'error: $unit is already active' >&2; exit 1; fi; \
+   sudo -n systemd-run --unit='$unit' --collect --description='Strix Halo phase-change TIM soak' \
+     --property=SuccessExitStatus=143 \
+     '$remote_runner' '$hours' '$start_w' '$end_w' '$temp_c' '$sample_s' '$unit'"
+
+echo "started $unit on $host: ${hours}h, ${start_w}-${end_w} W, ${temp_c} C limit"
+echo "status: $0 status $host"
+echo "stop:   $0 stop $host"

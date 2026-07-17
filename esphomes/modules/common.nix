@@ -1,4 +1,4 @@
-{...}: {
+{lib, ...}: {
   esphome.requiredSubstitutions = [
     "api_key"
     "ota_key"
@@ -26,7 +26,14 @@
   esphome.settings = {
     logger = {};
 
-    api.encryption.key = "\${api_key}";
+    # reboot_timeout 0s: never self-reboot just because no API client (HA) is
+    # connected — web_server/OTA/restart button remain as recovery paths.
+    api = {
+      encryption.key = "\${api_key}";
+      reboot_timeout = "0s";
+    };
+
+    debug.update_interval = lib.mkDefault "30s";
 
     ota = [
       {
@@ -71,6 +78,16 @@
         update_interval = "30s";
         state_class = "total_increasing";
         disabled_by_default = true;
+      }
+    ];
+
+    text_sensor = [
+      {
+        platform = "debug";
+        reset_reason = {
+          name = "Reset Reason";
+          id = "debug_reset_reason";
+        };
       }
     ];
 

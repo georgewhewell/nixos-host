@@ -11,37 +11,73 @@ embedded XDP header as the offset/data_length word and aborts discovery.
 When the normal properties body is invalid, scan the received frame for a
 plausible properties body anchored by the expected offset/data_length pair.
 For the first chunk, additionally require the root property block magic. If
-the hub only delivered a partial chunk, copy the available dwords and request
-the next offset.
+a service-advertising body is still not recoverable through the hub, synthesize
+a compact native tbverbs property block so service discovery can continue.
 
 Also retain the packet size for deferred XDomain request handling so
 route-matched properties requests can be resynchronized before answering.
 ---
- drivers/thunderbolt/xdomain.c | 154 ++++++++++++++++++++++++++++++++++-------
- 1 file changed, 130 insertions(+), 24 deletions(-)
-
---- a/drivers/thunderbolt/xdomain.c
-+++ b/drivers/thunderbolt/xdomain.c
-@@ -25,6 +25,7 @@
+--- a/drivers/thunderbolt/xdomain.c	2026-06-05 23:06:39.898104444 +0200
++++ b/drivers/thunderbolt/xdomain.c	2026-06-05 23:12:16.323057857 +0200
+@@ -25,6 +25,27 @@
  #define XDOMAIN_BONDING_TIMEOUT			10000	/* ms */
  #define XDOMAIN_RETRIES				10
  #define XDOMAIN_DEFAULT_MAX_HOPID		15
 +#define XDOMAIN_PROPERTY_ROOTDIR_MAGIC		0x55584401
-
++#define XDOMAIN_PROPERTY_ENTRY_VALUE		0x76000001
++#define XDOMAIN_PROPERTY_ROOTDIR_LEN_MIN	8
++#define XDOMAIN_PROPERTY_ROOTDIR_LEN_MAXHOPID	12
++#define XDOMAIN_PROPERTY_BLOCK_LEN_MIN		10
++#define XDOMAIN_PROPERTY_BLOCK_LEN_MAXHOPID	14
++#define XDOMAIN_PROPERTY_NATIVE_BASE_LEN	30
++#define XDOMAIN_PROPERTY_NATIVE_SERVICE_LEN	25
++#define XDOMAIN_PROPERTY_NATIVE_SYNTH_MIN_LEN	\
++	(XDOMAIN_PROPERTY_NATIVE_BASE_LEN + XDOMAIN_PROPERTY_NATIVE_SERVICE_LEN)
++#define XDOMAIN_PROPERTY_TBV_NATIVE_PRTCID	1
++#define XDOMAIN_PROPERTY_TBV_NATIVE_PRTCVERS	1
++#define XDOMAIN_PROPERTY_TBV_NATIVE_PRTCREVS	0
++#define XDOMAIN_PROPERTY_TBV_NATIVE_PRTCSTNS	0
++#define XDOMAIN_PROPERTY_DEVICERV		0x80000100
++#define XDOMAIN_PROPERTY_VENDORID_HI		0x76656e64
++#define XDOMAIN_PROPERTY_VENDORID_LO		0x6f726964
++#define XDOMAIN_PROPERTY_DEVICEID_HI		0x64657669
++#define XDOMAIN_PROPERTY_DEVICEID_LO		0x63656964
++#define XDOMAIN_PROPERTY_MAXHOPID_HI		0x6d617868
++#define XDOMAIN_PROPERTY_MAXHOPID_LO		0x6f706964
+ 
  enum {
  	XDOMAIN_STATE_INIT,
-@@ -68,6 +69,7 @@
+@@ -68,6 +85,7 @@ MODULE_PARM_DESC(xdomain_route_propertie
  struct xdomain_request_work {
  	struct work_struct work;
  	struct tb_xdp_header *pkg;
 +	size_t size;
  	struct tb *tb;
  };
-
-@@ -387,6 +389,16 @@
+ 
+@@ -94,6 +112,18 @@ static const uuid_t tb_xdp_uuid =
+ 	UUID_INIT(0xb638d70e, 0x42ff, 0x40bb,
+ 		  0x97, 0xc2, 0x90, 0xe2, 0xc0, 0xb2, 0xff, 0x07);
+ 
++/* Experimental native thunderbolt_ibverbs service: 7c2c8f1e-5b4d-4a01-9f3a-2b8e6d4c1a07 */
++static const uuid_t tb_xdp_tbv_native_service_uuid =
++	UUID_INIT(0x7c2c8f1e, 0x5b4d, 0x4a01,
++		  0x9f, 0x3a, 0x2b, 0x8e, 0x6d, 0x4c, 0x1a, 0x07);
++
++static const char * const tb_xdp_tbv_native_service_keys[] = {
++	"tbverbs",
++	"tbverb1",
++	"tbverb2",
++	"tbverb3",
++};
++
+ bool tb_is_xdomain_enabled(void)
+ {
+ 	return tb_xdomain_enabled && tb_acpi_is_xdomain_allowed();
+@@ -392,6 +420,16 @@ static int tb_xdp_handle_error(const str
  	return 0;
  }
-
+ 
 +static u16 tb_xdp_frame_dwords(const struct tb_xdp_header *hdr, size_t max_size)
 +{
 +	u16 frame_dw;
@@ -55,14 +91,18 @@ route-matched properties requests can be resynchronized before answering.
  static int tb_xdp_uuid_request(struct tb_ctl *ctl, u64 route, int retry,
  			       uuid_t *uuid, u64 *remote_route)
  {
-@@ -447,6 +459,82 @@
+@@ -452,6 +490,365 @@ static int tb_xdp_error_response(struct
  				     TB_CFG_PKG_XDOMAIN_RESP);
  }
-
+ 
 +static bool tb_xdp_properties_response_valid(
 +	const struct tb_xdp_properties_response *res,
 +	const struct tb_xdp_properties *req, u16 len, u16 data_len)
 +{
++	if (!uuid_equal(&res->src_uuid, &req->dst_uuid))
++		return false;
++	if (!uuid_equal(&res->dst_uuid, &req->src_uuid))
++		return false;
 +	if (res->offset != req->offset)
 +		return false;
 +	if (!res->data_length || res->data_length > TB_XDP_PROPERTIES_MAX_LENGTH)
@@ -77,6 +117,274 @@ route-matched properties requests can be resynchronized before answering.
 +		return false;
 +
 +	return true;
++}
++
++static bool tb_xdp_property_find_value(const u32 *dw, u16 frame_dw,
++				       u32 key_hi, u32 key_lo, u32 *value)
++{
++	u16 i;
++
++	for (i = sizeof(struct tb_xdp_header) / 4; i + 3 < frame_dw; i++) {
++		if (dw[i] != key_hi || dw[i + 1] != key_lo)
++			continue;
++		if (dw[i + 2] != XDOMAIN_PROPERTY_ENTRY_VALUE)
++			continue;
++
++		*value = dw[i + 3];
++		return true;
++	}
++
++	return false;
++}
++
++static bool tb_xdp_frame_has_rootdir_magic(const u32 *dw, u16 frame_dw)
++{
++	u16 i;
++
++	for (i = sizeof(struct tb_xdp_header) / 4; i < frame_dw; i++) {
++		if (dw[i] == XDOMAIN_PROPERTY_ROOTDIR_MAGIC)
++			return true;
++	}
++
++	return false;
++}
++
++static u32 tb_xdp_properties_generation(const u32 *dw, u16 frame_dw)
++{
++	u16 i;
++
++	for (i = sizeof(struct tb_xdp_header) / 4; i + 1 < frame_dw; i++) {
++		u16 offset = dw[i] & 0xffff;
++		u16 property_len = dw[i] >> 16;
++
++		if (offset)
++			continue;
++		if (!property_len || property_len > TB_XDP_PROPERTIES_MAX_LENGTH)
++			continue;
++
++		return dw[i + 1];
++	}
++
++	return 0;
++}
++
++static int tb_xdp_properties_response_copy_synthetic(
++	struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, const u32 *block, u16 block_len,
++	u32 generation, u16 *len)
++{
++	u16 avail;
++
++	if (req->offset >= block_len)
++		return -EINVAL;
++
++	avail = min_t(u16, block_len - req->offset,
++		      TB_XDP_PROPERTIES_MAX_DATA_LENGTH);
++	if (!avail)
++		return -EINVAL;
++
++	uuid_copy(&res->src_uuid, &req->dst_uuid);
++	uuid_copy(&res->dst_uuid, &req->src_uuid);
++	res->offset = req->offset;
++	res->generation = generation;
++	res->data_length = block_len;
++	memmove(res->data, &block[req->offset], avail * 4);
++
++	*len = avail;
++	return 0;
++}
++
++static int tb_xdp_properties_response_synthesize_minimal(
++	struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, u32 vendorid, u32 deviceid,
++	u32 generation, u16 *len)
++{
++	u32 block[XDOMAIN_PROPERTY_BLOCK_LEN_MIN];
++
++	if (req->offset)
++		return -EINVAL;
++
++	memset(block, 0, sizeof(block));
++	block[0] = XDOMAIN_PROPERTY_ROOTDIR_MAGIC;
++	block[1] = XDOMAIN_PROPERTY_ROOTDIR_LEN_MIN;
++	block[2] = XDOMAIN_PROPERTY_VENDORID_HI;
++	block[3] = XDOMAIN_PROPERTY_VENDORID_LO;
++	block[4] = XDOMAIN_PROPERTY_ENTRY_VALUE;
++	block[5] = vendorid;
++	block[6] = XDOMAIN_PROPERTY_DEVICEID_HI;
++	block[7] = XDOMAIN_PROPERTY_DEVICEID_LO;
++	block[8] = XDOMAIN_PROPERTY_ENTRY_VALUE;
++	block[9] = deviceid;
++
++	return tb_xdp_properties_response_copy_synthetic(res, req, block,
++							 ARRAY_SIZE(block),
++							 generation, len);
++}
++
++static int tb_xdp_properties_add_tbv_native_service(
++	struct tb_property_dir *root, const char *key)
++{
++	struct tb_property_dir *dir;
++	int ret;
++
++	dir = tb_property_create_dir(&tb_xdp_tbv_native_service_uuid);
++	if (!dir)
++		return -ENOMEM;
++
++	ret = tb_property_add_immediate(dir, "prtcid",
++					XDOMAIN_PROPERTY_TBV_NATIVE_PRTCID);
++	ret = ret ?: tb_property_add_immediate(dir, "prtcvers",
++					XDOMAIN_PROPERTY_TBV_NATIVE_PRTCVERS);
++	ret = ret ?: tb_property_add_immediate(dir, "prtcrevs",
++					XDOMAIN_PROPERTY_TBV_NATIVE_PRTCREVS);
++	ret = ret ?: tb_property_add_immediate(dir, "prtcstns",
++					XDOMAIN_PROPERTY_TBV_NATIVE_PRTCSTNS);
++	if (ret)
++		goto err_free_dir;
++
++	ret = tb_property_add_dir(root, key, dir);
++	if (ret)
++		goto err_free_dir;
++
++	return 0;
++
++err_free_dir:
++	tb_property_free_dir(dir);
++	return ret;
++}
++
++static int tb_xdp_properties_response_synthesize_native(
++	struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, u32 vendorid, u32 deviceid,
++	u32 generation, u16 advertised_len, u16 *len)
++{
++	struct tb_property_dir *root;
++	ssize_t block_len;
++	u16 service_count;
++	u32 *block;
++	int ret, i;
++
++	if (advertised_len < XDOMAIN_PROPERTY_NATIVE_SYNTH_MIN_LEN)
++		return -EINVAL;
++	if ((advertised_len - XDOMAIN_PROPERTY_NATIVE_BASE_LEN) %
++	    XDOMAIN_PROPERTY_NATIVE_SERVICE_LEN)
++		return -EINVAL;
++
++	service_count = (advertised_len - XDOMAIN_PROPERTY_NATIVE_BASE_LEN) /
++			XDOMAIN_PROPERTY_NATIVE_SERVICE_LEN;
++	if (!service_count ||
++	    service_count > ARRAY_SIZE(tb_xdp_tbv_native_service_keys))
++		return -EINVAL;
++
++	root = tb_property_create_dir(NULL);
++	if (!root)
++		return -ENOMEM;
++
++	ret = tb_property_add_immediate(root, "vendorid", vendorid);
++	ret = ret ?: tb_property_add_text(root, "vendorid", "Linux");
++	ret = ret ?: tb_property_add_immediate(root, "deviceid", deviceid);
++	ret = ret ?: tb_property_add_immediate(root, "devicerv",
++					       XDOMAIN_PROPERTY_DEVICERV);
++	ret = ret ?: tb_property_add_text(root, "deviceid", "Linux");
++	ret = ret ?: tb_property_add_immediate(root, "maxhopid",
++					       XDOMAIN_DEFAULT_MAX_HOPID);
++	for (i = 0; !ret && i < service_count; i++)
++		ret = tb_xdp_properties_add_tbv_native_service(
++			root, tb_xdp_tbv_native_service_keys[i]);
++	if (ret)
++		goto err_free_root;
++
++	block_len = tb_property_format_dir(root, NULL, 0);
++	if (block_len < 0) {
++		ret = block_len;
++		goto err_free_root;
++	}
++	if (block_len > TB_XDP_PROPERTIES_MAX_LENGTH) {
++		ret = -E2BIG;
++		goto err_free_root;
++	}
++	if (block_len != advertised_len) {
++		ret = -EINVAL;
++		goto err_free_root;
++	}
++
++	block = kcalloc(block_len, sizeof(*block), GFP_KERNEL);
++	if (!block) {
++		ret = -ENOMEM;
++		goto err_free_root;
++	}
++
++	ret = tb_property_format_dir(root, block, block_len);
++	if (ret)
++		goto err_free_block;
++
++	ret = tb_xdp_properties_response_copy_synthetic(res, req, block,
++						       block_len, generation,
++						       len);
++
++err_free_block:
++	kfree(block);
++err_free_root:
++	tb_property_free_dir(root);
++	return ret;
++}
++
++static int tb_xdp_properties_response_synthesize(
++	struct tb_xdp_properties_response *res,
++	const struct tb_xdp_properties *req, const u32 *dw, u16 frame_dw,
++	u16 advertised_len,
++	u16 *len)
++{
++	u32 vendorid = 0x1d6b, deviceid = 0x0004;
++	u32 generation;
++	bool synth_native;
++	int ret;
++
++	if (!advertised_len)
++		return -EINVAL;
++
++	generation = tb_xdp_properties_generation(dw, frame_dw);
++
++	if (!req->offset) {
++		if (!tb_xdp_frame_has_rootdir_magic(dw, frame_dw))
++			return -EINVAL;
++		if (!tb_xdp_property_find_value(dw, frame_dw,
++						XDOMAIN_PROPERTY_VENDORID_HI,
++						XDOMAIN_PROPERTY_VENDORID_LO,
++						&vendorid))
++			return -EINVAL;
++		if (!tb_xdp_property_find_value(dw, frame_dw,
++						XDOMAIN_PROPERTY_DEVICEID_HI,
++						XDOMAIN_PROPERTY_DEVICEID_LO,
++						&deviceid))
++			return -EINVAL;
++	} else if (advertised_len < XDOMAIN_PROPERTY_NATIVE_SYNTH_MIN_LEN) {
++		return -EINVAL;
++	}
++
++	synth_native = advertised_len >= XDOMAIN_PROPERTY_NATIVE_SYNTH_MIN_LEN;
++	if (synth_native)
++		ret = tb_xdp_properties_response_synthesize_native(
++			res, req, vendorid, deviceid, generation,
++			advertised_len, len);
++	else if (advertised_len == XDOMAIN_PROPERTY_BLOCK_LEN_MIN)
++		ret = tb_xdp_properties_response_synthesize_minimal(
++			res, req, vendorid, deviceid, generation, len);
++	else
++		return -EINVAL;
++	if (ret)
++		return ret;
++	if (res->data_length != advertised_len)
++		return -EINVAL;
++
++	if (xdomain_debug)
++		pr_info("thunderbolt xdomain: synthesized %s properties response route=%08x:%08x offset=%u len=%u data_len=%u advertised_len=%u gen=%u vendor=%#x device=%#x\n",
++			synth_native ? "native" : "minimal",
++			res->hdr.xd_hdr.route_hi, res->hdr.xd_hdr.route_lo,
++			res->offset, *len, res->data_length, advertised_len,
++			res->generation, vendorid, deviceid);
++
++	return 0;
 +}
 +
 +static int tb_xdp_properties_response_resync(
@@ -117,6 +425,13 @@ route-matched properties requests can be resynchronized before answering.
 +		if (!offset && dw[i + 2] != XDOMAIN_PROPERTY_ROOTDIR_MAGIC)
 +			continue;
 +
++		if (avail < min_t(u16, property_len - offset,
++				  TB_XDP_PROPERTIES_MAX_DATA_LENGTH) &&
++		    !tb_xdp_properties_response_synthesize(res, req, dw,
++							  frame_dw,
++							  property_len, len))
++			return 0;
++
 +		if (xdomain_debug)
 +			pr_info("thunderbolt xdomain: resynced properties response body route=%08x:%08x offset=%u data_len=%u body_dw=%u avail=%u\n",
 +				res->hdr.xd_hdr.route_hi, res->hdr.xd_hdr.route_lo,
@@ -132,16 +447,28 @@ route-matched properties requests can be resynchronized before answering.
 +		return 0;
 +	}
 +
++	if (!tb_xdp_properties_response_synthesize(res, req, dw, frame_dw,
++						  data_len, len))
++		return 0;
++
 +	return -EINVAL;
 +}
 +
  static int tb_xdp_properties_request(struct tb_ctl *ctl, u64 route,
  	const uuid_t *src_uuid, const uuid_t *dst_uuid, int retry,
  	u32 **block, u32 *generation)
-@@ -507,13 +595,9 @@
+@@ -461,6 +829,7 @@ static int tb_xdp_properties_request(str
+ 	u16 data_len, len;
+ 	size_t total_size;
+ 	u32 *data = NULL;
++	u32 response_generation = 0;
+ 	int ret;
+ 
+ 	total_size = sizeof(*res) + TB_XDP_PROPERTIES_MAX_DATA_LENGTH * 4;
+@@ -512,13 +881,9 @@ static int tb_xdp_properties_request(str
  			goto err;
  		}
-
+ 
 -		/*
 -		 * Package length includes the whole payload without the
 -		 * XDomain header. Validate first that the package is at
@@ -155,31 +482,55 @@ route-matched properties requests can be resynchronized before answering.
  			ret = -EINVAL;
  			if (xdomain_debug)
  				pr_info("thunderbolt xdomain: bad properties response route=%llx len=%u min=%zu type=%#x src=%pUb dst=%pUb\n",
-@@ -523,9 +607,6 @@
+@@ -528,9 +893,6 @@ static int tb_xdp_properties_request(str
  			goto err;
  		}
-
+ 
 -		len += sizeof(res->hdr.xd_hdr) / 4;
 -		len -= sizeof(*res) / 4;
 -
  		if (res->offset != req.offset) {
  			ret = -EINVAL;
  			if (xdomain_debug)
-@@ -595,14 +676,89 @@
+@@ -547,6 +909,7 @@ static int tb_xdp_properties_request(str
+ 		 */
+ 		if (!data) {
+ 			data_len = res->data_length;
++			response_generation = res->generation;
+ 			if (!data_len) {
+ 				ret = -EINVAL;
+ 				if (xdomain_debug)
+@@ -587,7 +950,7 @@ static int tb_xdp_properties_request(str
+ 	} while (!data_len || req.offset < data_len);
+ 
+ 	*block = data;
+-	*generation = res->generation;
++	*generation = response_generation;
+ 
+ 	kfree(res);
+ 
+@@ -600,14 +963,93 @@ err:
  	return ret;
  }
-
+ 
 +static bool tb_xdp_properties_request_usable(
 +	const struct tb_xdomain *xd, const struct tb_xdp_properties *req)
 +{
++	bool src_remote;
++
 +	if (req->offset >= xd->local_property_block_len)
 +		return false;
 +
++	src_remote = xd->remote_uuid &&
++		uuid_equal(xd->remote_uuid, &req->src_uuid);
++
 +	if (uuid_equal(xd->local_uuid, &req->dst_uuid))
++		return !xd->remote_uuid || src_remote;
++
++	if (xdomain_route_properties && src_remote)
 +		return true;
 +
-+	return xdomain_route_properties && xd->remote_uuid &&
-+	       uuid_equal(xd->remote_uuid, &req->src_uuid);
++	return false;
 +}
 +
 +static void tb_xdp_properties_request_resync(struct tb_xdomain *xd,
@@ -195,16 +546,34 @@ route-matched properties requests can be resynchronized before answering.
 +
 +	frame_dw = min_t(u16, size / 4, tb_xdp_frame_dwords(&req->hdr, size));
 +
++	if (fixed->offset >= xd->local_property_block_len) {
++		struct tb_xdp_properties candidate = *fixed;
++
++		candidate.offset = 0;
++		if (tb_xdp_properties_request_usable(xd, &candidate)) {
++			fixed->offset = 0;
++			if (xdomain_debug)
++				dev_info(&xd->dev, "XDomain properties request recovered offset route=%llx src=%pUb dst=%pUb\n",
++					 xd->route, &fixed->src_uuid,
++					 &fixed->dst_uuid);
++			return;
++		}
++	}
++
 +	for (i = sizeof(req->hdr) / 4; i + 8 < frame_dw; i++) {
 +		const uuid_t *src = (const uuid_t *)&dw[i];
 +		const uuid_t *dst = (const uuid_t *)&dw[i + 4];
++		bool dst_local, src_remote;
 +		u16 offset = dw[i + 8] & 0xffff;
 +
 +		if (offset >= xd->local_property_block_len)
 +			continue;
-+		if (!uuid_equal(xd->local_uuid, dst) &&
-+		    (!xdomain_route_properties || !xd->remote_uuid ||
-+		     !uuid_equal(xd->remote_uuid, src)))
++
++		dst_local = uuid_equal(xd->local_uuid, dst);
++		src_remote = xd->remote_uuid &&
++			uuid_equal(xd->remote_uuid, src);
++		if (!((dst_local && (!xd->remote_uuid || src_remote)) ||
++		      (xdomain_route_properties && src_remote)))
 +			continue;
 +
 +		uuid_copy(&fixed->src_uuid, src);
@@ -213,27 +582,6 @@ route-matched properties requests can be resynchronized before answering.
 +		if (xdomain_debug)
 +			dev_info(&xd->dev, "XDomain properties request resynced body route=%llx body_dw=%u offset=%u src=%pUb dst=%pUb\n",
 +				 xd->route, i, fixed->offset, &fixed->src_uuid,
-+				 &fixed->dst_uuid);
-+		return;
-+	}
-+
-+	for (i = sizeof(req->hdr) / 4; i + sizeof(req->hdr) / 4 <= frame_dw; i++) {
-+		const struct tb_xdp_header *hdr =
-+			(const struct tb_xdp_header *)&dw[i];
-+
-+		if (!uuid_equal(&hdr->uuid, &tb_xdp_uuid))
-+			continue;
-+		if (hdr->type != PROPERTIES_REQUEST)
-+			continue;
-+		if (!xdomain_route_properties || !xd->remote_uuid)
-+			continue;
-+
-+		uuid_copy(&fixed->src_uuid, xd->remote_uuid);
-+		uuid_copy(&fixed->dst_uuid, xd->local_uuid);
-+		fixed->offset = 0;
-+		if (xdomain_debug)
-+			dev_info(&xd->dev, "XDomain properties request synthesized body route=%llx inner_dw=%u src=%pUb dst=%pUb\n",
-+				 xd->route, i, &fixed->src_uuid,
 +				 &fixed->dst_uuid);
 +		return;
 +	}
@@ -249,14 +597,14 @@ route-matched properties requests can be resynchronized before answering.
  	size_t total_size;
  	u16 len;
  	int ret;
-
+ 
 +	tb_xdp_properties_request_resync(xd, req, size, &fixed_req);
 +	req = &fixed_req;
 +
  	/*
  	 * Currently we expect all requests to be directed to us. The
  	 * protocol supports forwarding, though which we might add
-@@ -985,7 +1141,8 @@
+@@ -1009,7 +1451,8 @@ static void tb_xdp_handle_request(struct
  		}
  		if (xd) {
  			ret = tb_xdp_properties_response(tb, ctl, xd, sequence,
@@ -265,12 +613,12 @@ route-matched properties requests can be resynchronized before answering.
 +				xw->size);
  		}
  		break;
-
-@@ -1089,6 +1246,7 @@
+ 
+@@ -1153,6 +1596,7 @@ tb_xdp_schedule_request(struct tb *tb, c
  		kfree(xw);
  		return false;
  	}
 +	xw->size = size;
  	xw->tb = tb_domain_get(tb);
-
+ 
  	schedule_work(&xw->work);

@@ -20,6 +20,26 @@ lib: rec {
       };
       role = "trusted";
     };
+    # High-speed MLX5/BlueField fabric. Hosts use the CRS804 SVI as their
+    # gateway; traffic within the subnet stays in the Marvell switch ASIC.
+    fabric = {
+      id = 25;
+      prefix = "192.168.25";
+      cidr = 24;
+      mtu = 9000;
+      gatewayHost = 1;
+      role = "trusted";
+    };
+    # Reserved test subnet for the CX5 SharedIO VFs. MULTI_PORT_VHCA_EN gives
+    # both VFs carrier, but this firmware does not forward frames between host
+    # controllers, so production traffic uses the physical fabric instead.
+    cx5Peer = {
+      id = null;
+      prefix = "192.168.27";
+      cidr = 30;
+      mtu = 9000;
+      role = "transit";
+    };
     iot = {
       id = 20;
       prefix = "192.168.20";
@@ -184,6 +204,7 @@ lib: rec {
     router = {
       addresses = {
         lan = 1;
+        cx5Peer = 1;
         iot = 1;
         guest = 1;
         mgmt = 1;
@@ -195,9 +216,10 @@ lib: rec {
       mac = "e4:8d:8c:a8:de:40";
       addresses = { lan = 2; };
     };
-    ap = {
+    "unifi-ac-pro" = {
       mac = "80:2a:a8:80:96:ef";
       addresses = { lan = 3; };
+      extraNames = [ "ap" ];
     };
     "x10-ipmi" = {
       mac = "0c:c4:7a:89:fb:37";
@@ -223,11 +245,18 @@ lib: rec {
       # any stray lease resolves to the correct host instead of a dynamic IP.
       extraMacs = [ "50:6b:4b:0d:24:86" ];
       addresses = { lan = 8; };
-      extraNames = [ "jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" ];
+      extraNames = [ "jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" ];
     };
     "mikrotik-100g" = {
       mac = "48:a9:8a:93:42:4c";
       addresses = { lan = 9; };
+    };
+    "mikrotik-400g" = {
+      mac = "d0:ea:11:d1:9d:a5";
+      addresses = {
+        lan = 27;
+        fabric = 1;
+      };
     };
     trx90bmc = {
       mac = "9c:6b:00:57:31:77";
@@ -248,7 +277,11 @@ lib: rec {
     };
     n100 = {
       mac = "9c:6b:00:39:f3:91";
-      addresses = { lan = 14; };
+      addresses = {
+        lan = 14;
+        fabric = 14;
+        cx5Peer = 2;
+      };
     };
     "arr-servers" = {
       mac = "9e:9c:05:57:e8:11";
@@ -259,19 +292,32 @@ lib: rec {
       addresses = { lan = 16; };
     };
     nanokvm = {
-      mac = "38:7a:cc:40:41:e3";
+      # eth0. Locally-administered MAC pinned in the machine config
+      # (the SG2002 GMAC has no fused address); Colmena deploys over
+      # this interface.
+      mac = "02:4b:56:4d:00:17";
       addresses = { lan = 17; };
     };
     "rock-5b" = {
       mac = "00:e0:4c:68:02:e7";
       addresses = { lan = 18; };
     };
+    k3 = {
+      mac = "50:0a:52:0b:e5:6f";
+      extraMacs = [
+        "50:0a:52:0b:81:20"
+      ];
+      addresses = { lan = 19; };
+    };
     mbp = {
       mac = "c2:c5:7f:8c:7a:51";
       # mbp's LAN link is now the 2.5GbE Thunderbolt/USB ethernet (en11); reserve
       # .24 to its MAC too so `mbp` resolves to a stable address it actually holds
       # (bare `mbp` was a dead static record while it pulled a dynamic pool lease).
-      extraMacs = [ "88:c9:b3:b3:2a:da" ];
+      extraMacs = [
+        "88:c9:b3:b3:2a:da"
+        "24:5e:be:81:84:16"
+      ];
       addresses = { lan = 24; };
     };
     goblin = {
@@ -287,15 +333,60 @@ lib: rec {
       mac = "00:23:79:00:57:90";
       addresses = { lan = 21; };
     };
-    "nanokvm-wifi" = { addresses = { lan = 22; }; };
+    bluefield2 = {
+      mac = "b8:ce:f6:f8:d7:b0";
+      addresses = {
+        lan = 22;
+        fabric = 22;
+      };
+    };
+    "nanokvm-wifi" = {
+      # The AIC8800's burned-in MAC; wlan0 lives on the wifi VLAN.
+      mac = "38:7a:cc:40:41:e3";
+      addresses = { wifi = 17; };
+    };
+    "strix-strip" = {
+      # Tuya Local / Home Assistant power strip for the four Strix hosts.
+      mac = "d8:c8:0c:c6:c5:2b";
+      addresses = { wifi = 124; };
+    };
     "poe-switch-10g" = { addresses = { lan = 23; }; };
     "strix-1" = {
-      mac = "66:e3:1e:f3:e5:79";
-      addresses = { lan = 136; };
+      # eno1 burned-in MAC (confirmed via ethtool -P); the firmware PXE
+      # client identifies with this, so dnsmasq netboot tagging depends
+      # on it being the real permanent address.
+      mac = "84:47:09:68:82:b1";
+      addresses = {
+        lan = 136;
+        fabric = 101;
+      };
+      # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
+      netboot = true;
     };
     "strix-2" = {
-      mac = "5a:e8:00:d3:73:de";
-      addresses = { lan = 192; };
+      # Burned-in eno1 MAC observed from the firmware HTTPClient.
+      mac = "84:47:09:68:79:a6";
+      addresses = {
+        lan = 192;
+        fabric = 102;
+      };
+      netboot = true;
+    };
+    "strix-3" = {
+      mac = "84:47:09:80:64:50";
+      addresses = {
+        lan = 25;
+        fabric = 103;
+      };
+      netboot = true;
+    };
+    "strix-4" = {
+      mac = "84:47:09:81:22:35";
+      addresses = {
+        lan = 26;
+        fabric = 104;
+      };
+      netboot = true;
     };
   };
 
@@ -312,11 +403,35 @@ lib: rec {
         linuxName = "enp1s0f1np1";
         mac = "50:6b:4b:03:04:cb";
       };
+      lan10g = {
+        # RTL8127 10G copper. The NIC drops off the PCIe bus on some boots,
+        # renumbering the whole bus and flapping its kernel name
+        # (enp2s0/enp7s0) — pin by MAC so units can reference it.
+        linuxName = "lan10g";
+        mac = "88:c9:b3:b6:24:30";
+      };
+      cx5Peer = {
+        # Host-local VF backed by the CX5 SharedIO MPFS. Kept in the inventory
+        # for firmware experiments; no address is configured on it.
+        linuxName = "enp2s0f0v0";
+        mac = "02:00:00:00:00:01";
+      };
+    };
+    n100.cx5Peer = {
+      linuxName = "enp1s0f0v0";
+      mac = "02:00:00:00:00:02";
     };
   };
 
   # Reserved for future iterations. Keep keys present so consumers can import without churn.
   services = { };
+
+  # HTTP port on trex serving iPXE scripts/kernels/initrds for hosts
+  # marked `netboot = true` (see profiles/netboot-{server,client}.nix and
+  # the TFTP/dhcp-boot wiring in profiles/router/services.nix).
+  # Keep firmware HTTP Boot on the conventional port. The Strix UEFI client
+  # accepts DHCP but does not attempt TCP when an explicit :8020 is present.
+  netbootHttpPort = 80;
 
   # ---- Helpers (derived views) ----
 

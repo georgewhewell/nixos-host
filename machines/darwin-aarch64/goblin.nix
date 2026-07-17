@@ -13,6 +13,13 @@
   ids.gids.nixbld = 350;
   environment.enableAllTerminfo = lib.mkForce false;
 
+  # Goblin is an unattended desktop/build host: bring it back after an outage
+  # or a system freeze instead of leaving it powered off until someone visits.
+  power = {
+    restartAfterPowerFailure = lib.mkForce true;
+    restartAfterFreeze = lib.mkForce true;
+  };
+
   sconfig.xmrig = {
     enable = true;
     package = pkgs.xmrig;

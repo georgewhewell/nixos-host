@@ -8,6 +8,11 @@
 }: let
   self = network.hosts."rock-5b";
   persist = config.sconfig.impermanence.persistentStoragePath;
+  # eth is the trunk: untagged carries rock-5b's own LAN mgmt IP; tagged
+  # carries the wifi client VLAN. hostapd bridges wlan0 into br0.lan, whose
+  # only uplink is this tagged subiface, so wifi clients egress eth tagged
+  # and are routed/DHCP'd by the router on the wifi VLAN.
+  wifiTag = "wifi${toString network.vlans.wifi.id}";
 in {
   system.stateVersion = "25.05";
 
@@ -18,7 +23,7 @@ in {
     ../../../profiles/home.nix
     ../../../profiles/pray-for-sd-card.nix
     ../../../profiles/wireless.nix
-    # ../../../profiles/router/ap.nix
+    ../../../profiles/router/ap.nix
     ../../../services/buildfarm-slave.nix
     # ../../../services/kvm.nix
   ];
@@ -118,6 +123,7 @@ in {
       grub.enable = false;
       systemd-boot = {
         enable = true;
+        configurationLimit = 4;
         installDeviceTree = true; # Load NixOS DTB with overlays instead of UEFI DTB
       };
       efi.canTouchEfiVariables = true;
@@ -250,7 +256,7 @@ in {
   hardware = {
     wirelessRegulatoryDatabase = true;
     # Minimal firmware - only Intel WiFi 7 BE200 and Intel Bluetooth
-    enableAllFirmware = lib.mkForce true;
+    enableAllFirmware = lib.mkDefault true;
     # enableRedistributableFirmware = lib.mkForce false;
     firmware = [
       #   (pkgs.runCommand "minimal-firmware" {} ''
@@ -296,7 +302,7 @@ in {
     wait-online.anyInterface = true;
 
     netdevs = {
-      # Bridge for AP interfaces
+      # AP bridge: hostapd's wlan0 + the tagged wifi uplink.
       "10-br0.lan" = {
         netdevConfig = {
           Kind = "bridge";
@@ -304,19 +310,22 @@ in {
         };
         bridgeConfig.STP = false;
       };
+      # Tagged wifi VLAN on the eth trunk; joins the AP bridge.
+      "30-${wifiTag}" = {
+        netdevConfig = {
+          Kind = "vlan";
+          Name = wifiTag;
+        };
+        vlanConfig.Id = network.vlans.wifi.id;
+      };
     };
 
     networks = {
-      # Ethernet joins the bridge
+      # eth trunk: rock-5b's own mgmt IP sits directly on the NIC (untagged);
+      # the tagged wifi VLAN rides the same wire (see 30-${wifiTag}).
       "10-lan" = {
         matchConfig.Driver = "r8169";
-        networkConfig.Bridge = "br0.lan";
-        linkConfig.RequiredForOnline = "enslaved";
-      };
-
-      # Bridge gets the IP address
-      "10-br0.lan" = {
-        matchConfig.Name = "br0.lan";
+        vlan = [wifiTag];
         address = [(network.cidrOf "lan" self.addresses.lan)];
         dns = [network.routerIp];
         routes = [
@@ -325,8 +334,26 @@ in {
             Metric = 1;
           }
         ];
-        networkConfig.ConfigureWithoutCarrier = true;
+        # Do not keep the LAN address/routes installed while the wired link is
+        # down. Otherwise WiFi fallback receives traffic, but replies to LAN
+        # hosts are sent to the dead Ethernet interface.
+        networkConfig.ConfigureWithoutCarrier = false;
         linkConfig.RequiredForOnline = "routable";
+      };
+
+      # Tagged wifi VLAN -> AP bridge.
+      "30-${wifiTag}" = {
+        matchConfig.Name = wifiTag;
+        networkConfig.Bridge = "br0.lan";
+        linkConfig.RequiredForOnline = "no";
+      };
+
+      # AP bridge has no host IP — it only joins wlan0 (via hostapd) to the
+      # tagged wifi uplink, keeping wifi clients off rock-5b's LAN mgmt.
+      "10-br0.lan" = {
+        matchConfig.Name = "br0.lan";
+        networkConfig.ConfigureWithoutCarrier = true;
+        linkConfig.RequiredForOnline = "no";
       };
 
       # Intel iwlwifi - client mode with DHCP (fallback)
@@ -336,7 +363,10 @@ in {
           DHCP = "yes";
           IPv6AcceptRA = true;
         };
-        dhcpV4Config.RouteMetric = 200;
+        dhcpV4Config = {
+          Hostname = "rock-5b-wifi";
+          RouteMetric = 200;
+        };
         linkConfig.RequiredForOnline = "no";
       };
     };
@@ -410,9 +440,6 @@ in {
   networking.firewall.allowedUDPPorts = [5353];
 
   services.irqbalance.enable = lib.mkDefault true;
-
-  # Disable hostapd-exporter (doesn't cross-compile)
-  services.hostapd-exporter.enable = lib.mkForce false;
 
   powerManagement = {
     enable = true;

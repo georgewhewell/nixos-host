@@ -43,6 +43,7 @@ in
 
   environment.systemPackages = with pkgs; [
     clinfo
+    amdgpu_top
     radeontop
   ] ++ lib.optionals rocmEnabled [
     rocmPackages.rocm-smi

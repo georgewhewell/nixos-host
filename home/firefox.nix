@@ -138,6 +138,20 @@
       "cookies"
       "privacy"
     ];
+    browserpass = [
+      "<all_urls>"
+      "activeTab"
+      "alarms"
+      "clipboardRead"
+      "clipboardWrite"
+      "nativeMessaging"
+      "notifications"
+      "scripting"
+      "storage"
+      "tabs"
+      "webRequest"
+      "webRequestAuthProvider"
+    ];
   };
 
   # Addons that have extensive domain-specific permissions (e.g. privacy-badger
@@ -172,6 +186,7 @@
       darkreader
       libredirect
       canvasblocker
+      browserpass
       ;
   };
 in {
@@ -180,6 +195,7 @@ in {
     enable = true;
     configPath = "${config.xdg.configHome}/mozilla/firefox";
     package = pkgs.wrapFirefox pkgs.firefox-bin-unwrapped {
+      nativeMessagingHosts = [pkgs.browserpass];
       extraPolicies = {
         NewTabPage = false;
         DisableFormHistory = true;

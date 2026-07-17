@@ -1,5 +1,7 @@
 {pkgs, lib, ...}: let
   areas = import ./areas.nix {inherit lib;};
+  bedsideLights = "light.bedside_lights";
+  nonBedsideLights = builtins.filter (entity: entity != bedsideLights) areas.allLightEntities;
 in {
   services.home-assistant = {
     customComponents = with pkgs.home-assistant-custom-components; [adaptive_lighting];
@@ -375,6 +377,7 @@ in {
 
           # Bedtime scene
           {
+            alias = "Evening bedside lights";
             description = "bedtime light";
             mode = "single";
             trigger = {
@@ -385,10 +388,36 @@ in {
               service = "light.turn_on";
               data = {
                 color_temp_kelvin = 2000;
-                brightness_pct = 1;
+                brightness_pct = 5;
               };
-              target.entity_id = ["light.bedside_lights"];
+              target.entity_id = [bedsideLights];
             }];
+          }
+
+          {
+            alias = "George in bed";
+            mode = "restart";
+            trigger = {
+              platform = "state";
+              entity_id = areas.georgeInBedEntity;
+              to = "on";
+            };
+            action = [
+              {
+                service = "light.turn_off";
+                target.entity_id = nonBedsideLights;
+                data.transition = 10;
+              }
+              {
+                service = "light.turn_on";
+                target.entity_id = [bedsideLights];
+                data = {
+                  color_temp_kelvin = 2000;
+                  brightness_pct = 1;
+                  transition = 10;
+                };
+              }
+            ];
           }
         ];
     };

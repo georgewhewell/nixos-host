@@ -211,7 +211,8 @@
                   self.reconcile_event = threading.Event()
                   self.lock = threading.RLock()
 
-                  self.desired_on = None if self.mqtt_enabled else True
+                  self.global_on = True if not self.mqtt_enabled else None
+                  self.local_on = True
                   self.client = None
                   self.nix_build_deadline = 0.0
                   self.dota2_deadline = 0.0
@@ -233,8 +234,12 @@
                       self.state_dir = os.path.join(
                           os.path.expanduser("~"), ".local", "state", "xmrig-mqtt"
                       )
-                  self.desired_state_file = os.path.join(self.state_dir, "desired_state")
-                  self.has_persisted_state = False
+                  self.local_state_file = os.path.join(self.state_dir, "local_state")
+                  self.global_state_file = os.path.join(self.state_dir, "global_state")
+                  self.legacy_desired_state_file = os.path.join(self.state_dir, "desired_state")
+                  self.has_persisted_local_state = False
+                  self.run_state_file = self.system_cfg.get("runStateFile")
+                  self.nix_build_inhibit_file = self.system_cfg.get("nixBuildInhibitFile")
 
                   # Platform-specific regex patterns for nix log watching
                   if self.platform == "linux":
@@ -258,10 +263,12 @@
 
               def ensure_state_dir(self):
                   os.makedirs(self.state_dir, exist_ok=True)
+                  if self.run_state_file:
+                      os.makedirs(os.path.dirname(self.run_state_file), exist_ok=True)
 
-              def load_desired_state(self):
+              def load_bool_state(self, path):
                   try:
-                      with open(self.desired_state_file, "r", encoding="utf-8") as f:
+                      with open(path, "r", encoding="utf-8") as f:
                           raw = f.read().strip().upper()
                       if raw == "ON":
                           return True
@@ -270,20 +277,26 @@
                   except FileNotFoundError:
                       return None
                   except Exception as exc:
-                      log(f"failed to load desired state: {exc}")
+                      log(f"failed to load state from {path}: {exc}")
                   return None
 
-              def save_desired_state(self):
-                  if self.desired_on is None:
+              def save_bool_state(self, path, value):
+                  if value is None:
                       return
-                  tmp = f"{self.desired_state_file}.tmp"
-                  payload = "ON" if self.desired_on else "OFF"
+                  tmp = f"{path}.tmp"
+                  payload = "ON" if value else "OFF"
                   try:
                       with open(tmp, "w", encoding="utf-8") as f:
                           f.write(payload)
-                      os.replace(tmp, self.desired_state_file)
+                      os.replace(tmp, path)
                   except Exception as exc:
-                      log(f"failed to save desired state: {exc}")
+                      log(f"failed to save state to {path}: {exc}")
+
+              def save_local_state(self):
+                  self.save_bool_state(self.local_state_file, self.local_on)
+
+              def save_global_state(self):
+                  self.save_bool_state(self.global_state_file, self.global_on)
 
               # ── MQTT ─────────────────────────────────────────────────────
 
@@ -310,7 +323,7 @@
                   if not self.mqtt_enabled:
                       return
                   with self.lock:
-                      desired = bool(self.desired_on) if self.desired_on is not None else False
+                      desired = self._desired_enabled_locked()
                       inhibited, reason = self._inhibit_state_locked()
                   effective = self.effective_mining_active()
                   with self.lock:
@@ -382,6 +395,21 @@
                       except Exception:
                           return False
 
+              def set_service_gate(self, allowed):
+                  if self.platform != "linux" or not self.run_state_file:
+                      return
+                  if allowed:
+                      os.makedirs(os.path.dirname(self.run_state_file), exist_ok=True)
+                      tmp = f"{self.run_state_file}.tmp"
+                      with open(tmp, "w", encoding="utf-8") as f:
+                          f.write("enabled\n")
+                      os.replace(tmp, self.run_state_file)
+                  else:
+                      try:
+                          os.unlink(self.run_state_file)
+                      except FileNotFoundError:
+                          pass
+
               def effective_mining_active(self):
                   if self.platform == "linux" and not self.xmrig_service_active():
                       return False
@@ -395,6 +423,7 @@
               def set_mining_active(self, active):
                   if active:
                       if self.platform == "linux":
+                          self.set_service_gate(True)
                           if not self.xmrig_service_active():
                               log("action start xmrig.service")
                               start = subprocess.run(
@@ -430,13 +459,37 @@
                       log("action resume mining")
                       self.xmrig_jsonrpc("resume")
                   else:
-                      log("action pause mining")
-                      self.xmrig_jsonrpc("pause")
+                      if self.platform == "linux":
+                          self.set_service_gate(False)
+                          if self.xmrig_service_active():
+                              log("action stop xmrig.service")
+                              stop = subprocess.run(
+                                  [self.system_cfg["systemctl"], "stop", "xmrig.service"],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE,
+                                  text=True,
+                                  check=False,
+                              )
+                              if stop.returncode != 0:
+                                  raise RuntimeError(
+                                      f"failed to stop xmrig.service: {stop.stderr.strip()}"
+                                  )
+                      else:
+                          log("action pause mining")
+                          self.xmrig_jsonrpc("pause")
 
               # ── Helpers ──────────────────────────────────────────────────
 
               def _onoff(self, value):
                   return "ON" if value else "OFF"
+
+              def _onoff_unknown(self, value):
+                  if value is None:
+                      return "UNKNOWN"
+                  return self._onoff(value)
+
+              def _desired_enabled_locked(self):
+                  return self.global_on is True and self.local_on is True
 
               # ── Inhibitor state ──────────────────────────────────────────
 
@@ -450,7 +503,12 @@
                   reasons = []
                   if self.nix_client_pids:
                       reasons.append("nix active")
-                  if self.nix_build_deadline > now:
+                  nix_build_inhibited = False
+                  if self.nix_build_inhibit_file:
+                      nix_build_inhibited = os.path.exists(self.nix_build_inhibit_file)
+                  if nix_build_inhibited:
+                      reasons.append("nix build")
+                  elif self.nix_build_deadline > now:
                       reasons.append("nix build")
                   if self.dota2_deadline > now:
                       reasons.append("dota2 activity")
@@ -623,24 +681,47 @@
 
               def reconcile(self):
                   with self.lock:
-                      desired = bool(self.desired_on) if self.desired_on is not None else False
+                      desired = self._desired_enabled_locked()
                       inhibited, reason = self._inhibit_state_locked()
                       target_active = desired and (not inhibited)
-                      control_state = (desired, inhibited, reason, target_active)
+                      control_state = (
+                          self.global_on,
+                          self.local_on,
+                          desired,
+                          inhibited,
+                          reason,
+                          target_active,
+                      )
                       if self.last_logged_control_state != control_state:
                           log(
-                              f"control desired={self._onoff(desired)} "
+                              f"control global={self._onoff_unknown(self.global_on)} "
+                              f"local={self._onoff(self.local_on)} "
+                              f"desired={self._onoff(desired)} "
                               f"inhibited={self._onoff(inhibited)} "
                               f"reason={reason or '-'} "
                               f"target={self._onoff(target_active)}"
                           )
                           self.last_logged_control_state = control_state
-                  effective_before = self.effective_mining_active()
-                  if effective_before != target_active:
-                      try:
-                          self.set_mining_active(target_active)
-                      except Exception as exc:
-                          log(f"reconcile failed: {exc}")
+                  try:
+                      if self.platform == "linux":
+                          self.set_service_gate(target_active)
+                          service_active = self.xmrig_service_active()
+                          if target_active:
+                              effective_before = (
+                                  self.effective_mining_active()
+                                  if service_active
+                                  else False
+                              )
+                              if not effective_before:
+                                  self.set_mining_active(True)
+                          elif service_active:
+                              self.set_mining_active(False)
+                      else:
+                          effective_before = self.effective_mining_active()
+                          if effective_before != target_active:
+                              self.set_mining_active(target_active)
+                  except Exception as exc:
+                      log(f"reconcile failed: {exc}")
                   self.publish_states()
 
               def schedule_reconcile(self):
@@ -687,28 +768,27 @@
                       msg.payload.decode("utf-8", "replace") if msg.payload else ""
                   ).strip()
                   normalized = payload.upper()
-                  if msg.retain and self.has_persisted_state:
+                  is_global = msg.topic == self.mqtt_cfg["globalCommandTopic"]
+                  source = "global" if is_global else "local"
+                  if msg.retain and not is_global and self.has_persisted_local_state:
                       log(
                           f"ignoring retained message topic={msg.topic} "
-                          f"payload={payload} (have persisted state)"
+                          f"payload={payload} (have persisted local state)"
                       )
                       self.publish_states()
                       return
                   changed = False
+                  new_value = None
                   with self.lock:
                       if normalized in ("ON", "1", "TRUE"):
-                          self.desired_on = True
+                          new_value = True
                           changed = True
                       elif normalized in ("OFF", "0", "FALSE"):
-                          self.desired_on = False
+                          new_value = False
                           changed = True
                       elif normalized == "TOGGLE":
-                          current = (
-                              bool(self.desired_on)
-                              if self.desired_on is not None
-                              else self.effective_mining_active()
-                          )
-                          self.desired_on = not current
+                          current = self.global_on if is_global else self.local_on
+                          new_value = not bool(current)
                           changed = True
                       elif normalized == "STATUS":
                           pass
@@ -719,11 +799,16 @@
                           return
 
                       if changed:
+                          if is_global:
+                              self.global_on = new_value
+                              self.save_global_state()
+                          else:
+                              self.local_on = new_value
+                              self.save_local_state()
                           log(
-                              f"command topic={msg.topic} "
-                              f"desired={self._onoff(self.desired_on)}"
+                              f"command source={source} topic={msg.topic} "
+                              f"value={self._onoff(new_value)}"
                           )
-                          self.save_desired_state()
                   self.schedule_reconcile()
 
               def mqtt_loop_start(self):
@@ -888,11 +973,13 @@
               def start(self):
                   self.ensure_state_dir()
                   if self.mqtt_enabled:
-                      self.desired_on = self.load_desired_state()
-                      if self.desired_on is not None:
-                          self.has_persisted_state = True
-                      else:
-                          self.desired_on = self.effective_mining_active()
+                      local_on = self.load_bool_state(self.local_state_file)
+                      if local_on is None:
+                          local_on = self.load_bool_state(self.legacy_desired_state_file)
+                      if local_on is not None:
+                          self.local_on = local_on
+                          self.has_persisted_local_state = True
+                      self.global_on = None
                       self.mqtt_loop_start()
 
                   self.reconcile_thread = threading.Thread(

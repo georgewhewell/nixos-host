@@ -11,9 +11,13 @@
     "router"
     "trex"
     "rock-5b"
+    "k3"
+    "bluefield2"
     "n100"
     "strix-1"
     "strix-2"
+    "strix-3"
+    "strix-4"
     "fuckup"
     # Macs run prometheus-node-exporter on :9100 (darwin subset of collectors).
     "goblin"
@@ -25,6 +29,8 @@
     "n100"
     "strix-1"
     "strix-2"
+    "strix-3"
+    "strix-4"
     "fuckup"
   ];
   cadvisorHosts = [
@@ -39,6 +45,8 @@
     "fuckup"
     "strix-1"
     "strix-2"
+    "strix-3"
+    "strix-4"
     # Macs export the same xmrig_* metrics via a small HTTP exporter on :3903
     # (no journald/mtail on darwin).
     "goblin"
@@ -52,6 +60,20 @@
       static_configs = [
         {
           targets = map (host: "${host}:9100") nodeHosts;
+        }
+      ];
+    }
+    {
+      # OpenWrt devices: prometheus-node-exporter-lua on :9100. The UniFi AP
+      # also has wifi/wifi_stations collectors.
+      job_name = "openwrt";
+      scrape_timeout = "10s";
+      static_configs = [
+        {
+          targets = [
+            "unifi-ac-pro:9100"
+            "10g-onti:9100"
+          ];
         }
       ];
     }

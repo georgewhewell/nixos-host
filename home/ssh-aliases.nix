@@ -1,10 +1,10 @@
 {...}: {
   programs.ssh = {
-    matchBlocks = {
+    settings = {
       # Direct access to internal server via ProxyJump
       "internal internal.lsd-ag.ch 78.47.106.113" = {
-        hostname = "78.47.106.113";
-        user = "grw";
+        HostName = "78.47.106.113";
+        User = "grw";
       };
     };
   };

@@ -1,38 +1,46 @@
+# Full-fat fleet baseline for workstation/server-class members.
+# The shareable identity layer (users, ssh, zsh, hosts, locale, gc)
+# lives in fleet-core.nix so memory-constrained members (NanoKVM) can
+# import just that; this file adds everything with a hardware or
+# closure-size cost.
 {
   config,
   pkgs,
   lib,
   ...
-}: let
-  network = import ../network.nix lib;
-in {
+}: {
   imports = [
-    ./users.nix
+    ./fleet-core.nix
     ./watchdog.nix
   ];
 
-  # Expose `network` as a free function arg to every module in the same
-  # NixOS evaluation. Set here because every host AND every container imports
-  # this profile, so it covers both top-level and nested-container modules
-  # (containers don't inherit parent specialArgs).
-  _module.args.network = network;
-
   boot.swraid.mdadmConf = "MAILADDR root";
 
-  networking.hosts =
-    {"127.0.0.1" = ["localhost"];}
-    // network.toNixosHosts;
-
-  environment.enableAllTerminfo = true;
-
-  environment.systemPackages = with pkgs; [
-    rsync
-    ethtool
-    # iotop
-    # ncdu
-    # usbutils
-    # pciutils
-  ];
+  environment.systemPackages =
+    (with pkgs; [
+      rsync
+      ethtool
+      # iotop
+      # ncdu
+      # usbutils
+      # pciutils
+    ])
+    # Mirror nixpkgs' all-terminfo list, minus rxvt-unicode-unwrapped-emoji
+    # because it ships the same rxvt terminfo entries as rxvt-unicode-unwrapped.
+    ++ (map (pkg: pkg.terminfo) (with pkgs.pkgsBuildBuild; [
+      alacritty
+      contour
+      foot
+      ghostty
+      kitty
+      mtm
+      rio
+      rxvt-unicode-unwrapped
+      st
+      tmux
+      wezterm
+      yaft
+    ]));
 
   hardware.enableAllFirmware = true;
 
@@ -65,30 +73,6 @@ in {
     });
   '';
 
-  environment.pathsToLink = ["/share/zsh"];
-
-  programs.zsh = {
-    enable = true;
-  };
-
-  services.openssh = {
-    enable = true;
-    settings.AllowTcpForwarding = "yes";
-    extraConfig = ''
-      MaxStartups 100:30:200
-      MaxAuthTries 20
-      MaxSessions 100
-      StreamLocalBindUnlink yes
-    '';
-  };
-
-  console = {
-    font = lib.mkDefault "Lat2-Terminus16";
-    keyMap = "uk";
-  };
-
-  i18n.defaultLocale = "en_GB.UTF-8";
-
   security.pam.loginLimits = [
     {
       domain = "*";
@@ -97,12 +81,4 @@ in {
       value = "262144";
     }
   ];
-
-  # nixpkgs.config is now set in pkgsFor (flake.nix) and read-only via readOnlyPkgs
-
-  # Core nix settings are in modules/nix.nix (auto-imported)
-  nix.gc = {
-    automatic = true;
-    dates = pkgs.lib.mkDefault "weekly";
-  };
 }

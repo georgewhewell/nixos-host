@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $EUID -ne 0 || $# -lt 2 || $# -gt 3 ]]; then
+  echo "usage: sudo mlx5-cable-eeprom-dump DEVICE OUTPUT [MODULE]" >&2
+  exit 2
+fi
+
+device=$1
+output=$2
+module=${3:-0}
+mlxreg=@mlxreg@
+
+if [[ -e $output ]]; then
+  echo "refusing to overwrite $output" >&2
+  exit 1
+fi
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+read_eeprom() {
+  local destination=$1 offset response hex
+  : > "$tmpdir/eeprom.hex"
+
+  for offset in 0 32 64 96 128 160 192 224; do
+    response=$(
+      "$mlxreg" -d "$device" --get --reg_name MCIA \
+        --indexes "slot_index=0,module=$module,device_address=$offset,page_number=0,i2c_device_address=0x50,size=32"
+    )
+    hex=$(sed -n 's/^dword\[[0-7]\].*| 0x\([0-9a-fA-F]\{8\}\)$/\1/p' <<< "$response")
+    if [[ $(wc -l <<< "$hex") -ne 8 ]]; then
+      echo "unexpected MCIA response at EEPROM offset $offset" >&2
+      exit 1
+    fi
+    printf '%s\n' "$hex" >> "$tmpdir/eeprom.hex"
+  done
+
+  tr -d '\n' < "$tmpdir/eeprom.hex" | xxd -r -p > "$destination"
+  if [[ $(stat -c %s "$destination") -ne 256 ]]; then
+    echo "EEPROM read did not produce exactly 256 bytes" >&2
+    exit 1
+  fi
+}
+
+read_eeprom "$tmpdir/first.bin"
+read_eeprom "$tmpdir/second.bin"
+cmp --silent "$tmpdir/first.bin" "$tmpdir/second.bin" || {
+  echo "the two EEPROM reads differ; no backup was written" >&2
+  exit 1
+}
+
+byte_sum_mod256() {
+  local offset=$1 length=$2
+  od -An -v -tu1 -j "$offset" -N "$length" "$tmpdir/first.bin" \
+    | awk '{ for (i = 1; i <= NF; i++) sum += $i } END { print sum % 256 }'
+}
+
+read_byte() {
+  od -An -v -tu1 -j "$1" -N 1 "$tmpdir/first.bin" | tr -d ' '
+}
+
+if [[ $(byte_sum_mod256 128 63) -ne $(read_byte 191) ]]; then
+  echo "invalid SFF-8636 CC_BASE checksum; no backup was written" >&2
+  exit 1
+fi
+if [[ $(byte_sum_mod256 192 31) -ne $(read_byte 223) ]]; then
+  echo "invalid SFF-8636 CC_EXT checksum; no backup was written" >&2
+  exit 1
+fi
+
+install -m 0600 "$tmpdir/first.bin" "$output"
+sha256sum "$output"
+echo "verified two identical reads and both SFF-8636 checksums"

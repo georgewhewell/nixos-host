@@ -1,7 +1,7 @@
 {...}: {
   imports = [
     ../modules/common.nix
-    ../modules/ble-proxy.nix
+    ../modules/sonicare-bridge.nix
     ../modules/hardware/esp32-lan8720.nix
   ];
 

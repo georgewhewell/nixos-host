@@ -35,6 +35,21 @@ in
   # reboots that truncated HA's .storage files, leaving them undiagnosable.
   services.journald.extraConfig = "SystemMaxUse=256M";
 
+  # The router image keeps /nix and /persist on the same small btrfs device.
+  # Treat old Nix generations as disposable here; service state is the thing
+  # that needs room to keep writing safely.
+  nix.gc = {
+    automatic = true;
+    dates = "daily";
+    options = lib.mkForce "--delete-old";
+    randomizedDelaySec = lib.mkForce "20min";
+  };
+  nix.optimise.dates = "daily";
+  nix.settings = {
+    min-free = lib.mkForce 1073741824; # 1 GiB
+    max-free = lib.mkForce 3221225472; # 3 GiB
+  };
+
   sconfig.impermanence = {
     enable = true;
     persistentStoragePath = "/persist";

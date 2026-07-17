@@ -117,7 +117,7 @@ in {
     "d /var/lib/samba/private/msg.sock 0700 root root -" # Samba requires 0700 for messaging
     "d /var/cache/samba 0755 root root -"
     "d /var/log/samba 0755 root root -"
-    "d /var/lock/samba 0755 root root -"
+    "d /run/lock/samba 0755 root root -"
   ];
 
   services.samba = {

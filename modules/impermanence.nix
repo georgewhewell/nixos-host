@@ -9,9 +9,18 @@
   seedLine = kind: path: "seed_persist_${kind} ${lib.escapeShellArg path}";
 
   seedExistingState = ''
+    same_persist_target() {
+      [ -e "$1" ] && [ -e "$2" ] \
+        && [ "$(${pkgs.coreutils}/bin/stat -Lc '%d:%i' "$1")" = "$(${pkgs.coreutils}/bin/stat -Lc '%d:%i' "$2")" ]
+    }
+
     seed_persist_dir() {
       src="$1"
       dst="${cfg.persistentStoragePath}$src"
+
+      if same_persist_target "$src" "$dst"; then
+        return
+      fi
 
       if [ -d "$src" ]; then
         ${pkgs.coreutils}/bin/mkdir -p "$dst"
@@ -26,6 +35,10 @@
     seed_persist_file() {
       src="$1"
       dst="${cfg.persistentStoragePath}$src"
+
+      if same_persist_target "$src" "$dst"; then
+        return
+      fi
 
       if [ -e "$src" ] && [ ! -e "$dst" ]; then
         ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$dst")"
@@ -89,8 +102,6 @@ in {
     services.journald.storage = lib.mkDefault "volatile";
 
     environment.persistence.${cfg.persistentStoragePath} = {
-      hideMounts = lib.mkDefault cfg.hideMounts;
-
       directories = [
         "/var/lib/nixos"
       ];
