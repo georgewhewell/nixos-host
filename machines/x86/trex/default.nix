@@ -672,33 +672,7 @@ in
     '';
   };
 
-  # boot.kernel.sysctl = {
-  # "vm.nr_hugepages" = 40960;
-  # };
-
-  # Ensure hugepages are mounted
-  # systemd.mounts = [{
-  #   what = "hugetlbfs";
-  #   where = "/dev/hugepages";
-  #   type = "hugetlbfs";
-  #   options = "mode=1770,gid=kvm";
-  #   wantedBy = [ "multi-user.target" ];
-  # }];
   services.avahi.allowInterfaces = lib.mkForce [ "ovs-host" ];
-
-  # environment.systemPackages = with pkgs; [
-  #   tbtools
-  #   pciutils
-  #   fio
-  #   lm_sensors
-  #   ryzenadj
-
-  #   smartmontools
-  #   geekbench_6
-  #   passmark-performancetest
-
-  #   llamacpp-rocm
-  # ];
 
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
@@ -901,77 +875,6 @@ in
   };
 
   sops.secrets.nix-cache-key = mkSecret "nix-cache-key" { };
-
-  # # Enable rpcbind for NFS
-  # services.rpcbind.enable = true;
-
-  # # NFS server configuration with multiple authentication methods
-  # services.nfs = {
-  #   settings = {
-  #     nfsd.vers3 = lib.mkForce true; # Enable NFSv3 as fallback
-  #     nfsd."vers4.0" = lib.mkForce true; # Enable NFSv4.0 for macOS compatibility
-  #     nfsd."vers4.1" = lib.mkForce true;
-  #     nfsd."vers4.2" = lib.mkForce true;
-  #   };
-  #   server = {
-  #     enable = true;
-  #     # Enable both NFSv3 and NFSv4
-  #     lockdPort = 4001;
-  #     mountdPort = 4002;
-  #     statdPort = 4000;
-  #     exports = ''
-  #       /export/grw *(rw,sync,nohide,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=100,sec=sys)
-  #     '';
-  #   };
-  # };
-
-  # Configure NFSv4 ID mapping
-  # services.nfs.idmapd.settings = {
-  #   General = {
-  #     Domain = "satanic.link";
-  #   };
-  #   Mapping = {
-  #     Nobody-User = "nobody";
-  #     Nobody-Group = "nogroup";
-  #   };
-  # };
-
-  # # Enable Kerberos for NFS authentication
-  # security.krb5 = {
-  #   enable = true;
-  #   settings = {
-  #     libdefaults = {
-  #       default_realm = "SATANIC.LINK";
-  #       dns_lookup_realm = false;
-  #       dns_lookup_kdc = false;
-  #     };
-  #     realms = {
-  #       "SATANIC.LINK" = {
-  #         kdc = "trex.satanic.link";
-  #         admin_server = "trex.satanic.link";
-  #       };
-  #     };
-  #     domain_realm = {
-  #       ".satanic.link" = "SATANIC.LINK";
-  #       "satanic.link" = "SATANIC.LINK";
-  #     };
-  #   };
-  # };
-
-  # # Enable Kerberos KDC
-  # services.kerberos_server = {
-  #   enable = true;
-  #   settings.realms = {
-  #     "SATANIC.LINK" = {
-  #       acl = [
-  #         {
-  #           principal = "admin";
-  #           access = ["add" "cpw" "delete" "get" "list" "modify"];
-  #         }
-  #       ];
-  #     };
-  #   };
-  # };
 
   systemd.network =
     let

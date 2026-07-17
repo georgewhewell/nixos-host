@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Evaluate every nixosConfiguration's toplevel drvPath and print "name drvPath"
+# lines, tolerating per-host eval failures. Used to verify refactors are pure:
+#   ./scripts/drv-baseline > /tmp/before
+#   ... refactor ...
+#   ./scripts/drv-baseline > /tmp/after && diff /tmp/before /tmp/after
+# A pure move/extraction must produce identical drv hashes.
+set -uo pipefail
+flake=${1:-$(dirname "$0")/..}
+
+names=$(nix eval "$flake#nixosConfigurations" --apply builtins.attrNames --json | tr -d '[]"' | tr ',' ' ')
+for n in $names; do
+  if drv=$(nix eval --raw "$flake#nixosConfigurations.\"$n\".config.system.build.toplevel.drvPath" 2>/dev/null); then
+    echo "$n $drv"
+  else
+    echo "$n EVAL-FAIL"
+  fi
+done
