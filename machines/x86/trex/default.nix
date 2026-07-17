@@ -8,7 +8,6 @@
 }:
 let
   self = network.hosts.trex;
-  hellasGatewayCli = inputs.hellas.packages.${pkgs.stdenv.hostPlatform.system}.cli;
 
   # ConnectX-4 switchdev: pin interface names to the ASIC's phys_switch_id so
   # they survive PCIe re-enumeration. The card's bus number moves whenever the
@@ -174,46 +173,20 @@ in
     # fetchCodexAuthPath = "/var/lib/hellas/.hellas/codex-auth.json";
     otel = {
       endpoint = "https://jaeger.lsd-ag.ch/v1/traces";
-      serviceName = "executor-fuckup";
+      serviceName = "executor-trex";
       sampleRate = 1;
       headers = {
         CF-Access-Client-Id = "312310f4c9c50c2bf9ee7e801d92a9ed.access";
         CF-Access-Client-Secret = "91bcfc62a1b4058b3c82b31560c146d7761b7cb1a507ff68b26d745d0650f6a8";
       };
     };
-  };
-
-  systemd.services.hellas-gateway = {
-    description = "Hellas HTTP gateway passthrough to local llama.cpp";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network-online.target" "llama-cpp.service" ];
-    wants = [ "network-online.target" "llama-cpp.service" ];
-    environment = {
-      HOME = "/var/lib/hellas-gateway";
-    };
-    serviceConfig = {
-      ExecStart = lib.escapeShellArgs [
-        "${hellasGatewayCli}/bin/hellas-cli"
-        "--identity"
-        "/var/lib/hellas-gateway/.hellas/identity"
-        "--producer-key-path"
-        "/var/lib/hellas-gateway/.hellas/signing-key.secp256k1"
-        "gateway"
-        "--host"
-        (network.primaryIp self)
-        "--port"
-        "8083"
-        "--responses-backend"
-        "proxy"
-        "--responses-proxy-url"
-        "http://127.0.0.1:8081/v1/responses"
-        "--responses-proxy-api-key-env"
-        "HELLAS_GATEWAY_PROXY_API_KEY"
-      ];
-      Restart = "on-failure";
-      DynamicUser = true;
-      StateDirectory = "hellas-gateway";
-      WorkingDirectory = "/var/lib/hellas-gateway";
+    # Slim (non-candle) gateway routing OpenAI/Anthropic requests over the
+    # Hellas network. Replaced the llama.cpp proxy when the dGPU was pulled.
+    gateway = {
+      enable = true;
+      host = network.primaryIp self;
+      port = 8083;
+      openFirewall = true;
     };
   };
 
@@ -230,8 +203,8 @@ in
 
   # Signal transport for hermes-gateway. signal-cli runs as an HTTP daemon
   # that the gateway polls; account state lives in ~grw/.local/share/signal-cli
-  # (link once with `signal-cli link -n HermesAgent`). 8080 is qBittorrent and
-  # 8081 llama-server, so the daemon listens on 8082.
+  # (link once with `signal-cli link -n HermesAgent`). 8080 is qBittorrent,
+  # so the daemon listens on 8082 (8083 is the hellas gateway).
   systemd.services.signal-cli-daemon = {
     description = "signal-cli HTTP daemon for Hermes gateway";
     after = [ "network-online.target" ];
@@ -291,7 +264,6 @@ in
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
-    common-gpu-amd
 
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
@@ -312,7 +284,6 @@ in
     ../../../profiles/netboot-server.nix
     ../../../profiles/crypto
     ../../../profiles/logserver.nix
-    ../../../profiles/radeon.nix
 
     ../../../services/nginx.nix
     ../../../services/grafana.nix
@@ -837,37 +808,14 @@ in
       SCARF_NO_ANALYTICS = "True";
       ENABLE_OLLAMA_API = "False";
       ENABLE_OPENAI_API = "True";
-      OPENAI_API_BASE_URL = "http://127.0.0.1:8081/v1";
+      # Hellas gateway (llama.cpp left with the dGPU).
+      OPENAI_API_BASE_URL = "http://${network.primaryIp self}:8083/v1";
       OPENAI_API_KEY = "sk-no-key-required";
       WEBUI_URL = "https://${network.publicFqdn "open-webui"}";
       HOME = "/var/lib/open-webui";
       XDG_CACHE_HOME = "/var/lib/open-webui/.cache";
     };
   };
-
-  # llama.cpp HTTP server on the Navi 10 dGPU. Uses the Vulkan
-  # backend (RADV) because head-to-head bench on Qwen2.5-7B Q4_K_M
-  # showed it ~1.5x faster than nixpkgs ROCm on gfx1010 (Navi 10 is at
-  # the edge of supported ROCm territory; no matrix cores). TheRock
-  # SDK isn't an option here — it's gfx1151-only in nix-strix-halo.
-  #
-  # DynamicUser=true (from the upstream module) plus SupplementaryGroups
-  # is what gets the unit access to /dev/dri/renderD* for Vulkan and
-  # /dev/kfd for ROCm — the runtime won't enumerate the GPU otherwise.
-  services.llama-cpp = {
-    enable = true;
-    package = inputs.nix-strix-halo.packages.x86_64-linux.llama-cpp-master-vulkan;
-    # 8080 is taken by qBittorrent's webui above; use 8081 for llama-server.
-    openFirewall = true;
-    settings = {
-      host = "0.0.0.0";
-      port = 8081;
-      models-dir = "/models";
-      n-gpu-layers = 999;
-      flash-attn = "on";
-    };
-  };
-  systemd.services.llama-cpp.serviceConfig.SupplementaryGroups = [ "render" "video" ];
 
   services.nix-serve = {
     enable = true;

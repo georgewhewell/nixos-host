@@ -758,10 +758,10 @@
         ]
       },
       "locked": {
-        "dirtyRev": "6dc5a6448e8bbd4b72598e4c650117df748fad69-dirty",
-        "dirtyShortRev": "6dc5a64-dirty",
-        "lastModified": 1783463470,
-        "narHash": "sha256-R3ncYfZQtnWBgxLSDo6uzpkSBrHWAM5tK9yoqNM8NM8=",
+        "lastModified": 1784272781,
+        "narHash": "sha256-P0C7ttrAYNyU9RVAA9FBTnRNaa09/fcGm5FqUy27FmY=",
+        "ref": "refs/heads/grw/feat/more-catgrad-integrated",
+        "rev": "c27178cb39b172c3e28e24c32d460f00bd003b2e",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas"
