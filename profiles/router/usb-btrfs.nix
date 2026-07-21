@@ -105,6 +105,12 @@ in
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    # btrfs applies fs-wide options only from the first mount
+                    # of the filesystem; in the initrd /nix wins that race, so
+                    # flushoncommit must be set here too or the /persist entry
+                    # above is silently ignored (verified live: /proc/mounts
+                    # lacked flushoncommit until a manual remount).
+                    "flushoncommit"
                   ];
                 };
               };

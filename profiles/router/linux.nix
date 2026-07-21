@@ -60,6 +60,22 @@ in {
   # mDNS between wired LAN and wireless clients (HomeKit, ESPHome discovery).
   services.avahi.allowInterfaces = lib.mkForce [lanBridge wifiVlanIf];
 
+  # WAN hardening: profiles/home.nix opens the metrics exporters on all
+  # interfaces, but on the router that includes the internet. Keep them
+  # LAN-only (victoriametrics on trex scrapes over the LAN bridge).
+  services.prometheus.exporters.node.openFirewall = lib.mkForce false;
+  services.prometheus.exporters.zfs.openFirewall = lib.mkForce false;
+  services.prometheus.exporters.smartctl.openFirewall = lib.mkForce false;
+  networking.firewall.interfaces."${lanBridge}".allowedTCPPorts = [
+    5201 # iperf3
+    9100 # node-exporter
+    9134 # zfs-exporter
+    9633 # smartctl-exporter
+  ];
+
+  # Inbound IPv6 from the WAN is deliberately NOT filtered here: end-to-end
+  # v6 is wanted, and each machine is responsible for its own firewall.
+
   services.miniupnpd = {
     enable = true;
     externalInterface = wanInterface;

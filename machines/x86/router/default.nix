@@ -213,7 +213,9 @@
   services = {
     iperf3 = {
       enable = true;
-      openFirewall = true;
+      # LAN-only (profiles/router/linux.nix allows 5201 on the LAN bridge);
+      # openFirewall would expose it on the WAN interface too.
+      openFirewall = false;
     };
   };
 
