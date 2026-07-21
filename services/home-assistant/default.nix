@@ -97,9 +97,15 @@ in {
   # };
   # users.groups.esphome = {};
 
+  # 8123 for internal networks only — never the WAN interface (external
+  # access goes through the trex nginx proxy at ${haDomain}).
+  networking.firewall.interfaces."br0.lan".allowedTCPPorts = [8123];
+  networking.firewall.interfaces."br0.lan.50".allowedTCPPorts = [8123];
+  networking.firewall.interfaces."wg-home".allowedTCPPorts = [8123];
+
   services.home-assistant = {
     enable = true;
-    openFirewall = true;
+    openFirewall = false;
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       advanced-camera-card
       auto-entities

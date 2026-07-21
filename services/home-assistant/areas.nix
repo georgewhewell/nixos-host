@@ -165,8 +165,10 @@
   };
 
   # ── Mining hosts ─────────────────────────────────────────────────────────
-  # Per-host max-perf and xmrig switches. `null` means that capability is
-  # not present on that host. Master toggles drive all participants.
+  # Per-host cooling, Curve Optimizer, and xmrig switches. `null` means that
+  # capability is not present. Curve Optimizer is deliberately per-host only:
+  # unlike fan/XMRig state, it must not be restored globally across idle/load
+  # power-domain transitions.
   miners = {
     label = "Mining";
     masters = {
@@ -174,17 +176,17 @@
       xmrig = "input_boolean.xmrig_all";
     };
     hosts = [
-      { name = "trex";      maxPerf = "switch.trex_max_performance";      xmrig = "switch.trex_xmrig"; }
-      { name = "strix-1";   maxPerf = "switch.strix_1_max_performance";   xmrig = "switch.strix_1_xmrig"; }
-      { name = "strix-2";   maxPerf = "switch.strix_2_max_performance";   xmrig = "switch.strix_2_xmrig"; }
-      { name = "strix-3";   maxPerf = "switch.strix_3_max_performance";   xmrig = "switch.strix_3_xmrig"; }
-      { name = "strix-4";   maxPerf = "switch.strix_4_max_performance";   xmrig = "switch.strix_4_xmrig"; }
-      { name = "cerberus";  maxPerf = "switch.cerberus_max_performance";  xmrig = null; }
-      { name = "fuckup";    maxPerf = null;                               xmrig = "switch.fuckup_xmrig"; }
-      { name = "air";       maxPerf = null;                               xmrig = "switch.air_xmrig"; }
-      { name = "mac";       maxPerf = null;                               xmrig = "switch.mac_xmrig"; }
-      { name = "mbp";       maxPerf = null;                               xmrig = "switch.mbp_xmrig"; }
-      { name = "goblin";    maxPerf = null;                               xmrig = "switch.goblin_xmrig"; }
+      { name = "trex";      maxPerf = "switch.trex_max_performance";      curveOpt = null;                               xmrig = "switch.trex_xmrig"; }
+      { name = "strix-1";   maxPerf = null;                               curveOpt = "switch.strix_1_curve_optimizer";   xmrig = "switch.strix_1_xmrig"; }
+      { name = "strix-2";   maxPerf = null;                               curveOpt = "switch.strix_2_curve_optimizer";   xmrig = "switch.strix_2_xmrig"; }
+      { name = "strix-3";   maxPerf = null;                               curveOpt = "switch.strix_3_curve_optimizer";   xmrig = "switch.strix_3_xmrig"; }
+      { name = "strix-4";   maxPerf = null;                               curveOpt = "switch.strix_4_curve_optimizer";   xmrig = "switch.strix_4_xmrig"; }
+      { name = "cerberus";  maxPerf = "switch.cerberus_max_performance";  curveOpt = null;                               xmrig = null; }
+      { name = "fuckup";    maxPerf = null;                               curveOpt = null;                               xmrig = "switch.fuckup_xmrig"; }
+      { name = "air";       maxPerf = null;                               curveOpt = null;                               xmrig = "switch.air_xmrig"; }
+      { name = "mac";       maxPerf = null;                               curveOpt = null;                               xmrig = "switch.mac_xmrig"; }
+      { name = "mbp";       maxPerf = null;                               curveOpt = null;                               xmrig = "switch.mbp_xmrig"; }
+      { name = "goblin";    maxPerf = null;                               curveOpt = null;                               xmrig = "switch.goblin_xmrig"; }
     ];
   };
 

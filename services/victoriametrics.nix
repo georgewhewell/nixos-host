@@ -52,6 +52,13 @@
     "goblin"
     "mbp"
   ];
+  # The benchmark harness runs only rank 0 as an OpenAI API server. USB4
+  # scenarios use strix-1, while CX-5 and retained interactive scenarios use
+  # strix-4; the remaining ranks are headless workers with no metrics endpoint.
+  vllmApiHosts = [
+    "strix-1"
+    "strix-4"
+  ];
   # Shared scrape configs used by both Prometheus and VictoriaMetrics
   # This allows running both in parallel during migration
   scrapeConfigs = [
@@ -98,6 +105,16 @@
       static_configs = [
         {
           targets = map (host: "${host}:3903") mtailHosts;
+        }
+      ];
+    }
+    {
+      job_name = "vllm";
+      scrape_interval = "5s";
+      scrape_timeout = "4s";
+      static_configs = [
+        {
+          targets = map (host: "${host}:8000") vllmApiHosts;
         }
       ];
     }

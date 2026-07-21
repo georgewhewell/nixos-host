@@ -1,9 +1,9 @@
-{ config
-, lib
-, network
-, ...
-}:
-let
+{
+  config,
+  lib,
+  network,
+  ...
+}: let
   mkBenchmarkBuilder = name: builder: {
     enable = config.networking.hostName != name;
     hostName = network.fqdn name;
@@ -19,18 +19,14 @@ let
       ;
     publicKey = builder.publicKey;
   };
-in
-{
+in {
   # SSH host keys for build machines (needed for nix-daemon which has no HOME)
   programs.ssh.knownHosts = {
     ${network.domains.public}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIZf+7YvQNvTBGe9FtSeXr+Z7EUYeulTQEkfqlbO8C6/";
     ${network.fqdn "fuckup"}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAiyQ6dBe9MCPVf5zQkfaCWFTT63Ke3Vdtj5ZCsgkplQ";
-    ${network.fqdn "strix-1"}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHXYxvg1N//t89I4vktqPKg4yGgI5amT97GHt3mHStV";
-    ${network.fqdn "strix-2"}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0RsY9sp58nDjojVM9uAZ+6DoLxi/8LrGuonSoSC2DS";
     "ax102.lsd-ag.ch".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAmZe5wTNNkmTuqMsRvmnN6LZMdKmwcnW79PyrsDZS4K";
     ${network.fqdn "rock-5b"}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKybhRhji8rxnMqDDAvDwnqepqu6hoS67XgchouMzYk2";
     ${network.fqdn "trex"}.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO5OnThSY2XWfeAeRnB/HcPFHKS43ToDavxKBwGxP6lj";
-    "mbp".publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEn8GwjuFsx8r3wXq0J28mHg2WZdbo4NH45bxg9EwSTO";
   };
 
   nix = {
@@ -41,7 +37,7 @@ in
     settings = {
       # trusted-builders = ["ssh-ng://grw@${network.publicFqdn "trex"}"];
       # extra-substituters = ["ssh-ng://grw@${network.publicFqdn "trex"}"];
-      trusted-substituters = [ "ssh-ng://grw@${network.publicFqdn "trex"}" ];
+      trusted-substituters = ["ssh-ng://grw@${network.publicFqdn "trex"}"];
       # Executors dispatch builds and hold .drv roots — keep their outputs
       # around so repeated builds can substitute locally instead of re-fetching.
       keep-outputs = true;
@@ -65,7 +61,7 @@ in
             "benchmark"
             "rtx4090"
           ];
-          systems = [ "x86_64-linux" ];
+          systems = ["x86_64-linux"];
         }
       ]
       ++ lib.optionals (config.networking.hostName != "rock-5b") [
@@ -75,8 +71,8 @@ in
           protocol = "ssh-ng";
           speedFactor = 1;
           maxJobs = 4;
-          supportedFeatures = [ "kvm" "nixos-test" "big-parallel" ];
-          systems = [ "aarch64-linux" ];
+          supportedFeatures = ["kvm" "nixos-test" "big-parallel"];
+          systems = ["aarch64-linux"];
         }
       ]
       ++ lib.optionals (config.networking.hostName != "trex") [
@@ -86,15 +82,14 @@ in
           protocol = "ssh-ng";
           maxJobs = 1;
           speedFactor = 128;
-          supportedFeatures = [ "kvm" "nixos-test" "big-parallel" "gccarch-znver4" ];
+          supportedFeatures = ["kvm" "nixos-test" "big-parallel" "gccarch-znver4"];
           systems = [
             "x86_64-linux"
             "x86_64-windows"
             "i686-linux"
           ];
         }
-      ]
-    ;
+      ];
     # mbp flows through benchmark.executor.builders via network.benchmarkBuildHosts.
   };
 

@@ -6,6 +6,8 @@
   services.avahi = {
     enable = true;
     reflector = true;
+    # otherwise opens 5353 on all interfaces including WAN
+    openFirewall = false;
   };
 
   # LAN-only: these were previously open on all interfaces, exposing the

@@ -135,7 +135,7 @@
     ];
   };
 
-  # Mining grid: master toggles + per-host max-perf + xmrig.
+  # Mining grid: master toggles plus per-host cooling, Curve Optimizer, and xmrig.
   miningSection = let
     inherit (areas.miners) hosts masters;
     hostRow = host:
@@ -149,6 +149,12 @@
         entity = host.maxPerf;
         name = "Max perf";
         icon = "mdi:fan";
+      }
+      ++ optional (host.curveOpt != null) {
+        type = "tile";
+        entity = host.curveOpt;
+        name = "Curve optimizer";
+        icon = "mdi:sine-wave";
       }
       ++ optional (host.xmrig != null) {
         type = "tile";

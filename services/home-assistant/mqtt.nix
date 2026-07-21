@@ -24,6 +24,9 @@
     ];
   };
 
-  networking.firewall.allowedTCPPorts = [1883];
-  networking.firewall.allowedUDPPorts = [1883];
+  # LAN, WiFi VLAN, and wireguard clients only — never the WAN interface.
+  # (mosquitto only binds routerIp/localhost, but don't rely on that alone.)
+  networking.firewall.interfaces."br0.lan".allowedTCPPorts = [1883];
+  networking.firewall.interfaces."br0.lan.50".allowedTCPPorts = [1883];
+  networking.firewall.interfaces."wg-home".allowedTCPPorts = [1883];
 }
