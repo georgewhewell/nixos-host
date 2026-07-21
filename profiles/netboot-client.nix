@@ -104,6 +104,10 @@ in
   };
 
   # Shared model cache replacing the local-NVMe /models. Not boot-critical.
+  # Mounted directly at boot rather than via x-systemd.automount: the nix
+  # builders list /models in extra-sandbox-paths, and bind-mounting an
+  # un-triggered autofs mountpoint into a sandbox userns fails with EPERM,
+  # which aborts every build scheduled to the host (not just model builds).
   fileSystems."/models" = {
     device = "${trexIp}:/strix-models";
     fsType = "nfs";
@@ -112,7 +116,6 @@ in
       "ro"
       "nofail"
       "_netdev"
-      "x-systemd.automount"
       "rsize=1048576"
       "wsize=1048576"
       "nconnect=8"

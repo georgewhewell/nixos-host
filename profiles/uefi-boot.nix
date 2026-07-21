@@ -23,6 +23,10 @@
         "ahci"
         "nvme"
         "usb_storage"
+        # USB Attached SCSI: required for root on a UAS enclosure (e.g. strix-1's
+        # SSD moved from M.2 into an ASM246X USB bridge). Without it stage-1 can
+        # bring up xhci but never binds the disk, and root fails to mount.
+        "uas"
         "usbhid"
         "sd_mod"
         "sdhci_acpi"
