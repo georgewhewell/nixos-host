@@ -199,7 +199,7 @@
           cmp-treesitter
           cmp_luasnip
           crates-nvim
-          null-ls-nvim
+          none-ls-nvim
           lspkind-nvim
           luasnip
           nvim-autopairs

@@ -91,10 +91,29 @@
   };
 
   home.sessionVariables = {
+    # AITER's fallback copies its JIT sources from the immutable Nix store to
+    # ~/.aiter while preserving mode 0555, then tries to create build/ there.
+    # Select a writable, persistent cache before AITER imports its JIT module.
+    AITER_JIT_DIR = "${config.xdg.cacheHome}/aiter/jit";
+
     # pi is nix-managed; its self-updater and version check are useless here.
     PI_SKIP_VERSION_CHECK = "1";
     PI_TELEMETRY = "0";
   };
+
+  # Keep plain `pi` useful for both hosted providers and an ad-hoc local
+  # OpenAI-compatible server.  The local wrapper discovers vLLM's effective
+  # max_model_len instead of letting Pi assume a larger context window.
+  programs.zsh.initContent = lib.mkAfter ''
+    pi() {
+      if { [[ -n "''${OPENAI_BASE_URL:-}" ]] && [[ -n "''${OPENAI_MODEL:-''${PI_MODEL:-}}" ]]; } || \
+         { [[ -n "''${ANTHROPIC_BASE_URL:-}" ]] && [[ -n "''${ANTHROPIC_MODEL:-''${PI_MODEL:-}}" ]]; }; then
+        command pi-wrap "$@"
+      else
+        command pi "$@"
+      fi
+    }
+  '';
 
   programs.direnv = {
     enable = true;
@@ -166,9 +185,15 @@
       # pi-coding-agent (Mario Zechner) — minimal terminal coding agent with
       # multi-model support; configured via ~/.pi/agent above.
       pi
-      # opencode
+      # Moonshot's Kimi Code CLI (their curl|bash installer doesn't suit
+      # NixOS; nix-ai-tools packages it as of Feb 2026).
+      kimi-code
+      # SST's opencode — terminal AI coding agent; also runs a headless
+      # server (`opencode serve`) exposed on the LAN via opencode-server on trex.
+      opencode
       # codex
     ])
+    ++ [ inputs.nix-strix-halo.packages.${pkgs.stdenv.hostPlatform.system}.pi-wrap ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
       # evm tooling
       # solc
