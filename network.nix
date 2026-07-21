@@ -367,8 +367,9 @@ lib: rec {
         lan = 136;
         fabric = 101;
       };
-      # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
-      netboot = true;
+      # Boot from the local disk (NVMe in the USB enclosure); the PXE/iPXE
+      # netboot detour while the enclosure boot path was being sorted is over.
+      netboot = false;
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
@@ -384,7 +385,7 @@ lib: rec {
         lan = 192;
         fabric = 102;
       };
-      netboot = true;
+      netboot = false;
       strix = {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
@@ -399,7 +400,7 @@ lib: rec {
         lan = 25;
         fabric = 103;
       };
-      netboot = true;
+      netboot = false;
       strix = {
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
@@ -415,7 +416,7 @@ lib: rec {
         lan = 26;
         fabric = 104;
       };
-      netboot = true;
+      netboot = false;
       strix = {
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
