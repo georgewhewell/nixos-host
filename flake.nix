@@ -99,6 +99,14 @@
       flake = false;
     };
 
+    # Local btop checkout with GPU clock/power history graphs and
+    # gpu_graph_upper/lower selection (gpu-metric-graphs branch), for
+    # testing on fuckup before upstreaming.
+    btop-src = {
+      url = "git+file:///mnt/Home/src/btop?ref=gpu-metric-graphs";
+      flake = false;
+    };
+
     # Track OpenZFS upstream directly for ZFS package source
     openzfs = {
       url = "github:openzfs/zfs";
@@ -169,6 +177,16 @@
             src = inputs.linux-rockchip-src;
           };
           linuxPackages_rockchip = prev.linuxKernel.packagesFor final.linux-rockchip;
+        })
+        # Local btop with GPU metric graphs (see btop-src input). Same 1.4.7
+        # base as nixpkgs, so the existing derivation (no patches) applies.
+        (final: prev: {
+          btop = prev.btop.overrideAttrs (old: {
+            version = "1.4.7-gpu-graphs";
+            src = inputs.btop-src;
+            # Binary still reports plain 1.4.7; skip versionCheckHook.
+            doInstallCheck = false;
+          });
         })
         # Torvalds release-candidate kernel used by the router while validating
         # networking fixes ahead of the next nixpkgs linux_testing bump.

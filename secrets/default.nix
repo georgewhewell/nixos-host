@@ -173,6 +173,28 @@
     mode = "0400";
   };
 
+  # opencode server password (trex)
+  # Auth for the LAN-exposed opencode-server; rendered into an EnvironmentFile
+  # as OPENCODE_SERVER_PASSWORD. Without it the serve API is unauthenticated.
+  opencode-server-password = {
+    sopsFile = ./hellas.yaml;
+    # NB: the key inside hellas.yaml is "open-code-password" (as it was added
+    # with `sops set`); the nix-side attr name stays opencode-server-password.
+    key = "open-code-password";
+    path = "/run/secrets/opencode-server-password";
+    mode = "0400";
+  };
+
+  # kimi-server password (trex)
+  # Rendered into an EnvironmentFile as KIMI_CODE_PASSWORD. Without it, kimi's
+  # only credential is the random bearer token printed to the journal.
+  kimi-web-password = {
+    sopsFile = ./hellas.yaml;
+    key = "kimi-web-password";
+    path = "/run/secrets/kimi-web-password";
+    mode = "0400";
+  };
+
   # Nix binary cache signing key (trex only)
   # Used by nix-daemon (secret-key-files) and services.nix-serve to sign
   # locally-built store paths so `nix copy` to other hosts is accepted
