@@ -33,7 +33,13 @@ in {
 
   services.openssh = {
     enable = true;
-    settings.AllowTcpForwarding = "yes";
+    settings = {
+      AllowTcpForwarding = "yes";
+      # Keys only, fleet-wide: several machines are directly reachable from
+      # the internet (router WAN SSH, global IPv6), so no password paths.
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+    };
     extraConfig = ''
       MaxStartups 100:30:200
       MaxAuthTries 20
