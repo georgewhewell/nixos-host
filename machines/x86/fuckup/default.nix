@@ -8,6 +8,31 @@
 }:
 let
   self = network.hosts.fuckup;
+  moshi = pkgs.moshi.override {
+    cudaPackages = pkgs.cudaPackages_12_8;
+    cudaCapability = "8.9";
+  };
+  moshiConfig = pkgs.writeText "moshi-q8.json" (builtins.toJSON {
+    instance_name = "fuckup-q8";
+    hf_repo = "kyutai/moshiko-candle-q8";
+    lm_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/model.q8.gguf";
+    text_tokenizer_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/tokenizer_spm_32k_3.model";
+    log_dir = "$HOME/.local/state/moshi/logs";
+    mimi_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/tokenizer-e351c8d8-checkpoint125.safetensors";
+    mimi_num_codebooks = 8;
+    static_dir = "/models/.cache/huggingface/moshi/web-dist";
+    addr = "127.0.0.1";
+    port = 8998;
+    cert_dir = "$HOME/.local/state/moshi/certs";
+  });
+  moshiQ8 = pkgs.writeShellScriptBin "moshi-q8" ''
+    set -euo pipefail
+
+    state_dir="$HOME/.local/state/moshi"
+    mkdir -p "$state_dir/logs" "$state_dir/certs"
+    cd "$state_dir"
+    exec ${moshi}/bin/moshi-backend --config ${moshiConfig} standalone "$@"
+  '';
 in
 {
   /*
@@ -87,6 +112,8 @@ in
 
   environment.systemPackages = [
     pkgs.kexec-tools
+    moshi
+    moshiQ8
     pkgs.gpu-screen-recorder-gtk
     pkgs.wl-screenrec
     (pkgs.writeShellScriptBin "wl-capture" ''
@@ -144,7 +171,7 @@ in
     ../../../profiles/common.nix
     ../../../profiles/home.nix
     ../../../profiles/nas-mounts.nix
-    ../../../profiles/radeon.nix
+    # ../../../profiles/radeon.nix
     ../../../profiles/nvidia.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/zfs.nix
@@ -374,13 +401,26 @@ in
           };
           linkConfig.RequiredForOnline = "enslaved";
         };
-        "10-aquantia" = {
-          matchConfig.Driver = "atlantic";
+        # enp10s0 has the long cable to the 400G switch management port,
+        # which lands in the cluster MANAGEMENT LAN (23.x), not the fabric
+        # (25.x). It must stay out of br0.lan (bridging it loops the LAN via
+        # the mgmt switch) and carries no address: fuckup has no dataplane
+        # attachment to the 192.168.25.0/24 fabric without an SFP+ RJ45
+        # transceiver or DAC between the CX5 and the 400G switch.
+        "10-fabric" = {
+          matchConfig.Name = "enp10s0";
+          networkConfig.ConfigureWithoutCarrier = true;
+          linkConfig.RequiredForOnline = false;
+          linkConfig.ActivationPolicy = "down";
+        };
+        # Keep the second Aquantia port on the LAN bridge as before.
+        "11-aquantia-lan" = {
+          matchConfig.Name = "enp11s0";
           networkConfig = {
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
           };
-          linkConfig.RequiredForOnline = "enslaved";
+          linkConfig.RequiredForOnline = false;
         };
       };
     };
