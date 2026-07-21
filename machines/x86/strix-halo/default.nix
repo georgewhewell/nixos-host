@@ -467,6 +467,7 @@ in
     inputs.nix-strix-halo.nixosModules.ryzenadj
     inputs.nix-strix-halo.nixosModules.amduprof
     inputs.nix-strix-halo.nixosModules.npu-exporter
+    inputs.nix-strix-halo.nixosModules.smu-exporter
 
     ../../../profiles/amd-npu.nix
   ]) ++ [
@@ -518,6 +519,12 @@ in
       graceSeconds = 0;
     };
   };
+
+  # node_exporter's hwmon collector sees only edge temperature, PPT and sclk
+  # on this APU. The SMU exporter module exports AMDGPU's richer, versioned
+  # SMU metrics table through the existing node_exporter endpoint without
+  # pulling ROCm into the system closure or opening another port.
+  services.strix-halo.smu-exporter.enable = true;
 
   # NPU telemetry: amd_npu_* metrics into node_exporter's textfile directory,
   # rebuilt against the running kernel's amdxdna uapi so the 7.x-only queries
