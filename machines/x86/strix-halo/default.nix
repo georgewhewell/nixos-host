@@ -466,6 +466,7 @@ in
     inputs.nix-strix-halo.nixosModules.ec-su-axb35
     inputs.nix-strix-halo.nixosModules.ryzenadj
     inputs.nix-strix-halo.nixosModules.amduprof
+    inputs.nix-strix-halo.nixosModules.npu-exporter
 
     ../../../profiles/amd-npu.nix
   ]) ++ [
@@ -517,6 +518,11 @@ in
       graceSeconds = 0;
     };
   };
+
+  # NPU telemetry: amd_npu_* metrics into node_exporter's textfile directory,
+  # rebuilt against the running kernel's amdxdna uapi so the 7.x-only queries
+  # are compiled in.
+  services.strix-halo.npu-exporter.enable = true;
 
   programs.amduprof = {
     enable = true;
