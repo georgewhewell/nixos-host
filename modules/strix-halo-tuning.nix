@@ -28,6 +28,11 @@ let
     configuredDpmClockLevels != { }
     || cfg.amdgpuOdSclk.min != null
     || cfg.amdgpuOdSclk.max != null;
+  hasCpuPowerConfig =
+    cfg.cpuPower.amdPstateMode != null
+    || cfg.cpuPower.governor != null
+    || cfg.cpuPower.energyPerformancePreference != null
+    || cfg.cpuPower.minToHardwareFloor;
   dpmClockLevelScript = lib.concatStringsSep "\n" (
     lib.mapAttrsToList
       (clock: levels: ''
@@ -261,6 +266,47 @@ let
       exit 1
     '';
   };
+  cpuPowerSettingsScript = pkgs.writeShellApplication {
+    name = "strix-halo-cpu-power-settings";
+    runtimeInputs = with pkgs; [ coreutils ];
+    text = ''
+      set -euo pipefail
+
+      ${lib.optionalString (cfg.cpuPower.amdPstateMode != null) ''
+        # Switch mode at runtime so a deploy applies without a reboot; the
+        # amd_pstate= kernel param makes it survive one. Switching resets each
+        # policy's governor, so this must run before the governor loop below.
+        if [ -e /sys/devices/system/cpu/amd_pstate/status ]; then
+          printf '%s\n' ${lib.escapeShellArg cfg.cpuPower.amdPstateMode} \
+            > /sys/devices/system/cpu/amd_pstate/status || true
+        fi
+      ''}
+
+      for pol in /sys/devices/system/cpu/cpufreq/policy*; do
+        [ -e "$pol/scaling_governor" ] || continue
+
+        ${lib.optionalString (cfg.cpuPower.governor != null) ''
+          printf '%s\n' ${lib.escapeShellArg cfg.cpuPower.governor} \
+            > "$pol/scaling_governor" || true
+        ''}
+
+        ${lib.optionalString (cfg.cpuPower.energyPerformancePreference != null) ''
+          if [ -e "$pol/energy_performance_preference" ]; then
+            printf '%s\n' ${lib.escapeShellArg cfg.cpuPower.energyPerformancePreference} \
+              > "$pol/energy_performance_preference" || true
+          fi
+        ''}
+
+        ${lib.optionalString cfg.cpuPower.minToHardwareFloor ''
+          if [ -e "$pol/cpuinfo_min_freq" ]; then
+            # Reset the floor only; scaling_max_freq (boost ceiling, and any
+            # inference power cap) is left untouched.
+            cat "$pol/cpuinfo_min_freq" > "$pol/scaling_min_freq" || true
+          fi
+        ''}
+      done
+    '';
+  };
 in
 {
   options.hardware.strixHalo = {
@@ -357,6 +403,61 @@ in
       };
     };
 
+    cpuPower = {
+      amdPstateMode = lib.mkOption {
+        type = lib.types.nullOr (lib.types.enum [
+          "active"
+          "guided"
+          "passive"
+        ]);
+        default = null;
+        example = "guided";
+        description = ''
+          amd_pstate operating mode. Set both as the amd_pstate= kernel param
+          (persistent) and written to /sys/.../amd_pstate/status at runtime so
+          a deploy takes effect without a reboot. "guided" exposes the
+          schedutil governor (dynamic, full boost) and avoids the misleadingly
+          named "powersave" governor that "active" mode forces you into.
+        '';
+      };
+      governor = lib.mkOption {
+        type = lib.types.nullOr (lib.types.enum [
+          "performance"
+          "powersave"
+          "schedutil"
+          "conservative"
+          "ondemand"
+        ]);
+        default = null;
+        example = "schedutil";
+        description = ''
+          CPU scaling governor written to every cpufreq policy, applied after
+          the tuned profile so it wins. In amd_pstate "guided"/"passive" mode
+          "schedutil" scales with scheduler load and still reaches full boost;
+          it is the transparent alternative to active mode's "powersave".
+        '';
+      };
+      energyPerformancePreference = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "balance_performance";
+        description = ''
+          amd_pstate EPP hint (active mode only) written to every policy's
+          energy_performance_preference. Leave null in guided/passive mode,
+          where the governor drives frequency instead.
+        '';
+      };
+      minToHardwareFloor = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Reset each policy's scaling_min_freq to the hardware cpuinfo_min_freq
+          so idle cores can rest, undoing any elevated floor left by the tuned
+          profile. scaling_max_freq (the boost ceiling) is never touched.
+        '';
+      };
+    };
+
     tuned = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -423,7 +524,8 @@ in
         "transparent_hugepage=${cfg.hugePages}"
       ]
       ++ lib.optional cfg.noSystemMemLimit "amdgpu.no_system_mem_limit=1"
-      ++ lib.optional cfg.disableCwsr "amdgpu.cwsr_enable=0";
+      ++ lib.optional cfg.disableCwsr "amdgpu.cwsr_enable=0"
+      ++ lib.optional (cfg.cpuPower.amdPstateMode != null) "amd_pstate=${cfg.cpuPower.amdPstateMode}";
 
       tmp.useTmpfs = true;
 
@@ -494,6 +596,21 @@ in
           ExecStart = "${amdgpuPerformanceSettingsScript}/bin/strix-halo-amdgpu-performance-settings";
         };
       };
+
+    # Runs after tuned-set-profile so the governor/EPP here override the tuned
+    # profile's CPU pinning. Ordered before the inference CPU cap, which only
+    # writes scaling_max_freq and so composes with the min-floor reset here.
+    systemd.services.strix-halo-cpu-power = lib.mkIf hasCpuPowerConfig {
+      description = "Set Strix Halo CPU governor, EPP and frequency floor";
+      after = [ "tuned-set-profile.service" ];
+      before = [ "strix-halo-inference-cpu-cap.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${cpuPowerSettingsScript}/bin/strix-halo-cpu-power-settings";
+      };
+    };
 
     assertions = [
       {

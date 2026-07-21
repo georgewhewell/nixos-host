@@ -20,87 +20,21 @@ let
   enableUsb4Rdma = builtins.elem index [ 1 2 3 4 ];
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
-  enableVllmTp2 = builtins.elem index [ 3 4 ];
+
   # The shared ConnectX-5 ports attach to the Ethernet-only CRS804.  Keep the
   # separate flag so the old IPoIB/OpenSM experiment cannot silently return.
   enableSharedIb = false;
   enableUsb4Tcp = false;
   reserveThunderbolt0ForMac = false;
   ryzenAdjLimits = self.strix.ryzenAdj;
+
+  # The 120 W strix-3/4 boards give substantially more decode throughput when
+  # CPU boost cannot consume the GPU's package-power headroom.
+  inferenceCpuMaxKHz = if builtins.elem index [ 3 4 ] then 2500000 else null;
   tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
   tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
-  # On each shared multi-host CX5, the port-1 owner is the first host and the
-  # port-0 owner is the second (pairs 1+2 and 3+4).
-  isSecondCx5Host = self.strix.cx5Port == 0;
-  expectedCx5PortOwner = if isSecondCx5Host then "True(1)" else "False(0)";
-  expectedCx5RoceControl = if isSecondCx5Host then "ROCE_ENABLE(2)" else "DEVICE_DEFAULT(0)";
-  opensmVirtualizedConfig = pkgs.writeText "opensm-virtualized.conf" ''
-    virt_enabled 2
-  '';
-  vllmPythonInputs = [
-    pkgs.vllm-rocm
-    pkgs.python312Packages.ray
-  ]
-  ++ lib.optional (pkgs ? vllm-rust-tool-parser) pkgs.vllm-rust-tool-parser;
-  vllmPythonPackages = pkgs.symlinkJoin {
-    name = "vllm-strix-python-packages";
-    paths = vllmPythonInputs;
-  };
-  # A symlinkJoin contains the top-level packages but does not assemble their
-  # propagated Python dependencies into one site-packages directory.  Build
-  # PYTHONPATH from the full closure so interactive and benchmark entrypoints
-  # see ROCm Torch and the rest of vLLM's runtime dependencies.
-  vllmPythonPath = pkgs.python312Packages.makePythonPath vllmPythonInputs;
-  vllmRayConfig = pkgs.writeTextDir "ray_non_carry_over_env_vars.json" (builtins.toJSON [
-    # These are deliberately different on alternating halves of each shared
-    # multi-host CX5.  Ray workers inherit the correct node-local values from
-    # `ray start`; do not replace them with the driver's port-0 selection.
-    "GLOO_SOCKET_IFNAME"
-    "NCCL_IB_HCA"
-    "NCCL_SOCKET_IFNAME"
-    "VLLM_HOST_IP"
-  ]);
-  mkVllmEntrypoint = name: target: pkgs.writeShellScriptBin name ''
-    export PYTHONNOUSERSITE=true
-    export VLLM_CONFIG_ROOT=${lib.escapeShellArg vllmRayConfig}
-    if [[ -n "''${PYTHONPATH:-}" ]]; then
-      export PYTHONPATH=${lib.escapeShellArg vllmPythonPath}:"$PYTHONPATH"
-    else
-      export PYTHONPATH=${lib.escapeShellArg vllmPythonPath}
-    fi
-    if [[ -n "''${LD_LIBRARY_PATH:-}" ]]; then
-      export LD_LIBRARY_PATH=${lib.escapeShellArg "${pkgs.rdma-core-usb4}/lib"}:"$LD_LIBRARY_PATH"
-    else
-      export LD_LIBRARY_PATH=${lib.escapeShellArg "${pkgs.rdma-core-usb4}/lib"}
-    fi
-    exec ${lib.escapeShellArg target} "$@"
-  '';
-  vllmEntrypoints = pkgs.symlinkJoin {
-    name = "vllm-strix-entrypoints";
-    paths = [
-      # Bypass vllm-rocm's generated PATH wrapper here. It puts the unpatched
-      # PyPI Ninja wheel ahead of Nix's Ninja, and that binary expects /bin/sh.
-      (mkVllmEntrypoint "vllm" "${pkgs.vllm-rocm}/bin/.vllm-wrapped")
-      (mkVllmEntrypoint "ray" "${pkgs.python312Packages.ray}/bin/ray")
-      (mkVllmEntrypoint "python" "${pkgs.python312}/bin/python")
-      (mkVllmEntrypoint "vllm-python" "${pkgs.python312}/bin/python")
-    ];
-  };
-  vllmStrix = pkgs.symlinkJoin {
-    name = "vllm-strix-rocm-ray-env";
-    paths = [
-      vllmEntrypoints
-      vllmPythonPackages
-      pkgs.ninja
-      pkgs.rccl-usb4-topology
-    ];
-  };
-  useCx5Port1 = self.strix.cx5Port == 1;
-  # PCI bus numbers differ between netboot and local UEFI boot on the second
-  # half of each SharedIO adapter. Rename the selected port by permanent MAC
-  # so BeeGFS, Gloo, NCCL, and networkd share one stable interface identity.
+
   vllmFabricInterface = "cx5fabric0";
-  vllmFabricHca = if useCx5Port1 then "mlx5_1" else "mlx5_0";
   vllmHostIp =
     if enableCx5Fabric
     then network.ipOf "fabric" self.addresses.fabric
@@ -108,102 +42,7 @@ let
   beegfsFabricInterfaces = pkgs.writeText
     "beegfs-fabric-interfaces-${hostName}"
     "* ${vllmHostIp} 4\n";
-  vllmMasterIp = network.ipOf "fabric" network.hosts.strix-4.addresses.fabric;
-  # Resolve the shared, pre-staged snapshot directly. Having every distributed
-  # rank resolve the Hub model ID against the same NFS cache can deadlock in
-  # huggingface_hub's per-blob file lock during simultaneous startup.
-  vllmSmokeModel = "/models/.cache/huggingface/hub/models--Qwen--Qwen3-0.6B/snapshots/c1899de289a04d12100db370d81485cdf75e47ca";
-  # AITER and Triton compile a small set of device-specific extensions on
-  # first use. systemd's default PATH does not contain `c++`, which otherwise
-  # makes startup fail with opaque Ninja or Triton launcher errors.
-  vllmServicePath = [
-    pkgs.bash
-    pkgs.binutils
-    pkgs.coreutils
-    pkgs.gcc
-    pkgs.gnumake
-    pkgs.ninja
-    pkgs.therock-rocm
-  ];
-  vllmServiceEnvironment = cacheName: [
-    "VLLM_TARGET_DEVICE=rocm"
-    "VLLM_HOST_IP=${vllmHostIp}"
-    # Model acquisition belongs to trex. Keep compute nodes strictly offline
-    # with respect to the Hub and consume the read-only snapshot.
-    "HF_HUB_OFFLINE=1"
-    "TRANSFORMERS_OFFLINE=1"
-    "HF_HUB_DISABLE_TELEMETRY=1"
-    "AITER_JIT_DIR=/var/cache/${cacheName}/aiter"
-    "HSA_OVERRIDE_GFX_VERSION=11.5.1"
-    "HSA_ENABLE_DMABUF=0"
-    "HIP_VISIBLE_DEVICES=0"
-    # The in-cluster driver uses Ray's v1 executor. Ray-v2 currently stalls in
-    # its cross-process shared-memory broadcaster on this four-node ROCm
-    # topology. Keep compiled DAG enabled, but let Ray assign HIP device 0 to
-    # each actor; suppressing that assignment leaves its accelerator context
-    # with an empty visible-device list on the first request.
-    "VLLM_USE_RAY_V2_EXECUTOR_BACKEND=0"
-    "VLLM_USE_RAY_COMPILED_DAG=1"
-    "VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM=0"
-    "RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES=0"
-    "NCCL_SOCKET_IFNAME=${vllmFabricInterface}"
-    "GLOO_SOCKET_IFNAME=${vllmFabricInterface}"
-    "NCCL_IB_HCA=${vllmFabricHca}"
-    "NCCL_IB_DISABLE=0"
-    "NCCL_IB_GID_INDEX=3"
-    # DSCP 26 maps to the CRS804's lossless RoCE traffic class.
-    "NCCL_IB_TC=104"
-    # This iGPU/CX5 path has neither peermem nor working DMA-BUF memory
-    # registration. Keep NET/IB enabled, but stage collectives via host RAM.
-    "NCCL_DMABUF_ENABLE=0"
-    "NCCL_NET_GDR_LEVEL=0"
-    "NCCL_DEBUG=INFO"
-    "NCCL_DEBUG_SUBSYS=INIT,NET"
-  ];
-  assertCx5SharedEthernetProfile = pkgs.writeShellScript "assert-cx5-shared-ethernet-profile" ''
-    set -euo pipefail
 
-    fw_version="$(${pkgs.coreutils}/bin/cat /sys/class/infiniband/mlx5_0/fw_ver)"
-    if [[ "$fw_version" != 16.35.3502 ]]; then
-      echo "CX5 SharedIO drift: firmware is '$fw_version', expected '16.35.3502'" >&2
-      exit 1
-    fi
-
-    query="$(${pkgs.mstflint}/bin/mstconfig -e -d c3:00.0 q)"
-
-    current_value() {
-      local key="$1"
-      printf '%s\n' "$query" | ${pkgs.gawk}/bin/awk -v key="$key" '
-        {
-          start = ($1 == "*") ? 2 : 1
-          if ($start == key) {
-            print $(start + 2)
-            exit
-          }
-        }
-      '
-    }
-
-    failed=0
-    check() {
-      local key="$1" expected="$2" actual
-      actual="$(current_value "$key")"
-      if [[ "$actual" != "$expected" ]]; then
-        echo "CX5 SharedIO drift: $key is '$actual', expected '$expected'" >&2
-        failed=1
-      fi
-    }
-
-    check PORT_OWNER ${lib.escapeShellArg expectedCx5PortOwner}
-    check NUM_OF_PF 2
-    check NUM_OF_VFS 8
-    check SRIOV_EN 'True(1)'
-    check MULTI_PORT_VHCA_EN 'False(0)'
-    check LINK_TYPE_P1 'ETH(2)'
-    check LINK_TYPE_P2 'ETH(2)'
-    check ROCE_CONTROL ${lib.escapeShellArg expectedCx5RoceControl}
-    exit "$failed"
-  '';
   linuxPackagesThunderbolt =
     (pkgs.linuxPackagesFor tbvPackages.linux-thunderbolt).extend (_: super: {
       ryzen-smu = super.ryzen-smu.overrideAttrs (old: {
@@ -226,21 +65,6 @@ in
       enable = true;
       enableDevelopment = true;
     };
-    # netconsole.sender = {
-    #   enable = builtins.elem index [ 1 2 ];
-    #   name = "tbv-${hostName}";
-    #   device = "eno1";
-    #   localIp = network.primaryIp self;
-    #   targetIp = network.primaryIp network.hosts.trex;
-    #   targetPort = 6666;
-    #   # Strix resolves trex's OVS host interface to this MAC at runtime.
-    #   targetMac = "ae:6b:39:5c:92:6a";
-    #   extended = true;
-    # };
-    # ramoops = lib.mkIf (builtins.elem index [ 1 2 ]) {
-    #   enable = true;
-    #   memAddress = "0x205d000000";
-    # };
     xmrig = {
       enable = false;
       package = pkgs.xmrig-zen5;
@@ -252,6 +76,17 @@ in
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
 
+  # node_exporter's hwmon collector sees only edge temperature, PPT and sclk
+  # on this APU. The SMU exporter module exports AMDGPU's richer, versioned
+  # SMU metrics table through the existing node_exporter endpoint without
+  # pulling ROCm into the system closure or opening another port.
+  services.strix-halo.smu-exporter.enable = true;
+
+  # NPU telemetry alongside the SMU metrics: the module writes its .prom file
+  # into the same textfile directory, rebuilt against the running kernel's
+  # amdxdna uapi so the 7.x-only queries are compiled in.
+  services.strix-halo.npu-exporter.enable = true;
+
   environment.systemPackages = [
     pkgs.kexec-tools
   ]
@@ -262,9 +97,6 @@ in
   ++ lib.optionals enableCx5Fabric [
     pkgs.perftest
     pkgs.iperf3
-  ]
-  ++ lib.optionals enableSharedCx5 [
-    vllmStrix
   ]
   ++ lib.optional enableSharedIb pkgs.mlnx-opensm;
   environment.etc."mft/mft.conf" = lib.mkIf enableSharedCx5 {
@@ -306,9 +138,6 @@ in
   # falling back to the ordinary LAN. Filtering by inventory-derived address
   # avoids coupling BeeGFS to PCI-enumeration-dependent Linux interface names.
   services.beegfs-cluster = {
-    mgmtdHost = network.ipOf "fabric" network.hosts.bluefield2.addresses.fabric;
-    connAuthFile = config.sops.secrets.beegfs-conn-auth.path;
-    rdma = true;
     meta = lib.mkIf (index == 1) {
       enable = true;
       # The metadata set is tiny for this cluster. Co-locate it on strix-1's
@@ -331,15 +160,21 @@ in
       settings = {
         connInterfacesFile = "${beegfsFabricInterfaces}";
         connRestrictOutboundInterfaces = true;
+        # Match the 4 MiB filesystem stripe chunks with 4.5 MiB of RDMA
+        # buffers per connection.  The BeeGFS defaults total only 560 KiB
+        # and force large transfers through repeated protocol rounds.  The
+        # userspace storage daemon does not accept the client-only
+        # connRDMAFragmentSize setting in BeeGFS 8.4.
+        connRDMABufSize = 131072;
+        connRDMABufNum = 36;
         storeFsUUID = self.strix.beegfsFsUUID;
       };
     };
-    client = {
-      enable = true;
-      mounts."/mnt/beegfs".settings = {
-        connInterfacesFile = "${beegfsFabricInterfaces}";
-      };
-    };
+  };
+
+  sconfig.mounts.beegfs = {
+    enable = true;
+    clientAddresses = [ vllmHostIp ];
   };
 
   systemd.services.beegfs-root-layout = lib.mkIf (index == 1) {
@@ -362,12 +197,23 @@ in
         --auth-file ${config.sops.secrets.beegfs-conn-auth.path}
     '';
   };
-  sops.secrets.beegfs-conn-auth = mkSecret "beegfs-conn-auth" { };
-
   hardware.strixHalo = {
     enable = true;
-    amdgpuDpmState = "performance";
-    amdgpuPerformanceLevel = "high";
+    # Efficient-but-boostable: DPM idles the GPU clocks (sclk rests ~600 MHz)
+    # and still reaches peak under load, instead of pinning sclk at max. On an
+    # idle box this measured ~14 W -> ~10 W socket, with full boost preserved.
+    amdgpuDpmState = "balanced";
+    amdgpuPerformanceLevel = "auto";
+    # amd_pstate guided + schedutil: dynamic, scheduler-driven scaling that
+    # still reaches full boost, without active mode's misleading "powersave"
+    # governor. Measured ~14 W -> ~7 W idle socket on a spare box, boost still
+    # ~5 GHz. Idle cores drop below the old 2 GHz floor; boxes 3/4 keep their
+    # inference scaling_max_freq cap (applied after this).
+    cpuPower = {
+      amdPstateMode = "guided";
+      governor = "schedutil";
+      minToHardwareFloor = true;
+    };
   };
 
   # Strix 1/2 share one dual-port ConnectX-5 SharedIO adapter and Strix 3/4
@@ -443,6 +289,27 @@ in
     };
   };
 
+  # Mount by GPT partition label instead of the provisioning disk's by-id path:
+  # the layout must boot identically whether the drive hangs off M.2 or a USB
+  # enclosure (whose enclosure-level by-id replaces the NVMe one). mkForce wins
+  # over the device references disko generates from `beegfsDisk`.
+  fileSystems."/" = lib.mkIf (!netboot) (lib.mkForce {
+    device = "/dev/disk/by-partlabel/${hostName}-root";
+    fsType = "btrfs";
+    options = [ "subvol=@root" "compress=zstd:1" "discard=async" "noatime" ];
+    neededForBoot = true;
+  });
+  fileSystems."/boot" = lib.mkIf (!netboot) (lib.mkForce {
+    device = "/dev/disk/by-partlabel/${hostName}-ESP";
+    fsType = "vfat";
+    options = [ "umask=0077" ];
+  });
+  fileSystems.${beegfsMountPoint} = lib.mkForce {
+    device = "/dev/disk/by-partlabel/${hostName}-beegfs";
+    fsType = "xfs";
+    options = [ "noatime" "nofail" ];
+  };
+
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-gpu-amd
@@ -472,11 +339,13 @@ in
     ../../../profiles/amd-npu.nix
   ]) ++ [
     (if netboot
-     then ../../../profiles/netboot-client.nix
-     else ../../../profiles/uefi-boot.nix)
+    then ../../../profiles/netboot-client.nix
+    else ../../../profiles/uefi-boot.nix)
   ] ++ lib.optionals enableUsb4Rdma [
     ../../../profiles/thunderbolt-ibverbs-kernel.nix
-  ];
+  ] ++ lib.optional (self.strix.bluefield or false) (
+    ../../../profiles/bluefield-host.nix
+  );
 
   hardware.graphics = {
     enable = true;
@@ -520,16 +389,49 @@ in
     };
   };
 
-  # node_exporter's hwmon collector sees only edge temperature, PPT and sclk
-  # on this APU. The SMU exporter module exports AMDGPU's richer, versioned
-  # SMU metrics table through the existing node_exporter endpoint without
-  # pulling ROCm into the system closure or opening another port.
-  services.strix-halo.smu-exporter.enable = true;
+  systemd.services.strix-halo-inference-cpu-cap = lib.mkIf (inferenceCpuMaxKHz != null) {
+    description = "Reserve Strix Halo package power for sustained GPU inference";
+    after = [ "systemd-modules-load.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      for attempt in $(${pkgs.coreutils}/bin/seq 1 20); do
+        found=0
+        for limit in /sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq; do
+          [ -e "$limit" ] || continue
+          found=1
+          echo ${toString inferenceCpuMaxKHz} > "$limit"
+        done
+        if [ "$found" -eq 1 ]; then
+          exit 0
+        fi
+        ${pkgs.coreutils}/bin/sleep 0.5
+      done
+      echo "CPU frequency policies did not appear" >&2
+      exit 1
+    '';
+  };
 
-  # NPU telemetry: amd_npu_* metrics into node_exporter's textfile directory,
-  # rebuilt against the running kernel's amdxdna uapi so the 7.x-only queries
-  # are compiled in.
-  services.strix-halo.npu-exporter.enable = true;
+  services.curve-optimizer = {
+    enable = true;
+    # -10 survived both sustained TP4 decode and the loaded-to-idle edge on
+    # all four hosts. Keep it opt-in; stronger per-host values need soak tests.
+    offset = -10;
+    mqtt = {
+      enable = true;
+      host = network.routerIp;
+      username = "rw";
+      passwordFile = config.sops.secrets.mosquitto-password.path;
+    };
+  };
+
+  systemd.services.curve-optimizer-mqtt = {
+    after = [ "sops-install-secrets.service" ];
+    wants = [ "sops-install-secrets.service" ];
+  };
 
   programs.amduprof = {
     enable = true;
@@ -630,19 +532,38 @@ in
   # /etc/ssh. Keep that directory traversable so sshd can read per-user
   # authorized_keys after dropping privileges from root.
   #
-  # On netboot hosts /models is an NFS automount from trex and the server
-  # side owns directory creation (chown from an all_squash client fails).
-  systemd.tmpfiles.rules = [ "d /etc/ssh 0755 root root -" ] ++ lib.optionals (!netboot) [
+  # Keep model storage independent of the boot path. Netboot hosts get this
+  # mount from profiles/netboot-client.nix; locally booted hosts must consume
+  # the same read-only Trex export rather than silently falling back to their
+  # root filesystem.
+  fileSystems."/models" = lib.mkIf (!netboot) {
+    device = "${network.primaryIp network.hosts.trex}:/strix-models";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      "ro"
+      "nofail"
+      "_netdev"
+      "x-systemd.automount"
+      "rsize=1048576"
+      "wsize=1048576"
+      "nconnect=8"
+    ];
+  };
+
+  # On every Strix host the server side owns model directory creation (chown
+  # from an all_squash client fails). The local mountpoint itself is enough.
+  systemd.tmpfiles.rules = [
+    "d /etc/ssh 0755 root root -"
+  ] ++ lib.optionals (!netboot) [
     "d /models 0755 root root -"
-    "d /models/.cache 0775 grw users -"
-    "d /models/.cache/huggingface 0775 grw users -"
   ];
 
   # Point all HuggingFace tooling at the read-only /models snapshot and keep
   # compute nodes strictly offline w.r.t. the Hub — model acquisition belongs
-  # to trex (which serves /strix-models). This makes the per-service
-  # vllmServiceEnvironment offline flags the global default too, so interactive
-  # ssh sessions and the hellas-ai-video runners don't need to set HF_HOME.
+  # to trex (which serves /strix-models). Setting these globally means
+  # interactive ssh sessions and the hellas-ai-video runners don't need to set
+  # HF_HOME.
   environment.variables = {
     HF_HOME = "/models/.cache/huggingface";
     HF_HUB_OFFLINE = "1";
