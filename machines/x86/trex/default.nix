@@ -1,13 +1,16 @@
-{ pkgs
-, lib
-, inputs
-, mkSecret
-, config
-, network
-, ...
-}:
-let
+{
+  pkgs,
+  lib,
+  inputs,
+  mkSecret,
+  config,
+  network,
+  ...
+}: let
   self = network.hosts.trex;
+  beegfsMgmtd = network.hosts.bluefield2;
+  beegfsMgmtdLanIp = network.ipOf "lan" beegfsMgmtd.addresses.lan;
+  beegfsMgmtdFabricIp = network.ipOf "fabric" beegfsMgmtd.addresses.fabric;
 
   # ConnectX-4 switchdev: pin interface names to the ASIC's phys_switch_id so
   # they survive PCIe re-enumeration. The card's bus number moves whenever the
@@ -57,30 +60,35 @@ let
   mlxUdevRules = pkgs.writeTextFile {
     name = "75-mlx-switchdev-names";
     destination = "/etc/udev/rules.d/75-mlx-switchdev-names.rules";
-    text = ''
-      SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="p0", NAME="${mlxPfName}"
-      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTRS{vendor}=="0x15b3", ATTRS{device}=="0x1014", PROGRAM="${mlxVfName} %p", NAME="%c"
-    '' + lib.concatStrings (lib.genList
-      (i: ''
-        SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="pf0vf${toString i}", NAME="${mlxPfName}r${toString i}"
-      '')
-      mlxVfCount);
+    text =
+      ''
+        SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="p0", NAME="${mlxPfName}"
+        SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTRS{vendor}=="0x15b3", ATTRS{device}=="0x1014", PROGRAM="${mlxVfName} %p", NAME="%c"
+      ''
+      + lib.concatStrings (lib.genList
+        (i: ''
+          SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="pf0vf${toString i}", NAME="${mlxPfName}r${toString i}"
+        '')
+        mlxVfCount);
   };
-in
-{
+in {
   /*
-    trex: trx90 system
+  trex: trx90 system
 
-    # fans:
-    # CPU_FAN1: AIO Radiator fans
-    # CPU_FAN2/WP: Pump
-    # CHA_FAN1/WP: 140mm intakes
-    # CHA_FAN2/WP: Unsure.. VRAM?
-    # CHA_FAN3/WP: Unsure.. exhaust?
-    # MOS_FAN1/MOS_FAN2: VRM
+  # fans:
+  # CPU_FAN1: AIO Radiator fans
+  # CPU_FAN2/WP: Pump
+  # CHA_FAN1/WP: 140mm intakes
+  # CHA_FAN2/WP: Unsure.. VRAM?
+  # CHA_FAN3/WP: Unsure.. exhaust?
+  # MOS_FAN1/MOS_FAN2: VRM
   */
   sconfig = {
     profile = "desktop";
+    mounts.beegfs = {
+      enable = true;
+      clientAddresses = [(network.primaryIp self)];
+    };
     home-manager = {
       enable = true;
       enableVscodeServer = true;
@@ -107,19 +115,17 @@ in
 
   # 7985WX - big parallel builder
   nix.settings = {
-    system-features = [ "gccarch-znver4" "kvm" "big-parallel" "nixos-test" ];
+    system-features = ["gccarch-znver4" "kvm" "big-parallel" "nixos-test"];
     download-buffer-size = 104857600; # 100 MiB
     http-connections = 64;
     # Sign locally-built store paths with our cache key so `nix copy` to
     # strix-1/strix-2 (which trust this key via modules/nix.nix) is
     # accepted without --no-check-sigs.
-    secret-key-files = [ config.sops.secrets.nix-cache-key.path ];
+    secret-key-files = [config.sops.secrets.nix-cache-key.path];
   };
 
-  # The Strix clients are netbooted with a read-only /nix/store, so they cannot
-  # act as writable Nix builders for trex. Keep the other remote builders (in
-  # particular the AArch64 and Darwin machines) available.
-  benchmark.executor.builders."strix-1".enable = lib.mkForce false;
+  # Strix-2 remains netbooted with a read-only /nix/store, so it cannot act as
+  # a writable Nix builder for trex. Strix-1 boots from its local NVMe again.
   benchmark.executor.builders."strix-2".enable = lib.mkForce false;
 
   boot.kernel.sysctl = {
@@ -207,13 +213,71 @@ in
   # so the daemon listens on 8082 (8083 is the hellas gateway).
   systemd.services.signal-cli-daemon = {
     description = "signal-cli HTTP daemon for Hermes gateway";
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    wantedBy = [ "multi-user.target" ];
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    wantedBy = ["multi-user.target"];
     serviceConfig = {
       User = "grw";
       Group = "users";
       ExecStart = "${pkgs.signal-cli}/bin/signal-cli daemon --http 127.0.0.1:8082";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
+
+  # Kimi Code web UI (`kimi server`). Bound to the LAN address only, so it is
+  # reachable from the LAN and from WG clients (the router terminates WG and
+  # routes 192.168.24.0/24 into the LAN) but not via the public IPv6 or any
+  # other interface. Bearer-token auth stays on; the token is printed to the
+  # journal at startup and lives in ~grw/.kimi-code/server.token.
+  systemd.services.kimi-server = {
+    description = "Kimi Code server (REST + WebSocket + web UI)";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    # ~grw/.kimi-code holds the server token, OAuth credentials and sessions.
+    unitConfig.RequiresMountsFor = "/home/grw";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      User = "grw";
+      Group = "users";
+      Environment = ["KIMI_CODE_NO_AUTO_UPDATE=1"];
+      ExecStart = let
+        kimi-code = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.kimi-code;
+      in
+        "${kimi-code}/bin/kimi server run --foreground --log-level info --port 58627 "
+        + "--host ${network.primaryIp self} "
+        + "--allowed-host trex "
+        + "--allowed-host ${network.fqdn "trex"} "
+        + "--allowed-host ${network.publicFqdn "trex"}";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
+
+  # opencode headless server (`opencode serve`). Mirrors kimi-server, but note
+  # the sharp difference: opencode's serve API has NO authentication and can
+  # execute shell commands, so binding it to the LAN address means anyone on
+  # the LAN or a WG client can run commands as grw. This LAN binding is an
+  # explicit, accepted decision (2026-07-21) for a trusted home LAN — revisit
+  # (localhost-only + an authenticated proxy) before this box ever faces a
+  # less-trusted network. ~grw/.local/share/opencode holds auth and sessions.
+  systemd.services.opencode-server = {
+    description = "opencode server (headless REST API)";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    unitConfig.RequiresMountsFor = "/home/grw";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      User = "grw";
+      Group = "users";
+      WorkingDirectory = "/home/grw";
+      Environment = ["OPENCODE_DISABLE_AUTOUPDATE=1"];
+      ExecStart = let
+        opencode = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+      in
+        "${opencode}/bin/opencode serve --print-logs --log-level INFO "
+        + "--port 58640 "
+        + "--hostname ${network.primaryIp self}";
       Restart = "on-failure";
       RestartSec = "10s";
     };
@@ -243,9 +307,9 @@ in
   # distributed vLLM startup.
   systemd.services.strix-model-qwen3-0-6b = {
     description = "Pre-stage Qwen3-0.6B for the Strix vLLM cluster";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" "models.mount" ];
-    wantedBy = [ "multi-user.target" ];
+    wants = ["network-online.target"];
+    after = ["network-online.target" "models.mount"];
+    wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
       User = "grw";
@@ -262,11 +326,15 @@ in
   nix.settings.build-cores = lib.mkDefault 48;
   nix.settings.max-jobs = lib.mkDefault 4;
 
+  # Cluster-view dashboard for the strix nodes, provisioned into local grafana
+  services.strix-halo.grafana-dashboards.enable = true;
+
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
 
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
+    inputs.nix-strix-halo.nixosModules.grafana-dashboards
     inputs.nix-strix-halo.nixosModules.rpc-server
 
     inputs.hellas.nixosModules.default
@@ -297,7 +365,6 @@ in
     ../../../services/virt/host.nix
     ../../../services/virt/vfio.nix
     ../../../services/apple-health-ingester.nix
-
   ];
 
   deployment = {
@@ -309,14 +376,34 @@ in
   hardware.cpu.amd.ryzen-smu.enable = false;
   programs.ryzen-monitor-ng.enable = false;
 
-  sops.secrets.hf-token = mkSecret "hf-token" { };
+  sops.secrets.hf-token = mkSecret "hf-token" {};
   sops.templates."hellas-env".content = ''
     HF_TOKEN=${config.sops.placeholder."hf-token"}
   '';
   systemd.services.hellas.serviceConfig.EnvironmentFile =
     config.sops.templates."hellas-env".path;
 
-  sops.secrets.qui-session = mkSecret "qui-session" { };
+  # Password-protect the LAN-exposed opencode-server (see the unit above).
+  # opencode reads OPENCODE_SERVER_PASSWORD from the environment; render it from
+  # sops into an EnvironmentFile so the secret never lands in the store.
+  sops.secrets.opencode-server-password = mkSecret "opencode-server-password" {};
+  sops.templates."opencode-server-env".content = ''
+    OPENCODE_SERVER_PASSWORD=${config.sops.placeholder."opencode-server-password"}
+  '';
+  systemd.services.opencode-server.serviceConfig.EnvironmentFile =
+    config.sops.templates."opencode-server-env".path;
+
+  # Give kimi-server a fixed password from sops instead of relying on the
+  # random bearer token it prints at startup. kimi reads KIMI_CODE_PASSWORD
+  # from the environment; render it from sops so it stays out of the store.
+  sops.secrets.kimi-web-password = mkSecret "kimi-web-password" {};
+  sops.templates."kimi-server-env".content = ''
+    KIMI_CODE_PASSWORD=${config.sops.placeholder."kimi-web-password"}
+  '';
+  systemd.services.kimi-server.serviceConfig.EnvironmentFile =
+    config.sops.templates."kimi-server-env".path;
+
+  sops.secrets.qui-session = mkSecret "qui-session" {};
   sops.secrets.mosquitto-password = mkSecret "mosquitto-password" {
     owner = "root";
     group = "root";
@@ -335,8 +422,8 @@ in
 
   # Ensure qbittorrent waits for bpool media mount
   systemd.services.qbittorrent = {
-    bindsTo = [ "mnt-Media.mount" ];
-    after = [ "mnt-Media.mount" ];
+    bindsTo = ["mnt-Media.mount"];
+    after = ["mnt-Media.mount"];
   };
 
   services.qbittorrent = {
@@ -353,13 +440,13 @@ in
   fileSystems."/var/lib/qbittorrent" = {
     device = "pool3d/root/downloads";
     fsType = "zfs";
-    options = [ "nofail" ];
+    options = ["nofail"];
   };
 
   fileSystems."/models" = {
     device = "pool3d/root/models";
     fsType = "zfs";
-    options = [ "nofail" ];
+    options = ["nofail"];
   };
 
   system.stateVersion = "24.11";
@@ -367,7 +454,7 @@ in
   fileSystems."/dev/hugepages1G" = {
     device = "hugetlbfs";
     fsType = "hugetlbfs";
-    options = [ "pagesize=1G" "size=1G" "mode=1777" ];
+    options = ["pagesize=1G" "size=1G" "mode=1777"];
   };
 
   powerManagement = {
@@ -450,8 +537,8 @@ in
   };
 
   systemd.services.max-perf-mqtt = {
-    after = [ "sops-install-secrets.service" ];
-    wants = [ "sops-install-secrets.service" ];
+    after = ["sops-install-secrets.service"];
+    wants = ["sops-install-secrets.service"];
   };
 
   # L2ARC tuning for bpool Optane cache - no write rate limit
@@ -487,8 +574,8 @@ in
       "zswap.max_pool_percent=20"
     ];
     initrd = {
-      kernelModules = [ "mlx5_core" "lm92" ];
-      services.udev.packages = [ mlxUdevRules ];
+      kernelModules = ["mlx5_core" "lm92"];
+      services.udev.packages = [mlxUdevRules];
       systemd = {
         storePaths = [
           "${pkgs.iproute2}/bin/devlink"
@@ -497,10 +584,10 @@ in
         ];
         services.mlx5-switchdev = {
           description = "Configure Mellanox switchdev and SR-IOV in initrd";
-          wantedBy = [ "initrd.target" ];
-          before = [ "initrd-switch-root.target" ];
-          after = [ "systemd-udev-trigger.service" "systemd-udevd.service" ];
-          wants = [ "systemd-udev-trigger.service" "systemd-udevd.service" ];
+          wantedBy = ["initrd.target"];
+          before = ["initrd-switch-root.target"];
+          after = ["systemd-udev-trigger.service" "systemd-udevd.service"];
+          wants = ["systemd-udev-trigger.service" "systemd-udevd.service"];
           serviceConfig = {
             Type = "oneshot";
             RemainAfterExit = true;
@@ -586,7 +673,7 @@ in
         };
       };
     };
-    blacklistedKernelModules = [ "nouveau" "i915" ];
+    blacklistedKernelModules = ["nouveau" "i915"];
   };
 
   # Stable names for the ConnectX-4 PF and its switchdev VF representors.
@@ -594,7 +681,7 @@ in
   # Numbered 75- so it runs before 80-net-setup-link.rules, whose predictable
   # naming only fires when NAME is still empty. VFs have no phys_switch_id, so a
   # helper derives their mlxlan0vN names from the PF virtfnN symlinks.
-  services.udev.packages = [ mlxUdevRules ];
+  services.udev.packages = [mlxUdevRules];
   services.udev.extraRules = ''
     # Auto-authorize IOCREST 40Gbps Thunderbolt NIC on plug-in
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{unique_id}=="c8010000-00b1-bd08-2230-ad1cc6200123", ATTR{authorized}="1"
@@ -604,15 +691,19 @@ in
   virtualisation.vswitch.enable = true;
 
   networking.vswitches.ovs-mlx = {
-    interfaces = {
-      # Uplink (PF) + VF representors — stable switchdev names (see mlx* lets).
-      ${mlxPfName} = { };
-    } // lib.genAttrs mlxRepNames (_: { }) // lib.genAttrs i40eNames (_: { }) // {
-      # Internal port for host
-      ovs-host = {
-        type = "internal";
+    interfaces =
+      {
+        # Uplink (PF) + VF representors — stable switchdev names (see mlx* lets).
+        ${mlxPfName} = {};
+      }
+      // lib.genAttrs mlxRepNames (_: {})
+      // lib.genAttrs i40eNames (_: {})
+      // {
+        # Internal port for host
+        ovs-host = {
+          type = "internal";
+        };
       };
-    };
   };
 
   networking.useDHCP = false;
@@ -620,9 +711,9 @@ in
   # Set jumbo MTU on OVS internal port (must be done via ovs-vsctl)
   systemd.services.ovs-host-mtu = {
     description = "Set OVS ovs-host interface MTU to 9000";
-    after = [ "ovsdb-server.service" "ovs-vswitchd.service" "ovs-mlx-netdev.service" ];
-    requires = [ "ovs-vswitchd.service" "ovs-mlx-netdev.service" ];
-    wantedBy = [ "multi-user.target" ];
+    after = ["ovsdb-server.service" "ovs-vswitchd.service" "ovs-mlx-netdev.service"];
+    requires = ["ovs-vswitchd.service" "ovs-mlx-netdev.service"];
+    wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
@@ -643,7 +734,7 @@ in
     '';
   };
 
-  services.avahi.allowInterfaces = lib.mkForce [ "ovs-host" ];
+  services.avahi.allowInterfaces = lib.mkForce ["ovs-host"];
 
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
@@ -651,26 +742,26 @@ in
   ];
 
   swapDevices = [
-    { device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc"; }
-    { device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f"; }
-    { device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895"; }
-    { device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485"; }
-    { device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5"; }
-    { device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb"; }
-    { device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb"; }
-    { device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81"; }
+    {device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc";}
+    {device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f";}
+    {device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895";}
+    {device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485";}
+    {device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5";}
+    {device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb";}
+    {device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb";}
+    {device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81";}
   ];
 
   fileSystems."/" = {
     device = "pool3d/root/trex-root";
     fsType = "zfs";
-    options = [ "atime" "relatime" ];
+    options = ["atime" "relatime"];
   };
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-label/TREXBOOTA";
     fsType = "vfat";
-    options = [ "iocharset=iso8859-1" "fmask=0077" "dmask=0077" ];
+    options = ["iocharset=iso8859-1" "fmask=0077" "dmask=0077"];
   };
 
   boot.loader.systemd-boot.extraInstallCommands = ''
@@ -701,14 +792,14 @@ in
   fileSystems."/home/grw" = {
     device = "pool3d/root/grw-home";
     fsType = "zfs";
-    options = [ "noatime" "nofail" ];
+    options = ["noatime" "nofail"];
   };
 
   # Bind mount for NFSv4 export
   fileSystems."/export/grw" = {
     device = "/home/grw";
     fsType = "none";
-    options = [ "bind" ];
+    options = ["bind"];
   };
 
   services = {
@@ -718,48 +809,44 @@ in
     iperf3.enable = true;
 
     # ZFS snapshot management - short retention on source
-    sanoid =
-      let
-        excluded = {
-          autosnap = false;
-          hourly = 0;
-          daily = 0;
-          weekly = 0;
-          monthly = 0;
-        };
-      in
-      {
-        enable = true;
-        interval = "hourly";
-        datasets."pool3d" = {
-          recursive = true;
-          autosnap = true;
-          hourly = 24;
-          daily = 7;
-          weekly = 0;
-          monthly = 0;
-        };
-        datasets."pool3d/root/tari" = excluded;
-        datasets."pool3d/root/monero" = excluded;
+    sanoid = let
+      excluded = {
+        autosnap = false;
+        hourly = 0;
+        daily = 0;
+        weekly = 0;
+        monthly = 0;
       };
+    in {
+      enable = true;
+      interval = "hourly";
+      datasets."pool3d" = {
+        recursive = true;
+        autosnap = true;
+        hourly = 24;
+        daily = 7;
+        weekly = 0;
+        monthly = 0;
+      };
+      datasets."pool3d/root/tari" = excluded;
+      datasets."pool3d/root/monero" = excluded;
+    };
 
     # ZFS replication to fuckup
-    syncoid =
-      let
-        excludedDatasets = [ "tari" "monero" ];
-      in
-      {
-        enable = true;
-        interval = "hourly";
-        sshKey = "/var/lib/syncoid/.ssh/id_ed25519";
-        commands."pool3d-to-archive" = {
-          source = "pool3d";
-          target = "root@fuckup:archive/pool3d";
-          recursive = true;
-          sendOptions = "w";
-          extraArgs = lib.concatMap (d: [ "--exclude" d ]) excludedDatasets;
-        };
+    syncoid = let
+      excludedDatasets = ["tari" "monero"];
+    in {
+      enable = true;
+      interval = "hourly";
+      sshKey = "/var/lib/syncoid/.ssh/id_ed25519";
+      commands."pool3d-to-archive" = {
+        source = "pool3d";
+        target = "root@fuckup:archive/pool3d";
+        recursive = true;
+        sendOptions = "w";
+        extraArgs = lib.concatMap (d: ["--exclude" d]) excludedDatasets;
       };
+    };
   };
 
   networking = {
@@ -767,7 +854,7 @@ in
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
     useNetworkd = true;
-    nameservers = [ network.routerIp ];
+    nameservers = [network.routerIp];
     firewall = {
       enable = false;
       allowedTCPPorts = [
@@ -822,16 +909,15 @@ in
     secretKeyFile = config.sops.secrets.nix-cache-key.path;
   };
 
-  sops.secrets.nix-cache-key = mkSecret "nix-cache-key" { };
+  sops.secrets.nix-cache-key = mkSecret "nix-cache-key" {};
 
-  systemd.network =
-    let
-      bridgeName = "br0.lan";
-    in
-    {
-      enable = true;
-      wait-online.anyInterface = true;
-      links = {
+  systemd.network = let
+    bridgeName = "br0.lan";
+  in {
+    enable = true;
+    wait-online.anyInterface = true;
+    links =
+      {
         # PF: buffer settings. Matched by permanent MAC so it applies
         # regardless of the kernel's pre-rename name.
         "20-mlx5-pf" = {
@@ -842,121 +928,135 @@ in
             TxBufferSize = 8192;
           };
         };
-      } // lib.mapAttrs'
-        (name: mac: lib.nameValuePair "20-${name}" {
+      }
+      // lib.mapAttrs'
+      (name: mac:
+        lib.nameValuePair "20-${name}" {
           matchConfig.PermanentMACAddress = mac;
           linkConfig.Name = name;
         })
-        i40ePorts;
-      netdevs = {
-        "20-${bridgeName}" = {
-          netdevConfig = {
-            Kind = "bridge";
-            Name = bridgeName;
-          };
-          bridgeConfig = {
-            STP = true;
-          };
+      i40ePorts;
+    netdevs = {
+      "20-${bridgeName}" = {
+        netdevConfig = {
+          Kind = "bridge";
+          Name = bridgeName;
         };
-      };
-      networks = {
-        # BMC virtual USB NIC (AMI MegaRAC, idVendor 046b) — the in-band
-        # Redfish/IPMI host interface exposed by the AST2600. SMBIOS type 42
-        # pins the host side at 169.254.0.18/16 and the BMC at 169.254.0.17
-        # (Redfish on :443, SSH on :22, no DHCP server on the link). Priority
-        # 20 beats the thunderbolt-bridge profile's 49-bmc-exclude (Unmanaged)
-        # and 50-cdc-ether (Bridge=br0.lan), mirroring how the router pins its
-        # NanoKVM with 20-nanokvm. NB: unlike the NanoKVM, the BMC does NOT
-        # route between this USB link and its dedicated LAN, so this is a
-        # host->BMC management path only, not an inbound backdoor to trex. The
-        # out-of-band console to trex is the BMC LAN (192.168.23.10) via IPMI
-        # SOL / iKVM.
-        "20-bmc-usb" = {
-          matchConfig = {
-            Driver = "cdc_ether";
-            Property = "ID_VENDOR_ID=046b";
-          };
-          address = [ "169.254.0.18/16" ];
-          networkConfig = {
-            DHCP = "no";
-            LinkLocalAddressing = "ipv6";
-            IPv6AcceptRA = false;
-          };
-          linkConfig.RequiredForOnline = "no";
-        };
-
-        # Mellanox PF (100G): bring up for OVS with jumbo MTU
-        "10-lan-100g" = {
-          matchConfig.Name = mlxPfName;
-          linkConfig = {
-            ActivationPolicy = "up";
-            RequiredForOnline = "no";
-            MTUBytes = "9000";
-          };
-        };
-        # VFs: don't configure (will be passed to containers). They carry no
-        # phys_switch_id so they keep their enpXsYvZ names.
-        "10-mlx5-vf" = {
-          matchConfig = {
-            Driver = "mlx5_core";
-            Name = "${mlxPfName}v*";
-          };
-          linkConfig.Unmanaged = "yes";
-        };
-        # VF representors: bring up for OVS
-        "10-mlx5-rep" = {
-          matchConfig.Name = "${mlxPfName}r*";
-          linkConfig = {
-            ActivationPolicy = "up";
-            RequiredForOnline = "no";
-          };
-        };
-        # OVS internal port for host connectivity
-        "10-ovs-host" = {
-          matchConfig.Name = "ovs-host";
-          address = [ (network.cidrOf "lan" self.addresses.lan) ];
-          routes = [{ Gateway = network.routerIp; }];
-          networkConfig = {
-            DNS = network.routerIp;
-          };
-          # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
-          # other devices on the LAN (e.g. Apple devices acting as Tailscale
-          # subnet routers) advertise ULA prefixes that briefly get autoconfigured
-          # and then trigger ICMPv6 "advertised our address" dmesg spam when the
-          # host's own NAs are reflected back through OVS/the Mellanox eswitch.
-          ipv6AcceptRAConfig = {
-            PrefixAllowList = "2a02:168:58b4::/64";
-          };
-          linkConfig.RequiredForOnline = "routable";
-        };
-        # IOCREST 40Gbps TB NIC (AQC113, tunneled PCIe via Thunderbolt): bridge to LAN
-        "30-aqc-bridge" = {
-          matchConfig.Driver = "atlantic";
-          networkConfig.Bridge = bridgeName;
-          linkConfig = {
-            MTUBytes = "9000";
-            RequiredForOnline = "no";
-          };
-        };
-
-        # br0.lan for non-Mellanox interfaces (Intel, thunderbolt, USB) - no IP, just L2
-        "05-${bridgeName}" = {
-          matchConfig.Name = bridgeName;
-          bridgeConfig = { };
-          networkConfig = {
-            ConfigureWithoutCarrier = true;
-            IgnoreCarrierLoss = true;
-          };
-          linkConfig.RequiredForOnline = "no";
+        bridgeConfig = {
+          STP = true;
         };
       };
     };
+    networks = {
+      # BMC virtual USB NIC (AMI MegaRAC, idVendor 046b) — the in-band
+      # Redfish/IPMI host interface exposed by the AST2600. SMBIOS type 42
+      # pins the host side at 169.254.0.18/16 and the BMC at 169.254.0.17
+      # (Redfish on :443, SSH on :22, no DHCP server on the link). Priority
+      # 20 beats the thunderbolt-bridge profile's 49-bmc-exclude (Unmanaged)
+      # and 50-cdc-ether (Bridge=br0.lan), mirroring how the router pins its
+      # NanoKVM with 20-nanokvm. NB: unlike the NanoKVM, the BMC does NOT
+      # route between this USB link and its dedicated LAN, so this is a
+      # host->BMC management path only, not an inbound backdoor to trex. The
+      # out-of-band console to trex is the BMC LAN (192.168.23.10) via IPMI
+      # SOL / iKVM.
+      "20-bmc-usb" = {
+        matchConfig = {
+          Driver = "cdc_ether";
+          Property = "ID_VENDOR_ID=046b";
+        };
+        address = ["169.254.0.18/16"];
+        networkConfig = {
+          DHCP = "no";
+          LinkLocalAddressing = "ipv6";
+          IPv6AcceptRA = false;
+        };
+        linkConfig.RequiredForOnline = "no";
+      };
+
+      # Mellanox PF (100G): bring up for OVS with jumbo MTU
+      "10-lan-100g" = {
+        matchConfig.Name = mlxPfName;
+        linkConfig = {
+          ActivationPolicy = "up";
+          RequiredForOnline = "no";
+          MTUBytes = "9000";
+        };
+      };
+      # VFs: don't configure (will be passed to containers). They carry no
+      # phys_switch_id so they keep their enpXsYvZ names.
+      "10-mlx5-vf" = {
+        matchConfig = {
+          Driver = "mlx5_core";
+          Name = "${mlxPfName}v*";
+        };
+        linkConfig.Unmanaged = "yes";
+      };
+      # VF representors: bring up for OVS
+      "10-mlx5-rep" = {
+        matchConfig.Name = "${mlxPfName}r*";
+        linkConfig = {
+          ActivationPolicy = "up";
+          RequiredForOnline = "no";
+        };
+      };
+      # OVS internal port for host connectivity
+      "10-ovs-host" = {
+        matchConfig.Name = "ovs-host";
+        address = [(network.cidrOf "lan" self.addresses.lan)];
+        routes = [
+          {Gateway = network.routerIp;}
+          # The management daemon is on the BlueField itself. Reach both
+          # addresses it currently advertises through the DPU's LAN side;
+          # storage and metadata traffic still follows the 100G router path.
+          {
+            Destination = "${beegfsMgmtdFabricIp}/32";
+            Gateway = beegfsMgmtdLanIp;
+          }
+          {
+            Destination = "192.168.100.2/32";
+            Gateway = beegfsMgmtdLanIp;
+          }
+        ];
+        networkConfig = {
+          DNS = network.routerIp;
+        };
+        # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
+        # other devices on the LAN (e.g. Apple devices acting as Tailscale
+        # subnet routers) advertise ULA prefixes that briefly get autoconfigured
+        # and then trigger ICMPv6 "advertised our address" dmesg spam when the
+        # host's own NAs are reflected back through OVS/the Mellanox eswitch.
+        ipv6AcceptRAConfig = {
+          PrefixAllowList = "2a02:168:58b4::/64";
+        };
+        linkConfig.RequiredForOnline = "routable";
+      };
+      # IOCREST 40Gbps TB NIC (AQC113, tunneled PCIe via Thunderbolt): bridge to LAN
+      "30-aqc-bridge" = {
+        matchConfig.Driver = "atlantic";
+        networkConfig.Bridge = bridgeName;
+        linkConfig = {
+          MTUBytes = "9000";
+          RequiredForOnline = "no";
+        };
+      };
+
+      # br0.lan for non-Mellanox interfaces (Intel, thunderbolt, USB) - no IP, just L2
+      "05-${bridgeName}" = {
+        matchConfig.Name = bridgeName;
+        bridgeConfig = {};
+        networkConfig = {
+          ConfigureWithoutCarrier = true;
+          IgnoreCarrierLoss = true;
+        };
+        linkConfig.RequiredForOnline = "no";
+      };
+    };
+  };
 
   # Create needed directories (no-ops if already exist)
   systemd.tmpfiles.rules = [
     # qBittorrent profile + incomplete on SSD (pool3d)
     "d /var/lib/qbittorrent 0775 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/incomplete 0775 qbittorrent qbittorrent -"
-
   ];
 }

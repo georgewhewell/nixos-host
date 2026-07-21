@@ -3,11 +3,11 @@
   pkgs,
   lib,
   inputs,
-  mkSecret,
   network,
   ...
 }: let
   self = network.hosts.bluefield2;
+  beegfsFabricIp = network.ipOf "fabric" self.addresses.fabric;
   oobMac = lib.toLower self.mac;
   oobRenegotiate = pkgs.writeShellScript "bluefield-oob-renegotiate" ''
     for _ in $(${pkgs.coreutils}/bin/seq 1 20); do
@@ -79,6 +79,10 @@ in {
   sconfig = {
     profile = "server";
     home-manager.enable = false;
+    mounts.beegfs = {
+      enable = true;
+      clientAddresses = [ beegfsFabricIp ];
+    };
   };
 
   networking = {
@@ -94,8 +98,6 @@ in {
   # is a better home than an impermanent network appliance. Data traffic does
   # not pass through mgmtd; meta/storage nodes use the 200G fabric directly.
   services.beegfs-cluster = {
-    mgmtdHost = network.ipOf "fabric" self.addresses.fabric;
-    connAuthFile = config.sops.secrets.beegfs-conn-auth.path;
     mgmtd = {
       enable = true;
       # The DPU firewall is enabled and neither interface is globally trusted.
@@ -108,7 +110,6 @@ in {
       extraArgs = [ "--interfaces" "enp3s0np0 * 4" ];
     };
   };
-  sops.secrets.beegfs-conn-auth = mkSecret "beegfs-conn-auth" { };
 
   systemd.network = {
     enable = true;
