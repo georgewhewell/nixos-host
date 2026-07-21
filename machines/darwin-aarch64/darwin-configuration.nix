@@ -8,6 +8,8 @@
   ...
 }: let
   lanPrefixRegex = builtins.replaceStrings ["."] ["\\."] network.vlans.lan.prefix;
+  trexIp = network.primaryIp network.hosts.trex;
+  mntSynthetic = "mnt\tSystem/Volumes/Data/mnt";
 in {
   imports = [
     ./system.nix
@@ -56,6 +58,25 @@ in {
       RunAtLoad = true;
       StandardOutPath = "/tmp/node-exporter.out.log";
       StandardErrorPath = "/tmp/node-exporter.err.log";
+    };
+  };
+
+  # Mount the shared home without taking ownership of SIP-protected Apple
+  # files such as /etc/fstab or /etc/auto_master. The scheduled launchd job is
+  # idempotent and naturally retries while networking or Trex is unavailable.
+  launchd.daemons.hellas-home-mount = {
+    command = "${pkgs.writeShellScript "mount-hellas-home" ''
+      mount_point=/System/Volumes/Data/mnt/Home
+      if ! /sbin/mount | /usr/bin/grep -Fq " on $mount_point ("; then
+        /sbin/mount_nfs -o nfsvers=4.1,sec=sys,resvport,hard,intr ${trexIp}:/home "$mount_point"
+      fi
+    ''}";
+    serviceConfig = {
+      RunAtLoad = true;
+      StartInterval = 30;
+      ProcessType = "Background";
+      StandardOutPath = "/var/log/hellas-home-mount.log";
+      StandardErrorPath = "/var/log/hellas-home-mount.error.log";
     };
   };
 
@@ -164,6 +185,21 @@ in {
         sudo mkdir -m 750 -p ${config.services.postgresql.dataDir}
         chown -R grw:staff ${config.services.postgresql.dataDir}
       fi
+
+      # A synthetic empty directory cannot contain children, so expose a
+      # writable Data-volume directory at /mnt instead. Synthetic entities are
+      # applied during early boot; restitching the root live disrupts services.
+      mkdir -p /System/Volumes/Data/mnt/Home
+      mnt_synthetic=${lib.escapeShellArg mntSynthetic}
+      if ! grep -Fqx "$mnt_synthetic" /etc/synthetic.conf; then
+        echo "configuring synthetic /mnt root..."
+        mnt_synthetic_tmp="$(mktemp /etc/synthetic.conf.XXXXXX)"
+        awk '$1 != "mnt" { print }' /etc/synthetic.conf > "$mnt_synthetic_tmp"
+        printf '%s\n' "$mnt_synthetic" >> "$mnt_synthetic_tmp"
+        chown root:wheel "$mnt_synthetic_tmp"
+        chmod 0644 "$mnt_synthetic_tmp"
+        mv "$mnt_synthetic_tmp" /etc/synthetic.conf
+      fi
     '';
   };
 
@@ -172,7 +208,7 @@ in {
 
   # NFS client configuration
   environment.etc."nfs.conf".text = ''
-    nfs.client.mount.options = vers=4.0,sec=krb5
+    nfs.client.mount.options = vers=4.1,sec=sys,resvport
     nfs.client.default_nfs4domain = ${network.domains.public}
   '';
 
