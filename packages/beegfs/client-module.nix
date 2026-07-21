@@ -42,9 +42,12 @@ stdenv.mkDerivation rec {
 
   makeFlags = [
     "-C" "client_module/build"
+    "ARCH=${stdenv.hostPlatform.linuxArch}"
     "KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
     "KRELEASE=${kernel.modDirVersion}"
     "BEEGFS_VERSION=${version}"
+  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+    "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
   ];
 
   enableParallelBuilding = true;

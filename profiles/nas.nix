@@ -56,7 +56,8 @@ in {
       nfsd.vers3 = false;
       nfsd.vers4 = true;
       nfsd."vers4.0" = false;
-      nfsd."vers4.1" = false;
+      # Darwin's native client supports NFS 4.0 and 4.1, but not 4.2.
+      nfsd."vers4.1" = true;
       nfsd."vers4.2" = true;
       nfsd.threads = 16;
     };

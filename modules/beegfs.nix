@@ -324,6 +324,28 @@ in
               example = { connMaxInternodeNum = 32; };
               description = "Extra beegfs-client.conf settings for this mount.";
             };
+
+            automount = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Start a systemd automount at boot and defer the real BeeGFS
+                mount until the path is accessed. This keeps an unavailable
+                cluster from delaying boot.
+              '';
+            };
+
+            idleTimeoutSec = lib.mkOption {
+              type = lib.types.str;
+              default = "10min";
+              description = "Idle timeout for an enabled systemd automount.";
+            };
+
+            mountTimeoutSec = lib.mkOption {
+              type = lib.types.str;
+              default = "45s";
+              description = "Maximum time systemd allows the mount operation to run.";
+            };
           };
         }));
       };
@@ -465,16 +487,30 @@ in
         what = "beegfs_nodev";
         where = mountPoint;
         type = "beegfs";
-        options = "cfgFile=${clientConf {
+        # _netdev makes systemd apply remote-fs ordering. Without it, the
+        # out-of-tree filesystem type is mistaken for a local mount and its
+        # network-online dependency can create a local-fs boot cycle.
+        options = "_netdev,cfgFile=${clientConf {
           name = lib.strings.sanitizeDerivationName mountPoint;
           inherit (mount) settings;
         }}";
         after = [ "network-online.target" "systemd-modules-load.service" ];
         wants = [ "network-online.target" ];
-        wantedBy = [ "remote-fs.target" ];
-        mountConfig.TimeoutSec = "45s";
+        wantedBy = lib.optional (!mount.automount) "remote-fs.target";
+        mountConfig.TimeoutSec = mount.mountTimeoutSec;
       })
       cfg.client.mounts);
+
+    # An automount unit is safe to start without a live BeeGFS cluster: it
+    # only installs the kernel trigger. The matching mount unit remains
+    # bounded by mountTimeoutSec and runs on first access.
+    systemd.automounts = lib.mkIf cfg.client.enable (lib.mapAttrsToList
+      (mountPoint: mount: {
+        where = mountPoint;
+        wantedBy = [ "remote-fs.target" ];
+        automountConfig.TimeoutIdleSec = mount.idleTimeoutSec;
+      })
+      (lib.filterAttrs (_: mount: mount.automount) cfg.client.mounts));
 
     ## Firewall #############################################################
 
