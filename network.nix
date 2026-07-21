@@ -98,70 +98,68 @@ lib: rec {
     };
   };
 
-  benchmarkBuildHosts =
-    let
-      strixHaloRunner = {
-        gpus = [
-          {
-            type = "amd";
-            arch = "1151";
-          }
-        ];
-        npus = [
-          {
-            type = "amd";
-            arch = "xdna2";
-          }
-        ];
-      };
-      strixHaloSystemFeatures = [
-        "gccarch-znver5"
-        "rocm"
-        "benchmark"
-        "kvm"
-        "nixos-test"
+  benchmarkBuildHosts = let
+    strixHaloRunner = {
+      gpus = [
+        {
+          type = "amd";
+          arch = "1151";
+        }
       ];
-    in
-    {
-      strix-1 =
-        strixHaloRunner
-        // {
-          ipv4 = "192.168.23.136";
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHXYxvg1N//t89I4vktqPKg4yGgI5amT97GHt3mHStV";
-          maxJobs = 1;
-          speedFactor = 32;
-          systems = [ "x86_64-linux" ];
-          systemFeatures = strixHaloSystemFeatures;
-        };
-      strix-2 =
-        strixHaloRunner
-        // {
-          ipv4 = "192.168.23.192";
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0RsY9sp58nDjojVM9uAZ+6DoLxi/8LrGuonSoSC2DS";
-          maxJobs = 1;
-          speedFactor = 32;
-          systems = [ "x86_64-linux" ];
-          systemFeatures = strixHaloSystemFeatures;
-        };
-      mbp = {
-        ipv4 = "192.168.23.24";
-        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEn8GwjuFsx8r3wXq0J28mHg2WZdbo4NH45bxg9EwSTO";
-        maxJobs = 1;
-        speedFactor = 64;
-        systems = [ "aarch64-darwin" ];
-        systemFeatures = [ "apple-virt" "benchmark" "big-parallel" "apple-m4" "metal" ];
-        gpus = [ ];
-      };
-      goblin = {
-        ipv4 = "192.168.23.247";
-        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRJYI4x/nKcftcIo6pmy9gRR0NznkFUQ3eliggcGY9N";
-        maxJobs = 1;
-        speedFactor = 96;
-        systems = [ "aarch64-darwin" ];
-        systemFeatures = [ "apple-virt" "benchmark" "big-parallel" "apple-m4" "metal" ];
-        gpus = [ ];
-      };
+      npus = [
+        {
+          type = "amd";
+          arch = "xdna2";
+        }
+      ];
     };
+    strixHaloSystemFeatures = [
+      "gccarch-znver5"
+      "rocm"
+      "benchmark"
+      "kvm"
+      "nixos-test"
+    ];
+  in {
+    strix-1 =
+      strixHaloRunner
+      // {
+        ipv4 = "192.168.23.136";
+        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILK1X7cjrqtB/Yvlkq0kvNix/9t6TNxV9BhzyabPXpWt";
+        maxJobs = 1;
+        speedFactor = 32;
+        systems = ["x86_64-linux"];
+        systemFeatures = strixHaloSystemFeatures;
+      };
+    strix-2 =
+      strixHaloRunner
+      // {
+        ipv4 = "192.168.23.192";
+        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0RsY9sp58nDjojVM9uAZ+6DoLxi/8LrGuonSoSC2DS";
+        maxJobs = 1;
+        speedFactor = 32;
+        systems = ["x86_64-linux"];
+        systemFeatures = strixHaloSystemFeatures;
+      };
+    mbp = {
+      ipv4 = "192.168.23.24";
+      publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEn8GwjuFsx8r3wXq0J28mHg2WZdbo4NH45bxg9EwSTO";
+      maxJobs = 1;
+      speedFactor = 64;
+      systems = ["aarch64-darwin"];
+      systemFeatures = ["apple-virt" "benchmark" "big-parallel" "apple-m4" "metal"];
+      gpus = [];
+    };
+    goblin = {
+      ipv4 = "192.168.23.247";
+      publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRJYI4x/nKcftcIo6pmy9gRR0NznkFUQ3eliggcGY9N";
+      maxJobs = 1;
+      speedFactor = 96;
+      systems = ["aarch64-darwin"];
+      systemFeatures = ["apple-virt" "benchmark" "big-parallel" "apple-m4" "metal"];
+      gpus = [];
+    };
+  };
 
   hydraBuilders = {
     interface = "wg-hydra-bld";
@@ -210,32 +208,32 @@ lib: rec {
         mgmt = 1;
         wifi = 1;
       };
-      extraNames = [ "frigate" ];
+      extraNames = ["frigate"];
     };
     "mikrotik-10g" = {
       mac = "e4:8d:8c:a8:de:40";
-      addresses = { lan = 2; };
+      addresses = {lan = 2;};
     };
     "unifi-ac-pro" = {
       mac = "80:2a:a8:80:96:ef";
-      addresses = { lan = 3; };
-      extraNames = [ "ap" ];
+      addresses = {lan = 3;};
+      extraNames = ["ap"];
     };
     "x10-ipmi" = {
       mac = "0c:c4:7a:89:fb:37";
-      addresses = { lan = 4; };
+      addresses = {lan = 4;};
     };
     nixhost = {
       mac = "0c:c4:7a:87:b9:d8";
-      addresses = { lan = 5; };
+      addresses = {lan = 5;};
     };
     vacuum = {
       mac = "78:11:dc:ec:86:ea";
-      addresses = { lan = 6; };
+      addresses = {lan = 6;};
     };
     fuckup = {
       mac = "b8:6f:35:ab:31:89";
-      addresses = { lan = 7; };
+      addresses = {lan = 7;};
     };
     trex = {
       mac = "50:6b:4b:03:04:cb";
@@ -243,13 +241,13 @@ lib: rec {
       # standalone DHCP client before OVS enslaved it, registering trex -> a pool
       # address and shadowing the static .8 in DNS. Reserve its MAC to .8 too so
       # any stray lease resolves to the correct host instead of a dynamic IP.
-      extraMacs = [ "50:6b:4b:0d:24:86" ];
-      addresses = { lan = 8; };
-      extraNames = [ "jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" ];
+      extraMacs = ["50:6b:4b:0d:24:86"];
+      addresses = {lan = 8;};
+      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui"];
     };
     "mikrotik-100g" = {
       mac = "48:a9:8a:93:42:4c";
-      addresses = { lan = 9; };
+      addresses = {lan = 9;};
     };
     "mikrotik-400g" = {
       mac = "d0:ea:11:d1:9d:a5";
@@ -260,20 +258,20 @@ lib: rec {
     };
     trx90bmc = {
       mac = "9c:6b:00:57:31:77";
-      addresses = { lan = 10; };
+      addresses = {lan = 10;};
     };
     "apc-ups" = {
       mac = "28:29:86:8b:3f:cb";
-      addresses = { lan = 11; };
-      extraNames = [ "apc8b3fcb" ];
+      addresses = {lan = 11;};
+      extraNames = ["apc8b3fcb"];
     };
     printer = {
       mac = "b4:22:00:cf:18:63";
-      addresses = { lan = 12; };
+      addresses = {lan = 12;};
     };
     cerberus = {
       mac = "c8:f0:9e:de:3c:2f";
-      addresses = { lan = 13; };
+      addresses = {lan = 13;};
     };
     n100 = {
       mac = "9c:6b:00:39:f3:91";
@@ -285,29 +283,29 @@ lib: rec {
     };
     "arr-servers" = {
       mac = "9e:9c:05:57:e8:11";
-      addresses = { lan = 15; };
+      addresses = {lan = 15;};
     };
     "zigbee-stick" = {
       mac = "1c:69:20:a1:d7:9f";
-      addresses = { lan = 16; };
+      addresses = {lan = 16;};
     };
     nanokvm = {
       # eth0. Locally-administered MAC pinned in the machine config
       # (the SG2002 GMAC has no fused address); Colmena deploys over
       # this interface.
       mac = "02:4b:56:4d:00:17";
-      addresses = { lan = 17; };
+      addresses = {lan = 17;};
     };
     "rock-5b" = {
       mac = "00:e0:4c:68:02:e7";
-      addresses = { lan = 18; };
+      addresses = {lan = 18;};
     };
     k3 = {
       mac = "50:0a:52:0b:e5:6f";
       extraMacs = [
         "50:0a:52:0b:81:20"
       ];
-      addresses = { lan = 19; };
+      addresses = {lan = 19;};
     };
     mbp = {
       mac = "c2:c5:7f:8c:7a:51";
@@ -318,20 +316,20 @@ lib: rec {
         "88:c9:b3:b3:2a:da"
         "24:5e:be:81:84:16"
       ];
-      addresses = { lan = 24; };
+      addresses = {lan = 24;};
     };
     goblin = {
       mac = "1c:1d:d3:eb:67:55";
-      addresses = { lan = 247; };
+      addresses = {lan = 247;};
     };
     "10g-onti" = {
       mac = "d0:aa:5f:01:45:a8";
-      addresses = { lan = 20; };
+      addresses = {lan = 20;};
     };
-    "gh-runner-grw" = { addresses = { lan = 50; }; };
+    "gh-runner-grw" = {addresses = {lan = 50;};};
     "10g-poe" = {
       mac = "00:23:79:00:57:90";
-      addresses = { lan = 21; };
+      addresses = {lan = 21;};
     };
     bluefield2 = {
       mac = "b8:ce:f6:f8:d7:b0";
@@ -343,14 +341,14 @@ lib: rec {
     "nanokvm-wifi" = {
       # The AIC8800's burned-in MAC; wlan0 lives on the wifi VLAN.
       mac = "38:7a:cc:40:41:e3";
-      addresses = { wifi = 17; };
+      addresses = {wifi = 17;};
     };
     "strix-strip" = {
       # Tuya Local / Home Assistant power strip for the four Strix hosts.
       mac = "d8:c8:0c:c6:c5:2b";
-      addresses = { wifi = 124; };
+      addresses = {wifi = 124;};
     };
-    "poe-switch-10g" = { addresses = { lan = 23; }; };
+    "poe-switch-10g" = {addresses = {lan = 23;};};
     # Per-host hardware facts for the Strix fleet live in `strix`:
     #  - beegfsDiskSerial: each node's dedicated 4 TB BeeGFS NVMe, by serial
     #    (CX5/SSD PCIe enumeration order differs between the four boxes, so
@@ -375,7 +373,16 @@ lib: rec {
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
         cx5Port = 1;
         cx5FabricMac = "1c:34:da:61:12:9d";
-        ryzenAdj = { stapm = 132000; fast = 176000; slow = 154000; apuSlow = 154000; };
+        # strix-1's fabric NIC was swapped for a BlueField-2 DPU (EMBEDDED_CPU
+        # mode): the host PF only inits once the DPU's ARM cores boot, so this
+        # host needs the bluefield-host profile (rshim + retrying nic-bind).
+        bluefield = true;
+        ryzenAdj = {
+          stapm = 132000;
+          fast = 176000;
+          slow = 154000;
+          apuSlow = 154000;
+        };
       };
     };
     "strix-2" = {
@@ -391,7 +398,12 @@ lib: rec {
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
         cx5Port = 0;
         cx5FabricMac = "1c:34:da:61:12:98";
-        ryzenAdj = { stapm = 132000; fast = 176000; slow = 154000; apuSlow = 154000; };
+        ryzenAdj = {
+          stapm = 132000;
+          fast = 176000;
+          slow = 154000;
+          apuSlow = 154000;
+        };
       };
     };
     "strix-3" = {
@@ -407,7 +419,12 @@ lib: rec {
         cx5Port = 1;
         cx5FabricMac = "1c:34:da:61:12:b5";
         # Strix 3/4 currently clamp package requests to these values.
-        ryzenAdj = { stapm = 120000; fast = 160000; slow = 140000; apuSlow = 140000; };
+        ryzenAdj = {
+          stapm = 120000;
+          fast = 160000;
+          slow = 140000;
+          apuSlow = 140000;
+        };
       };
     };
     "strix-4" = {
@@ -422,7 +439,12 @@ lib: rec {
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
         cx5Port = 0;
         cx5FabricMac = "1c:34:da:61:12:b0";
-        ryzenAdj = { stapm = 120000; fast = 160000; slow = 140000; apuSlow = 140000; };
+        ryzenAdj = {
+          stapm = 120000;
+          fast = 160000;
+          slow = 140000;
+          apuSlow = 140000;
+        };
       };
     };
   };
@@ -461,7 +483,7 @@ lib: rec {
   };
 
   # Reserved for future iterations. Keep keys present so consumers can import without churn.
-  services = { };
+  services = {};
 
   # HTTP port on trex serving iPXE scripts/kernels/initrds for hosts
   # marked `netboot = true` (see profiles/netboot-{server,client}.nix and
@@ -491,34 +513,32 @@ lib: rec {
   publicFqdn = name: "${name}.${domains.public}";
 
   # The host's "primary" IP, used for DNS aliases. lan if present, else first vlan key.
-  primaryIp = h:
-    let
-      vlanNames = builtins.attrNames h.addresses;
-      pick =
-        if builtins.elem "lan" vlanNames
-        then "lan"
-        else builtins.head vlanNames;
-    in
+  primaryIp = h: let
+    vlanNames = builtins.attrNames h.addresses;
+    pick =
+      if builtins.elem "lan" vlanNames
+      then "lan"
+      else builtins.head vlanNames;
+  in
     ipOf pick h.addresses.${pick};
 
   # NixOS networking.hosts shape: { "192.168.23.1" = [ "router" "frigate" ]; ... }
   # Aggregates all of a host's VLAN IPs and folds extraNames onto the primary.
-  toNixosHosts =
-    let
-      flat = lib.flatten (lib.mapAttrsToList
-        (name: h:
-          lib.mapAttrsToList
-            (vlanName: octet: {
-              ip = ipOf vlanName octet;
-              names = [ name ] ++ lib.optionals (ipOf vlanName octet == primaryIp h) (h.extraNames or [ ]);
-            })
-            h.addresses)
-        hosts);
-    in
+  toNixosHosts = let
+    flat = lib.flatten (lib.mapAttrsToList
+      (name: h:
+        lib.mapAttrsToList
+        (vlanName: octet: {
+          ip = ipOf vlanName octet;
+          names = [name] ++ lib.optionals (ipOf vlanName octet == primaryIp h) (h.extraNames or []);
+        })
+        h.addresses)
+      hosts);
+  in
     lib.foldl'
-      (acc: e: acc // { ${e.ip} = (acc.${e.ip} or [ ]) ++ e.names; })
-      { }
-      flat;
+    (acc: e: acc // {${e.ip} = (acc.${e.ip} or []) ++ e.names;})
+    {}
+    flat;
 
   # dnsmasq dhcp-host shape: ["mac[,mac...],ip" ...] for every host that has a
   # MAC. A host may list extraMacs (other NICs on the same box); dnsmasq accepts
@@ -526,26 +546,24 @@ lib: rec {
   # line, so each NIC resolves to the host's primary IP rather than a pool lease.
   toDnsmasqDhcpHost =
     lib.mapAttrsToList
-      (name: h: "${lib.concatStringsSep "," ([ h.mac ] ++ (h.extraMacs or [ ]))},${primaryIp h}")
-      (lib.filterAttrs (_: h: (h.mac or null) != null) hosts);
+    (name: h: "${lib.concatStringsSep "," ([h.mac] ++ (h.extraMacs or []))},${primaryIp h}")
+    (lib.filterAttrs (_: h: (h.mac or null) != null) hosts);
 
   # dnsmasq address shape: ["/fqdn/ip" ...]. Each host (and each of its
   # extraNames) gets bare, lan-FQDN and public-FQDN records, all pointing at
   # the primary IP. Generates a superset of the prior hand-written list.
-  toDnsmasqAddress =
-    let
-      namesFor = name: h: [ name ] ++ (h.extraNames or [ ]);
-      recordsFor = name: h:
-        let
-          ip = primaryIp h;
-        in
-        lib.flatten (map
-          (n: [
-            "/${n}/${ip}"
-            "/${n}.${domains.lan}/${ip}"
-            "/${n}.${domains.public}/${ip}"
-          ])
-          (namesFor name h));
+  toDnsmasqAddress = let
+    namesFor = name: h: [name] ++ (h.extraNames or []);
+    recordsFor = name: h: let
+      ip = primaryIp h;
     in
+      lib.flatten (map
+        (n: [
+          "/${n}/${ip}"
+          "/${n}.${domains.lan}/${ip}"
+          "/${n}.${domains.public}/${ip}"
+        ])
+        (namesFor name h));
+  in
     lib.flatten (lib.mapAttrsToList recordsFor hosts);
 }
