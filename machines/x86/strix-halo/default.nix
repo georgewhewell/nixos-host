@@ -109,6 +109,7 @@ in
 
   boot.kernelParams =
     [
+      "iommu=pt"
     ]
     # Netboot hosts skip profiles/uefi-boot.nix, which normally supplies
     # these host-class tuning params.
