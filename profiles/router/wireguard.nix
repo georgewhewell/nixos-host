@@ -97,6 +97,7 @@ in
       chain forward {
         type filter hook forward priority -5; policy accept;
 
+        iifname "${hydraBuilders.interface}" ct state established,related accept comment "allow replies to Hydra builders"
         iifname "${hydraBuilders.interface}" ip saddr ${hydraBuilders.ax102.wg} ip daddr { ${hydraBuilderIpSet} } tcp dport 22 accept comment "allow Hydra builder SSH"
         iifname "${hydraBuilders.interface}" drop comment "isolate Hydra builder tunnel"
       }

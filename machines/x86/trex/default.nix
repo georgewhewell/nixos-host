@@ -225,7 +225,7 @@ in {
     };
   };
 
-  # Kimi Code web UI (`kimi server`). Bound to the LAN address only, so it is
+  # Kimi Code web UI (`kimi web`). Bound to the LAN address only, so it is
   # reachable from the LAN and from WG clients (the router terminates WG and
   # routes 192.168.24.0/24 into the LAN) but not via the public IPv6 or any
   # other interface. Bearer-token auth stays on; the token is printed to the
@@ -244,7 +244,7 @@ in {
       ExecStart = let
         kimi-code = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.kimi-code;
       in
-        "${kimi-code}/bin/kimi server run --foreground --log-level info --port 58627 "
+        "${kimi-code}/bin/kimi web --no-open --log-level info --port 58627 "
         + "--host ${network.primaryIp self} "
         + "--allowed-host trex "
         + "--allowed-host ${network.fqdn "trex"} "

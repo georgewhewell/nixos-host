@@ -1,10 +1,29 @@
+{ config
+, lib
+, pkgs
+, inputs
+, ...
+}:
+let
+  grokPackage = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.grok;
+  grokWithPrivateOtel = pkgs.symlinkJoin {
+    name = "grok-private-otel";
+    paths = [ grokPackage ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/grok \
+        --set GROK_EXTERNAL_OTEL "1" \
+        --set OTEL_METRICS_EXPORTER "otlp" \
+        --set OTEL_LOGS_EXPORTER "otlp" \
+        --set OTEL_EXPORTER_OTLP_ENDPOINT "http://10.101.0.2:4318" \
+        --set OTEL_EXPORTER_OTLP_PROTOCOL "http/protobuf" \
+        --set OTEL_SERVICE_NAME "grok-cli" \
+        --set OTEL_LOG_USER_PROMPTS "false" \
+        --set OTEL_LOG_TOOL_DETAILS "false"
+    '';
+  };
+in
 {
-  config,
-  lib,
-  pkgs,
-  inputs,
-  ...
-}: {
   imports = [
     ./vim/default.nix
     ./git.nix
@@ -32,7 +51,7 @@
       OnCalendar = "daily";
       Persistent = true;
     };
-    Install.WantedBy = ["timers.target"];
+    Install.WantedBy = [ "timers.target" ];
   };
 
   programs.claude-code = {
@@ -99,6 +118,14 @@
     # pi is nix-managed; its self-updater and version check are useless here.
     PI_SKIP_VERSION_CHECK = "1";
     PI_TELEMETRY = "0";
+
+    # Grok Build is Nix-managed. Disable its updater and every optional
+    # client-side reporting path independently.
+    GROK_DISABLE_AUTOUPDATER = "1";
+    GROK_TELEMETRY_ENABLED = "0";
+    GROK_TELEMETRY_TRACE_UPLOAD = "0";
+    GROK_FEEDBACK_ENABLED = "0";
+    GROK_CRASH_HANDLER = "0";
   };
 
   # Keep plain `pi` useful for both hosted providers and an ad-hoc local
@@ -193,7 +220,12 @@
       opencode
       # codex
     ])
-    ++ [ inputs.nix-strix-halo.packages.${pkgs.stdenv.hostPlatform.system}.pi-wrap ]
+    ++ [
+      # xAI's Grok Build CLI. Vendor telemetry remains disabled above; this
+      # wrapper enables only its content-free external OTel stream to ax102.
+      grokWithPrivateOtel
+      inputs.nix-strix-halo.packages.${pkgs.stdenv.hostPlatform.system}.pi-wrap
+    ]
     ++ lib.optionals (pkgs.stdenv.hostPlatform.system == "x86_64-linux") [
       # evm tooling
       # solc
