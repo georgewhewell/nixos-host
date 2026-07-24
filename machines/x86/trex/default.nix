@@ -808,9 +808,9 @@ in {
     options = ["subvol=/persist" "compress=zstd" "noatime" "flushoncommit"];
   };
 
-  # No fileSystems entry references pool3d anymore, but it still hosts
-  # victoriametrics (dataset mountpoint property) and the not-yet-migrated
-  # remainder; import it explicitly until it is retired.
+  # Keep pool3d imported temporarily as the rollback source for the migrated
+  # datasets and old ZFS root. No live filesystem depends on it after the
+  # VictoriaMetrics cutover.
   boot.zfs.extraPools = ["pool3d"];
 
   # Big, cold /var trees live on bpool instead of the small fast root.
@@ -826,12 +826,21 @@ in {
     options = ["nofail"];
   };
 
-  # Do not let either service fall through to the disposable tmpfs root if its
-  # bpool dataset fails to mount.
+  fileSystems."/mnt/victoriametrics" = {
+    device = "bpool/trex/victoriametrics";
+    fsType = "zfs";
+    options = ["nofail"];
+  };
+
+  # Do not let services fall through to the disposable tmpfs root if their
+  # bpool datasets fail to mount.
   systemd.services."container@arr-servers".unitConfig.RequiresMountsFor = [
     "/var/lib/nixos-containers"
   ];
   systemd.services.libvirtd.unitConfig.RequiresMountsFor = ["/var/lib/libvirt"];
+  systemd.services.victoriametrics.unitConfig.RequiresMountsFor = [
+    "/mnt/victoriametrics"
+  ];
 
   # Explicit persistent state — everything else on / dies at reboot.
   # Dead tenants of the old root (lighthouse, reth, namada, bitcoind, ...)
@@ -982,8 +991,8 @@ in {
     in {
       enable = true;
       interval = "hourly";
-      # Keep snapshotting the old pool while its migration-source datasets and
-      # live VictoriaMetrics dataset remain; retire this after the final cutover.
+      # Keep snapshotting the old pool while its migration-source datasets
+      # remain as rollback copies; retire this with the pool.
       datasets."pool3d" = {
         recursive = true;
         autosnap = true;
