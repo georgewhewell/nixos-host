@@ -99,6 +99,13 @@
       flake = false;
     };
 
+    # Broadcom PCI/PCIe SDK 8.23 source used by PlxSvc and PlxCm.
+    # The extracted vendor tree is kept on the shared /mnt/Home volume.
+    plx-sdk = {
+      url = "path:/mnt/Home/pde/PlxSdk";
+      flake = false;
+    };
+
     # Local btop checkout with GPU clock/power history graphs and
     # gpu_graph_upper/lower selection (gpu-metric-graphs branch), for
     # testing on fuckup before upstreaming.

@@ -1502,6 +1502,19 @@
         "type": "github"
       }
     },
+    "plx-sdk": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784890384,
+        "narHash": "sha256-M5S4DxKCCwuQDMMmH+YVASEcykmS6Mf/SQSG0f28G9c=",
+        "path": "/mnt/Home/pde/PlxSdk",
+        "type": "path"
+      },
+      "original": {
+        "path": "/mnt/Home/pde/PlxSdk",
+        "type": "path"
+      }
+    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1581,6 +1594,7 @@
         "openwrt-imagebuilder": "openwrt-imagebuilder",
         "openzfs": "openzfs",
         "p2pool-exporter": "p2pool-exporter",
+        "plx-sdk": "plx-sdk",
         "rust-overlay": "rust-overlay",
         "sops-nix": "sops-nix",
         "thunderbolt-ibverbs-kernel": "thunderbolt-ibverbs-kernel",

@@ -1,0 +1,29 @@
+--- a/Driver/Makefile
++++ b/Driver/Makefile
+@@ -23,0 +24,3 @@ ifneq ($(KERNELRELEASE),)
++    # Kbuild no longer consumes the SDK's legacy EXTRA_CFLAGS here.
++    ccflags-y += -D$(ARCH) -DARCH=$(ARCH) $(PLX_OPT) -I$(PLX_DIR)/Include
++
+--- a/Driver/Source.PlxSvc/Dispatch.c
++++ b/Driver/Source.PlxSvc/Dispatch.c
+@@ -324,5 +324,2 @@ Dispatch_mmap(
+-    // Set the region as page-locked
+-    vma->vm_flags |= VM_RESERVED;
+-
+-    // Set flag for I/O resource
+-    vma->vm_flags |= VM_IO;
++    // Set page-locked and I/O flags through the modern VMA helper.
++    vm_flags_set( vma, VM_RESERVED | VM_IO );
+--- a/Driver/Source.PlxSvc/Driver.c
++++ b/Driver/Source.PlxSvc/Driver.c
+@@ -56 +56 @@
+-#include <linux/vermagic.h>
++#include <generated/utsrelease.h>
+--- a/Driver/Source.PlxSvc/PciFunc.c
++++ b/Driver/Source.PlxSvc/PciFunc.c
+@@ -884 +884 @@ PlxProbeForEcamBase(
+-    Va_RSDT = ioremap_prot( PLX_PTR_TO_INT( pAcpi_Addr_RSDT ), 1024, 0 );
++    Va_RSDT = ioremap( PLX_PTR_TO_INT( pAcpi_Addr_RSDT ), 1024 );
+@@ -922 +922 @@ PlxProbeForEcamBase(
+-        Va_Table = ioremap_prot( PLX_PTR_TO_INT( pAddress ), 200, 0 );
++        Va_Table = ioremap( PLX_PTR_TO_INT( pAddress ), 200 );
