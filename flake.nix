@@ -573,7 +573,7 @@
         });
 
       diskoConfigurations = {
-        trex-boot-ssds = import ./machines/x86/trex/boot-ssds.disko.nix;
+        trex-boot-ssds = import ./machines/x86/trex/root-btrfs.disko.nix;
       };
 
       colmenaHive = inputs.colmena.lib.makeHive colmena;

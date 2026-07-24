@@ -85,6 +85,9 @@ in {
   */
   sconfig = {
     profile = "desktop";
+    # Ephemeral tmpfs root (2026-07-24); explicit persistence list below.
+    # sops/ssh host identity moves to /persist/etc/ssh via profiles/sops.nix.
+    impermanence.enable = true;
     mounts.beegfs = {
       enable = true;
       clientAddresses = [(network.primaryIp self)];
@@ -94,7 +97,8 @@ in {
       enableVscodeServer = true;
     };
     xmrig = {
-      enable = true;
+      # Parked with the chain services (its upstream is the local p2pool).
+      enable = false;
       package = pkgs.xmrig-zen4;
       uclampMax = 95;
     };
@@ -110,6 +114,25 @@ in {
     };
   };
 
+  # Chain services parked during the pool3d retirement (2026-07-24): their
+  # random-IO workloads don't belong on bpool's HDDs, and the chains can
+  # re-sync ("catch up") once they get a fast home again. Data sits dormant
+  # at bpool/trex/{monero,tari,p2pool}.
+  services.monero.enable = lib.mkForce false;
+  services.tari.enable = lib.mkForce false;
+  services.p2pool.enable = lib.mkForce false;
+  services.p2pool-exporter.enable = lib.mkForce false;
+
+  # services/p2pool.nix still declares the encrypted merge-mining environment
+  # while the daemon is parked. Retain its account so sops can install that
+  # secret with the intended ownership on a fresh impermanent root.
+  users.users.p2pool = {
+    isSystemUser = true;
+    group = "p2pool";
+    home = "/var/lib/p2pool";
+  };
+  users.groups.p2pool = {};
+
   systemd.timers.gcp-ddns.timerConfig.OnActiveSec = lib.mkForce "15min";
   systemd.services.gcp-ddns.serviceConfig.TimeoutStartSec = "15min";
 
@@ -118,6 +141,11 @@ in {
     system-features = ["gccarch-znver4" "kvm" "big-parallel" "nixos-test"];
     download-buffer-size = 104857600; # 100 MiB
     http-connections = 64;
+    # buildfarm-executor turns this on for CI rebuild speed, but on trex it
+    # pins the build-time closure of ~450 result/.direnv roots (~1T live
+    # store that nix-collect-garbage -d can never reclaim). Root must stay
+    # lean enough for the 2-disk Optane pair replacing pool3d.
+    keep-outputs = lib.mkForce false;
     # Sign locally-built store paths with our cache key so `nix copy` to
     # strix-1/strix-2 (which trust this key via modules/nix.nix) is
     # accepted without --no-check-sigs.
@@ -296,7 +324,8 @@ in {
   # This box runs an aggressive CPU + memory overclock and is the fleet's NAS
   # and NFS root, so RAS visibility is not optional: rasdaemon logs per-DIMM
   # correctable/uncorrectable ECC counts and decodes SMCA machine checks to
-  # /var/lib/rasdaemon (persistent root here — no impermanence). A rising CE
+  # /var/lib/rasdaemon (bind-mounted from /persist — see the persistence
+  # list). A rising CE
   # count on one DIMM is the early-warning that the memory OC has gone
   # marginal (usually thermal); WHEA/MCE catches core/fabric-OC errors that
   # ECC does NOT cover. `ras-mc-ctl --summary` / `--error-count` to read.
@@ -438,13 +467,13 @@ in {
   };
 
   fileSystems."/var/lib/qbittorrent" = {
-    device = "pool3d/root/downloads";
+    device = "bpool/trex/downloads";
     fsType = "zfs";
     options = ["nofail"];
   };
 
   fileSystems."/models" = {
-    device = "pool3d/root/models";
+    device = "bpool/trex/models";
     fsType = "zfs";
     options = ["nofail"];
   };
@@ -752,11 +781,144 @@ in {
     {device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81";}
   ];
 
+  # Ephemeral root (2026-07-24): tmpfs /, with /nix and /persist as btrfs
+  # subvolumes striped over the two P1600X Optanes (native 4Kn media, so
+  # sectorsize 4096; data raid0, metadata raid1, label "trexroot"). The old
+  # zfs root generations stay bootable from the ESP menu until pool3d is
+  # retired. flushoncommit: see profiles/router/usb-btrfs.nix for the
+  # rename-crash-consistency war story; this box runs an aggressive OC.
   fileSystems."/" = {
-    device = "pool3d/root/trex-root";
-    fsType = "zfs";
-    options = ["atime" "relatime"];
+    device = "tmpfs";
+    fsType = "tmpfs";
+    neededForBoot = true;
+    options = ["mode=755" "size=16G"];
   };
+
+  fileSystems."/nix" = {
+    device = "/dev/disk/by-label/trexroot";
+    fsType = "btrfs";
+    neededForBoot = true;
+    options = ["subvol=/nix" "compress=zstd" "noatime" "flushoncommit"];
+  };
+
+  fileSystems."/persist" = {
+    device = "/dev/disk/by-label/trexroot";
+    fsType = "btrfs";
+    neededForBoot = true;
+    options = ["subvol=/persist" "compress=zstd" "noatime" "flushoncommit"];
+  };
+
+  # No fileSystems entry references pool3d anymore, but it still hosts
+  # victoriametrics (dataset mountpoint property) and the not-yet-migrated
+  # remainder; import it explicitly until it is retired.
+  boot.zfs.extraPools = ["pool3d"];
+
+  # Big, cold /var trees live on bpool instead of the small fast root.
+  fileSystems."/var/lib/nixos-containers" = {
+    device = "bpool/trex/nixos-containers";
+    fsType = "zfs";
+    options = ["nofail"];
+  };
+
+  fileSystems."/var/lib/libvirt" = {
+    device = "bpool/trex/libvirt";
+    fsType = "zfs";
+    options = ["nofail"];
+  };
+
+  # Do not let either service fall through to the disposable tmpfs root if its
+  # bpool dataset fails to mount.
+  systemd.services."container@arr-servers".unitConfig.RequiresMountsFor = [
+    "/var/lib/nixos-containers"
+  ];
+  systemd.services.libvirtd.unitConfig.RequiresMountsFor = ["/var/lib/libvirt"];
+
+  # Explicit persistent state — everything else on / dies at reboot.
+  # Dead tenants of the old root (lighthouse, reth, namada, bitcoind, ...)
+  # are deliberately absent.
+  environment.persistence."/persist".directories = [
+    # infrastructure
+    "/var/lib/acme"
+    "/var/lib/samba"
+    "/var/lib/nfs"
+    {
+      directory = "/var/lib/syncoid";
+      user = "syncoid";
+      group = "syncoid";
+      mode = "0700";
+    }
+    "/var/lib/rasdaemon"
+    "/var/lib/fwupd"
+    "/var/lib/boltd"
+    "/var/lib/krb5kdc"
+    "/var/lib/docker"
+    # Host-side state bind-mounted into the arr-servers container.
+    "/var/lib/autobrr"
+    "/var/lib/radarr"
+    "/var/lib/sonarr"
+    {
+      directory = "/var/lib/grafana";
+      user = "grafana";
+      group = "grafana";
+      mode = "0700";
+    }
+    {
+      directory = "/var/lib/postgresql";
+      user = "postgres";
+      group = "postgres";
+      mode = "0755";
+    }
+    "/var/lib/OpenRGB"
+    "/var/lib/qui"
+    "/var/lib/systemd/linger"
+    # services
+    {
+      directory = "/var/lib/jellyfin";
+      user = "jellyfin";
+      group = "jellyfin";
+      mode = "0700";
+    }
+    # Exact live DynamicUser tenants. /var/lib/private itself must remain
+    # disposable: persisting that parent would also retain dead lighthouse,
+    # reth, llama-cpp, flood, and dnscrypt-proxy state forever.
+    "/var/lib/private/hellas"
+    "/var/lib/private/hellas-gateway"
+    "/var/lib/private/open-webui"
+    # Credentials for the root-owned gcp-ddns oneshot.
+    {
+      directory = "/root/.config/gcloud";
+      mode = "0700";
+    }
+    # fleet logserver: journals + netconsole capture survive reboots
+    {
+      directory = "/var/log/journal";
+      user = "root";
+      group = "systemd-journal";
+      mode = "2755";
+    }
+    "/var/log/netconsole"
+  ];
+
+  # systemd uses this host key to decrypt libvirt's encrypted credential.
+  # Persist the one key, not the rest of /var/lib/systemd.
+  environment.persistence."/persist".files = [
+    "/var/lib/systemd/credential.secret"
+  ];
+
+  # Seed list mirrors the persistence list (normalized entries).
+  sconfig.impermanence.seedExisting.directories =
+    map (entry:
+      if lib.isString entry
+      then entry
+      else entry.directory)
+    config.environment.persistence."/persist".directories;
+  sconfig.impermanence.seedExisting.files = [
+    "/var/lib/systemd/credential.secret"
+  ];
+
+  # Override the impermanence default: this box is the fleet logserver.
+  services.journald.storage = "persistent";
+  services.journald.extraConfig = "SystemMaxUse=4G";
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-label/TREXBOOTA";
@@ -790,7 +952,7 @@ in {
   '';
 
   fileSystems."/home/grw" = {
-    device = "pool3d/root/grw-home";
+    device = "bpool/trex/grw-home";
     fsType = "zfs";
     options = ["noatime" "nofail"];
   };
@@ -820,6 +982,8 @@ in {
     in {
       enable = true;
       interval = "hourly";
+      # Keep snapshotting the old pool while its migration-source datasets and
+      # live VictoriaMetrics dataset remain; retire this after the final cutover.
       datasets."pool3d" = {
         recursive = true;
         autosnap = true;
@@ -830,11 +994,32 @@ in {
       };
       datasets."pool3d/root/tari" = excluded;
       datasets."pool3d/root/monero" = excluded;
+      datasets."pool3d/root/models" = excluded;
+      # migrated data lives here now
+      datasets."bpool/trex" = {
+        recursive = true;
+        autosnap = true;
+        hourly = 24;
+        daily = 7;
+        weekly = 0;
+        monthly = 0;
+      };
+      datasets."bpool/Home" = {
+        autosnap = true;
+        hourly = 24;
+        daily = 7;
+        weekly = 0;
+        monthly = 0;
+      };
+      datasets."bpool/trex/tari" = excluded;
+      datasets."bpool/trex/monero" = excluded;
+      # re-downloadable model weights — no snapshots (churn is large, value is zero)
+      datasets."bpool/trex/models" = excluded;
     };
 
     # ZFS replication to fuckup
     syncoid = let
-      excludedDatasets = ["tari" "monero"];
+      excludedDatasets = ["tari" "monero" "models" "bitcoind"];
     in {
       enable = true;
       interval = "hourly";
@@ -1055,6 +1240,9 @@ in {
 
   # Create needed directories (no-ops if already exist)
   systemd.tmpfiles.rules = [
+    # Individual DynamicUser subtrees are persisted, not their parent. Keep the
+    # source-side parent private without turning it into a persistence catch-all.
+    "d /persist/var/lib/private 0700 root root -"
     # qBittorrent profile + incomplete on SSD (pool3d)
     "d /var/lib/qbittorrent 0775 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/incomplete 0775 qbittorrent qbittorrent -"
