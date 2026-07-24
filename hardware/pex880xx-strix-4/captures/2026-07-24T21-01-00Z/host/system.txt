@@ -1,0 +1,16 @@
+captured_utc=2026-07-24T21:05:16Z
+hostname=strix-4
+boot_id=41151440-98bc-4c6c-b896-bcaff023e1f8
+uname=Linux strix-4 7.2.0-rc2 #1-NixOS SMP PREEMPT_DYNAMIC Tue Jan  1 00:00:00 UTC 1980 x86_64 GNU/Linux
+cmdline=kernel init=/nix/store/26c7f3ibbbl142jbxlqr04nphbkvlp04-nixos-system-strix-4-26.11.20260718.61b7c44/init initrd=initrd panic=5 panic_on_oops=1 softlockup_panic=1 hung_task_panic=1 nmi_watchdog=panic,1 ttm.pages_limit=32505856 transparent_hugepage=always amdgpu.no_system_mem_limit=1 amd_pstate=guided amdgpu.gpu_recovery=1 ixgbe.allow_unsupported_sfp=1,1 iommu=pt msr.allow_writes=on mitigations=off root=fstab loglevel=4 amdgpu.ppfeaturemask=0xffffffff lsm=landlock,yama,bpf nix_registration=/nix/store/3wbvnfa83zadkr0p8k49gm6a505g3j2a-closure-info/registration
+current_system=/nix/store/26c7f3ibbbl142jbxlqr04nphbkvlp04-nixos-system-strix-4-26.11.20260718.61b7c44
+booted_system=/nix/store/26c7f3ibbbl142jbxlqr04nphbkvlp04-nixos-system-strix-4-26.11.20260718.61b7c44
+profile_system=/nix/store/26c7f3ibbbl142jbxlqr04nphbkvlp04-nixos-system-strix-4-26.11.20260718.61b7c44
+uptime=271.67
+module=not-loaded
+device=absent
+current_system_tool=absent
+capture_tool=/nix/store/skbai1c0iaqlgq2pk4lhdxv7h7m66nzk-plxcm-8.23/bin/PlxCm
+5645ae8425b15ea58b1fce7ac015cbe94993a6a2517a7d7f9c213f5adb8158ed  /nix/store/skbai1c0iaqlgq2pk4lhdxv7h7m66nzk-plxcm-8.23/bin/PlxCm
+available_module=/nix/store/w9vnvd6i8k4risp5h0262gpjiyrlmk2s-plx-sdk-svc-8.23/lib/modules/7.2.0-rc2/kernel/drivers/misc/PlxSvc.ko
+94ec6b6f0d87d227889d989c0fcc51245f8b0efc492c09877718e986373b10c0  /nix/store/w9vnvd6i8k4risp5h0262gpjiyrlmk2s-plx-sdk-svc-8.23/lib/modules/7.2.0-rc2/kernel/drivers/misc/PlxSvc.ko

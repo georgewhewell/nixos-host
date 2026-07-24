@@ -1,0 +1,14 @@
+current-time=2026-07-24T21:02:31Z
+uptime=106.14
+boots:
+IDX BOOT ID                          FIRST ENTRY                  LAST ENTRY
+  0 4115144098bc4c6cb896bcaff023e1f8 Fri 2026-07-24 23:00:47 CEST Fri 2026-07-24 23:02:24 CEST
+last-reboots:
+reboot   system boot  7.2.0-rc2        Fri Jul 24 23:00   still running
+
+wtmp begins Fri Jul 24 23:00:57 2026
+system-generations:
+   1   2026-07-24 23:00:59   (current)
+pstore-files:
+previous-boot-kernel-tail:
+No journal boot entry found for the specified boot (-1).

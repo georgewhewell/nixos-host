@@ -1,0 +1,369 @@
+0000:00:00.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Root Complex [1022:1507] (rev 02)
+0000:00:00.2 IOMMU [0806]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo IOMMU [1022:1508] (rev 02)
+0000:00:01.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+0000:00:01.1 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo PCIe USB4 Bridge [1022:150a] (rev 02)
+0000:00:01.2 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo PCIe USB4 Bridge [1022:150a] (rev 02)
+0000:00:02.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+0000:00:02.1 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo GPP Bridge [1022:150b] (rev 02)
+0000:00:02.2 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo GPP Bridge [1022:150b] (rev 02)
+0000:00:02.5 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo GPP Bridge [1022:150b] (rev 02)
+0000:00:03.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+0000:00:03.1 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo GPP Bridge [1022:150b]
+0000:00:08.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+0000:00:08.1 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Internal GPP Bridge to Bus [C:A] [1022:150c]
+0000:00:08.2 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Internal GPP Bridge to Bus [C:A] [1022:150c]
+0000:00:08.3 PCI bridge [0604]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Internal GPP Bridge to Bus [C:A] [1022:150c]
+0000:00:14.0 SMBus [0c05]: Advanced Micro Devices, Inc. [AMD] FCH SMBus Controller [1022:790b] (rev 71)
+0000:00:14.3 ISA bridge [0601]: Advanced Micro Devices, Inc. [AMD] FCH LPC Bridge [1022:790e] (rev 51)
+0000:00:18.0 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 0 [1022:12b8]
+0000:00:18.1 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 1 [1022:12b9]
+0000:00:18.2 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 2 [1022:12ba]
+0000:00:18.3 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 3 [1022:12bb]
+0000:00:18.4 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 4 [1022:12bc]
+0000:00:18.5 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 5 [1022:12bd]
+0000:00:18.6 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 6 [1022:12be]
+0000:00:18.7 Host bridge [0600]: Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 7 [1022:12bf]
+0000:c1:00.0 Ethernet controller [0200]: Realtek Semiconductor Co., Ltd. RTL8125 2.5GbE Controller [10ec:8125] (rev 05)
+0000:c2:00.0 SD Host controller [0805]: Genesys Logic, Inc GL9755 SD Host Controller [17a0:9755] (rev 01)
+0000:c3:00.0 Ethernet controller [0200]: Mellanox Technologies MT27800 Family [ConnectX-5] [15b3:1017]
+0000:c3:00.1 Ethernet controller [0200]: Mellanox Technologies MT27800 Family [ConnectX-5] [15b3:1017]
+0000:c4:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c5:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c5:04.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c5:08.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c5:0c.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c5:1c.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c6:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c7:10.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:c8:00.0 Ethernet controller [0200]: Mellanox Technologies MT42822 BlueField-2 integrated ConnectX-6 Dx network controller [15b3:a2d6] (rev 01)
+0000:c8:00.1 DMA controller [0801]: Mellanox Technologies MT42822 BlueField-2 SoC Management Interface [15b3:c2d3] (rev 01)
+0000:c9:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:ca:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:ca:10.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:cd:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:ce:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:ce:10.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:cf:00.0 Non-Volatile memory controller [0108]: Phison Electronics Corporation PS5021-E21 PCIe4 NVMe Controller (DRAM-less) [1987:5021] (rev 01)
+0000:d1:00.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:d2:14.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:d2:15.0 PCI bridge [0604]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:d5:00.0 Mass storage controller [0180]: Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010] (rev b0)
+0000:d6:00.0 Display controller [0380]: Advanced Micro Devices, Inc. [AMD/ATI] Strix Halo [Radeon Graphics / Radeon 8050S Graphics / Radeon 8060S Graphics] [1002:1586] (rev c1)
+0000:d6:00.1 Audio device [0403]: Advanced Micro Devices, Inc. [AMD/ATI] Radeon High Definition Audio Controller [1002:1640]
+0000:d6:00.2 Encryption controller [1080]: Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo CCP/ASP [1022:17e0]
+0000:d6:00.4 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1587]
+0000:d6:00.6 Audio device [0403]: Advanced Micro Devices, Inc. [AMD] Ryzen HD Audio Controller [1022:15e3]
+0000:d7:00.0 Non-Essential Instrumentation [1300]: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo PCIe Dummy Function [1022:150d]
+0000:d7:00.1 Signal processing controller [1180]: Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo Neural Processing Unit [1022:17f0] (rev 11)
+0000:d8:00.0 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1588]
+0000:d8:00.3 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1589]
+0000:d8:00.4 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:158b]
+0000:d8:00.5 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router [1022:158d]
+0000:d8:00.6 USB controller [0c03]: Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router [1022:158e]
+-[0000:00]-+-00.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Root Complex
+           +-00.2  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo IOMMU
+           +-01.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge
+           +-01.1-[01-60]--
+           +-01.2-[61-c0]--
+           +-02.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge
+           +-02.1-[c1]----00.0  Realtek Semiconductor Co., Ltd. RTL8125 2.5GbE Controller
+           +-02.2-[c2]----00.0  Genesys Logic, Inc GL9755 SD Host Controller
+           +-02.5-[c3]--+-00.0  Mellanox Technologies MT27800 Family [ConnectX-5]
+           |            \-00.1  Mellanox Technologies MT27800 Family [ConnectX-5]
+           +-03.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge
+           +-03.1-[c4-d5]----00.0-[c5-d5]--+-00.0-[c6-c8]----00.0-[c7-c8]----10.0-[c8]--+-00.0  Mellanox Technologies MT42822 BlueField-2 integrated ConnectX-6 Dx network controller
+           |                               |                                            \-00.1  Mellanox Technologies MT42822 BlueField-2 SoC Management Interface
+           |                               +-04.0-[c9-cc]----00.0-[ca-cc]--+-00.0-[cb]--
+           |                               |                               \-10.0-[cc]--
+           |                               +-08.0-[cd-d0]----00.0-[ce-d0]--+-00.0-[cf]----00.0  Phison Electronics Corporation PS5021-E21 PCIe4 NVMe Controller (DRAM-less)
+           |                               |                               \-10.0-[d0]--
+           |                               +-0c.0-[d1-d4]----00.0-[d2-d4]--+-14.0-[d3]--
+           |                               |                               \-15.0-[d4]--
+           |                               \-1c.0-[d5]----00.0  Broadcom / LSI PEX880xx PCIe Gen 4 Switch
+           +-08.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge
+           +-08.1-[d6]--+-00.0  Advanced Micro Devices, Inc. [AMD/ATI] Strix Halo [Radeon Graphics / Radeon 8050S Graphics / Radeon 8060S Graphics]
+           |            +-00.1  Advanced Micro Devices, Inc. [AMD/ATI] Radeon High Definition Audio Controller
+           |            +-00.2  Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo CCP/ASP
+           |            +-00.4  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI
+           |            \-00.6  Advanced Micro Devices, Inc. [AMD] Ryzen HD Audio Controller
+           +-08.2-[d7]--+-00.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo PCIe Dummy Function
+           |            \-00.1  Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo Neural Processing Unit
+           +-08.3-[d8]--+-00.0  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI
+           |            +-00.3  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI
+           |            +-00.4  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI
+           |            +-00.5  Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router
+           |            \-00.6  Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router
+           +-14.0  Advanced Micro Devices, Inc. [AMD] FCH SMBus Controller
+           +-14.3  Advanced Micro Devices, Inc. [AMD] FCH LPC Bridge
+           +-18.0  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 0
+           +-18.1  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 1
+           +-18.2  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 2
+           +-18.3  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 3
+           +-18.4  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 4
+           +-18.5  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 5
+           +-18.6  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 6
+           \-18.7  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 7
+0000:00:03.1 PCI bridge: Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo GPP Bridge (prog-if 00 [Normal decode])
+	Subsystem: Advanced Micro Devices, Inc. [AMD] Device 1453
+	Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+	Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+	Latency: 0, Cache Line Size: 64 bytes
+	Interrupts: MSI(X) routed to IRQ 37
+	IOMMU group: 9
+	Bus: primary=00, secondary=c4, subordinate=d5, sec-latency=0
+	I/O behind bridge: [disabled] [32-bit]
+	Memory behind bridge: dc000000-dd3fffff [size=20M] [32-bit]
+	Prefetchable memory behind bridge: 9826000000-9828ffffff [size=48M] [32-bit]
+	Secondary status: 66MHz- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort+ <SERR- <PERR-
+	BridgeCtl: Parity- SERR+ NoISA- VGA- VGA16+ MAbort- >Reset- FastB2B-
+		PriDiscTmr- SecDiscTmr- DiscTmrStat- DiscTmrSERREn-
+	Capabilities: [50] Power Management version 3
+		Flags: PMEClk- DSI- D1- D2- AuxCurrent=0mA PME(D0+,D1-,D2-,D3hot+,D3cold+)
+		Status: D0 NoSoftRst- PME-Enable- DSel=0 DScale=0 PME-
+	Capabilities: [58] Express (v2) Root Port (Slot+), IntMsgNum 0
+		DevCap:	MaxPayload 256 bytes, PhantFunc 0
+			ExtTag+ RBE+ TEE-IO-
+		DevCtl:	CorrErr- NonFatalErr- FatalErr- UnsupReq-
+			RlxdOrd+ ExtTag+ PhantFunc- AuxPwr- NoSnoop+
+			MaxPayload 256 bytes, MaxReadReq 512 bytes
+		DevSta:	CorrErr- NonFatalErr- FatalErr- UnsupReq- AuxPwr- TransPend-
+		LnkCap:	Port #0, Speed 16GT/s, Width x8, ASPM not supported
+			ClockPM- Surprise- LLActRep+ BwNot+ ASPMOptComp+
+		LnkCtl:	ASPM Disabled; RCB 64 bytes, LnkDisable- CommClk-
+			ExtSynch- ClockPM- AutWidDis- BWInt+ AutBWInt+ FltModeDis-
+		LnkSta:	Speed 16GT/s, Width x4
+			TrErr- Train- SlotClk+ DLActive+ BWMgmt- ABWMgmt-
+		SltCap:	AttnBtn- PwrCtrl- MRL- AttnInd- PwrInd- HotPlug- Surprise-
+			Slot #0, PowerLimit 75W; Interlock- NoCompl+
+		SltCtl:	Enable: AttnBtn- PwrFlt- MRL- PresDet- CmdCplt- HPIrq- LinkChg-
+			Control: AttnInd Unknown, PwrInd Unknown, Power- Interlock-
+		SltSta:	Status: AttnBtn- PowerFlt- MRL- CmdCplt- PresDet+ Interlock-
+			Changed: MRL- PresDet- LinkState+
+		RootCap: CRSVisible+
+		RootCtl: ErrCorrectable- ErrNon-Fatal- ErrFatal- PMEIntEna+ CRSVisible+
+		RootSta: PME ReqID 0000, PMEStatus- PMEPending-
+		DevCap2: Completion Timeout: Range ABCD, TimeoutDis+ NROPrPrP- LTR+
+			 10BitTagComp+ 10BitTagReq+ OBFF Not Supported, ExtFmt+ EETLPPrefix+, MaxEETLPPrefixes 1
+			 EmergencyPowerReduction Not Supported, EmergencyPowerReductionInit-
+			 FRS- LN System CLS Not Supported, TPHComp+ ExtTPHComp- ARIFwd+
+			 AtomicOpsCap: Routing+ 32bit+ 64bit+ 128bitCAS-
+		DevCtl2: Completion Timeout: 65ms to 210ms, TimeoutDis- ARIFwd-
+			 AtomicOpsCtl: ReqEn- EgressBlck-
+			 IDOReq- IDOCompl- LTR- EmergencyPowerReductionReq-
+			 10BitTagReq- OBFF Disabled, EETLPPrefixBlk-
+		LnkCap2: Supported Link Speeds: 2.5-16GT/s, Crosslink- Retimer+ 2Retimers+ DRS-
+		LnkCtl2: Target Link Speed: 16GT/s, EnterCompliance- SpeedDis-
+			 Transmit Margin: Normal Operating Range, EnterModifiedCompliance- ComplianceSOS-
+			 Compliance Preset/De-emphasis: -6dB de-emphasis, 0dB preshoot
+		LnkSta2: Current De-emphasis Level: -3.5dB, EqualizationComplete+ EqualizationPhase1+
+			 EqualizationPhase2+ EqualizationPhase3+ LinkEqualizationRequest-
+			 Retimer- 2Retimers- CrosslinkRes: unsupported, FltMode-
+	Capabilities: [a0] MSI: Enable+ Count=1/1 Maskable- 64bit+
+		Address: 00000000fee00000  Data: 0000
+	Capabilities: [c0] Subsystem: Advanced Micro Devices, Inc. [AMD] Device 1453
+	Capabilities: [c8] HyperTransport: MSI Mapping Enable+ Fixed+
+	Capabilities: [100 v1] Vendor Specific Information: ID=0001 Rev=1 Len=010 <?>
+	Capabilities: [270 v1] Secondary PCI Express
+		LnkCtl3: LnkEquIntrruptEn- PerformEqu-
+		LaneErrStat: 0
+	Capabilities: [2a0 v1] Access Control Services
+		ACSCap:	SrcValid+ TransBlk+ ReqRedir+ CmpltRedir+ UpstreamFwd+ EgressCtrl- DirectTrans+
+		ACSCtl:	SrcValid+ TransBlk- ReqRedir+ CmpltRedir+ UpstreamFwd+ EgressCtrl- DirectTrans-
+	Capabilities: [370 v1] L1 PM Substates
+		L1SubCap: PCI-PM_L1.2- PCI-PM_L1.1+ ASPM_L1.2- ASPM_L1.1- L1_PM_Substates+
+		L1SubCtl1: PCI-PM_L1.2- PCI-PM_L1.1- ASPM_L1.2- ASPM_L1.1-
+		L1SubCtl2:
+	Capabilities: [400 v1] Data Link Feature <?>
+	Capabilities: [410 v1] Physical Layer 16.0 GT/s
+		Phy16Sta: EquComplete+ EquPhase1+ EquPhase2+ EquPhase3+ LinkEquRequest-
+	Capabilities: [440 v1] Lane Margining at the Receiver
+		PortCap: Uses Driver-
+		PortSta: MargReady+ MargSoftReady-
+	Kernel driver in use: pcieport
+
+0000:c4:00.0 PCI bridge: Broadcom / LSI PEX880xx PCIe Gen 4 Switch (rev b0) (prog-if 00 [Normal decode])
+	Subsystem: Broadcom / LSI PEX88096 98 lane/port PCIe Gen 4.0 Switch
+	Control: I/O+ Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+	Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+	Latency: 0, Cache Line Size: 64 bytes
+	Interrupts: pin B routed to IRQ 41
+	IOMMU group: 20
+	Region 0: Memory at dc000000 (32-bit, non-prefetchable) [size=16M]
+	Bus: primary=c4, secondary=c5, subordinate=d5, sec-latency=0
+	I/O behind bridge: [disabled] [32-bit]
+	Memory behind bridge: dd000000-dd3fffff [size=4M] [32-bit]
+	Prefetchable memory behind bridge: 9826000000-9828ffffff [size=48M] [32-bit]
+	Secondary status: 66MHz- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- <SERR- <PERR-
+	BridgeCtl: Parity- SERR+ NoISA- VGA- VGA16+ MAbort- >Reset- FastB2B-
+		PriDiscTmr- SecDiscTmr- DiscTmrStat- DiscTmrSERREn-
+	Capabilities: [40] Power Management version 3
+		Flags: PMEClk- DSI- D1- D2- AuxCurrent=0mA PME(D0+,D1-,D2-,D3hot+,D3cold+)
+		Status: D0 NoSoftRst+ PME-Enable- DSel=0 DScale=0 PME-
+	Capabilities: [48] MSI: Enable- Count=1/8 Maskable+ 64bit+
+		Address: 0000000000000000  Data: 0000
+		Masking: 00000000  Pending: 00000000
+	Capabilities: [68] Express (v2) Upstream Port, IntMsgNum 0
+		DevCap:	MaxPayload 2048 bytes, PhantFunc 0
+			ExtTag- AttnBtn- AttnInd- PwrInd- RBE+ SlotPowerLimit 75W TEE-IO-
+		DevCtl:	CorrErr- NonFatalErr- FatalErr- UnsupReq-
+			RlxdOrd+ ExtTag- PhantFunc- AuxPwr- NoSnoop+
+			MaxPayload 256 bytes, MaxReadReq 128 bytes
+		DevSta:	CorrErr+ NonFatalErr- FatalErr- UnsupReq+ AuxPwr- TransPend-
+		LnkCap:	Port #0, Speed 16GT/s, Width x16, ASPM L0s L1, Exit Latency L0s <4us, L1 <32us
+			ClockPM- Surprise- LLActRep- BwNot+ ASPMOptComp+
+		LnkCtl:	ASPM Disabled; LnkDisable- CommClk-
+			ExtSynch- ClockPM- AutWidDis- BWInt- AutBWInt- FltModeDis-
+		LnkSta:	Speed 16GT/s, Width x4 (downgraded)
+			TrErr- Train- SlotClk- DLActive- BWMgmt- ABWMgmt-
+		DevCap2: Completion Timeout: Not Supported, TimeoutDis- NROPrPrP- LTR+
+			 10BitTagComp+ 10BitTagReq- OBFF Via message, ExtFmt+ EETLPPrefix-
+			 EmergencyPowerReduction Not Supported, EmergencyPowerReductionInit-
+			 FRS-
+			 AtomicOpsCap: Routing+ 32bit- 64bit- 128bitCAS-
+		DevCtl2: Completion Timeout: 50us to 50ms, TimeoutDis-
+			 AtomicOpsCtl: EgressBlck-
+			 IDOReq- IDOCompl- LTR- EmergencyPowerReductionReq-
+			 10BitTagReq- OBFF Disabled, EETLPPrefixBlk-
+		LnkCap2: Supported Link Speeds: 2.5-16GT/s, Crosslink+ Retimer+ 2Retimers+ DRS-
+		LnkCtl2: Target Link Speed: 16GT/s, EnterCompliance- SpeedDis-
+			 Transmit Margin: Normal Operating Range, EnterModifiedCompliance- ComplianceSOS-
+			 Compliance Preset/De-emphasis: -6dB de-emphasis, 0dB preshoot
+		LnkSta2: Current De-emphasis Level: -3.5dB, EqualizationComplete+ EqualizationPhase1+
+			 EqualizationPhase2+ EqualizationPhase3+ LinkEqualizationRequest-
+			 Retimer- 2Retimers- CrosslinkRes: Upstream Port, FltMode-
+	Capabilities: [a4] Subsystem: Broadcom / LSI PEX88096 98 lane/port PCIe Gen 4.0 Switch
+	Capabilities: [100 v1] Device Serial Number 00-80-5e-10-b4-28-46-2d
+	Capabilities: [fb4 v1] Advanced Error Reporting
+		UESta:	DLP- SDES- TLP- FCP- CmpltTO- CmpltAbrt- UnxCmplt- RxOF- MalfTLP-
+			ECRC- UnsupReq- ACSViol- UncorrIntErr- BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked- DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		UEMsk:	DLP- SDES- TLP- FCP- CmpltTO- CmpltAbrt- UnxCmplt- RxOF- MalfTLP-
+			ECRC- UnsupReq- ACSViol- UncorrIntErr+ BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked+ DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		UESvrt:	DLP+ SDES+ TLP- FCP+ CmpltTO- CmpltAbrt- UnxCmplt- RxOF+ MalfTLP+
+			ECRC- UnsupReq- ACSViol- UncorrIntErr+ BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked- DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		CESta:	RxErr- BadTLP- BadDLLP- Rollover- Timeout- AdvNonFatalErr+ CorrIntErr- HeaderOF-
+		CEMsk:	RxErr- BadTLP- BadDLLP- Rollover- Timeout- AdvNonFatalErr+ CorrIntErr+ HeaderOF+
+		AERCap:	First Error Pointer: 1f, ECRCGenCap+ ECRCGenEn- ECRCChkCap+ ECRCChkEn-
+			MultHdrRecCap- MultHdrRecEn- TLPPfxPres- HdrLogCap-
+		HeaderLog: 00000000 00000000 00000000 00000000
+	Capabilities: [138 v1] Power Budgeting <?>
+	Capabilities: [db4 v1] Secondary PCI Express
+		LnkCtl3: LnkEquIntrruptEn- PerformEqu-
+		LaneErrStat: 0
+	Capabilities: [148 v1] Virtual Channel
+		Caps:	LPEVC=0 RefClk=100ns PATEntryBits=8
+		Arb:	Fixed- WRR32- WRR64- WRR128-
+		Ctrl:	ArbSelect=Fixed
+		Status:	InProgress-
+		VC0:	Caps:	PATOffset=03 MaxTimeSlots=1 RejSnoopTrans-
+			Arb:	Fixed- WRR32- WRR64+ WRR128- TWRR128- WRR256-
+			Ctrl:	Enable+ ID=0 ArbSelect=WRR64 TC/VC=ff
+			Status:	NegoPending- InProgress-
+			Port Arbitration Table <?>
+	Capabilities: [af4 v1] Data Link Feature <?>
+	Capabilities: [d00 v1] Physical Layer 16.0 GT/s
+		Phy16Sta: EquComplete+ EquPhase1+ EquPhase2+ EquPhase3+ LinkEquRequest-
+	Capabilities: [d40 v1] Lane Margining at the Receiver
+		PortCap: Uses Driver-
+		PortSta: MargReady+ MargSoftReady-
+	Capabilities: [b70 v1] Vendor Specific Information: ID=0001 Rev=0 Len=010 <?>
+	Capabilities: [e00 v1] Multicast
+		McastCap: MaxGroups 64, ECRCRegen+
+		McastCtl: NumGroups 1, Enable-
+		McastBAR: IndexPos 0, BaseAddr 0000000000000000
+		McastReceiveVec:      0000000000000000
+		McastBlockAllVec:     0000000000000000
+		McastBlockUntransVec: 0000000000000000
+		McastOverlayBAR: OverlaySize 0 (disabled), BaseAddr 0000000000000000
+	Capabilities: [b00 v1] Latency Tolerance Reporting
+		Max snoop latency: 0ns
+		Max no snoop latency: 0ns
+	Kernel driver in use: pcieport
+
+0000:cf:00.0 Non-Volatile memory controller: Phison Electronics Corporation PS5021-E21 PCIe4 NVMe Controller (DRAM-less) (rev 01) (prog-if 02 [NVM Express])
+	Subsystem: Phison Electronics Corporation PS5021-E21 PCIe4 NVMe Controller (DRAM-less)
+	Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+	Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast >TAbort- <TAbort- <MAbort- >SERR- <PERR- INTx-
+	Latency: 0, Cache Line Size: 64 bytes
+	Interrupts: pin B disabled, MSI(X) routed to IRQ 54, 59-90
+	IOMMU group: 36
+	Region 0: Memory at dd300000 (64-bit, non-prefetchable) [size=16K]
+	Capabilities: [80] Express (v2) Endpoint, IntMsgNum 0
+		DevCap:	MaxPayload 512 bytes, PhantFunc 0, Latency L0s unlimited, L1 unlimited
+			ExtTag+ AttnBtn- AttnInd- PwrInd- RBE+ FLReset+ SlotPowerLimit 25W TEE-IO-
+		DevCtl:	CorrErr- NonFatalErr- FatalErr- UnsupReq-
+			RlxdOrd+ ExtTag+ PhantFunc- AuxPwr- NoSnoop+ FLReset-
+			MaxPayload 256 bytes, MaxReadReq 512 bytes
+		DevSta:	CorrErr+ NonFatalErr- FatalErr- UnsupReq+ AuxPwr- TransPend-
+		LnkCap:	Port #1, Speed 16GT/s, Width x4, ASPM L1, Exit Latency L1 unlimited
+			ClockPM- Surprise- LLActRep- BwNot- ASPMOptComp+
+		LnkCtl:	ASPM Disabled; RCB 64 bytes, LnkDisable- CommClk-
+			ExtSynch- ClockPM- AutWidDis- BWInt- AutBWInt- FltModeDis-
+		LnkSta:	Speed 16GT/s, Width x4
+			TrErr- Train- SlotClk+ DLActive- BWMgmt- ABWMgmt-
+		DevCap2: Completion Timeout: Range ABCD, TimeoutDis+ NROPrPrP- LTR+
+			 10BitTagComp+ 10BitTagReq- OBFF Not Supported, ExtFmt+ EETLPPrefix-
+			 EmergencyPowerReduction Not Supported, EmergencyPowerReductionInit-
+			 FRS- TPHComp- ExtTPHComp-
+			 AtomicOpsCap: 32bit- 64bit- 128bitCAS-
+		DevCtl2: Completion Timeout: 50us to 50ms, TimeoutDis-
+			 AtomicOpsCtl: ReqEn-
+			 IDOReq- IDOCompl- LTR- EmergencyPowerReductionReq-
+			 10BitTagReq- OBFF Disabled, EETLPPrefixBlk-
+		LnkCap2: Supported Link Speeds: 2.5-16GT/s, Crosslink- Retimer+ 2Retimers+ DRS-
+		LnkCtl2: Target Link Speed: 16GT/s, EnterCompliance- SpeedDis-
+			 Transmit Margin: Normal Operating Range, EnterModifiedCompliance- ComplianceSOS-
+			 Compliance Preset/De-emphasis: -6dB de-emphasis, 0dB preshoot
+		LnkSta2: Current De-emphasis Level: -6dB, EqualizationComplete+ EqualizationPhase1+
+			 EqualizationPhase2+ EqualizationPhase3+ LinkEqualizationRequest-
+			 Retimer- 2Retimers- CrosslinkRes: Upstream Port, FltMode-
+	Capabilities: [d0] MSI-X: Enable+ Count=33 Masked-
+		Vector table: BAR=0 offset=00002000
+		PBA: BAR=0 offset=00003000
+	Capabilities: [e0] MSI: Enable- Count=1/32 Maskable+ 64bit+
+		Address: 0000000000000000  Data: 0000
+		Masking: 00000000  Pending: 00000000
+	Capabilities: [f8] Power Management version 3
+		Flags: PMEClk- DSI- D1- D2- AuxCurrent=0mA PME(D0-,D1-,D2-,D3hot-,D3cold-)
+		Status: D0 NoSoftRst+ PME-Enable- DSel=0 DScale=0 PME-
+	Capabilities: [100 v1] Latency Tolerance Reporting
+		Max snoop latency: 0ns
+		Max no snoop latency: 0ns
+	Capabilities: [110 v1] L1 PM Substates
+		L1SubCap: PCI-PM_L1.2+ PCI-PM_L1.1+ ASPM_L1.2+ ASPM_L1.1+ L1_PM_Substates+
+			  PortCommonModeRestoreTime=10us PortTPowerOnTime=50us
+		L1SubCtl1: PCI-PM_L1.2- PCI-PM_L1.1- ASPM_L1.2- ASPM_L1.1-
+			   T_CommonMode=0us LTR1.2_Threshold=0ns
+		L1SubCtl2: T_PwrOn=10us
+	Capabilities: [128 v1] Alternative Routing-ID Interpretation (ARI)
+		ARICap:	MFVC- ACS-, Next Function: 0
+		ARICtl:	MFVC- ACS-, Function Group: 0
+	Capabilities: [1e0 v1] Data Link Feature <?>
+	Capabilities: [200 v2] Advanced Error Reporting
+		UESta:	DLP- SDES- TLP- FCP- CmpltTO- CmpltAbrt- UnxCmplt- RxOF- MalfTLP-
+			ECRC- UnsupReq- ACSViol- UncorrIntErr- BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked- DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		UEMsk:	DLP- SDES- TLP- FCP- CmpltTO- CmpltAbrt- UnxCmplt- RxOF- MalfTLP-
+			ECRC- UnsupReq- ACSViol- UncorrIntErr+ BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked- DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		UESvrt:	DLP+ SDES- TLP- FCP+ CmpltTO- CmpltAbrt- UnxCmplt- RxOF+ MalfTLP+
+			ECRC- UnsupReq- ACSViol- UncorrIntErr+ BlockedTLP- AtomicOpBlocked- TLPBlockedErr-
+			PoisonTLPBlocked- DMWrReqBlocked- IDECheck- MisIDETLP- PCRC_CHECK- TLPXlatBlocked-
+		CESta:	RxErr- BadTLP- BadDLLP- Rollover- Timeout- AdvNonFatalErr+ CorrIntErr- HeaderOF-
+		CEMsk:	RxErr- BadTLP- BadDLLP- Rollover- Timeout- AdvNonFatalErr+ CorrIntErr+ HeaderOF-
+		AERCap:	First Error Pointer: 00, ECRCGenCap- ECRCGenEn- ECRCChkCap+ ECRCChkEn-
+			MultHdrRecCap- MultHdrRecEn- TLPPfxPres- HdrLogCap-
+		HeaderLog: 04000001 00000103 cf020000 20ccce57
+	Capabilities: [300 v1] Secondary PCI Express
+		LnkCtl3: LnkEquIntrruptEn- PerformEqu-
+		LaneErrStat: 0
+	Capabilities: [340 v1] Physical Layer 16.0 GT/s
+		Phy16Sta: EquComplete+ EquPhase1+ EquPhase2+ EquPhase3+ LinkEquRequest-
+	Capabilities: [378 v1] Lane Margining at the Receiver
+		PortCap: Uses Driver-
+		PortSta: MargReady+ MargSoftReady-
+	Kernel driver in use: nvme
+	Kernel modules: nvme
+

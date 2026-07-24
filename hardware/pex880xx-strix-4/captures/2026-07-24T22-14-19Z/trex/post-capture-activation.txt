@@ -1,0 +1,39 @@
+/nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44
+/nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44
+/nix/store/84sawslx9np3jynl6fbpxigyr4mh9n8s-strix-netboot-strix-4
+/nix/store/lanm8xsf64qma8pylmjpcafya3p6s9p8-netboot-strix-4.ipxe
+4bfd48d61114dcf09708007dd4d1225967a73e6cfd0c7edf9ecc64778a44c3f8  /var/lib/strix-netboot/strix-4/netboot.ipxe
+active
+active
+/nix/store/84sawslx9np3jynl6fbpxigyr4mh9n8s-strix-netboot-strix-4
+   1   2026-07-24 23:20:27   
+   2   2026-07-24 23:25:29   
+   3   2026-07-24 23:59:05   
+   4   2026-07-25 00:01:19   
+   5   2026-07-25 00:11:44   
+   6   2026-07-25 00:15:02   (current)
+Jul 25 00:11:44 trex nixos[72666]: switching to system configuration /nix/store/zk7hx6kxdkrwcrlxw3cjvrjdqc8bm9wi-nixos-system-trex-26.11pre-git
+Jul 25 00:11:47 trex nixos[72666]: finished switching to system configuration /nix/store/zk7hx6kxdkrwcrlxw3cjvrjdqc8bm9wi-nixos-system-trex-26.11pre-git
+Jul 25 00:12:26 trex sudo[74333]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/nix/store/djm95h1pnahhrbv2h65w0hx5iz42n4v0-nixos-rebuild-ng-26.11/bin/nixos-rebuild build --flake path:/mnt/Home/src/nixos-config#trex --option builders
+Jul 25 00:13:35 trex sudo[78046]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/systemctl stop sanoid.timer syncoid-pool3d-to-archive.timer
+Jul 25 00:13:35 trex sudo[78049]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/systemctl stop victoriametrics.service
+Jul 25 00:13:35 trex sudo[78056]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/sync
+Jul 25 00:13:35 trex sudo[78061]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs snapshot pool3d/root/victoriametrics@bpool-final-cutover
+Jul 25 00:13:35 trex sudo[78044]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs send -nPv -R -I @mig-final pool3d/root/victoriametrics@bpool-final-cutover
+Jul 25 00:13:46 trex sudo[78255]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs unmount pool3d/root/victoriametrics
+Jul 25 00:13:46 trex sudo[78265]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs unmount bpool/trex/victoriametrics
+Jul 25 00:13:47 trex sudo[78294]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs send -R -I @mig-final pool3d/root/victoriametrics@bpool-final-cutover
+Jul 25 00:13:47 trex sudo[78295]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs receive -u -F bpool/trex/victoriametrics
+Jul 25 00:13:53 trex sudo[78626]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs set mountpoint=none canmount=off pool3d/root/victoriametrics
+Jul 25 00:13:53 trex sudo[78643]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/zfs set mountpoint=legacy canmount=on bpool/trex/victoriametrics
+Jul 25 00:13:53 trex sudo[78652]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/mkdir -p /mnt/victoriametrics
+Jul 25 00:13:53 trex sudo[78655]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/wrappers/bin/mount -t zfs bpool/trex/victoriametrics /mnt/victoriametrics
+Jul 25 00:14:03 trex sudo[78793]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/nix/store/djm95h1pnahhrbv2h65w0hx5iz42n4v0-nixos-rebuild-ng-26.11/bin/nixos-rebuild switch --flake path:/mnt/Home/src/nixos-config#trex --option builders
+Jul 25 00:15:03 trex nixos[79884]: switching to system configuration /nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44
+Jul 25 00:15:05 trex systemd[1]: nixos-rebuild-switch-to-configuration.service: Main process exited, code=exited, status=101/n/a
+Jul 25 00:15:05 trex systemd[1]: nixos-rebuild-switch-to-configuration.service: Failed with result 'exit-code'.
+Jul 25 00:17:38 trex sudo[83836]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/systemctl start victoriametrics.service
+Jul 25 00:17:46 trex sudo[84178]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/run/current-system/sw/bin/systemctl start sanoid.timer syncoid-pool3d-to-archive.timer
+Jul 25 00:18:04 trex sudo[84439]:      grw : PWD=/mnt/Home/src/nixos-config ; USER=root ; COMMAND=/nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44/bin/switch-to-configuration switch
+Jul 25 00:18:04 trex nixos[84441]: switching to system configuration /nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44
+Jul 25 00:18:12 trex nixos[84441]: finished switching to system configuration /nix/store/f1rbp9rlgn9brq944d1c1bgxdqh5aaxb-nixos-system-trex-26.11.20260718.61b7c44

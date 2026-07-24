@@ -1,0 +1,12 @@
+[package]
+name = "pexctl"
+version = "0.1.0"
+edition = "2021"
+description = "Open command-line tooling for Broadcom/PLX PEX switch configuration"
+license = "MIT"
+repository = "https://github.com/robcohen/nixos-config"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

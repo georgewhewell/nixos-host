@@ -1,0 +1,159 @@
+[    0.003228] ACPI: SSDT 0x000000007032E000 0097A5 (v02 AMD    INTGPPC_ 00000001 INTL 20230331)
+[    0.003229] ACPI: SSDT 0x0000000070329000 0046FB (v02 AMD    INTGPPA_ 00000001 INTL 20230331)
+[    0.003230] ACPI: SSDT 0x0000000070328000 000C14 (v02 AMD    CPMGPIO0 00000001 INTL 20230331)
+[    0.003231] ACPI: SSDT 0x0000000070327000 00008D (v02 AMD    CPMMSLPI 00000001 INTL 20230331)
+[    0.003232] ACPI: SSDT 0x0000000070326000 000D18 (v02 AMD    WwanSsdt 00000001 INTL 20230331)
+[    0.003233] ACPI: SSDT 0x0000000070325000 000B07 (v02 AMD    SDCR     00000001 INTL 20230331)
+[    0.003234] ACPI: SSDT 0x0000000070324000 000ABC (v02 AMD    LOM      00000001 INTL 20230331)
+[    0.003235] ACPI: SSDT 0x0000000070323000 000C69 (v02 AMD    WLAN     00000001 INTL 20230331)
+[    0.003236] ACPI: SSDT 0x0000000070322000 000CE4 (v02 AMD    NVME     00000001 INTL 20230331)
+[    0.003237] ACPI: SSDT 0x0000000070321000 000CE4 (v02 AMD    NVME     00000001 INTL 20230331)
+[    0.003238] ACPI: SSDT 0x000000007031F000 0013BA (v02 AMD    GpMsSsdt 00000001 INTL 20230331)
+[    0.003239] ACPI: SSDT 0x000000007031E000 00005E (v02 AMD    GP10     00000001 INTL 20230331)
+[    0.003240] ACPI: SSDT 0x000000007031C000 0018B3 (v02 AMD    UPEP     00000001 INTL 20230331)
+[    0.003241] ACPI: Reserving FACP table memory at [mem 0x70371000-0x70371113]
+[    0.003242] ACPI: Reserving DSDT table memory at [mem 0x70367000-0x703704e5]
+[    0.003242] ACPI: Reserving FACS table memory at [mem 0x70b12000-0x70b1203f]
+[    0.003242] ACPI: Reserving MSDM table memory at [mem 0x7037c000-0x7037c054]
+[    0.003242] ACPI: Reserving SSDT table memory at [mem 0x70373000-0x7037b48c]
+[    0.003242] ACPI: Reserving SSDT table memory at [mem 0x70372000-0x703723f0]
+[    0.003243] ACPI: Reserving FIDT table memory at [mem 0x70366000-0x7036609b]
+[    0.003243] ACPI: Reserving MCFG table memory at [mem 0x70365000-0x7036503b]
+[    0.003243] ACPI: Reserving HPET table memory at [mem 0x70364000-0x70364037]
+[    0.003243] ACPI: Reserving UEFI table memory at [mem 0x70b10000-0x70b10047]
+[    0.003244] ACPI: Reserving FPDT table memory at [mem 0x70363000-0x70363043]
+[    0.003244] ACPI: Reserving VFCT table memory at [mem 0x7035e000-0x70362483]
+--
+[    0.602970] pci 0000:c5:08.0: PCI bridge to [bus cd-d0]
+[    0.603033] pci 0000:ce:00.0: [1000:c010] type 01 class 0x060400 PCIe Switch Downstream Port
+[    0.603052] pci 0000:ce:00.0: PCI bridge to [bus cf]
+[    0.603151] pci 0000:ce:00.0: PME# supported from D0 D3hot D3cold
+[    0.603301] pci 0000:ce:10.0: [1000:c010] type 01 class 0x060400 PCIe Switch Downstream Port
+[    0.603320] pci 0000:ce:10.0: PCI bridge to [bus d0]
+[    0.603418] pci 0000:ce:10.0: PME# supported from D0 D3hot D3cold
+[    0.603529] pci 0000:cd:00.0: PCI bridge to [bus ce-d0]
+[    0.603603] pci 0000:cf:00.0: [1987:5021] type 00 class 0x010802 PCIe Endpoint
+[    0.603639] pci 0000:cf:00.0: BAR 0 [mem 0x00000000-0x00003fff 64bit]
+[    0.603650] pci 0000:cf:00.0: Max Payload Size set to 256 (was 128, max 512)
+[    0.605693] pci 0000:ce:00.0: PCI bridge to [bus cf]
+[    0.605724] pci 0000:ce:10.0: PCI bridge to [bus d0]
+[    0.605794] pci 0000:d1:00.0: [1000:c010] type 01 class 0x060400 PCIe Switch Upstream Port
+[    0.605812] pci 0000:d1:00.0: PCI bridge to [bus d2-d4]
+[    0.605881] pci 0000:d1:00.0: PME# supported from D0 D3hot D3cold
+[    0.605929] pci 0000:d1:00.0: 63.012 Gb/s available PCIe bandwidth, limited by 16.0 GT/s PCIe x4 link at 0000:00:03.1 (capable of 252.048 Gb/s with 16.0 GT/s PCIe x16 link)
+[    0.605962] pci 0000:c5:0c.0: PCI bridge to [bus d1-d4]
+[    0.606040] pci 0000:d2:14.0: [1000:c010] type 01 class 0x060400 PCIe Switch Downstream Port
+[    0.606059] pci 0000:d2:14.0: PCI bridge to [bus d3]
+[    0.606155] pci 0000:d2:14.0: PME# supported from D0 D3hot D3cold
+[    0.606290] pci 0000:d2:15.0: [1000:c010] type 01 class 0x060400 PCIe Switch Downstream Port
+[    0.606309] pci 0000:d2:15.0: PCI bridge to [bus d4]
+[    0.606405] pci 0000:d2:15.0: PME# supported from D0 D3hot D3cold
+[    0.606511] pci 0000:d1:00.0: PCI bridge to [bus d2-d4]
+[    0.606539] pci 0000:d2:14.0: PCI bridge to [bus d3]
+--
+[    0.646090] pci 0000:00:02.1: PCI bridge to [bus c1]
+[    0.646091] pci 0000:00:02.1:   bridge window [io  0xf000-0xffff]
+[    0.646095] pci 0000:00:02.1:   bridge window [mem 0xde300000-0xde3fffff]
+[    0.646101] pci 0000:00:02.2: PCI bridge to [bus c2]
+[    0.646105] pci 0000:00:02.2:   bridge window [mem 0xde200000-0xde2fffff]
+[    0.646111] pci 0000:00:02.5: PCI bridge to [bus c3]
+[    0.646114] pci 0000:00:02.5:   bridge window [mem 0xde000000-0xde1fffff]
+[    0.646117] pci 0000:00:02.5:   bridge window [mem 0x9820000000-0x9825ffffff 64bit pref]
+[    0.646125] pci 0000:c5:08.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646127] pci 0000:c5:08.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646131] pci 0000:c5:08.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646133] pci 0000:c5:08.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646135] pci 0000:c7:10.0: PCI bridge to [bus c8]
+[    0.646144] pci 0000:c7:10.0:   bridge window [mem 0xdd000000-0xdd1fffff]
+[    0.646147] pci 0000:c7:10.0:   bridge window [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.646152] pci 0000:c6:00.0: PCI bridge to [bus c7-c8]
+[    0.646156] pci 0000:c6:00.0:   bridge window [mem 0xdd000000-0xdd1fffff]
+[    0.646158] pci 0000:c6:00.0:   bridge window [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.646163] pci 0000:c5:00.0: PCI bridge to [bus c6-c8]
+[    0.646167] pci 0000:c5:00.0:   bridge window [mem 0xdd000000-0xdd1fffff]
+[    0.646170] pci 0000:c5:00.0:   bridge window [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.646175] pci 0000:ca:00.0: PCI bridge to [bus cb]
+[    0.646184] pci 0000:ca:10.0: PCI bridge to [bus cc]
+[    0.646193] pci 0000:c9:00.0: PCI bridge to [bus ca-cc]
+[    0.646202] pci 0000:c5:04.0: PCI bridge to [bus c9-cc]
+[    0.646211] pci 0000:cd:00.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646213] pci 0000:cd:00.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646214] pci 0000:cd:00.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646215] pci 0000:cd:00.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646216] pci 0000:ce:00.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646218] pci 0000:ce:00.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646219] pci 0000:ce:00.0: bridge window [mem size 0x00100000]: can't assign; no space
+[    0.646220] pci 0000:ce:00.0: bridge window [mem size 0x00100000]: failed to assign
+[    0.646221] pci 0000:cf:00.0: BAR 0 [mem size 0x00004000 64bit]: can't assign; no space
+[    0.646223] pci 0000:cf:00.0: BAR 0 [mem size 0x00004000 64bit]: failed to assign
+[    0.646225] pci 0000:cf:00.0: BAR 0 [mem size 0x00004000 64bit]: can't assign; no space
+[    0.646226] pci 0000:cf:00.0: BAR 0 [mem size 0x00004000 64bit]: failed to assign
+[    0.646227] pci 0000:ce:00.0: PCI bridge to [bus cf]
+[    0.646236] pci 0000:ce:10.0: PCI bridge to [bus d0]
+[    0.646245] pci 0000:cd:00.0: PCI bridge to [bus ce-d0]
+[    0.646254] pci 0000:c5:08.0: PCI bridge to [bus cd-d0]
+[    0.646263] pci 0000:d2:14.0: PCI bridge to [bus d3]
+[    0.646272] pci 0000:d2:15.0: PCI bridge to [bus d4]
+[    0.646280] pci 0000:d1:00.0: PCI bridge to [bus d2-d4]
+[    0.646289] pci 0000:c5:0c.0: PCI bridge to [bus d1-d4]
+[    0.646298] pci 0000:c5:1c.0: PCI bridge to [bus d5]
+[    0.646302] pci 0000:c5:1c.0:   bridge window [mem 0xdd200000-0xdd2fffff]
+[    0.646308] pci 0000:c4:00.0: PCI bridge to [bus c5-d5]
+[    0.646312] pci 0000:c4:00.0:   bridge window [mem 0xdd000000-0xdd2fffff]
+[    0.646315] pci 0000:c4:00.0:   bridge window [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.646320] pci 0000:00:03.1: PCI bridge to [bus c4-d5]
+[    0.646323] pci 0000:00:03.1:   bridge window [mem 0xdc000000-0xdd2fffff]
+--
+[    0.648369] pci 0000:c8:00.0: Adding to iommu group 28
+[    0.648414] pci 0000:c8:00.1: Adding to iommu group 29
+[    0.648431] pci 0000:c9:00.0: Adding to iommu group 30
+[    0.648450] pci 0000:ca:00.0: Adding to iommu group 31
+[    0.648469] pci 0000:ca:10.0: Adding to iommu group 32
+[    0.648485] pci 0000:cd:00.0: Adding to iommu group 33
+[    0.648504] pci 0000:ce:00.0: Adding to iommu group 34
+[    0.648522] pci 0000:ce:10.0: Adding to iommu group 35
+[    0.648540] pci 0000:cf:00.0: Adding to iommu group 36
+[    0.648557] pci 0000:d1:00.0: Adding to iommu group 37
+[    0.648576] pci 0000:d2:14.0: Adding to iommu group 38
+[    0.648594] pci 0000:d2:15.0: Adding to iommu group 39
+[    0.648601] pci 0000:d5:00.0: Adding to iommu group 25
+[    0.648640] pci 0000:d6:00.0: Adding to iommu group 40
+[    0.648657] pci 0000:d6:00.1: Adding to iommu group 41
+[    0.648675] pci 0000:d6:00.2: Adding to iommu group 42
+[    0.648693] pci 0000:d6:00.4: Adding to iommu group 43
+[    0.648711] pci 0000:d6:00.6: Adding to iommu group 44
+[    0.648729] pci 0000:d7:00.0: Adding to iommu group 45
+[    0.648748] pci 0000:d7:00.1: Adding to iommu group 46
+[    0.648767] pci 0000:d8:00.0: Adding to iommu group 47
+[    0.648785] pci 0000:d8:00.3: Adding to iommu group 48
+[    0.648803] pci 0000:d8:00.4: Adding to iommu group 49
+[    0.648822] pci 0000:d8:00.5: Adding to iommu group 50
+--
+[    2.430264] usb usb4: Product: xHCI Host Controller
+[    2.430265] usb usb4: Manufacturer: Linux 7.2.0-rc2 xhci-hcd
+[    2.430266] usb usb4: SerialNumber: 0000:d8:00.0
+[    2.430338] hub 4-0:1.0: USB hub found
+[    2.430356] hub 4-0:1.0: 2 ports detected
+[    2.431133] xhci_hcd 0000:d8:00.3: xHCI Host Controller
+[    2.431139] xhci_hcd 0000:d8:00.3: new USB bus registered, assigned bus number 5
+[    2.431494] xhci_hcd 0000:d8:00.3: hcc params 0x0118ffc5 hci version 0x120 quirks 0x0000000200000010
+[    2.431743] nvme 0000:cf:00.0: platform quirk: setting simple suspend
+[    2.431830] xhci_hcd 0000:d8:00.3: xHCI Host Controller
+[    2.431832] xhci_hcd 0000:d8:00.3: new USB bus registered, assigned bus number 6
+[    2.431834] xhci_hcd 0000:d8:00.3: Host supports USB 3.1 Enhanced SuperSpeed
+[    2.431865] nvme 0000:cf:00.0: error -ENODEV: probe failed
+[    2.431893] usb usb5: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 7.02
+[    2.431947] usb usb5: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[    2.431949] usb usb5: Product: xHCI Host Controller
+[    2.431950] usb usb5: Manufacturer: Linux 7.2.0-rc2 xhci-hcd
+[    2.431951] usb usb5: SerialNumber: 0000:d8:00.3
+[    2.432058] hub 5-0:1.0: USB hub found
+[    2.432065] hub 5-0:1.0: 1 port detected
+[    2.432497] usb usb6: We don't know the algorithms for LPM for this host, disabling LPM.
+[    2.432525] usb usb6: New USB device found, idVendor=1d6b, idProduct=0003, bcdDevice= 7.02
+[    2.432527] usb usb6: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[    2.432527] usb usb6: Product: xHCI Host Controller
+[    2.432528] usb usb6: Manufacturer: Linux 7.2.0-rc2 xhci-hcd
+[    2.432529] usb usb6: SerialNumber: 0000:d8:00.3
+[    2.432613] hub 6-0:1.0: USB hub found
+[    2.432630] hub 6-0:1.0: 1 port detected

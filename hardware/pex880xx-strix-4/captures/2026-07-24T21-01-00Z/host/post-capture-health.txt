@@ -1,0 +1,6 @@
+captured_utc=2026-07-24T21:05:29Z
+uptime=284.59
+nvme_state=live
+nvme_bdf=0000:cf:00.0
+aer_or_nvme_errors:
+pex_count=18

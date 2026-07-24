@@ -1,0 +1,17 @@
+README.md 1746 bytes
+SHA256SUMS 1565 bytes
+bluefield2/system.txt 1041 bytes
+strix-4/cmdline.txt 563 bytes
+strix-4/config-space/0000_00_03_1.bin 4096 bytes
+strix-4/config-space/0000_c4_00_0.bin 4096 bytes
+strix-4/config-space/0000_c5_08_0.bin 4096 bytes
+strix-4/config-space/0000_cd_00_0.bin 4096 bytes
+strix-4/config-space/0000_ce_00_0.bin 4096 bytes
+strix-4/config-space/0000_ce_10_0.bin 4096 bytes
+strix-4/config-space/0000_cf_00_0.bin 4096 bytes
+strix-4/config-space/0000_d5_00_0.bin 4096 bytes
+strix-4/dmesg-pci-allocation.txt 11227 bytes
+strix-4/healthy-vs-current.txt 2731 bytes
+strix-4/pci.txt 11441 bytes
+strix-4/resources.txt 8860 bytes
+strix-4/system.txt 768 bytes

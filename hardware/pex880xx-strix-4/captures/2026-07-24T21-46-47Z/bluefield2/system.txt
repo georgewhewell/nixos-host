@@ -1,0 +1,19 @@
+captured_utc=2026-07-24T21:48:55Z
+uptime=231.89
+boot_id=8fd07ae8-7f33-4b9c-89c2-dc5d4e542ffe
+uname=Linux bluefield2 6.12.94 #1-NixOS SMP Fri Jun 19 11:42:39 UTC 2026 aarch64 GNU/Linux
+current_system=/nix/store/2pf7f0bvpm5fy8db1nlzrqawh8cb749k-nixos-system-bluefield2-26.11pre-git
+booted_system=/nix/store/2pf7f0bvpm5fy8db1nlzrqawh8cb749k-nixos-system-bluefield2-26.11pre-git
+profile_system=/nix/store/2pf7f0bvpm5fy8db1nlzrqawh8cb749k-nixos-system-bluefield2-26.11pre-git
+root=/dev/mmcblk0p2 btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=5,subvol=/
+pci-tree:
+-[0000:00]---00.0-[01-03]----00.0-[02-03]----00.0-[03]----00.0  Mellanox Technologies MT42822 BlueField-2 integrated ConnectX-6 Dx network controller [15b3:a2d6]
+nvme_controllers:
+pex_devices:
+block_devices:
+NAME         MODEL SERIAL      SIZE STATE TRAN
+mmcblk0            0x4d2447a6 58.3G       mmc
+mmcblk0boot0                     4M       mmc
+mmcblk0boot1                     4M       mmc
+zram0                          7.8G       
+pcie_nvme_errors:

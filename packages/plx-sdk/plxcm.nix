@@ -12,6 +12,8 @@ stdenv.mkDerivation {
   inherit src;
   sourceRoot = "source";
 
+  patches = [./plxcm-spi-filename.patch];
+
   nativeBuildInputs = [gnumake];
 
   buildPhase = ''

@@ -1,0 +1,9 @@
+sys_vendor=Bosgame
+product_name=BeyondMax Series
+product_version=Version 1.0
+board_vendor=Bosgame
+board_name=AXB35-02
+board_version=Version 1.0
+bios_vendor=American Megatrends International, LLC.
+bios_version=1.07
+bios_date=09/12/2025

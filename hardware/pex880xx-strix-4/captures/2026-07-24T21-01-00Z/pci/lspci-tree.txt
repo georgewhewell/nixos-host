@@ -1,0 +1,43 @@
+-[0000:00]-+-00.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Root Complex [1022:1507]
+           +-00.2  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo IOMMU [1022:1508]
+           +-01.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+           +-01.1-[01-60]--
+           +-01.2-[61-c0]--
+           +-02.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+           +-02.1-[c1]----00.0  Realtek Semiconductor Co., Ltd. RTL8125 2.5GbE Controller [10ec:8125]
+           +-02.2-[c2]----00.0  Genesys Logic, Inc GL9755 SD Host Controller [17a0:9755]
+           +-02.5-[c3]--+-00.0  Mellanox Technologies MT27800 Family [ConnectX-5] [15b3:1017]
+           |            \-00.1  Mellanox Technologies MT27800 Family [ConnectX-5] [15b3:1017]
+           +-03.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+           +-03.1-[c4-d5]----00.0-[c5-d5]--+-00.0-[c6-c8]----00.0-[c7-c8]----10.0-[c8]--+-00.0  Mellanox Technologies MT42822 BlueField-2 integrated ConnectX-6 Dx network controller [15b3:a2d6]
+           |                               |                                            \-00.1  Mellanox Technologies MT42822 BlueField-2 SoC Management Interface [15b3:c2d3]
+           |                               +-04.0-[c9-cc]----00.0-[ca-cc]--+-00.0-[cb]--
+           |                               |                               \-10.0-[cc]--
+           |                               +-08.0-[cd-d0]----00.0-[ce-d0]--+-00.0-[cf]----00.0  Phison Electronics Corporation PS5021-E21 PCIe4 NVMe Controller (DRAM-less) [1987:5021]
+           |                               |                               \-10.0-[d0]--
+           |                               +-0c.0-[d1-d4]----00.0-[d2-d4]--+-14.0-[d3]--
+           |                               |                               \-15.0-[d4]--
+           |                               \-1c.0-[d5]----00.0  Broadcom / LSI PEX880xx PCIe Gen 4 Switch [1000:c010]
+           +-08.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo Dummy Host Bridge [1022:1509]
+           +-08.1-[d6]--+-00.0  Advanced Micro Devices, Inc. [AMD/ATI] Strix Halo [Radeon Graphics / Radeon 8050S Graphics / Radeon 8060S Graphics] [1002:1586]
+           |            +-00.1  Advanced Micro Devices, Inc. [AMD/ATI] Radeon High Definition Audio Controller [1002:1640]
+           |            +-00.2  Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo CCP/ASP [1022:17e0]
+           |            +-00.4  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1587]
+           |            \-00.6  Advanced Micro Devices, Inc. [AMD] Ryzen HD Audio Controller [1022:15e3]
+           +-08.2-[d7]--+-00.0  Advanced Micro Devices, Inc. [AMD] Strix/Strix Halo PCIe Dummy Function [1022:150d]
+           |            \-00.1  Advanced Micro Devices, Inc. [AMD] Strix/Krackan/Strix Halo Neural Processing Unit [1022:17f0]
+           +-08.3-[d8]--+-00.0  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1588]
+           |            +-00.3  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:1589]
+           |            +-00.4  Advanced Micro Devices, Inc. [AMD] Strix Halo USB 3.1 xHCI [1022:158b]
+           |            +-00.5  Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router [1022:158d]
+           |            \-00.6  Advanced Micro Devices, Inc. [AMD] Strix Halo USB4 Host Router [1022:158e]
+           +-14.0  Advanced Micro Devices, Inc. [AMD] FCH SMBus Controller [1022:790b]
+           +-14.3  Advanced Micro Devices, Inc. [AMD] FCH LPC Bridge [1022:790e]
+           +-18.0  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 0 [1022:12b8]
+           +-18.1  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 1 [1022:12b9]
+           +-18.2  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 2 [1022:12ba]
+           +-18.3  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 3 [1022:12bb]
+           +-18.4  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 4 [1022:12bc]
+           +-18.5  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 5 [1022:12bd]
+           +-18.6  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 6 [1022:12be]
+           \-18.7  Advanced Micro Devices, Inc. [AMD] Strix Halo Data Fabric; Function 7 [1022:12bf]

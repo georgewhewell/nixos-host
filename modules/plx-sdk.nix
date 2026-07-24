@@ -23,6 +23,9 @@ in {
     # PlxSvc is a broad service/debug driver, so loading remains deliberate.
     boot.extraModulePackages = [plxSvc];
 
-    environment.systemPackages = [plxCm];
+    environment.systemPackages = [
+      plxCm
+      pkgs.pexctl
+    ];
   };
 }

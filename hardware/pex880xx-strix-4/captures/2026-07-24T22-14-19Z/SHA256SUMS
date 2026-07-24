@@ -1,0 +1,16 @@
+c91d75c949dbd8ccfcf09d2476cb702aeb57a3646b6cf67afd11c9f7a52757b5  ./README.md
+8ebe7f073d52a2a1e378da6ea2dadfb41d6d20cadc039d1c90e3c61ee0f6bd32  ./bluefield2/system.txt
+58c55ce39de190a3128944a2eb054cc93e382d05fb2954044b0bcc9d3375c17a  ./strix-4/config-space/0000_00_03_1.bin
+5374efe7633d21677041fe925388802b205f4dd4942be90f1e29253deae8f4c3  ./strix-4/config-space/0000_c4_00_0.bin
+11e463f77e320f03e8bc399a5ae88645fea87c60af3dfe6aae0bd7e3f811654e  ./strix-4/config-space/0000_c5_08_0.bin
+71ebc96e37bc08410d34203652009a28588b779ca3e6c19dae4481ba58392b1a  ./strix-4/config-space/0000_cd_00_0.bin
+ed302799cb20faa0793ba7475f941e4a8b0d0604aa83b1e332b0c13926a47ee9  ./strix-4/config-space/0000_ce_00_0.bin
+3a6aa7c2cb3d4783894a3f3a2867d73606415f0a840be49589df7eb4bfd03de7  ./strix-4/config-space/0000_cf_00_0.bin
+72e9f3cf9a695804408a71f8d72ae48296243c5533caa097e8bf055a92173a2d  ./strix-4/dmesg-pci-allocation.txt
+26c06c2d9b3a95216c177ad1ad37cfb60e8ef9cb78c78f7ca3d6dd05ee99d4da  ./strix-4/pci.txt
+01810d91063ba3fdc65e6590c334e9e55bab926acf5f19210597dffc91b85c11  ./strix-4/resources.txt
+732e29e2f9707ee40f28f3c8a2973d521e106be4f7205a2887d9c2b6485b5a72  ./strix-4/storage.txt
+ac4fe5cb1019f1845163bddd417464e9b0a2b4f69917ab98c72a7aee7a0eeb7f  ./strix-4/system.txt
+c880e813e15717eec42c88ae403f5aa9f993cfc2342f6f79ea4ac334874c4cc4  ./trex/post-capture-activation.txt
+4bfd48d61114dcf09708007dd4d1225967a73e6cfd0c7edf9ecc64778a44c3f8  ./trex/served-netboot.ipxe
+9c6066a636ab29ebb0eb60e06e92194cf0aa68ed730ce1e17975f97ed65ef8ef  ./trex/system.txt

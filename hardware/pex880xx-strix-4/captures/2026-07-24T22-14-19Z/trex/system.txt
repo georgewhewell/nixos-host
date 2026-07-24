@@ -1,0 +1,10 @@
+2026-07-24T22:15:01Z
+trex
+63644cc2-2983-47d3-a299-0381a34eb732
+/nix/store/zk7hx6kxdkrwcrlxw3cjvrjdqc8bm9wi-nixos-system-trex-26.11pre-git
+/nix/store/zk7hx6kxdkrwcrlxw3cjvrjdqc8bm9wi-nixos-system-trex-26.11pre-git
+active
+active
+/nix/store/84sawslx9np3jynl6fbpxigyr4mh9n8s-strix-netboot-strix-4
+/nix/store/lanm8xsf64qma8pylmjpcafya3p6s9p8-netboot-strix-4.ipxe
+4bfd48d61114dcf09708007dd4d1225967a73e6cfd0c7edf9ecc64778a44c3f8  /var/lib/strix-netboot/strix-4/netboot.ipxe

@@ -1,0 +1,9 @@
+2026-07-24T22:15:01Z
+strix-4
+758399aa-a216-4733-90ad-eab6141f7c18
+/nix/store/lqzb84qrmmr7mnd14bha2iv317skjbbf-nixos-system-strix-4-26.11.20260718.61b7c44
+kernel init=/nix/store/lqzb84qrmmr7mnd14bha2iv317skjbbf-nixos-system-strix-4-26.11.20260718.61b7c44/init initrd=initrd panic=5 panic_on_oops=1 softlockup_panic=1 hung_task_panic=1 nmi_watchdog=panic,1 ttm.pages_limit=32505856 transparent_hugepage=always amdgpu.no_system_mem_limit=1 amd_pstate=guided amdgpu.gpu_recovery=1 ixgbe.allow_unsupported_sfp=1,1 iommu=pt msr.allow_writes=on mitigations=off pci=realloc=on root=fstab loglevel=4 amdgpu.ppfeaturemask=0xffffffff lsm=landlock,yama,bpf nix_registration=/nix/store/yklz8bvlarz2nb5q24ba5c1r4wdq0mqx-closure-info/registration
+Linux strix-4 7.2.0-rc2 #1-NixOS SMP PREEMPT_DYNAMIC Tue Jan  1 00:00:00 UTC 1980 x86_64 GNU/Linux
+122.02
+TARGET SOURCE FSTYPE OPTIONS
+/      tmpfs  tmpfs  rw,relatime,size=2097152k,mode=755

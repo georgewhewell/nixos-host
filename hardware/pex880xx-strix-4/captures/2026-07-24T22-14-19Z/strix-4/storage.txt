@@ -1,0 +1,12 @@
+NAME        MODEL                 SERIAL         SIZE TYPE FSTYPE MOUNTPOINTS
+nvme0n1     Corsair MP600 CORE XT A632B32900OYLN 3.6T disk        
+├─nvme0n1p1                                        1G part vfat   
+├─nvme0n1p2                                      128G part btrfs  
+└─nvme0n1p3                                      3.5T part xfs    
+total 0
+lrwxrwxrwx 1 root root 0 Jul 25 00:13 nvme0 -> ../../devices/pci0000:00/0000:00:03.1/0000:c4:00.0/0000:c5:08.0/0000:cd:00.0/0000:ce:00.0/0000:cf:00.0/nvme/nvme0
+/sys/class/nvme/nvme0
+state=live
+model=Corsair MP600 CORE XT                   
+serial=A632B32900OYLN      
+firmware_rev=ELFMC1.0

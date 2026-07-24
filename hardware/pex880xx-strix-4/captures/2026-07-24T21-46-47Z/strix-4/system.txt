@@ -1,0 +1,12 @@
+captured_utc=2026-07-24T21:48:39Z
+uptime=172.63
+boot_id=9cece791-ad7e-44c8-abd6-ccd7152fb59d
+uname=Linux strix-4 7.2.0-rc2 #1-NixOS SMP PREEMPT_DYNAMIC Tue Jan  1 00:00:00 UTC 1980 x86_64 GNU/Linux
+current_system=/nix/store/rs1hnfkhdg82z6q8ivxskdggvbaw9qpx-nixos-system-strix-4-26.11.20260718.61b7c44
+booted_system=/nix/store/rs1hnfkhdg82z6q8ivxskdggvbaw9qpx-nixos-system-strix-4-26.11.20260718.61b7c44
+profile_system=/nix/store/rs1hnfkhdg82z6q8ivxskdggvbaw9qpx-nixos-system-strix-4-26.11.20260718.61b7c44
+root=tmpfs tmpfs rw,relatime,size=2097152k,mode=755
+plx_module_available=/run/booted-system/kernel-modules/lib/modules/7.2.0-rc2/kernel/drivers/misc/PlxSvc.ko
+plx_loaded=no
+plxcm=/nix/store/skbai1c0iaqlgq2pk4lhdxv7h7m66nzk-plxcm-8.23/bin/PlxCm
+nvme_state=absent

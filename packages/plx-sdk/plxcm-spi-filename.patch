@@ -1,0 +1,18 @@
+--- a/Samples/PlxCm/CmdLine.c
++++ b/Samples/PlxCm/CmdLine.c
+@@ -675,10 +675,0 @@ CmdLine_CmdParse(
+-    // If the command is "spiload" or "spisave", the immediate next argument is file name.
+-    // Do not check for '+', '-', '=' and '!' characters in file name. Allow file name as it is.
+-    if (
+-	 (Plx_strcasecmp( pCmd->szCmd, "spiload" ) == 0) ||
+-    	 (Plx_strcasecmp( pCmd->szCmd, "spisave" ) == 0)
+-       )
+-    {
+-        CmdLine_GetNextToken( &pBuffer, strArg, FALSE );
+-    }
+-
+--- a/Samples/PlxCm/Monitor.c
++++ b/Samples/PlxCm/Monitor.c
+@@ -109 +109 @@ static FN_TABLE Gbl_FnTable[] =
+-    { CMD_SPI_FILE  ,  TRUE, "spiload/spisave"         , Cmd_SpiFile     },
++    { CMD_SPI_FILE  , FALSE, "spiload/spisave"         , Cmd_SpiFile     },

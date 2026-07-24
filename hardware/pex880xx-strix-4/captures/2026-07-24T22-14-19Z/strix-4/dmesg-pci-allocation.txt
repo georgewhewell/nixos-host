@@ -1,0 +1,117 @@
+[    0.000000] Command line: kernel init=/nix/store/lqzb84qrmmr7mnd14bha2iv317skjbbf-nixos-system-strix-4-26.11.20260718.61b7c44/init initrd=initrd panic=5 panic_on_oops=1 softlockup_panic=1 hung_task_panic=1 nmi_watchdog=panic,1 ttm.pages_limit=32505856 transparent_hugepage=always amdgpu.no_system_mem_limit=1 amd_pstate=guided amdgpu.gpu_recovery=1 ixgbe.allow_unsupported_sfp=1,1 iommu=pt msr.allow_writes=on mitigations=off pci=realloc=on root=fstab loglevel=4 amdgpu.ppfeaturemask=0xffffffff lsm=landlock,yama,bpf nix_registration=/nix/store/yklz8bvlarz2nb5q24ba5c1r4wdq0mqx-closure-info/registration
+[    0.003329] ACPI: SSDT 0x0000000070322000 000CE4 (v02 AMD    NVME     00000001 INTL 20230331)
+[    0.003330] ACPI: SSDT 0x0000000070321000 000CE4 (v02 AMD    NVME     00000001 INTL 20230331)
+[    0.074318] Kernel command line: kernel init=/nix/store/lqzb84qrmmr7mnd14bha2iv317skjbbf-nixos-system-strix-4-26.11.20260718.61b7c44/init initrd=initrd panic=5 panic_on_oops=1 softlockup_panic=1 hung_task_panic=1 nmi_watchdog=panic,1 ttm.pages_limit=32505856 transparent_hugepage=always amdgpu.no_system_mem_limit=1 amd_pstate=guided amdgpu.gpu_recovery=1 ixgbe.allow_unsupported_sfp=1,1 iommu=pt msr.allow_writes=on mitigations=off pci=realloc=on root=fstab loglevel=4 amdgpu.ppfeaturemask=0xffffffff lsm=landlock,yama,bpf nix_registration=/nix/store/yklz8bvlarz2nb5q24ba5c1r4wdq0mqx-closure-info/registration
+[    0.572834] ACPI: \_SB_.PCI0.GPP0.PWRS: New power resource
+[    0.573321] ACPI: \_SB_.PCI0.GPP0.SWUS.PWRS: New power resource
+[    0.573807] ACPI: \_SB_.PCI0.GPP1.PWRS: New power resource
+[    0.574284] ACPI: \_SB_.PCI0.GPP1.SWUS.PWRS: New power resource
+[    0.574399] ACPI: \_SB_.PCI0.GPP3.PWRS: New power resource
+[    0.574737] ACPI: \_SB_.PCI0.GPP4.PWRS: New power resource
+[    0.575190] ACPI: \_SB_.PCI0.GPP5.PWRS: New power resource
+[    0.575518] ACPI: \_SB_.PCI0.GPP6.P0WW: New power resource
+[    0.575749] ACPI: \_SB_.PCI0.GPP7.P0NV: New power resource
+[    0.576070] ACPI: \_SB_.PCI0.GPP9.P0NV: New power resource
+[    0.576399] ACPI: \_SB_.PCI0.GPPA.PWRS: New power resource
+[    0.576494] ACPI: \_SB_.PCI0.GPPA.VGA_.PWRS: New power resource
+[    0.576630] ACPI: \_SB_.PCI0.GPPA.ACP_.PWRS: New power resource
+[    0.576740] ACPI: \_SB_.PCI0.GPPA.AZAL.PWRS: New power resource
+[    0.576884] ACPI: \_SB_.PCI0.GPPA.HDAU.PWRS: New power resource
+[    0.577050] ACPI: \_SB_.PCI0.GPPA.XHC1.PWRS: New power resource
+[    0.577543] ACPI: \_SB_.PCI0.GPPC.XHC0.PWRS: New power resource
+[    0.578461] ACPI: \_SB_.PCI0.GPPC.XHC3.PWRS: New power resource
+[    0.578957] ACPI: \_SB_.PCI0.GPPC.XHC4.PWRS: New power resource
+[    0.579467] ACPI: \_SB_.PCI0.GPPC.NHI0.PWRS: New power resource
+[    0.579770] ACPI: \_SB_.PCI0.GPPC.NHI1.PWRS: New power resource
+[    0.582057] acpi PNP0A08:00: _OSC: platform does not support [AER LTR]
+[    0.582057] pci_bus 0000:00: root bus resource [io  0x0000-0x03af window]
+[    0.582057] pci_bus 0000:00: root bus resource [io  0x03e0-0x0cf7 window]
+[    0.582057] pci_bus 0000:00: root bus resource [io  0x03b0-0x03df window]
+[    0.582057] pci_bus 0000:00: root bus resource [io  0x0d00-0xffff window]
+[    0.582057] pci_bus 0000:00: root bus resource [mem 0x000a0000-0x000dffff window]
+[    0.582057] pci_bus 0000:00: root bus resource [mem 0x80000000-0xdfffffff window]
+[    0.582057] pci_bus 0000:00: root bus resource [mem 0xf0000000-0xfcffffff window]
+[    0.582057] pci_bus 0000:00: root bus resource [mem 0x2090000000-0x994fffffff window]
+[    0.582057] pci_bus 0000:00: root bus resource [bus 00-ff]
+[    0.586187] pci 0000:c1:00.0: BAR 0 [io  0xf000-0xf0ff]
+[    0.586191] pci 0000:c1:00.0: BAR 2 [mem 0xde500000-0xde50ffff 64bit]
+[    0.586195] pci 0000:c1:00.0: BAR 4 [mem 0xde510000-0xde513fff 64bit]
+[    0.586639] pci 0000:c2:00.0: BAR 0 [mem 0xde400000-0xde400fff]
+[    0.587756] pci 0000:c3:00.0: BAR 0 [mem 0x9822000000-0x9823ffffff 64bit pref]
+[    0.589346] pci 0000:c3:00.0: VF BAR 0 [mem 0x9825000000-0x98251fffff 64bit pref]
+[    0.589347] pci 0000:c3:00.0: VF BAR 0 [mem 0x9825000000-0x9825ffffff 64bit pref]: contains BAR 0 for 8 VFs
+[    0.591333] pci 0000:c3:00.1: BAR 0 [mem 0x9820000000-0x9821ffffff 64bit pref]
+[    0.592826] pci 0000:c3:00.1: VF BAR 0 [mem 0x9824000000-0x98241fffff 64bit pref]
+[    0.592827] pci 0000:c3:00.1: VF BAR 0 [mem 0x9824000000-0x9824ffffff 64bit pref]: contains BAR 0 for 8 VFs
+[    0.594125] pci 0000:c4:00.0: BAR 0 [mem 0xdc000000-0xdcffffff]
+[    0.596380] pci 0000:c8:00.0: BAR 0 [mem 0x9826000000-0x9827ffffff 64bit pref]
+[    0.596394] pci 0000:c8:00.0: BAR 2 [mem 0x9828000000-0x98287fffff 64bit pref]
+[    0.597696] pci 0000:c8:00.0: VF BAR 0 [mem 0x9828800000-0x98288fffff 64bit pref]
+[    0.597697] pci 0000:c8:00.0: VF BAR 0 [mem 0x9828800000-0x9828ffffff 64bit pref]: contains BAR 0 for 8 VFs
+[    0.599345] pci 0000:c8:00.1: BAR 0 [mem 0xdd000000-0xdd0fffff]
+[    0.602298] pci 0000:cf:00.0: BAR 0 [mem 0xdd300000-0xdd303fff 64bit]
+[    0.606054] pci 0000:d5:00.0: BAR 0 [mem 0xdd200000-0xdd203fff]
+[    0.606661] pci 0000:d6:00.0: BAR 0 [mem 0x9800000000-0x981fffffff 64bit pref]
+[    0.606662] pci 0000:d6:00.0: BAR 2 [mem 0xdd600000-0xdd7fffff 64bit pref]
+[    0.606663] pci 0000:d6:00.0: BAR 4 [io  0xe000-0xe0ff]
+[    0.606665] pci 0000:d6:00.0: BAR 5 [mem 0xdda00000-0xddafffff]
+[    0.607069] pci 0000:d6:00.1: BAR 0 [mem 0xddb08000-0xddb0bfff]
+[    0.607239] pci 0000:d6:00.2: BAR 2 [mem 0xdd900000-0xdd9fffff]
+[    0.607242] pci 0000:d6:00.2: BAR 5 [mem 0xddb0c000-0xddb0dfff]
+[    0.607360] pci 0000:d6:00.4: BAR 0 [mem 0xdd800000-0xdd8fffff 64bit]
+[    0.607601] pci 0000:d6:00.6: BAR 0 [mem 0xddb00000-0xddb07fff]
+[    0.607967] pci 0000:d7:00.1: BAR 0 [mem 0xde000000-0xde0fffff]
+[    0.607968] pci 0000:d7:00.1: BAR 1 [mem 0xde100000-0xde101fff]
+[    0.607970] pci 0000:d7:00.1: BAR 2 [mem 0x9829100000-0x982917ffff 64bit pref]
+[    0.607971] pci 0000:d7:00.1: BAR 4 [mem 0xde103000-0xde103fff]
+[    0.607972] pci 0000:d7:00.1: BAR 5 [mem 0xde102000-0xde102fff]
+[    0.608151] pci 0000:d8:00.0: BAR 0 [mem 0xdde00000-0xddefffff 64bit]
+[    0.608421] pci 0000:d8:00.3: BAR 0 [mem 0xddd00000-0xdddfffff 64bit]
+[    0.608661] pci 0000:d8:00.4: BAR 0 [mem 0xddc00000-0xddcfffff 64bit]
+[    0.608906] pci 0000:d8:00.5: BAR 0 [mem 0xddf80000-0xddffffff 64bit]
+[    0.609153] pci 0000:d8:00.6: BAR 0 [mem 0xddf00000-0xddf7ffff 64bit]
+[    0.640698] pci_bus 0000:00: resource 4 [io  0x0000-0x03af window]
+[    0.640699] pci_bus 0000:00: resource 5 [io  0x03e0-0x0cf7 window]
+[    0.640699] pci_bus 0000:00: resource 6 [io  0x03b0-0x03df window]
+[    0.640699] pci_bus 0000:00: resource 7 [io  0x0d00-0xffff window]
+[    0.640700] pci_bus 0000:00: resource 8 [mem 0x000a0000-0x000dffff window]
+[    0.640700] pci_bus 0000:00: resource 9 [mem 0x80000000-0xdfffffff window]
+[    0.640701] pci_bus 0000:00: resource 10 [mem 0xf0000000-0xfcffffff window]
+[    0.640701] pci_bus 0000:00: resource 11 [mem 0x2090000000-0x994fffffff window]
+[    0.640702] pci_bus 0000:01: resource 0 [io  0xa000-0xdfff]
+[    0.640702] pci_bus 0000:01: resource 1 [mem 0xc4000000-0xdbffffff]
+[    0.640703] pci_bus 0000:01: resource 2 [mem 0x7800000000-0x97ffffffff 64bit pref]
+[    0.640703] pci_bus 0000:61: resource 0 [io  0x6000-0x9fff]
+[    0.640703] pci_bus 0000:61: resource 1 [mem 0xac000000-0xc3ffffff]
+[    0.640704] pci_bus 0000:61: resource 2 [mem 0x5800000000-0x77ffffffff 64bit pref]
+[    0.640704] pci_bus 0000:c1: resource 0 [io  0xf000-0xffff]
+[    0.640705] pci_bus 0000:c1: resource 1 [mem 0xde500000-0xde5fffff]
+[    0.640705] pci_bus 0000:c2: resource 1 [mem 0xde400000-0xde4fffff]
+[    0.640706] pci_bus 0000:c3: resource 1 [mem 0xde200000-0xde3fffff]
+[    0.640706] pci_bus 0000:c3: resource 2 [mem 0x9820000000-0x9825ffffff 64bit pref]
+[    0.640706] pci_bus 0000:c4: resource 1 [mem 0xdc000000-0xdd3fffff]
+[    0.640707] pci_bus 0000:c4: resource 2 [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.640707] pci_bus 0000:c5: resource 1 [mem 0xdd000000-0xdd3fffff]
+[    0.640708] pci_bus 0000:c5: resource 2 [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.640708] pci_bus 0000:c6: resource 1 [mem 0xdd000000-0xdd1fffff]
+[    0.640708] pci_bus 0000:c6: resource 2 [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.640709] pci_bus 0000:c7: resource 1 [mem 0xdd000000-0xdd1fffff]
+[    0.640709] pci_bus 0000:c7: resource 2 [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.640710] pci_bus 0000:c8: resource 1 [mem 0xdd000000-0xdd1fffff]
+[    0.640710] pci_bus 0000:c8: resource 2 [mem 0x9826000000-0x9828ffffff 64bit pref]
+[    0.640711] pci_bus 0000:cd: resource 1 [mem 0xdd300000-0xdd3fffff]
+[    0.640711] pci_bus 0000:ce: resource 1 [mem 0xdd300000-0xdd3fffff]
+[    0.640712] pci_bus 0000:cf: resource 1 [mem 0xdd300000-0xdd3fffff]
+[    0.640712] pci_bus 0000:d5: resource 1 [mem 0xdd200000-0xdd2fffff]
+[    0.640713] pci_bus 0000:d6: resource 0 [io  0xe000-0xefff]
+[    0.640713] pci_bus 0000:d6: resource 1 [mem 0xdd600000-0xddbfffff]
+[    0.640713] pci_bus 0000:d6: resource 2 [mem 0x9800000000-0x981fffffff 64bit pref]
+[    0.640714] pci_bus 0000:d7: resource 1 [mem 0xde000000-0xde1fffff]
+[    0.640714] pci_bus 0000:d7: resource 2 [mem 0x9829100000-0x98291fffff 64bit pref]
+[    0.640715] pci_bus 0000:d8: resource 1 [mem 0xddc00000-0xddffffff]
+[    2.451187] nvme 0000:cf:00.0: platform quirk: setting simple suspend
+[    2.451248] nvme nvme0: pci function 0000:cf:00.0
+[    2.480385] nvme nvme0: passthrough uses implicit buffer lengths
+[    2.481158] nvme nvme0: allocated 64 MiB host memory buffer (16 segments).
+[    2.549969] nvme nvme0: 32/0/0 default/read/poll queues
+[    2.561763]  nvme0n1: p1 p2 p3

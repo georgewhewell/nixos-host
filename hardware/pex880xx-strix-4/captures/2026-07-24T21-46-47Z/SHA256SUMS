@@ -1,0 +1,16 @@
+2fa96829e048cd1f836a92f92c4b3793005a72c6a31961984a57b469611a1681  ./README.md
+1794a94325f4148e60b48f12b780e3dc4b4effb8653694f4e40f47a0c5aac5b0  ./bluefield2/system.txt
+d8e7b293e4f51be5557a950a86a5422267719970b876d058bbe4ad124276722a  ./strix-4/cmdline.txt
+a6906c07f4ccb1b2395d431912e5dac23264a0d764f9e906d8d4612692df95b1  ./strix-4/config-space/0000_00_03_1.bin
+9b47c5b9cc43224655648052eee94a3578927c2455cb84eef6fe8b26c9706a6d  ./strix-4/config-space/0000_c4_00_0.bin
+d41bf2f3be523ac603f0cdbc253e0379c43411efaf9b147c63b07e0b5d55837e  ./strix-4/config-space/0000_c5_08_0.bin
+8bbd84472ab33c37b9e0cad5e45c93bc00cf841ef7e6924c42752d1373c6f794  ./strix-4/config-space/0000_cd_00_0.bin
+32697e722e27af5f296719eb2ebfe6cea89991f463e5db885be7878989be4428  ./strix-4/config-space/0000_ce_00_0.bin
+3f06353248b13bbafb21c302dd39911a880cd9b3f874fdd994e6a4b7dd8f4c86  ./strix-4/config-space/0000_ce_10_0.bin
+99637852408a8e1f57e40af532e76aca2aa13d55a4073afdbcfc989fb486646f  ./strix-4/config-space/0000_cf_00_0.bin
+b65f37207edbbc9ef172a1b116112ae5b1ff90f13a93bf14b9f811a420f0a2ad  ./strix-4/config-space/0000_d5_00_0.bin
+140dee6cfbbc23dbfe600ea145228a59f43fa7bf6842ebb6b926b19075140ac4  ./strix-4/dmesg-pci-allocation.txt
+57b0b8488bc7f08fba09effe076cb2ebedabc21bb829159af3e4b98dfed1a609  ./strix-4/healthy-vs-current.txt
+37c79878c33c60bae2efbb16c887130feff16e689c21f30b0cac892a06bb10ad  ./strix-4/pci.txt
+f5b78162f6a3b3a75fbebd319f7a7d6eb3f33e5376d87ed409fcbb6c8688f0d9  ./strix-4/resources.txt
+feff1457745813101b93ac8a48d10df0e041ff7e049375fb2d989e1bcdecd40f  ./strix-4/system.txt
