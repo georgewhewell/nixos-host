@@ -23,8 +23,12 @@ The design is deliberately recovery-first:
 
 ```console
 pexctl sbr inspect IMAGE
+pexctl sbr inspect IMAGE --json
 pexctl sbr validate IMAGE
 pexctl sbr diff BEFORE AFTER
+pexctl sbr diff BEFORE AFTER --json
+pexctl sbr export-config IMAGE --output config.json
+pexctl sbr apply-config IMAGE config.json --output candidate.bin
 pexctl sbr set-station INPUT --station 4 --layout x4x4x4x4 --output candidate.bin
 pexctl sbr repair-checksum INPUT --output repaired.bin
 
@@ -41,11 +45,45 @@ sudo pexctl device backup-flash --bdf 0000:c4:00.0 \
   --output complete-cs0.bin
 sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
   --station 4 --layout x4x4x4x4 --output-dir station4-plan
+sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
+  --config config.json --output-dir config-plan
 
 sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
   --expected-current sector-0.bin --candidate candidate-sector-0.bin \
   --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
 ```
+
+`inspect --json` is a lossless research view: it includes the 22 raw index
+dwords, all 104 raw SoC-setting dwords, block ranges, checksum state, SHA-256,
+raw station codes, and every currently understood field. `diff --json`
+provides hashes, named-field changes, station changes, and byte changes.
+
+`export-config` creates the strict, versioned subset that `pexctl` knows how to
+write:
+
+```json
+{
+  "schema": "pexctl.atlas-config.v1",
+  "soc": {
+    "upstream_port": 0,
+    "max_link_speed": "gen4"
+  },
+  "stations": [
+    {
+      "station": 4,
+      "layout": "x4x4x4x4"
+    }
+  ]
+}
+```
+
+Every member is optional except `schema`; at least one writable value is
+required. Unknown members, duplicate stations, out-of-range stations, and
+unknown enum values are rejected. An exported station whose quarter codes do
+not match a proven layout has no `layout` member, so applying the exported file
+preserves that station. See
+[`examples/station4-x4x4x4x4.json`](examples/station4-x4x4x4x4.json) and
+[`FORMAT.md`](FORMAT.md).
 
 The device reader accesses the Atlas CS0 memory-mapped flash window through the
 open PlxSvc ioctl ABI from Broadcom's dual-BSD/GPL SDK. It verifies the PCI
@@ -68,11 +106,31 @@ based on the SDK's hard-coded geometry would be four times too large.
 `prepare-station` performs two complete flash reads and requires them to match
 before deriving anything. It validates the live SBR, applies one named station
 layout, constructs and validates the preserved 256 KiB recovery image, and
-then writes a new plan directory containing both complete backups, current and
-candidate SBRs, current and candidate recovery images, and a SHA-256 manifest.
-The manifest records every changed SBR and flash offset plus the exact
-device-bound confirmation needed by `program-sector0`. Preparation never
-writes or resets the switch.
+then writes a new plan directory. `prepare-config` performs the same process
+for all changes in a configuration file. A plan contains both complete
+backups, current and candidate SBRs, current and candidate recovery images,
+the normalized applied configuration, before/after JSON inspections, a JSON
+diff, and a SHA-256 manifest. The manifest records every changed SBR and flash
+offset plus the exact device-bound confirmation needed by `program-sector0`.
+Preparation never writes or resets the switch.
+
+## Understood SoC fields
+
+The following fields are writable through `pexctl.atlas-config.v1`:
+
+| Field | Encoding | Status |
+|---|---|---|
+| `soc.upstream_port` | first SoC dword, bits 7:0 | vendor field name and width confirmed |
+| `soc.max_link_speed` | first SoC dword, bits 9:8; 0–3 = Gen1–Gen4 | vendor encoding confirmed |
+| station layout | four packed 3-bit quarter codes per station | only the two complete layouts below are writable |
+
+The first-dword PCIe lane-enable field at bits 15:13 is reported as
+`lane_enable_code_raw`, but it is not writable because its value semantics are
+not yet established. JSON also names 33 read-only fields in SoC dwords
+`0x68`–`0x70`, including DPR, link-training, clock, hot-plug, power, watchdog,
+secure-boot, and ECC controls. Their positions and vendor names are known, but
+write behavior has not been independently validated. Every SoC dword remains
+available as raw inspection data and is retained byte-for-byte.
 
 ## PEX88096 station topology
 

@@ -4,6 +4,7 @@
 //! retained verbatim, and mutation APIs expose only fields that have been
 //! confirmed against both a live PEX88096 image and Broadcom's RDK96 image.
 
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
 use std::fs;
@@ -27,6 +28,12 @@ pub const SOC_SIZE: usize = 0x1a0;
 pub const SOC_END: usize = SOC_OFFSET + SOC_SIZE;
 pub const CHECKSUM_SEED: u8 = 0xa5;
 pub const MAX_SBR_SIZE: usize = 128 * 1024;
+pub const ATLAS_CONFIG_SCHEMA: &str = "pexctl.atlas-config.v1";
+pub const ATLAS_INSPECTION_SCHEMA: &str = "pexctl.atlas-sbr-inspection.v1";
+pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
+const UPSTREAM_PORT_START_BIT: usize = SOC_OFFSET * 8;
+const MAX_LINK_SPEED_START_BIT: usize = SOC_OFFSET * 8 + 8;
+const LANE_ENABLE_START_BIT: usize = SOC_OFFSET * 8 + 13;
 const STATION_CONFIG_START_BIT: usize = SOC_OFFSET * 8 + 16;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -36,6 +43,7 @@ pub enum Error {
     Io { context: String, source: io::Error },
     Device(String),
     Format(String),
+    Config(String),
     Usage(String),
     Safety(String),
 }
@@ -55,6 +63,7 @@ impl fmt::Display for Error {
             Self::Io { context, source } => write!(f, "{context}: {source}"),
             Self::Device(message) => write!(f, "device error: {message}"),
             Self::Format(message) => write!(f, "invalid SBR: {message}"),
+            Self::Config(message) => write!(f, "invalid configuration: {message}"),
             Self::Usage(message) => write!(f, "{message}"),
             Self::Safety(message) => write!(f, "refusing unsafe operation: {message}"),
         }
@@ -167,9 +176,11 @@ impl Block {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum StationLayout {
+    #[serde(rename = "x16")]
     X16,
+    #[serde(rename = "x4x4x4x4", alias = "x4+x4+x4+x4")]
     X4X4X4X4,
 }
 
@@ -204,6 +215,497 @@ impl fmt::Display for StationLayout {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum PcieGeneration {
+    #[serde(rename = "gen1")]
+    Gen1,
+    #[serde(rename = "gen2")]
+    Gen2,
+    #[serde(rename = "gen3")]
+    Gen3,
+    #[serde(rename = "gen4")]
+    Gen4,
+}
+
+impl PcieGeneration {
+    pub fn from_code(code: u8) -> Self {
+        match code {
+            0 => Self::Gen1,
+            1 => Self::Gen2,
+            2 => Self::Gen3,
+            3 => Self::Gen4,
+            _ => unreachable!("two-bit PCIe generation code"),
+        }
+    }
+
+    pub fn code(self) -> u8 {
+        match self {
+            Self::Gen1 => 0,
+            Self::Gen2 => 1,
+            Self::Gen3 => 2,
+            Self::Gen4 => 3,
+        }
+    }
+}
+
+impl fmt::Display for PcieGeneration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Gen1 => f.write_str("gen1"),
+            Self::Gen2 => f.write_str("gen2"),
+            Self::Gen3 => f.write_str("gen3"),
+            Self::Gen4 => f.write_str("gen4"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtlasSocConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upstream_port: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_link_speed: Option<PcieGeneration>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtlasStationConfig {
+    pub station: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<StationLayout>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtlasConfig {
+    pub schema: String,
+    #[serde(default, skip_serializing_if = "AtlasSocConfig::is_empty")]
+    pub soc: AtlasSocConfig,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stations: Vec<AtlasStationConfig>,
+}
+
+impl AtlasSocConfig {
+    pub fn is_empty(&self) -> bool {
+        self.upstream_port.is_none() && self.max_link_speed.is_none()
+    }
+}
+
+impl AtlasConfig {
+    pub fn station_layout(station: u8, layout: StationLayout) -> Result<Self> {
+        let config = Self {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig::default(),
+            stations: vec![AtlasStationConfig {
+                station,
+                layout: Some(layout),
+            }],
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    pub fn parse_json(bytes: &[u8]) -> Result<Self> {
+        let config: Self = serde_json::from_slice(bytes)
+            .map_err(|error| Error::Config(format!("JSON: {error}")))?;
+        config.validate()?;
+        Ok(config)
+    }
+
+    pub fn read(path: &Path) -> Result<Self> {
+        let bytes = fs::read(path)
+            .map_err(|source| Error::io(format!("reading {}", path.display()), source))?;
+        Self::parse_json(&bytes)
+    }
+
+    pub fn to_json_pretty(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+        let mut bytes = serde_json::to_vec_pretty(self)
+            .map_err(|error| Error::Config(format!("serializing JSON: {error}")))?;
+        bytes.push(b'\n');
+        Ok(bytes)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.schema != ATLAS_CONFIG_SCHEMA {
+            return Err(Error::Config(format!(
+                "unsupported schema {:?}; expected {ATLAS_CONFIG_SCHEMA:?}",
+                self.schema
+            )));
+        }
+        let mut seen = [false; 6];
+        for entry in &self.stations {
+            let station = usize::from(entry.station);
+            if station >= seen.len() {
+                return Err(Error::Config(format!(
+                    "station must be 0 through 5, got {}",
+                    entry.station
+                )));
+            }
+            if seen[station] {
+                return Err(Error::Config(format!(
+                    "station {} appears more than once",
+                    entry.station
+                )));
+            }
+            seen[station] = true;
+        }
+        if self.soc.is_empty() && self.stations.iter().all(|entry| entry.layout.is_none()) {
+            return Err(Error::Config(
+                "configuration contains no writable values".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ChecksumInspection {
+    pub offset: usize,
+    pub stored: u32,
+    pub expected: u8,
+    pub valid: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SocInspection {
+    pub offset: usize,
+    pub size: usize,
+    pub sha256: String,
+    pub raw_dwords: Vec<u32>,
+    pub upstream_port: u8,
+    pub max_link_speed: PcieGeneration,
+    pub max_link_speed_code: u8,
+    pub lane_enable_code_raw: u8,
+    pub named_fields: Vec<NamedSocFieldInspection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct NamedSocFieldInspection {
+    pub name: &'static str,
+    pub offset: usize,
+    pub bit_low: u8,
+    pub bit_high: u8,
+    pub value: u8,
+    pub writable: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct BlockInspection {
+    pub name: &'static str,
+    pub offset: u32,
+    pub size: u32,
+    pub state: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct StationInspection {
+    pub station: u8,
+    pub codes: [u8; 4],
+    pub layout: Option<StationLayout>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SbrInspection {
+    pub schema: &'static str,
+    pub format: &'static str,
+    pub device: &'static str,
+    pub signature: u32,
+    pub length: usize,
+    pub sha256: String,
+    pub checksum: ChecksumInspection,
+    pub index_dwords: Vec<u32>,
+    pub soc: SocInspection,
+    pub blocks: Vec<BlockInspection>,
+    pub stations: Vec<StationInspection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct StationDifference {
+    pub station: u8,
+    pub before_codes: [u8; 4],
+    pub after_codes: [u8; 4],
+    pub before_layout: Option<StationLayout>,
+    pub after_layout: Option<StationLayout>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct NamedDifference {
+    pub field: &'static str,
+    pub before: String,
+    pub after: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SbrDiffReport {
+    pub schema: &'static str,
+    pub before_sha256: String,
+    pub after_sha256: String,
+    pub before_length: usize,
+    pub after_length: usize,
+    pub named_differences: Vec<NamedDifference>,
+    pub station_differences: Vec<StationDifference>,
+    pub byte_differences: Vec<ByteDifference>,
+}
+
+#[derive(Clone, Copy)]
+struct NamedSocField {
+    name: &'static str,
+    offset: usize,
+    bit_low: u8,
+    width: u8,
+    writable: bool,
+}
+
+const NAMED_SOC_FIELDS: &[NamedSocField] = &[
+    NamedSocField {
+        name: "soc.upstream_port",
+        offset: 0x5c,
+        bit_low: 0,
+        width: 8,
+        writable: true,
+    },
+    NamedSocField {
+        name: "soc.max_link_speed",
+        offset: 0x5c,
+        bit_low: 8,
+        width: 2,
+        writable: true,
+    },
+    NamedSocField {
+        name: "soc.lane_enable_code_raw",
+        offset: 0x5c,
+        bit_low: 13,
+        width: 3,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station_dpr_enable_mask",
+        offset: 0x68,
+        bit_low: 8,
+        width: 6,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.atlas_mode_raw",
+        offset: 0x68,
+        bit_low: 16,
+        width: 2,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.auto_pcie_link_train_enable",
+        offset: 0x68,
+        bit_low: 18,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.gen1_compliance_n",
+        offset: 0x68,
+        bit_low: 19,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.fanout_enable",
+        offset: 0x68,
+        bit_low: 20,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.pll_bypass_mode",
+        offset: 0x68,
+        bit_low: 21,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.stp_bypass",
+        offset: 0x68,
+        bit_low: 22,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station0_pcie_clock_request",
+        offset: 0x68,
+        bit_low: 24,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station1_pcie_clock_request",
+        offset: 0x68,
+        bit_low: 25,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station2_pcie_clock_request",
+        offset: 0x68,
+        bit_low: 26,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station3_pcie_clock_request",
+        offset: 0x68,
+        bit_low: 27,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.flash_signature_enable",
+        offset: 0x68,
+        bit_low: 30,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.serial_io_b_clock_output_enable",
+        offset: 0x68,
+        bit_low: 31,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station0_pcie_clock_enable",
+        offset: 0x6c,
+        bit_low: 0,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station1_pcie_clock_enable",
+        offset: 0x6c,
+        bit_low: 1,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station2_pcie_clock_enable",
+        offset: 0x6c,
+        bit_low: 2,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station3_pcie_clock_enable",
+        offset: 0x6c,
+        bit_low: 3,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.serial_hot_plug_enable",
+        offset: 0x6c,
+        bit_low: 12,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.station_clock_sequencing_enable",
+        offset: 0x6c,
+        bit_low: 13,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.shutdown_ocm",
+        offset: 0x6c,
+        bit_low: 14,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.hardware_auto_power_save_enable",
+        offset: 0x6c,
+        bit_low: 15,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.hot_plug_controller_polarity",
+        offset: 0x6c,
+        bit_low: 27,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.ses_endpoint_disable",
+        offset: 0x6c,
+        bit_low: 28,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.legacy_plx_i2c_target_enable",
+        offset: 0x6c,
+        bit_low: 30,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.secure_boot_enable",
+        offset: 0x70,
+        bit_low: 0,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.watchdog_enable",
+        offset: 0x70,
+        bit_low: 1,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.extended_pll_lock_wait",
+        offset: 0x70,
+        bit_low: 2,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.spi_pad_slew",
+        offset: 0x70,
+        bit_low: 3,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.spi_flash_ecc_check_enable",
+        offset: 0x70,
+        bit_low: 4,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.secure_rom_ecc_check_disable",
+        offset: 0x70,
+        bit_low: 5,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.bls_ram_single_bit_ecc_check_disable",
+        offset: 0x70,
+        bit_low: 6,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.bls_ram_double_bit_ecc_check_disable",
+        offset: 0x70,
+        bit_low: 7,
+        width: 1,
+        writable: false,
+    },
+];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SbrImage {
@@ -301,6 +803,29 @@ impl SbrImage {
             .copy_from_slice(&u32::from(checksum).to_le_bytes());
     }
 
+    pub fn upstream_port(&self) -> u8 {
+        self.read_bits(UPSTREAM_PORT_START_BIT, 8)
+    }
+
+    pub fn max_link_speed_code(&self) -> u8 {
+        self.read_bits(MAX_LINK_SPEED_START_BIT, 2)
+    }
+
+    pub fn max_link_speed(&self) -> PcieGeneration {
+        PcieGeneration::from_code(self.max_link_speed_code())
+    }
+
+    pub fn lane_enable_code_raw(&self) -> u8 {
+        self.read_bits(LANE_ENABLE_START_BIT, 3)
+    }
+
+    pub fn soc_dwords(&self) -> Vec<u32> {
+        (SOC_OFFSET..SOC_END)
+            .step_by(4)
+            .map(|offset| read_u32(&self.bytes, offset).expect("validated SoC settings"))
+            .collect()
+    }
+
     pub fn station_codes(&self, station: usize) -> Result<[u8; 4]> {
         if station >= 6 {
             return Err(Error::Usage(format!(
@@ -322,6 +847,49 @@ impl SbrImage {
         })
     }
 
+    pub fn editable_config(&self) -> AtlasConfig {
+        AtlasConfig {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig {
+                upstream_port: Some(self.upstream_port()),
+                max_link_speed: Some(self.max_link_speed()),
+            },
+            stations: (0..6)
+                .map(|station| AtlasStationConfig {
+                    station: station as u8,
+                    layout: self
+                        .inferred_station_layout(station)
+                        .expect("fixed station range"),
+                })
+                .collect(),
+        }
+    }
+
+    pub fn apply_config(&mut self, config: &AtlasConfig) -> Result<()> {
+        self.validate()?;
+        config.validate()?;
+        if let Some(upstream_port) = config.soc.upstream_port {
+            self.write_bits(UPSTREAM_PORT_START_BIT, 8, upstream_port);
+        }
+        if let Some(max_link_speed) = config.soc.max_link_speed {
+            self.write_bits(MAX_LINK_SPEED_START_BIT, 2, max_link_speed.code());
+        }
+        for entry in &config.stations {
+            if let Some(layout) = entry.layout {
+                let station = usize::from(entry.station);
+                for (quarter, code) in layout.codes().into_iter().enumerate() {
+                    self.write_bits(
+                        STATION_CONFIG_START_BIT + (station * 4 + quarter) * 3,
+                        3,
+                        code,
+                    );
+                }
+            }
+        }
+        self.update_checksum();
+        self.validate()
+    }
+
     pub fn set_station_layout(&mut self, station: usize, layout: StationLayout) -> Result<()> {
         if station >= 6 {
             return Err(Error::Usage(format!(
@@ -337,6 +905,120 @@ impl SbrImage {
         }
         self.update_checksum();
         self.validate_structure()
+    }
+
+    pub fn inspection(&self) -> SbrInspection {
+        SbrInspection {
+            schema: ATLAS_INSPECTION_SCHEMA,
+            format: "Broadcom Atlas SBR",
+            device: "PEX88096",
+            signature: self.signature(),
+            length: self.bytes.len(),
+            sha256: sha256_hex(&self.bytes),
+            checksum: ChecksumInspection {
+                offset: self.checksum_offset,
+                stored: self.stored_checksum(),
+                expected: self.expected_checksum(),
+                valid: self.checksum_valid(),
+            },
+            index_dwords: self.index.to_vec(),
+            soc: SocInspection {
+                offset: SOC_OFFSET,
+                size: SOC_SIZE,
+                sha256: sha256_hex(&self.bytes[SOC_OFFSET..SOC_END]),
+                raw_dwords: self.soc_dwords(),
+                upstream_port: self.upstream_port(),
+                max_link_speed: self.max_link_speed(),
+                max_link_speed_code: self.max_link_speed_code(),
+                lane_enable_code_raw: self.lane_enable_code_raw(),
+                named_fields: NAMED_SOC_FIELDS
+                    .iter()
+                    .map(|field| NamedSocFieldInspection {
+                        name: field.name,
+                        offset: field.offset,
+                        bit_low: field.bit_low,
+                        bit_high: field.bit_low + field.width - 1,
+                        value: self.read_bits(
+                            field.offset * 8 + usize::from(field.bit_low),
+                            usize::from(field.width),
+                        ),
+                        writable: field.writable,
+                    })
+                    .collect(),
+            },
+            blocks: self
+                .blocks()
+                .map(|block| BlockInspection {
+                    name: block.kind.name(),
+                    offset: block.offset,
+                    size: block.size,
+                    state: block.state().to_string(),
+                })
+                .collect(),
+            stations: (0..6)
+                .map(|station| StationInspection {
+                    station: station as u8,
+                    codes: self.station_codes(station).expect("fixed station range"),
+                    layout: self
+                        .inferred_station_layout(station)
+                        .expect("fixed station range"),
+                })
+                .collect(),
+        }
+    }
+
+    pub fn diff(&self, after: &Self) -> SbrDiffReport {
+        let mut named_differences = Vec::new();
+        if self.upstream_port() != after.upstream_port() {
+            named_differences.push(NamedDifference {
+                field: "soc.upstream_port",
+                before: self.upstream_port().to_string(),
+                after: after.upstream_port().to_string(),
+            });
+        }
+        if self.max_link_speed() != after.max_link_speed() {
+            named_differences.push(NamedDifference {
+                field: "soc.max_link_speed",
+                before: self.max_link_speed().to_string(),
+                after: after.max_link_speed().to_string(),
+            });
+        }
+        if self.lane_enable_code_raw() != after.lane_enable_code_raw() {
+            named_differences.push(NamedDifference {
+                field: "soc.lane_enable_code_raw",
+                before: self.lane_enable_code_raw().to_string(),
+                after: after.lane_enable_code_raw().to_string(),
+            });
+        }
+
+        let station_differences = (0..6)
+            .filter_map(|station| {
+                let before_codes = self.station_codes(station).expect("fixed station range");
+                let after_codes = after.station_codes(station).expect("fixed station range");
+                (before_codes != after_codes).then(|| StationDifference {
+                    station: station as u8,
+                    before_codes,
+                    after_codes,
+                    before_layout: self
+                        .inferred_station_layout(station)
+                        .expect("fixed station range"),
+                    after_layout: after
+                        .inferred_station_layout(station)
+                        .expect("fixed station range"),
+                })
+            })
+            .collect();
+
+        SbrDiffReport {
+            schema: ATLAS_DIFF_SCHEMA,
+            before_sha256: sha256_hex(&self.bytes),
+            after_sha256: sha256_hex(&after.bytes),
+            before_length: self.bytes.len(),
+            after_length: after.bytes.len(),
+            named_differences,
+            station_differences,
+            byte_differences: byte_differences(&self.bytes, &after.bytes),
+        }
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -488,7 +1170,7 @@ pub fn expected_checksum(body: &[u8]) -> u8 {
     0u8.wrapping_sub(sum)
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub struct ByteDifference {
     pub offset: usize,
     pub before: u8,
@@ -1287,6 +1969,132 @@ mod tests {
             .iter()
             .all(|difference| matches!(difference.offset, 0x64 | 0x65)
                 || difference.offset == SOC_END));
+    }
+
+    #[test]
+    fn declarative_config_changes_only_named_fields_and_checksum() {
+        let mut image = minimal_image([[0; 4]; 6]);
+        let before = image.bytes().to_vec();
+        let config = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "soc": {
+                    "upstream_port": 42,
+                    "max_link_speed": "gen4"
+                },
+                "stations": [
+                    {"station": 4, "layout": "x4x4x4x4"}
+                ]
+            }"#,
+        )
+        .unwrap();
+
+        image.apply_config(&config).unwrap();
+        assert_eq!(image.upstream_port(), 42);
+        assert_eq!(image.max_link_speed(), PcieGeneration::Gen4);
+        assert_eq!(image.station_codes(4).unwrap(), [1, 1, 1, 1]);
+        assert_eq!(image.station_codes(5).unwrap(), [0, 0, 0, 0]);
+        image.validate().unwrap();
+
+        let differences = byte_differences(&before, image.bytes());
+        assert!(differences.iter().all(|difference| {
+            matches!(difference.offset, 0x5c | 0x5d | 0x64 | 0x65) || difference.offset == SOC_END
+        }));
+    }
+
+    #[test]
+    fn config_parser_rejects_unknown_duplicate_and_empty_inputs() {
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "mystery": 1,
+                "stations": [{"station": 4, "layout": "x16"}]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "stations": [
+                    {"station": 4, "layout": "x16"},
+                    {"station": 4, "layout": "x4x4x4x4"}
+                ]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(br#"{"schema": "pexctl.atlas-config.v1"}"#,).is_err());
+    }
+
+    #[test]
+    fn inspection_and_editable_config_preserve_unclassified_stations() {
+        let image = minimal_image([
+            [0, 0, 0, 0],
+            [1, 1, 1, 1],
+            [7, 7, 7, 7],
+            [1, 1, 7, 7],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]);
+        let inspection = image.inspection();
+        assert_eq!(inspection.soc.raw_dwords.len(), SOC_SIZE / 4);
+        assert!(inspection
+            .soc
+            .named_fields
+            .iter()
+            .any(|field| field.name == "soc.auto_pcie_link_train_enable"));
+        assert!(inspection
+            .soc
+            .named_fields
+            .iter()
+            .any(|field| field.name == "soc.secure_boot_enable"));
+        assert_eq!(
+            inspection
+                .soc
+                .named_fields
+                .iter()
+                .filter(|field| field.writable)
+                .count(),
+            2
+        );
+        assert_eq!(inspection.stations[0].layout, Some(StationLayout::X16));
+        assert_eq!(inspection.stations[1].layout, Some(StationLayout::X4X4X4X4));
+        assert_eq!(inspection.stations[2].layout, None);
+        assert_eq!(inspection.stations[3].codes, [1, 1, 7, 7]);
+
+        let config = image.editable_config();
+        assert_eq!(config.stations[2].layout, None);
+        assert_eq!(config.stations[3].layout, None);
+        let round_trip = AtlasConfig::parse_json(&config.to_json_pretty().unwrap()).unwrap();
+        assert_eq!(round_trip, config);
+    }
+
+    #[test]
+    fn diff_names_understood_changes() {
+        let before = minimal_image([[0; 4]; 6]);
+        let mut after = before.clone();
+        let config = AtlasConfig {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig {
+                upstream_port: Some(3),
+                max_link_speed: Some(PcieGeneration::Gen4),
+            },
+            stations: vec![AtlasStationConfig {
+                station: 4,
+                layout: Some(StationLayout::X4X4X4X4),
+            }],
+        };
+        after.apply_config(&config).unwrap();
+        let report = before.diff(&after);
+        assert!(report
+            .named_differences
+            .iter()
+            .any(|difference| difference.field == "soc.upstream_port"));
+        assert!(report
+            .named_differences
+            .iter()
+            .any(|difference| difference.field == "soc.max_link_speed"));
+        assert_eq!(report.station_differences.len(), 1);
+        assert_eq!(report.station_differences[0].station, 4);
     }
 
     #[test]

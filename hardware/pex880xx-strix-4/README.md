@@ -6,6 +6,10 @@ This directory records the Broadcom/PLX PEX880xx board installed in
 Each operation gets a new UTC timestamp under `captures/`. Captures are
 immutable evidence: do not replace an old dump with a newer one.
 
+See [`ATLAS-SBR-NOTES.md`](ATLAS-SBR-NOTES.md) for the decoded format facts,
+current hashes, independently cross-checked station encodings, and the exact
+station-4 candidate.
+
 ## Safety rules
 
 - Capture the current state before and after any configuration change.

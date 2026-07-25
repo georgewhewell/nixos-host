@@ -1,8 +1,9 @@
 use pexctl::{
-    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, Error,
+    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, AtlasConfig, Error,
     PlxSvcDevice, Result, SbrImage, StationLayout, ATLAS_SPI_RECOVERY_REGION_SIZE,
     SBR_FLASH_OFFSET, SOC_END,
 };
+use serde::Serialize;
 use std::env;
 use std::fmt::Write as _;
 use std::fs;
@@ -51,9 +52,13 @@ fn run_sbr(args: &[String]) -> Result<()> {
     };
     match command {
         "inspect" | "topology" => {
-            expect_len(args, 2, "pexctl sbr inspect IMAGE")?;
+            let json = optional_json_flag(args, 2, "pexctl sbr inspect IMAGE [--json]")?;
             let image = SbrImage::read(Path::new(&args[1]))?;
-            print_inspection(&image);
+            if json {
+                print_json(&image.inspection())?;
+            } else {
+                print_inspection(&image);
+            }
             if !image.checksum_valid() {
                 return Err(Error::Format("hardware checksum is invalid".into()));
             }
@@ -72,16 +77,88 @@ fn run_sbr(args: &[String]) -> Result<()> {
             Ok(())
         }
         "diff" => {
-            expect_len(args, 3, "pexctl sbr diff BEFORE AFTER")?;
+            let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
             let before = SbrImage::read(Path::new(&args[1]))?;
             let after = SbrImage::read(Path::new(&args[2]))?;
-            print_diff(&before, &after);
+            if json {
+                print_json(&before.diff(&after))?;
+            } else {
+                print_diff(&before, &after);
+            }
             Ok(())
         }
+        "export-config" => run_export_config(&args[1..]),
+        "apply-config" => run_apply_config(&args[1..]),
         "set-station" => run_set_station(&args[1..]),
         "repair-checksum" => run_repair_checksum(&args[1..]),
         other => Err(Error::Usage(format!("unknown SBR command {other:?}"))),
     }
+}
+
+fn run_export_config(args: &[String]) -> Result<()> {
+    if args.is_empty() {
+        return Err(Error::Usage(
+            "usage: pexctl sbr export-config IMAGE --output CONFIG.json".into(),
+        ));
+    }
+    let input = PathBuf::from(&args[0]);
+    let output = PathBuf::from(option_value(args, "--output")?);
+    reject_unknown_options(args, &["--output"])?;
+    let image = SbrImage::read(&input)?;
+    image.validate()?;
+    let config = image.editable_config();
+    let bytes = config.to_json_pretty()?;
+    write_new_file(&output, &bytes)?;
+    let unclassified = config
+        .stations
+        .iter()
+        .filter(|entry| entry.layout.is_none())
+        .count();
+    println!(
+        "wrote editable Atlas configuration for {} to {}",
+        input.display(),
+        output.display()
+    );
+    if unclassified != 0 {
+        println!(
+            "{unclassified} station layout(s) are unclassified and exported without a layout; applying this file preserves them"
+        );
+    }
+    Ok(())
+}
+
+fn run_apply_config(args: &[String]) -> Result<()> {
+    if args.len() < 2 {
+        return Err(Error::Usage(
+            "usage: pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT".into(),
+        ));
+    }
+    let input = PathBuf::from(&args[0]);
+    let config_path = PathBuf::from(&args[1]);
+    let output = PathBuf::from(option_value(args, "--output")?);
+    reject_unknown_options(args, &["--output"])?;
+
+    let mut image = SbrImage::read(&input)?;
+    image.validate()?;
+    let before = image.clone();
+    let config = AtlasConfig::read(&config_path)?;
+    image.apply_config(&config)?;
+    let differences = byte_differences(before.bytes(), image.bytes());
+    if differences.is_empty() {
+        return Err(Error::Safety(
+            "configuration already matches the input SBR; no output written".into(),
+        ));
+    }
+    write_new_file(&output, image.bytes())?;
+    println!(
+        "wrote {} by applying {} to {}; {} bytes changed",
+        output.display(),
+        config_path.display(),
+        input.display(),
+        differences.len()
+    );
+    print_diff(&before, &image);
+    Ok(())
 }
 
 fn run_set_station(args: &[String]) -> Result<()> {
@@ -351,6 +428,7 @@ fn run_device(args: &[String]) -> Result<()> {
             Ok(())
         }
         "prepare-station" => run_prepare_station(&args[1..]),
+        "prepare-config" => run_prepare_config(&args[1..]),
         "program-sector0" => {
             let options = &args[1..];
             let bdf = option_value(options, "--bdf")?;
@@ -396,11 +474,26 @@ fn run_device(args: &[String]) -> Result<()> {
 fn run_prepare_station(options: &[String]) -> Result<()> {
     let bdf = option_value(options, "--bdf")?;
     let station = option_value(options, "--station")?
-        .parse::<usize>()
+        .parse::<u8>()
         .map_err(|_| Error::Usage("--station must be an integer from 0 through 5".into()))?;
     let layout = StationLayout::parse(option_value(options, "--layout")?)?;
     let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
     reject_unknown_options(options, &["--bdf", "--station", "--layout", "--output-dir"])?;
+    let config = AtlasConfig::station_layout(station, layout)?;
+    prepare_config_plan(bdf, &config, &output_dir)
+}
+
+fn run_prepare_config(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let config_path = PathBuf::from(option_value(options, "--config")?);
+    let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
+    reject_unknown_options(options, &["--bdf", "--config", "--output-dir"])?;
+    let config = AtlasConfig::read(&config_path)?;
+    prepare_config_plan(bdf, &config, &output_dir)
+}
+
+fn prepare_config_plan(bdf: &str, config: &AtlasConfig, output_dir: &Path) -> Result<()> {
+    config.validate()?;
     if output_dir.exists() {
         return Err(Error::Safety(format!(
             "{} already exists; choose a new plan directory",
@@ -450,17 +543,16 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
             .ok_or_else(|| Error::Format("complete flash ends before the SBR".into()))?,
     )?;
     current_sbr.validate()?;
-    let old_codes = current_sbr.station_codes(station)?;
 
     let mut candidate_sbr = current_sbr.clone();
-    candidate_sbr.set_station_layout(station, layout)?;
+    candidate_sbr.apply_config(config)?;
     candidate_sbr.validate()?;
-    let new_codes = candidate_sbr.station_codes(station)?;
+    let report = current_sbr.diff(&candidate_sbr);
     let sbr_differences = byte_differences(current_sbr.bytes(), candidate_sbr.bytes());
     if sbr_differences.is_empty() {
-        return Err(Error::Safety(format!(
-            "station {station} already has layout {layout}; no plan directory was created"
-        )));
+        return Err(Error::Safety(
+            "configuration already matches the live SBR; no plan directory was created".into(),
+        ));
     }
 
     let current_region = flash_a[..ATLAS_SPI_RECOVERY_REGION_SIZE].to_vec();
@@ -475,6 +567,10 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
         "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
         device.bdf().to_ascii_lowercase()
     );
+    let config_json = config.to_json_pretty()?;
+    let current_inspection_json = json_bytes(&current_sbr.inspection())?;
+    let candidate_inspection_json = json_bytes(&candidate_sbr.inspection())?;
+    let diff_json = json_bytes(&report)?;
     let files = [
         ("current-flash-a.bin", flash_a.as_slice()),
         ("current-flash-b.bin", flash_b.as_slice()),
@@ -482,10 +578,20 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
         ("current-sbr.bin", current_sbr.bytes()),
         ("candidate-region.bin", candidate_region.as_slice()),
         ("candidate-sbr.bin", candidate_sbr.bytes()),
+        ("applied-config.json", config_json.as_slice()),
+        (
+            "current-inspection.json",
+            current_inspection_json.as_slice(),
+        ),
+        (
+            "candidate-inspection.json",
+            candidate_inspection_json.as_slice(),
+        ),
+        ("diff.json", diff_json.as_slice()),
     ];
 
     let mut manifest = String::new();
-    writeln!(manifest, "format: pexctl-station-plan-v1").expect("writing to String");
+    writeln!(manifest, "format: pexctl-config-plan-v1").expect("writing to String");
     writeln!(manifest, "bdf: {}", device.bdf()).expect("writing to String");
     writeln!(
         manifest,
@@ -503,10 +609,6 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
     writeln!(manifest, "flash-size: {:#x}", flash_a.len()).expect("writing to String");
     writeln!(manifest, "sbr-offset: {SBR_FLASH_OFFSET:#x}").expect("writing to String");
     writeln!(manifest, "sbr-size: {:#x}", current_sbr.bytes().len()).expect("writing to String");
-    writeln!(manifest, "station: {station}").expect("writing to String");
-    writeln!(manifest, "old-codes: {old_codes:?}").expect("writing to String");
-    writeln!(manifest, "new-codes: {new_codes:?}").expect("writing to String");
-    writeln!(manifest, "new-layout: {layout}").expect("writing to String");
     writeln!(manifest).expect("writing to String");
     writeln!(manifest, "files:").expect("writing to String");
     for (name, bytes) in files {
@@ -515,6 +617,25 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
             "  {name}: sha256={} size={:#x}",
             sha256_hex(bytes),
             bytes.len()
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest).expect("writing to String");
+    writeln!(manifest, "named-differences:").expect("writing to String");
+    for difference in &report.named_differences {
+        writeln!(
+            manifest,
+            "  {}: {} -> {}",
+            difference.field, difference.before, difference.after
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest, "station-differences:").expect("writing to String");
+    for difference in &report.station_differences {
+        writeln!(
+            manifest,
+            "  station {}: {:?} -> {:?}",
+            difference.station, difference.before_codes, difference.after_codes
         )
         .expect("writing to String");
     }
@@ -542,18 +663,18 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
         .expect("writing to String");
     writeln!(manifest, "hardware-written: no").expect("writing to String");
 
-    create_new_directory(&output_dir)?;
+    create_new_directory(output_dir)?;
     for (name, bytes) in files {
         write_new_file(&output_dir.join(name), bytes)?;
     }
     write_new_file(&output_dir.join("MANIFEST.txt"), manifest.as_bytes())?;
 
     println!(
-        "prepared verified station plan in {}: station {} {:?} -> {:?} ({layout})",
+        "prepared verified configuration plan in {}: {} named field change(s), {} station change(s), {} changed SBR byte(s)",
         output_dir.display(),
-        station,
-        old_codes,
-        new_codes
+        report.named_differences.len(),
+        report.station_differences.len(),
+        sbr_differences.len()
     );
     println!(
         "two complete {}-byte flash reads matched; hardware was not written",
@@ -588,6 +709,13 @@ fn print_inspection(image: &SbrImage) {
         image.bytes().len()
     );
     println!("soc-settings: {:#x}..{:#x}", pexctl::SOC_OFFSET, SOC_END);
+    println!(
+        "soc-known:    upstream-port={} max-link-speed={} (code={}) lane-enable-code={} (raw)",
+        image.upstream_port(),
+        image.max_link_speed(),
+        image.max_link_speed_code(),
+        image.lane_enable_code_raw()
+    );
     println!(
         "checksum:     stored={:#010x} expected={:#04x} offset={:#x} {}",
         image.stored_checksum(),
@@ -702,15 +830,39 @@ fn expect_len(args: &[String], length: usize, usage: &str) -> Result<()> {
     Ok(())
 }
 
+fn optional_json_flag(args: &[String], positional_length: usize, usage: &str) -> Result<bool> {
+    match args.get(positional_length..) {
+        Some([]) => Ok(false),
+        Some([flag]) if flag == "--json" => Ok(true),
+        _ => Err(Error::Usage(format!("usage: {usage}"))),
+    }
+}
+
+fn print_json<T: Serialize>(value: &T) -> Result<()> {
+    let json = serde_json::to_string_pretty(value)
+        .map_err(|error| Error::Config(format!("serializing JSON: {error}")))?;
+    println!("{json}");
+    Ok(())
+}
+
+fn json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>> {
+    let mut bytes = serde_json::to_vec_pretty(value)
+        .map_err(|error| Error::Config(format!("serializing JSON: {error}")))?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
 fn print_help() {
     println!(
         "\
 pexctl — open Broadcom/PLX PEX switch configuration tools
 
 USAGE:
-  pexctl sbr inspect IMAGE
+  pexctl sbr inspect IMAGE [--json]
   pexctl sbr validate IMAGE
-  pexctl sbr diff BEFORE AFTER
+  pexctl sbr diff BEFORE AFTER [--json]
+  pexctl sbr export-config IMAGE --output CONFIG.json
+  pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT
   pexctl sbr set-station INPUT --station N --layout x16|x4x4x4x4 --output OUTPUT
   pexctl sbr repair-checksum INPUT --output OUTPUT
 
@@ -724,6 +876,8 @@ USAGE:
   sudo pexctl device backup-flash --bdf 0000:c4:00.0 --output OUTPUT
   sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
     --station N --layout x16|x4x4x4x4 --output-dir DIRECTORY
+  sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
+    --config CONFIG.json --output-dir DIRECTORY
   sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
     --expected-current BACKUP --candidate CANDIDATE \
     --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
