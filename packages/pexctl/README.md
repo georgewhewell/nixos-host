@@ -26,10 +26,13 @@ pexctl sbr inspect IMAGE
 pexctl sbr inspect IMAGE --json
 pexctl sbr validate IMAGE
 pexctl sbr fields IMAGE
+pexctl sbr fields IMAGE --json
 pexctl sbr entries IMAGE
 pexctl sbr entries IMAGE --block psb-serdes --json
 pexctl sbr psw IMAGE
 pexctl sbr psw IMAGE --block psw4 --json
+pexctl sbr export-field-patch IMAGE --field soc.customer_scratch1 \
+  --value 1 --output expert-field.json
 pexctl sbr export-entry-patch IMAGE --block psb --index 0 \
   --value 0x06042018 --output expert-entry.json
 pexctl sbr diff BEFORE AFTER
@@ -51,6 +54,7 @@ pexctl plan verify config-plan --json
 
 sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output current.bin
 sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
+sudo pexctl device fields --bdf 0000:c4:00.0 --json
 sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
 sudo pexctl device psw --bdf 0000:c4:00.0 --block psw4
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
@@ -81,13 +85,20 @@ sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
 
 `inspect --json` is a lossless research view: it includes the 22 raw index
 dwords, all 104 raw SoC-setting dwords, every indexed block as raw dwords with
-its SHA-256, checksum state, raw station codes, and every currently understood
-field. It also decodes the PSB register-write records and PSB-SerDes AXI-write
+its SHA-256, checksum state, raw station codes, and the stable v1 named-field
+set. It also decodes the PSB register-write records and PSB-SerDes AXI-write
 records described below. `sbr entries` prints the indexed write records
 directly and can select either block with `--block`. `sbr psw` prints the
 station/lane PSW view and can select `psw0` through `psw5`, or `pswx2`.
 `diff --json` provides hashes, named-field changes, station changes,
 PSB/PSB-SerDes entry-value changes, and byte changes.
+
+`sbr fields --json` and `device fields --json` provide the complete current
+named-field catalog as `pexctl.atlas-soc-field-inspection.v1`. It contains the
+field name, SBR offset, exact bit range, current numeric value, and write
+policy. The focused schema can grow independently while the original full
+inspection stays byte-compatible with existing `atlas-config-plan.v1`
+artifacts.
 
 `export-config` creates the strict, versioned subset that `pexctl` knows how to
 write:
@@ -134,14 +145,26 @@ been independently validated can be changed through an explicit expert patch:
 
 Both `apply-config` and `prepare-config` refuse this document unless
 `--allow-expert-fields` is present. Each patch must name a field reported with
-an `expert` policy by `sbr fields` or `"write_policy": "expert"` by
-`inspect --json`, and `expected` must exactly match the input image before any
-mutation occurs. Unknown fields, duplicate fields, values wider than the
-field, and attempts to bypass ordinary typed settings are rejected. The
-example is in
+an `expert` policy by `sbr fields`, and `expected` must exactly match the input
+image before any mutation occurs. Unknown fields, duplicate fields, values
+wider than the field, and attempts to bypass ordinary typed settings are
+rejected.
+
+The catalog includes clock-source/divider, serial-debug, CPU-address,
+IOP-reset, system-counter, capture-clock, baud-clock, DCSG scratch and
+configuration, and customer-scratch fields at SBR offsets `0x6c` through
+`0x74`. Their bit positions and vendor names are known; their reset and board
+behavior are not independently characterized, so every one remains expert
+policy. Vendor spare and reserved fields remain absent. The example is in
 [`examples/expert-fanout-enable.json`](examples/expert-fanout-enable.json);
 it demonstrates the syntax and is not a recommendation to enable fanout on
 this board.
+
+`export-field-patch` constructs the expert document from an existing image. It
+fills in the exact current value, checks the requested value against the field
+width, and rejects unknown fields, ordinary typed fields, and no-op requests.
+Generating a document does not make its replacement value safe; applying or
+preparing it still requires `--allow-expert-fields`.
 
 The device reader accesses the Atlas CS0 memory-mapped flash window through the
 open PlxSvc ioctl ABI from Broadcom's dual-BSD/GPL SDK. It verifies the PCI
@@ -152,9 +175,9 @@ drive the Atlas manual-SPI controller registers and issue only JEDEC-ID and
 read commands; they do not issue flash write-enable, erase, page-program, PEX
 reset, or host reset operations.
 
-`device inspect-sbr` and `device entries` provide the same complete inspection
-and decoded-entry views directly from the live mapped CS0 SBR, without first
-creating an intermediate image. They perform only PlxSvc mapped reads.
+`device inspect-sbr`, `device fields`, `device entries`, and `device psw`
+provide the same focused views directly from the live mapped CS0 SBR, without
+first creating an intermediate image. They perform only PlxSvc mapped reads.
 
 On the observed PEX88096, the safe memory-mapped CS0 prefix is `0x500000`
 bytes. At flash offset `0x500000`, the nominal flash mapping reaches BAR0

@@ -128,25 +128,55 @@ station-wide three-bit values.
 
 ## Additional named fields
 
-`inspect --json` decodes the field positions whose names are present in the
-Atlas field database at SBR offsets `0x68`, `0x6c`, and `0x70`. These include
-station DPR enablement, Atlas mode, automatic PCIe link training, fanout and
-STP controls, station clock controls, hot-plug and power controls, secure boot,
-watchdog, SPI ECC, and boot-ROM/RAM ECC controls.
+`sbr fields --json` and `device fields --json` decode the field positions whose
+names are present in the Atlas field database at SBR offsets `0x68` through
+`0x74`. These include station DPR enablement, Atlas mode, automatic PCIe link
+training, fanout and STP controls, station clock controls, hot-plug and power
+controls, secure boot, watchdog, SPI ECC, boot-ROM/RAM ECC controls, and the
+additional controls below:
 
-They appear under `soc.named_fields` with their SBR offset, low/high bit,
-numeric value, and `write_policy`. A policy of `ordinary` means the field has
-a typed configuration member. A policy of `expert` means its position is known
-but its board constraints and reset behavior have not been independently
+| SBR offset | Bits | JSON field |
+|---:|---:|---|
+| `0x6c` | 5 | `soc.ethernet_tx_clock_source_select` |
+| `0x6c` | 7:6 | `soc.ethernet_tx_clock_divider` |
+| `0x6c` | 9:8 | `soc.serial_debug_mode_raw` |
+| `0x6c` | 10 | `soc.cpu_address_mode` |
+| `0x6c` | 11 | `soc.initialize_iop_reset` |
+| `0x6c` | 20 | `soc.system_counter_frequency_select` |
+| `0x6c` | 21 | `soc.system_counter_halt_on_debug` |
+| `0x6c` | 22 | `soc.system_counter_enable` |
+| `0x6c` | 23 | `soc.aladin_capture_clock_select` |
+| `0x6c` | 26:24 | `soc.alternate_d_select_default_raw` |
+| `0x6c` | 29 | `soc.baud_clock_select` |
+| `0x70` | 23:16 | `soc.dcsg_scratch1` |
+| `0x70` | 31:24 | `soc.dcsg_scratch2` |
+| `0x74` | 7:0 | `soc.customer_scratch1` |
+| `0x74` | 15:8 | `soc.customer_scratch2` |
+| `0x74` | 23:16 | `soc.dcsg_configuration` |
+
+They appear under `fields` in the focused
+`pexctl.atlas-soc-field-inspection.v1` schema with their SBR offset, low/high
+bit, numeric value, and `write_policy`. A policy of `ordinary` means the field
+has a typed configuration member. A policy of `expert` means its position is
+known but its board constraints and reset behavior have not been independently
 validated. The compatibility `writable` boolean is true only for `ordinary`
 fields; expert access always requires the separate acknowledgement below.
+
+The 35-field `soc.named_fields` array in `pexctl.atlas-sbr-inspection.v1`
+remains frozen. Configuration plans store those complete inspection documents
+byte-for-byte, so extending that array in place would invalidate existing
+recovery plans. The focused field schema is the authoritative catalog for new
+fields. The v1 diff likewise retains its original named-field set; changes to
+later catalog fields still appear in its exhaustive byte differences.
 
 Expert fields can be changed by exact name through `expert_soc_fields`. Each
 patch includes a mandatory `expected` value and is rejected unless the caller
 also passes `--allow-expert-fields`. All expected values are checked against
 the original input before any field is changed. This supplies access without
 misrepresenting a vendor field name as evidence that an arbitrary board value
-is safe.
+is safe. `sbr export-field-patch` generates a single-field document from the
+input image, including the exact expected-current value; it rejects unknown,
+ordinary, out-of-range, and no-op requests.
 
 ## Proven station codes
 

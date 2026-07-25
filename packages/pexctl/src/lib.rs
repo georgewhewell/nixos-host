@@ -35,6 +35,7 @@ pub const ATLAS_INSPECTION_SCHEMA: &str = "pexctl.atlas-sbr-inspection.v1";
 pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
 pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v1";
 pub const ATLAS_PSW_INSPECTION_SCHEMA: &str = "pexctl.atlas-psw-inspection.v1";
+pub const ATLAS_SOC_FIELD_INSPECTION_SCHEMA: &str = "pexctl.atlas-soc-field-inspection.v1";
 pub const ATLAS_CONFIG_PLAN_FILE: &str = "PLAN.json";
 pub const ATLAS_CONFIG_PLAN_ARTIFACT_NAMES: [&str; 11] = [
     "current-flash-a.bin",
@@ -58,6 +59,9 @@ const PSB_BROADCAST_MASK: u32 = 0x1000_0000;
 const AXI_BROADCAST_ADDRESS_MASK: u32 = 0x7000_0000;
 const AXI_BROADCAST_ADDRESS_VALUE: u32 = 0x7000_0000;
 const AXI_BROADCAST_MODE_MASK: u32 = 0x0300_0000;
+// The v1 plan stores complete inspection JSON byte-for-byte. Keep this prefix
+// ordered and immutable; append newly understood fields after it.
+const ATLAS_INSPECTION_V1_SOC_FIELD_COUNT: usize = 35;
 const UPSTREAM_PORT_START_BIT: usize = SOC_OFFSET * 8;
 const MAX_LINK_SPEED_START_BIT: usize = SOC_OFFSET * 8 + 8;
 const LANE_ENABLE_START_BIT: usize = SOC_OFFSET * 8 + 13;
@@ -842,6 +846,13 @@ pub struct NamedSocFieldInspection {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SocFieldInspection {
+    pub schema: &'static str,
+    pub sbr_sha256: String,
+    pub fields: Vec<NamedSocFieldInspection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BlockInspection {
     pub name: &'static str,
     pub offset: u32,
@@ -1401,7 +1412,124 @@ const NAMED_SOC_FIELDS: &[NamedSocField] = &[
         width: 1,
         writable: false,
     },
+    // New catalog fields belong below the frozen v1 inspection prefix.
+    NamedSocField {
+        name: "soc.ethernet_tx_clock_source_select",
+        offset: 0x6c,
+        bit_low: 5,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.ethernet_tx_clock_divider",
+        offset: 0x6c,
+        bit_low: 6,
+        width: 2,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.serial_debug_mode_raw",
+        offset: 0x6c,
+        bit_low: 8,
+        width: 2,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.cpu_address_mode",
+        offset: 0x6c,
+        bit_low: 10,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.initialize_iop_reset",
+        offset: 0x6c,
+        bit_low: 11,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.system_counter_frequency_select",
+        offset: 0x6c,
+        bit_low: 20,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.system_counter_halt_on_debug",
+        offset: 0x6c,
+        bit_low: 21,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.system_counter_enable",
+        offset: 0x6c,
+        bit_low: 22,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.aladin_capture_clock_select",
+        offset: 0x6c,
+        bit_low: 23,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.alternate_d_select_default_raw",
+        offset: 0x6c,
+        bit_low: 24,
+        width: 3,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.baud_clock_select",
+        offset: 0x6c,
+        bit_low: 29,
+        width: 1,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.dcsg_scratch1",
+        offset: 0x70,
+        bit_low: 16,
+        width: 8,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.dcsg_scratch2",
+        offset: 0x70,
+        bit_low: 24,
+        width: 8,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.customer_scratch1",
+        offset: 0x74,
+        bit_low: 0,
+        width: 8,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.customer_scratch2",
+        offset: 0x74,
+        bit_low: 8,
+        width: 8,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.dcsg_configuration",
+        offset: 0x74,
+        bit_low: 16,
+        width: 8,
+        writable: false,
+    },
 ];
+
+fn inspection_v1_soc_fields() -> &'static [NamedSocField] {
+    &NAMED_SOC_FIELDS[..ATLAS_INSPECTION_V1_SOC_FIELD_COUNT]
+}
 
 fn named_soc_field(name: &str) -> Option<NamedSocField> {
     NAMED_SOC_FIELDS
@@ -1700,6 +1828,43 @@ impl SbrImage {
         }
     }
 
+    pub fn expert_soc_field_config(&self, name: &str, value: u8) -> Result<AtlasConfig> {
+        self.validate()?;
+        let field = named_soc_field(name).ok_or_else(|| {
+            Error::Usage(format!(
+                "unknown SoC field {name:?}; use `pexctl sbr fields IMAGE` to list known fields"
+            ))
+        })?;
+        if field.writable {
+            return Err(Error::Usage(format!(
+                "{name:?} has an ordinary typed configuration field; use `pexctl sbr export-config`"
+            )));
+        }
+        let current = self.read_bits(
+            field.offset * 8 + usize::from(field.bit_low),
+            usize::from(field.width),
+        );
+        if value == current {
+            return Err(Error::Usage(format!(
+                "{name:?} already has value {value}; no patch generated"
+            )));
+        }
+        let config = AtlasConfig {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig::default(),
+            stations: Vec::new(),
+            expert_soc_fields: vec![ExpertSocFieldPatch {
+                field: name.into(),
+                expected: current,
+                value,
+            }],
+            expert_psb_entries: Vec::new(),
+            expert_psb_serdes_entries: Vec::new(),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
     pub fn expert_psb_entry_config(&self, index: usize, value: u32) -> Result<AtlasConfig> {
         self.validate()?;
         let entries = self.psb_entries();
@@ -1907,6 +2072,37 @@ impl SbrImage {
         self.validate_structure()
     }
 
+    fn named_soc_field_inspections(
+        &self,
+        fields: &[NamedSocField],
+    ) -> Vec<NamedSocFieldInspection> {
+        fields
+            .iter()
+            .map(|field| NamedSocFieldInspection {
+                name: field.name,
+                offset: field.offset,
+                bit_low: field.bit_low,
+                bit_high: field.bit_low + field.width - 1,
+                value: self.read_bits(
+                    field.offset * 8 + usize::from(field.bit_low),
+                    usize::from(field.width),
+                ),
+                writable: field.writable,
+                write_policy: if field.writable { "ordinary" } else { "expert" },
+            })
+            .collect()
+    }
+
+    pub fn soc_field_inspection(&self) -> SocFieldInspection {
+        let mut fields = self.named_soc_field_inspections(NAMED_SOC_FIELDS);
+        fields.sort_by_key(|field| (field.offset, field.bit_low));
+        SocFieldInspection {
+            schema: ATLAS_SOC_FIELD_INSPECTION_SCHEMA,
+            sbr_sha256: sha256_hex(&self.bytes),
+            fields,
+        }
+    }
+
     pub fn inspection(&self) -> SbrInspection {
         SbrInspection {
             schema: ATLAS_INSPECTION_SCHEMA,
@@ -1931,21 +2127,7 @@ impl SbrImage {
                 max_link_speed: self.max_link_speed(),
                 max_link_speed_code: self.max_link_speed_code(),
                 lane_enable_code_raw: self.lane_enable_code_raw(),
-                named_fields: NAMED_SOC_FIELDS
-                    .iter()
-                    .map(|field| NamedSocFieldInspection {
-                        name: field.name,
-                        offset: field.offset,
-                        bit_low: field.bit_low,
-                        bit_high: field.bit_low + field.width - 1,
-                        value: self.read_bits(
-                            field.offset * 8 + usize::from(field.bit_low),
-                            usize::from(field.width),
-                        ),
-                        writable: field.writable,
-                        write_policy: if field.writable { "ordinary" } else { "expert" },
-                    })
-                    .collect(),
+                named_fields: self.named_soc_field_inspections(inspection_v1_soc_fields()),
             },
             blocks: self
                 .blocks()
@@ -1976,7 +2158,7 @@ impl SbrImage {
     }
 
     pub fn diff(&self, after: &Self) -> SbrDiffReport {
-        let named_differences = NAMED_SOC_FIELDS
+        let named_differences = inspection_v1_soc_fields()
             .iter()
             .filter_map(|field| {
                 let start_bit = field.offset * 8 + usize::from(field.bit_low);
@@ -3938,6 +4120,139 @@ mod tests {
         let mut unchanged = original.clone();
         assert!(unchanged.apply_config_with_policy(&mismatch, true).is_err());
         assert_eq!(unchanged, original);
+    }
+
+    #[test]
+    fn exposes_extended_soc_catalog_without_changing_v1_plan_inspections() {
+        let original = minimal_image([[0; 4]; 6]);
+        let legacy_inspection = original.inspection();
+        assert_eq!(
+            legacy_inspection.soc.named_fields.len(),
+            ATLAS_INSPECTION_V1_SOC_FIELD_COUNT
+        );
+        assert!(!legacy_inspection
+            .soc
+            .named_fields
+            .iter()
+            .any(|field| field.name == "soc.customer_scratch1"));
+
+        let field_inspection = original.soc_field_inspection();
+        assert_eq!(field_inspection.schema, ATLAS_SOC_FIELD_INSPECTION_SCHEMA);
+        assert_eq!(
+            field_inspection.fields.len(),
+            ATLAS_INSPECTION_V1_SOC_FIELD_COUNT + 16
+        );
+        assert!(field_inspection.fields.iter().any(|field| field.name
+            == "soc.ethernet_tx_clock_divider"
+            && field.offset == 0x6c
+            && field.bit_low == 6
+            && field.bit_high == 7));
+        assert!(field_inspection
+            .fields
+            .iter()
+            .any(|field| field.name == "soc.customer_scratch1"
+                && field.offset == 0x74
+                && field.bit_low == 0
+                && field.bit_high == 7));
+
+        let generated = original
+            .expert_soc_field_config("soc.ethernet_tx_clock_divider", 3)
+            .unwrap();
+        assert_eq!(generated.expert_soc_fields.len(), 1);
+        assert_eq!(
+            generated.expert_soc_fields[0],
+            ExpertSocFieldPatch {
+                field: "soc.ethernet_tx_clock_divider".into(),
+                expected: 0,
+                value: 3,
+            }
+        );
+        assert!(original
+            .expert_soc_field_config("soc.ethernet_tx_clock_divider", 4)
+            .is_err());
+        assert!(original
+            .expert_soc_field_config("soc.customer_scratch1", 0)
+            .is_err());
+        assert!(original
+            .expert_soc_field_config("soc.upstream_port", 1)
+            .is_err());
+        assert!(original
+            .expert_soc_field_config("soc.not_a_field", 1)
+            .is_err());
+
+        let config = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {
+                        "field": "soc.ethernet_tx_clock_divider",
+                        "expected": 0,
+                        "value": 3
+                    },
+                    {
+                        "field": "soc.customer_scratch1",
+                        "expected": 0,
+                        "value": 165
+                    },
+                    {
+                        "field": "soc.dcsg_configuration",
+                        "expected": 0,
+                        "value": 90
+                    }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let mut candidate = original.clone();
+        candidate.apply_config_with_policy(&config, true).unwrap();
+        candidate.validate().unwrap();
+
+        let fields = candidate.soc_field_inspection();
+        assert_eq!(
+            fields
+                .fields
+                .iter()
+                .find(|field| field.name == "soc.ethernet_tx_clock_divider")
+                .unwrap()
+                .value,
+            3
+        );
+        assert_eq!(
+            fields
+                .fields
+                .iter()
+                .find(|field| field.name == "soc.customer_scratch1")
+                .unwrap()
+                .value,
+            0xa5
+        );
+        assert_eq!(
+            fields
+                .fields
+                .iter()
+                .find(|field| field.name == "soc.dcsg_configuration")
+                .unwrap()
+                .value,
+            0x5a
+        );
+        assert!(byte_differences(original.bytes(), candidate.bytes())
+            .iter()
+            .all(|difference| matches!(difference.offset, 0x6c | 0x74 | 0x76 | SOC_END)));
+        assert!(original.diff(&candidate).named_differences.is_empty());
+
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {
+                        "field": "soc.ethernet_tx_clock_divider",
+                        "expected": 0,
+                        "value": 4
+                    }
+                ]
+            }"#,
+        )
+        .is_err());
     }
 
     #[test]

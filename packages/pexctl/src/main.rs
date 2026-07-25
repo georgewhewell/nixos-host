@@ -80,14 +80,20 @@ fn run_sbr(args: &[String]) -> Result<()> {
             Ok(())
         }
         "fields" => {
-            expect_len(args, 2, "pexctl sbr fields IMAGE")?;
+            let json = optional_json_flag(args, 2, "pexctl sbr fields IMAGE [--json]")?;
             let image = SbrImage::read(Path::new(&args[1]))?;
             image.validate()?;
-            print_named_fields(&image);
-            Ok(())
+            let inspection = image.soc_field_inspection();
+            if json {
+                print_json(&inspection)
+            } else {
+                print_named_fields(&inspection);
+                Ok(())
+            }
         }
         "entries" => run_sbr_entries(&args[1..]),
         "psw" => run_sbr_psw(&args[1..]),
+        "export-field-patch" => run_export_field_patch(&args[1..]),
         "export-entry-patch" => run_export_entry_patch(&args[1..]),
         "diff" => {
             let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
@@ -106,6 +112,35 @@ fn run_sbr(args: &[String]) -> Result<()> {
         "repair-checksum" => run_repair_checksum(&args[1..]),
         other => Err(Error::Usage(format!("unknown SBR command {other:?}"))),
     }
+}
+
+fn run_export_field_patch(args: &[String]) -> Result<()> {
+    let usage =
+        "pexctl sbr export-field-patch IMAGE --field NAME --value VALUE --output CONFIG.json";
+    if args.is_empty()
+        || args
+            .iter()
+            .take_while(|argument| !argument.starts_with("--"))
+            .count()
+            != 1
+    {
+        return Err(Error::Usage(format!("usage: {usage}")));
+    }
+    let field = option_value(args, "--field")?;
+    let value = u8::try_from(parse_number(option_value(args, "--value")?)?)
+        .map_err(|_| Error::Usage("--value exceeds 8 bits".into()))?;
+    let output = PathBuf::from(option_value(args, "--output")?);
+    reject_unknown_options(args, &["--field", "--value", "--output"])?;
+
+    let image = SbrImage::read(Path::new(&args[0]))?;
+    let config = image.expert_soc_field_config(field, value)?;
+    write_new_file(&output, &config.to_json_pretty()?)?;
+    println!(
+        "wrote expert SoC field patch for {field} in {} to {}; applying it requires --allow-expert-fields",
+        args[0],
+        output.display()
+    );
+    Ok(())
 }
 
 fn run_export_entry_patch(args: &[String]) -> Result<()> {
@@ -614,6 +649,7 @@ fn run_device(args: &[String]) -> Result<()> {
             }
         }
         "entries" => run_device_entries(&args[1..]),
+        "fields" => run_device_fields(&args[1..]),
         "psw" => run_device_psw(&args[1..]),
         "prepare-station" => run_prepare_station(&args[1..]),
         "prepare-config" => run_prepare_config(&args[1..]),
@@ -749,6 +785,29 @@ fn run_device_entries(options: &[String]) -> Result<()> {
         print_json(&inspection)
     } else {
         print_entry_inspection(&inspection);
+        Ok(())
+    }
+}
+
+fn run_device_fields(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let offset = optional_number(options, "--offset")?.unwrap_or(SBR_FLASH_OFFSET);
+    let json = options.iter().any(|argument| argument == "--json");
+    reject_unknown_options_and_flags(options, &["--bdf", "--offset"], &["--json"])?;
+
+    let device = PlxSvcDevice::open(bdf)?;
+    let image = device.read_sbr(offset)?;
+    image.validate()?;
+    let inspection = image.soc_field_inspection();
+    eprintln!(
+        "pexctl: read valid {}-byte SBR from {} at flash offset {offset:#x}",
+        image.bytes().len(),
+        device.bdf()
+    );
+    if json {
+        print_json(&inspection)
+    } else {
+        print_named_fields(&inspection);
         Ok(())
     }
 }
@@ -1236,9 +1295,9 @@ fn print_diff(before: &SbrImage, after: &SbrImage) {
     }
 }
 
-fn print_named_fields(image: &SbrImage) {
+fn print_named_fields(inspection: &pexctl::SocFieldInspection) {
     println!("field                                      offset bits   value policy");
-    for field in image.inspection().soc.named_fields {
+    for field in &inspection.fields {
         let bits = if field.bit_low == field.bit_high {
             field.bit_low.to_string()
         } else {
@@ -1441,9 +1500,11 @@ pexctl — open Broadcom/PLX PEX switch configuration tools
 USAGE:
   pexctl sbr inspect IMAGE [--json]
   pexctl sbr validate IMAGE
-  pexctl sbr fields IMAGE
+  pexctl sbr fields IMAGE [--json]
   pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]
   pexctl sbr psw IMAGE [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]
+  pexctl sbr export-field-patch IMAGE --field NAME --value VALUE \
+    --output CONFIG.json
   pexctl sbr export-entry-patch IMAGE --block psb|psb-serdes --index N \
     --value VALUE --output CONFIG.json
   pexctl sbr diff BEFORE AFTER [--json]
@@ -1460,6 +1521,7 @@ USAGE:
 
   sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output OUTPUT [--offset 0x400]
   sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 [--offset 0x400] [--json]
+  sudo pexctl device fields --bdf 0000:c4:00.0 [--offset 0x400] [--json]
   sudo pexctl device entries --bdf 0000:c4:00.0 [--offset 0x400] \
     [--block psb|psb-serdes] [--json]
   sudo pexctl device psw --bdf 0000:c4:00.0 [--offset 0x400] \

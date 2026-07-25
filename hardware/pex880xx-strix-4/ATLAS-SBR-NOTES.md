@@ -34,6 +34,28 @@ Secure boot, watchdog, fanout, and flash-signature enablement are currently
 clear. These fields require an expected-current expert patch and
 `--allow-expert-fields` in `pexctl`; none was changed during this work.
 
+The focused SoC catalog now exposes 51 named fields. Sixteen additional
+database-defined fields cover Ethernet TX clock selection/division, serial
+debug mode, CPU address mode, initial IOP reset, system-counter controls,
+capture and baud clock selection, DCSG scratch/configuration, and customer
+scratch bytes. The live image and Base RDK96 agree on every newly exposed
+value: Ethernet TX divider is 2, initial IOP reset is 1, alternate-D-select
+default is 5, and the remaining thirteen are zero.
+
+The Nix-built direct-device command:
+
+```console
+sudo pexctl device fields --bdf 0000:c4:00.0 --json
+```
+
+reproduced the live SBR SHA-256 and all 51 fields. Package
+`/nix/store/inzn9s6zn667fgviqhjk09inbh03szpb-pexctl-0.1.0` also re-verified
+the pre-existing station-4 plan after the catalog extension. The full
+inspection schema remains frozen at its original 35 named fields; the new
+`pexctl.atlas-soc-field-inspection.v1` schema carries the extensible catalog.
+All sixteen new fields use expected-current expert policy. No field was changed
+and no hardware write, reset, or reboot was issued.
+
 ## Indexed write blocks
 
 The live PSB block at SBR offset `0x1fc` is 72 bytes and decodes as nine
