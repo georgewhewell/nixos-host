@@ -26,6 +26,8 @@ pexctl sbr inspect IMAGE
 pexctl sbr inspect IMAGE --json
 pexctl sbr validate IMAGE
 pexctl sbr fields IMAGE
+pexctl sbr entries IMAGE
+pexctl sbr entries IMAGE --block psb-serdes --json
 pexctl sbr diff BEFORE AFTER
 pexctl sbr diff BEFORE AFTER --json
 pexctl sbr export-config IMAGE --output config.json
@@ -39,6 +41,8 @@ pexctl flash extract-sbr flash.bin --output current.bin
 pexctl flash replace-sbr flash.bin candidate.bin --output candidate-flash.bin
 
 sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output current.bin
+sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
+sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --output sector-0.bin
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
@@ -59,9 +63,12 @@ sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
 ```
 
 `inspect --json` is a lossless research view: it includes the 22 raw index
-dwords, all 104 raw SoC-setting dwords, block ranges, checksum state, SHA-256,
-raw station codes, and every currently understood field. `diff --json`
-provides hashes, named-field changes, station changes, and byte changes.
+dwords, all 104 raw SoC-setting dwords, every indexed block as raw dwords with
+its SHA-256, checksum state, raw station codes, and every currently understood
+field. It also decodes the PSB register-write records and PSB-SerDes AXI-write
+records described below. `sbr entries` prints those records directly and can
+select either block with `--block`. `diff --json` provides hashes, named-field
+changes, station changes, and byte changes.
 
 `export-config` creates the strict, versioned subset that `pexctl` knows how to
 write:
@@ -126,6 +133,10 @@ drive the Atlas manual-SPI controller registers and issue only JEDEC-ID and
 read commands; they do not issue flash write-enable, erase, page-program, PEX
 reset, or host reset operations.
 
+`device inspect-sbr` and `device entries` provide the same complete inspection
+and decoded-entry views directly from the live mapped CS0 SBR, without first
+creating an intermediate image. They perform only PlxSvc mapped reads.
+
 On the observed PEX88096, the safe memory-mapped CS0 prefix is `0x500000`
 bytes. At flash offset `0x500000`, the nominal flash mapping reaches BAR0
 offset `0x800000` and overlaps Atlas port registers; treating the rest of BAR0
@@ -165,6 +176,27 @@ write behavior has not been independently validated. These fields are
 available only through the expected-current and command-line opt-in mechanism
 above. Every SoC dword remains available as raw inspection data and is retained
 byte-for-byte.
+
+## PSB and SerDes write records
+
+The variable PSB block contains 8-byte register-write records. Each record
+stores the 32-bit value followed by a descriptor. The descriptor contains a
+20-bit dword address, a four-bit byte mask, and a broadcast flag; `pexctl`
+reports the reconstructed byte address as `register_offset` and retains both
+the raw descriptor and any reserved bits. Registers observed in the live image
+or the PEX88096 RDK also receive stable keys and descriptive names; unknown
+offsets remain unnamed instead of being guessed.
+
+The variable PSB-SerDes block contains 8-byte AXI-write records, with the
+32-bit address followed by the 32-bit value. Addresses whose bits 30:28 are
+all set encode the vendor broadcast modes `none`, `lane`, `station`, or
+`lane+station` in bits 25:24. Other addresses are reported with no applicable
+broadcast mode.
+
+Both blocks are validated as complete 8-byte records and against the vendor
+maximum sizes. These records are read-only for now: their container encoding
+is proven, but changing a register still requires register-specific reset,
+ordering, mask, and board constraints that the raw record does not express.
 
 ## PEX88096 station topology
 

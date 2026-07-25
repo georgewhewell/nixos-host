@@ -31,6 +31,15 @@ pub const MAX_SBR_SIZE: usize = 128 * 1024;
 pub const ATLAS_CONFIG_SCHEMA: &str = "pexctl.atlas-config.v1";
 pub const ATLAS_INSPECTION_SCHEMA: &str = "pexctl.atlas-sbr-inspection.v1";
 pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
+pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v1";
+const PSB_MAX_SIZE: u32 = 0x2000;
+const PSB_SERDES_MAX_SIZE: u32 = 0x4000;
+const PSB_REGISTER_WORD_MASK: u32 = 0x000f_ffff;
+const PSB_BYTE_MASK_MASK: u32 = 0x0f00_0000;
+const PSB_BROADCAST_MASK: u32 = 0x1000_0000;
+const AXI_BROADCAST_ADDRESS_MASK: u32 = 0x7000_0000;
+const AXI_BROADCAST_ADDRESS_VALUE: u32 = 0x7000_0000;
+const AXI_BROADCAST_MODE_MASK: u32 = 0x0300_0000;
 const UPSTREAM_PORT_START_BIT: usize = SOC_OFFSET * 8;
 const MAX_LINK_SPEED_START_BIT: usize = SOC_OFFSET * 8 + 8;
 const LANE_ENABLE_START_BIT: usize = SOC_OFFSET * 8 + 13;
@@ -132,6 +141,18 @@ impl BlockKind {
             Self::Pswx2 => "pswx2",
             Self::PsbSerdes => "psb-serdes",
         }
+    }
+
+    fn max_size(self) -> Option<u32> {
+        match self {
+            Self::Psb => Some(PSB_MAX_SIZE),
+            Self::PsbSerdes => Some(PSB_SERDES_MAX_SIZE),
+            _ => None,
+        }
+    }
+
+    fn requires_entry_pairs(self) -> bool {
+        matches!(self, Self::Psb | Self::PsbSerdes)
     }
 }
 
@@ -442,7 +463,137 @@ pub struct BlockInspection {
     pub offset: u32,
     pub size: u32,
     pub state: String,
+    pub sha256: Option<String>,
+    pub raw_dwords: Vec<u32>,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AxiBroadcastMode {
+    None,
+    Lane,
+    Station,
+    Both,
+}
+
+impl AxiBroadcastMode {
+    fn from_code(code: u8) -> Self {
+        match code {
+            0 => Self::None,
+            1 => Self::Lane,
+            2 => Self::Station,
+            3 => Self::Both,
+            _ => unreachable!("two-bit AXI broadcast code"),
+        }
+    }
+}
+
+impl fmt::Display for AxiBroadcastMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+            Self::Lane => f.write_str("lane"),
+            Self::Station => f.write_str("station"),
+            Self::Both => f.write_str("lane+station"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PsbEntryInspection {
+    pub index: usize,
+    pub sbr_offset: usize,
+    pub value: u32,
+    pub descriptor: u32,
+    pub register_offset: u32,
+    pub register_key: Option<&'static str>,
+    pub register_name: Option<&'static str>,
+    pub byte_mask: u8,
+    pub broadcast: bool,
+    pub reserved_bits: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PsbSerdesEntryInspection {
+    pub index: usize,
+    pub sbr_offset: usize,
+    pub address: u32,
+    pub value: u32,
+    pub broadcast_mode: Option<AxiBroadcastMode>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SbrEntryInspection {
+    pub schema: &'static str,
+    pub sbr_sha256: String,
+    pub psb_entries: Vec<PsbEntryInspection>,
+    pub psb_serdes_entries: Vec<PsbSerdesEntryInspection>,
+}
+
+#[derive(Clone, Copy)]
+struct KnownPsbRegister {
+    offset: u32,
+    key: &'static str,
+    name: &'static str,
+}
+
+const KNOWN_PSB_REGISTERS: &[KnownPsbRegister] = &[
+    KnownPsbRegister {
+        offset: 0x20c,
+        key: "phy_user_test_pattern_0",
+        name: "PHY User Test Pattern 0",
+    },
+    KnownPsbRegister {
+        offset: 0x210,
+        key: "phy_user_test_pattern_4",
+        name: "PHY User Test Pattern 4",
+    },
+    KnownPsbRegister {
+        offset: 0x214,
+        key: "phy_user_test_pattern_8",
+        name: "PHY User Test Pattern 8",
+    },
+    KnownPsbRegister {
+        offset: 0x218,
+        key: "phy_user_test_pattern_12",
+        name: "PHY User Test Pattern 12",
+    },
+    KnownPsbRegister {
+        offset: 0x22c,
+        key: "phy_station_chicken_bits",
+        name: "PHY Station Chicken Bits",
+    },
+    KnownPsbRegister {
+        offset: 0x264,
+        key: "lane_margin_control_1",
+        name: "Lane Margin Control 1",
+    },
+    KnownPsbRegister {
+        offset: 0x72c,
+        key: "gen3_framing_error_disable",
+        name: "Gen3 Framing Error Disable",
+    },
+    KnownPsbRegister {
+        offset: 0x760,
+        key: "tic_station_control",
+        name: "TIC Station-Based Control",
+    },
+    KnownPsbRegister {
+        offset: 0xbd4,
+        key: "gen3_equalization_tx_coefficient",
+        name: "8.0 GT/s Equalization TX Coefficient",
+    },
+    KnownPsbRegister {
+        offset: 0xbf0,
+        key: "port_safety_2",
+        name: "Port Safety Register 2",
+    },
+    KnownPsbRegister {
+        offset: 0xd90,
+        key: "reserved_0xd90",
+        name: "Reserved",
+    },
+];
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct StationInspection {
@@ -463,6 +614,8 @@ pub struct SbrInspection {
     pub index_dwords: Vec<u32>,
     pub soc: SocInspection,
     pub blocks: Vec<BlockInspection>,
+    pub psb_entries: Vec<PsbEntryInspection>,
+    pub psb_serdes_entries: Vec<PsbSerdesEntryInspection>,
     pub stations: Vec<StationInspection>,
 }
 
@@ -832,6 +985,79 @@ impl SbrImage {
         BlockKind::ALL.into_iter().map(|kind| self.block(kind))
     }
 
+    pub fn block_dwords(&self, kind: BlockKind) -> Vec<u32> {
+        self.block_bytes(kind)
+            .chunks_exact(4)
+            .map(|dword| u32::from_le_bytes(dword.try_into().expect("four-byte chunk")))
+            .collect()
+    }
+
+    pub fn psb_entries(&self) -> Vec<PsbEntryInspection> {
+        let block = self.block(BlockKind::Psb);
+        self.block_bytes(BlockKind::Psb)
+            .chunks_exact(8)
+            .enumerate()
+            .map(|(index, entry)| {
+                let value = u32::from_le_bytes(entry[..4].try_into().expect("four-byte PSB value"));
+                let descriptor =
+                    u32::from_le_bytes(entry[4..].try_into().expect("four-byte PSB descriptor"));
+                let register_offset = (descriptor & PSB_REGISTER_WORD_MASK) << 2;
+                let known_register = KNOWN_PSB_REGISTERS
+                    .iter()
+                    .find(|register| register.offset == register_offset);
+                PsbEntryInspection {
+                    index,
+                    sbr_offset: block.offset as usize + index * 8,
+                    value,
+                    descriptor,
+                    register_offset,
+                    register_key: known_register.map(|register| register.key),
+                    register_name: known_register.map(|register| register.name),
+                    byte_mask: ((descriptor & PSB_BYTE_MASK_MASK) >> 24) as u8,
+                    broadcast: descriptor & PSB_BROADCAST_MASK != 0,
+                    reserved_bits: descriptor
+                        & !(PSB_REGISTER_WORD_MASK | PSB_BYTE_MASK_MASK | PSB_BROADCAST_MASK),
+                }
+            })
+            .collect()
+    }
+
+    pub fn psb_serdes_entries(&self) -> Vec<PsbSerdesEntryInspection> {
+        let block = self.block(BlockKind::PsbSerdes);
+        self.block_bytes(BlockKind::PsbSerdes)
+            .chunks_exact(8)
+            .enumerate()
+            .map(|(index, entry)| {
+                let address =
+                    u32::from_le_bytes(entry[..4].try_into().expect("four-byte AXI address"));
+                let value = u32::from_le_bytes(entry[4..].try_into().expect("four-byte AXI value"));
+                let broadcast_mode = ((address & AXI_BROADCAST_ADDRESS_MASK)
+                    == AXI_BROADCAST_ADDRESS_VALUE)
+                    .then(|| {
+                        AxiBroadcastMode::from_code(
+                            ((address & AXI_BROADCAST_MODE_MASK) >> 24) as u8,
+                        )
+                    });
+                PsbSerdesEntryInspection {
+                    index,
+                    sbr_offset: block.offset as usize + index * 8,
+                    address,
+                    value,
+                    broadcast_mode,
+                }
+            })
+            .collect()
+    }
+
+    pub fn entry_inspection(&self) -> SbrEntryInspection {
+        SbrEntryInspection {
+            schema: ATLAS_ENTRY_INSPECTION_SCHEMA,
+            sbr_sha256: sha256_hex(&self.bytes),
+            psb_entries: self.psb_entries(),
+            psb_serdes_entries: self.psb_serdes_entries(),
+        }
+    }
+
     pub fn checksum_offset(&self) -> usize {
         self.checksum_offset
     }
@@ -1036,13 +1262,20 @@ impl SbrImage {
             },
             blocks: self
                 .blocks()
-                .map(|block| BlockInspection {
-                    name: block.kind.name(),
-                    offset: block.offset,
-                    size: block.size,
-                    state: block.state().to_string(),
+                .map(|block| {
+                    let bytes = self.block_bytes(block.kind);
+                    BlockInspection {
+                        name: block.kind.name(),
+                        offset: block.offset,
+                        size: block.size,
+                        state: block.state().to_string(),
+                        sha256: (block.state() == BlockState::Enabled).then(|| sha256_hex(bytes)),
+                        raw_dwords: self.block_dwords(block.kind),
+                    }
                 })
                 .collect(),
+            psb_entries: self.psb_entries(),
+            psb_serdes_entries: self.psb_serdes_entries(),
             stations: (0..6)
                 .map(|station| StationInspection {
                     station: station as u8,
@@ -1161,9 +1394,35 @@ impl SbrImage {
                         self.checksum_offset
                     )));
                 }
+                if block.kind.requires_entry_pairs() && block.size % 8 != 0 {
+                    return Err(Error::Format(format!(
+                        "{} contains value/address pairs but size {:#x} is not 8-byte aligned",
+                        block.kind.name(),
+                        block.size
+                    )));
+                }
+                if let Some(max_size) = block.kind.max_size() {
+                    if block.size > max_size {
+                        return Err(Error::Format(format!(
+                            "{} size {:#x} exceeds the Atlas limit {max_size:#x}",
+                            block.kind.name(),
+                            block.size
+                        )));
+                    }
+                }
             }
         }
         Ok(())
+    }
+
+    fn block_bytes(&self, kind: BlockKind) -> &[u8] {
+        let block = self.block(kind);
+        if block.state() != BlockState::Enabled {
+            return &[];
+        }
+        let start = block.offset as usize;
+        let end = start + block.size as usize;
+        &self.bytes[start..end]
     }
 
     fn read_bits(&self, start_bit: usize, width: usize) -> u8 {
@@ -2029,6 +2288,48 @@ mod tests {
         image
     }
 
+    fn image_with_entry_blocks() -> SbrImage {
+        fn write_dword(bytes: &mut [u8], offset: usize, value: u32) {
+            bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+
+        let psb_offset = SOC_END;
+        let psb_size = 16usize;
+        let psb_serdes_offset = psb_offset + psb_size;
+        let psb_serdes_size = 16usize;
+        let checksum_offset = psb_serdes_offset + psb_serdes_size;
+        let mut bytes = vec![0u8; checksum_offset + 4];
+        bytes[..4].copy_from_slice(&ATLAS_SIGNATURE_PEX88096.to_le_bytes());
+
+        write_dword(&mut bytes, SBR_INDEX_OFFSET, psb_offset as u32);
+        write_dword(&mut bytes, SBR_INDEX_OFFSET + 4, psb_size as u32);
+        write_dword(
+            &mut bytes,
+            SBR_INDEX_OFFSET + 18 * 4,
+            psb_serdes_offset as u32,
+        );
+        write_dword(
+            &mut bytes,
+            SBR_INDEX_OFFSET + 19 * 4,
+            psb_serdes_size as u32,
+        );
+
+        write_dword(&mut bytes, psb_offset, 0x0604_2019);
+        write_dword(&mut bytes, psb_offset + 4, 0x1b00_0083);
+        write_dword(&mut bytes, psb_offset + 8, 0x81c0_a805);
+        write_dword(&mut bytes, psb_offset + 12, 0x0f00_02f5);
+
+        write_dword(&mut bytes, psb_serdes_offset, 0x7200_1234);
+        write_dword(&mut bytes, psb_serdes_offset + 4, 0x0000_001f);
+        write_dword(&mut bytes, psb_serdes_offset + 8, 0x6041_0064);
+        write_dword(&mut bytes, psb_serdes_offset + 12, 0x0000_007f);
+
+        let checksum = expected_checksum(&bytes[..checksum_offset]);
+        bytes[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        SbrImage::parse(bytes).unwrap()
+    }
+
     #[test]
     fn parses_and_validates_minimal_image() {
         let image = minimal_image([[0; 4]; 6]);
@@ -2039,6 +2340,57 @@ mod tests {
             image.inferred_station_layout(4).unwrap(),
             Some(StationLayout::X16)
         );
+    }
+
+    #[test]
+    fn decodes_psb_and_psb_serdes_entry_pairs() {
+        let image = image_with_entry_blocks();
+        image.validate().unwrap();
+
+        let psb = image.psb_entries();
+        assert_eq!(psb.len(), 2);
+        assert_eq!(psb[0].sbr_offset, SOC_END);
+        assert_eq!(psb[0].value, 0x0604_2019);
+        assert_eq!(psb[0].descriptor, 0x1b00_0083);
+        assert_eq!(psb[0].register_offset, 0x20c);
+        assert_eq!(psb[0].register_key, Some("phy_user_test_pattern_0"));
+        assert_eq!(psb[0].register_name, Some("PHY User Test Pattern 0"));
+        assert_eq!(psb[0].byte_mask, 0xb);
+        assert!(psb[0].broadcast);
+        assert_eq!(psb[0].reserved_bits, 0);
+        assert_eq!(psb[1].register_offset, 0xbd4);
+        assert!(!psb[1].broadcast);
+
+        let serdes = image.psb_serdes_entries();
+        assert_eq!(serdes.len(), 2);
+        assert_eq!(serdes[0].sbr_offset, SOC_END + 16);
+        assert_eq!(serdes[0].address, 0x7200_1234);
+        assert_eq!(serdes[0].value, 0x1f);
+        assert_eq!(serdes[0].broadcast_mode, Some(AxiBroadcastMode::Station));
+        assert_eq!(serdes[1].broadcast_mode, None);
+
+        let inspection = image.inspection();
+        assert_eq!(inspection.psb_entries, psb);
+        assert_eq!(inspection.psb_serdes_entries, serdes);
+        assert_eq!(
+            inspection.blocks[0].raw_dwords,
+            vec![0x0604_2019, 0x1b00_0083, 0x81c0_a805, 0x0f00_02f5]
+        );
+        assert!(inspection.blocks[0].sha256.is_some());
+    }
+
+    #[test]
+    fn rejects_unpaired_psb_records() {
+        let mut bytes = vec![0u8; SOC_END + 8];
+        bytes[..4].copy_from_slice(&ATLAS_SIGNATURE_PEX88096.to_le_bytes());
+        bytes[SBR_INDEX_OFFSET..SBR_INDEX_OFFSET + 4]
+            .copy_from_slice(&(SOC_END as u32).to_le_bytes());
+        bytes[SBR_INDEX_OFFSET + 4..SBR_INDEX_OFFSET + 8].copy_from_slice(&4u32.to_le_bytes());
+        let checksum = expected_checksum(&bytes[..SOC_END + 4]);
+        bytes[SOC_END + 4..SOC_END + 8].copy_from_slice(&u32::from(checksum).to_le_bytes());
+
+        let error = SbrImage::parse(bytes).unwrap_err().to_string();
+        assert!(error.contains("psb contains value/address pairs"));
     }
 
     #[test]

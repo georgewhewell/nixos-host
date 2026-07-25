@@ -32,6 +32,53 @@ checksum = 0 - (0xa5 + sum(all bytes before the checksum dword)) mod 256
 The remaining three bytes of the checksum dword are zero in the observed
 images. Mutation rewrites the complete dword with the calculated low byte.
 
+## PSB register-write records
+
+The indexed PSB block is a sequence of 8-byte records:
+
+| Record offset | Size | Meaning |
+|---:|---:|---|
+| `+0x0` | 4 | register value |
+| `+0x4` | 4 | encoded register descriptor |
+
+The descriptor layout reproduced from the vendor editor is:
+
+| Bits | Meaning |
+|---:|---|
+| 19:0 | register byte offset divided by four |
+| 23:20 | reserved |
+| 27:24 | per-byte write mask |
+| 28 | broadcast write |
+| 31:29 | reserved |
+
+Thus `register_offset = (descriptor & 0x000fffff) << 2`. `pexctl` preserves
+the descriptor, reports its reserved bits, and refuses a PSB whose size is not
+a multiple of eight or exceeds the Atlas `0x2000`-byte limit. Observed offsets
+that resolve in the Atlas register database also receive a stable
+`register_key` and a descriptive `register_name`; an unknown offset remains
+explicitly unnamed.
+
+## PSB-SerDes AXI-write records
+
+The indexed PSB-SerDes block is also a sequence of 8-byte records, but its
+order is address followed by value:
+
+| Record offset | Size | Meaning |
+|---:|---:|---|
+| `+0x0` | 4 | AXI address |
+| `+0x4` | 4 | register value |
+
+When `(address & 0x70000000) == 0x70000000`, bits 25:24 encode the vendor
+broadcast mode: 0 none, 1 lane, 2 station, and 3 lane plus station. The address
+is retained exactly, including those bits. Other addresses do not carry an
+applicable broadcast mode. The block must be a multiple of eight bytes and no
+larger than the Atlas `0x4000`-byte limit.
+
+`inspect --json` includes both decoded entry arrays plus the raw dwords and
+SHA-256 of every enabled indexed block. `sbr entries` provides a focused human
+or JSON view. Entry mutation is intentionally not exposed until individual
+register semantics and ordering constraints are established.
+
 ## First SoC dword
 
 The SoC block begins at SBR offset `0x5c`.

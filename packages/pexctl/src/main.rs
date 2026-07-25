@@ -83,6 +83,7 @@ fn run_sbr(args: &[String]) -> Result<()> {
             print_named_fields(&image);
             Ok(())
         }
+        "entries" => run_sbr_entries(&args[1..]),
         "diff" => {
             let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
             let before = SbrImage::read(Path::new(&args[1]))?;
@@ -99,6 +100,34 @@ fn run_sbr(args: &[String]) -> Result<()> {
         "set-station" => run_set_station(&args[1..]),
         "repair-checksum" => run_repair_checksum(&args[1..]),
         other => Err(Error::Usage(format!("unknown SBR command {other:?}"))),
+    }
+}
+
+fn run_sbr_entries(args: &[String]) -> Result<()> {
+    let usage = "pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]";
+    if args.is_empty()
+        || args
+            .iter()
+            .take_while(|argument| !argument.starts_with("--"))
+            .count()
+            != 1
+    {
+        return Err(Error::Usage(format!("usage: {usage}")));
+    }
+    reject_unknown_options_and_flags(args, &["--block"], &["--json"])?;
+    let block = if args.iter().any(|argument| argument == "--block") {
+        Some(option_value(args, "--block")?)
+    } else {
+        None
+    };
+    let image = SbrImage::read(Path::new(&args[0]))?;
+    image.validate()?;
+    let inspection = filtered_entry_inspection(&image, block)?;
+    if args.iter().any(|argument| argument == "--json") {
+        print_json(&inspection)
+    } else {
+        print_entry_inspection(&inspection);
+        Ok(())
     }
 }
 
@@ -437,6 +466,28 @@ fn run_device(args: &[String]) -> Result<()> {
             );
             Ok(())
         }
+        "inspect-sbr" => {
+            let options = &args[1..];
+            let bdf = option_value(options, "--bdf")?;
+            let offset = optional_number(options, "--offset")?.unwrap_or(SBR_FLASH_OFFSET);
+            let json = options.iter().any(|argument| argument == "--json");
+            reject_unknown_options_and_flags(options, &["--bdf", "--offset"], &["--json"])?;
+            let device = PlxSvcDevice::open(bdf)?;
+            let image = device.read_sbr(offset)?;
+            image.validate()?;
+            eprintln!(
+                "pexctl: read valid {}-byte SBR from {} at flash offset {offset:#x}",
+                image.bytes().len(),
+                device.bdf()
+            );
+            if json {
+                print_json(&image.inspection())
+            } else {
+                print_inspection(&image);
+                Ok(())
+            }
+        }
+        "entries" => run_device_entries(&args[1..]),
         "prepare-station" => run_prepare_station(&args[1..]),
         "prepare-config" => run_prepare_config(&args[1..]),
         "program-sector0" => {
@@ -479,6 +530,52 @@ fn run_device(args: &[String]) -> Result<()> {
         }
         other => Err(Error::Usage(format!("unknown device command {other:?}"))),
     }
+}
+
+fn run_device_entries(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let offset = optional_number(options, "--offset")?.unwrap_or(SBR_FLASH_OFFSET);
+    let block = if options.iter().any(|argument| argument == "--block") {
+        Some(option_value(options, "--block")?)
+    } else {
+        None
+    };
+    let json = options.iter().any(|argument| argument == "--json");
+    reject_unknown_options_and_flags(options, &["--bdf", "--offset", "--block"], &["--json"])?;
+
+    let device = PlxSvcDevice::open(bdf)?;
+    let image = device.read_sbr(offset)?;
+    image.validate()?;
+    let inspection = filtered_entry_inspection(&image, block)?;
+    eprintln!(
+        "pexctl: read valid {}-byte SBR from {} at flash offset {offset:#x}",
+        image.bytes().len(),
+        device.bdf()
+    );
+    if json {
+        print_json(&inspection)
+    } else {
+        print_entry_inspection(&inspection);
+        Ok(())
+    }
+}
+
+fn filtered_entry_inspection(
+    image: &SbrImage,
+    block: Option<&str>,
+) -> Result<pexctl::SbrEntryInspection> {
+    let mut inspection = image.entry_inspection();
+    match block {
+        Some("psb") => inspection.psb_serdes_entries.clear(),
+        Some("psb-serdes") => inspection.psb_entries.clear(),
+        Some(block) => {
+            return Err(Error::Usage(format!(
+                "unsupported entry block {block:?}; expected psb or psb-serdes"
+            )));
+        }
+        None => {}
+    }
+    Ok(inspection)
 }
 
 fn run_prepare_station(options: &[String]) -> Result<()> {
@@ -820,6 +917,50 @@ fn print_named_fields(image: &SbrImage) {
     }
 }
 
+fn print_entry_inspection(inspection: &pexctl::SbrEntryInspection) {
+    if !inspection.psb_entries.is_empty() {
+        println!(
+            "PSB register writes ({} entries):",
+            inspection.psb_entries.len()
+        );
+        println!("  idx sbr-off  register value      mask bcast descriptor reserved   name");
+        for entry in &inspection.psb_entries {
+            let name = entry.register_name.unwrap_or("unknown");
+            println!(
+                "  {:>3} {:#06x} {:#08x} {:#010x} {:#03x}  {:<3}   {:#010x} {:#010x} {name}",
+                entry.index,
+                entry.sbr_offset,
+                entry.register_offset,
+                entry.value,
+                entry.byte_mask,
+                if entry.broadcast { "yes" } else { "no" },
+                entry.descriptor,
+                entry.reserved_bits
+            );
+        }
+    }
+    if !inspection.psb_entries.is_empty() && !inspection.psb_serdes_entries.is_empty() {
+        println!();
+    }
+    if !inspection.psb_serdes_entries.is_empty() {
+        println!(
+            "PSB-SerDes AXI writes ({} entries):",
+            inspection.psb_serdes_entries.len()
+        );
+        println!("  idx sbr-off  address    value      broadcast");
+        for entry in &inspection.psb_serdes_entries {
+            let broadcast = entry
+                .broadcast_mode
+                .map(|mode| mode.to_string())
+                .unwrap_or_else(|| "n/a".into());
+            println!(
+                "  {:>3} {:#06x} {:#010x} {:#010x} {broadcast}",
+                entry.index, entry.sbr_offset, entry.address, entry.value
+            );
+        }
+    }
+}
+
 fn option_value<'a>(args: &'a [String], name: &str) -> Result<&'a str> {
     let position = args
         .iter()
@@ -922,6 +1063,7 @@ USAGE:
   pexctl sbr inspect IMAGE [--json]
   pexctl sbr validate IMAGE
   pexctl sbr fields IMAGE
+  pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]
   pexctl sbr diff BEFORE AFTER [--json]
   pexctl sbr export-config IMAGE --output CONFIG.json
   pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT [--allow-expert-fields]
@@ -932,6 +1074,9 @@ USAGE:
   pexctl flash replace-sbr FLASH SBR --output OUTPUT [--offset 0x400]
 
   sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output OUTPUT [--offset 0x400]
+  sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 [--offset 0x400] [--json]
+  sudo pexctl device entries --bdf 0000:c4:00.0 [--offset 0x400] \
+    [--block psb|psb-serdes] [--json]
   sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 \
     [--method mapped|serial] --output OUTPUT
   sudo pexctl device spi-id --bdf 0000:c4:00.0

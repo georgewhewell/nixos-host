@@ -34,6 +34,50 @@ Secure boot, watchdog, fanout, and flash-signature enablement are currently
 clear. These fields require an expected-current expert patch and
 `--allow-expert-fields` in `pexctl`; none was changed during this work.
 
+## Indexed write blocks
+
+The live PSB block at SBR offset `0x1fc` is 72 bytes and decodes as nine
+8-byte register-write records. Each record contains the value followed by a
+descriptor with the dword address, byte mask, and broadcast flag:
+
+| Register offset | Stable key | Value | Byte mask | Broadcast |
+|---:|---|---:|---:|:---:|
+| `0x20c` | `phy_user_test_pattern_0` | `0x06042019` | `0xf` | no |
+| `0xbd4` | `gen3_equalization_tx_coefficient` | `0x81c0a805` | `0xf` | yes |
+| `0xbd4` | `gen3_equalization_tx_coefficient` | `0xc1c0a805` | `0xf` | yes |
+| `0x264` | `lane_margin_control_1` | `0x14403210` | `0xf` | yes |
+| `0xbf0` | `port_safety_2` | `0x0000000c` | `0xf` | yes |
+| `0x22c` | `phy_station_chicken_bits` | `0x70000800` | `0xf` | yes |
+| `0x760` | `tic_station_control` | `0x20400000` | `0xf` | yes |
+| `0x72c` | `gen3_framing_error_disable` | `0x000ffc40` | `0xf` | yes |
+| `0xd90` | `reserved_0xd90` | `0x0f208014` | `0xf` | yes |
+
+All descriptor reserved bits are zero. The live PSB SHA-256 is
+`117f60dbe9d2db64462cfa6d6d29744e2de97529b57d282bf0bcc6f8b6a005cf`.
+
+The live PSB-SerDes block at `0x244` is `0x908` bytes and decodes as 289
+address/value AXI-write records. Its SHA-256 is
+`7c33d2deb1db900ff1c12f1b03d6efc08f6ee0ccf13b77cc1bd084d577968b80`.
+The Broadcom Base RDK independently decodes as four PSB writes and 265
+PSB-SerDes writes. `pexctl sbr entries` exposes both blocks in human or JSON
+form, while `inspect --json` retains their decoded entries and every raw
+dword. These records remain read-only until their individual reset, ordering,
+and board constraints are understood.
+
+The packaged direct-device commands were then run against Strix-4:
+
+```console
+sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
+sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
+```
+
+They reproduced the recorded SBR hash, valid checksum, nine named PSB writes,
+and 289 PSB-SerDes writes directly through mapped CS0 reads. Of the SerDes
+addresses, 287 encode `both` broadcast and two have no applicable broadcast
+encoding. The boot ID remained
+`758399aa-a216-4733-90ad-eab6141f7c18`, the switch remained visible at
+`0000:c4:00.0`, and no hardware write or reset was issued.
+
 ## Station-4 candidate
 
 The desired ASUS Hyper M.2 station is station 4:
