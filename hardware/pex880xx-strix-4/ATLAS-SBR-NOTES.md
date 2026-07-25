@@ -61,8 +61,11 @@ address/value AXI-write records. Its SHA-256 is
 The Broadcom Base RDK independently decodes as four PSB writes and 265
 PSB-SerDes writes. `pexctl sbr entries` exposes both blocks in human or JSON
 form, while `inspect --json` retains their decoded entries and every raw
-dword. These records remain read-only until their individual reset, ordering,
-and board constraints are understood.
+dword. `pexctl` can construct offline expert value patches for known PSB
+records and structurally identified SerDes records, but requires exact
+identity/current-value expectations and `--allow-expert-entries`; it cannot
+change record identity, order, masks, broadcast settings, or block sizes.
+These patches are not claims that arbitrary replacement values are safe.
 
 The packaged direct-device commands were then run against Strix-4:
 
@@ -77,6 +80,38 @@ addresses, 287 encode `both` broadcast and two have no applicable broadcast
 encoding. The boot ID remained
 `758399aa-a216-4733-90ad-eab6141f7c18`, the switch remained visible at
 `0000:c4:00.0`, and no hardware write or reset was issued.
+
+The expected-current expert entry path was subsequently exercised through two
+complete live preparation runs:
+
+```text
+/tmp/pexctl-expert-entry-plan-20260725-v1
+/tmp/pexctl-expert-serdes-plan-20260725-v1
+```
+
+Each plan independently read the complete 16 MiB flash twice. All four reads
+had SHA-256
+`16796f3fa9f0f88276635c60d1e1e2d581393a3eba5f7a03afed9975aa8ab83b`.
+The first plan changed PSB entry 0 value `0x06042019 -> 0x06042018`; the
+second changed PSB-SerDes entry 0 at address `0x60410064` from
+`0x0000001f -> 0x0000001e`. Each candidate changed exactly its one value byte
+and checksum byte `0x1a -> 0x1b`.
+
+The PSB and SerDes candidate SBR SHA-256 values are respectively
+`e9b22efbaf4d63ae6ec1f412f7aea6bb3ae1ee42f3b4d21d1cbfbac17afae1b4`
+and
+`1040174eb3b00c0cf2eb4522a37a7c0996512c7399da94e4686fe4ff8f265db0`.
+The complete descriptor, address, mask, broadcast, index, order, and block-size
+vectors were compared and remained identical. Both candidates validated,
+both manifests recorded `hardware-written: no`, the boot ID remained
+unchanged, and the switch remained visible. These are syntax/transport
+verification candidates only; they must not be programmed as recommended
+settings.
+
+The final packaged CLI was also invoked without `--allow-expert-entries`.
+It rejected the configuration in under one second, before opening or reading
+the device, created no plan directory, and explicitly requested the missing
+acknowledgement.
 
 ## Station-4 candidate
 

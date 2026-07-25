@@ -1,7 +1,7 @@
 use pexctl::{
-    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, AtlasConfig, Error,
-    PlxSvcDevice, Result, SbrImage, StationLayout, ATLAS_SPI_RECOVERY_REGION_SIZE,
-    SBR_FLASH_OFFSET, SOC_END,
+    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, AtlasApplyPolicy,
+    AtlasConfig, Error, PlxSvcDevice, Result, SbrImage, StationLayout,
+    ATLAS_SPI_RECOVERY_REGION_SIZE, SBR_FLASH_OFFSET, SOC_END,
 };
 use serde::Serialize;
 use std::env;
@@ -84,6 +84,7 @@ fn run_sbr(args: &[String]) -> Result<()> {
             Ok(())
         }
         "entries" => run_sbr_entries(&args[1..]),
+        "export-entry-patch" => run_export_entry_patch(&args[1..]),
         "diff" => {
             let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
             let before = SbrImage::read(Path::new(&args[1]))?;
@@ -101,6 +102,44 @@ fn run_sbr(args: &[String]) -> Result<()> {
         "repair-checksum" => run_repair_checksum(&args[1..]),
         other => Err(Error::Usage(format!("unknown SBR command {other:?}"))),
     }
+}
+
+fn run_export_entry_patch(args: &[String]) -> Result<()> {
+    let usage = "pexctl sbr export-entry-patch IMAGE --block psb|psb-serdes --index N --value VALUE --output CONFIG.json";
+    if args.is_empty()
+        || args
+            .iter()
+            .take_while(|argument| !argument.starts_with("--"))
+            .count()
+            != 1
+    {
+        return Err(Error::Usage(format!("usage: {usage}")));
+    }
+    let block = option_value(args, "--block")?;
+    let index = usize::try_from(parse_number(option_value(args, "--index")?)?)
+        .map_err(|_| Error::Usage("--index does not fit host address space".into()))?;
+    let value = u32::try_from(parse_number(option_value(args, "--value")?)?)
+        .map_err(|_| Error::Usage("--value exceeds 32 bits".into()))?;
+    let output = PathBuf::from(option_value(args, "--output")?);
+    reject_unknown_options(args, &["--block", "--index", "--value", "--output"])?;
+
+    let image = SbrImage::read(Path::new(&args[0]))?;
+    let config = match block {
+        "psb" => image.expert_psb_entry_config(index, value)?,
+        "psb-serdes" => image.expert_psb_serdes_entry_config(index, value)?,
+        _ => {
+            return Err(Error::Usage(format!(
+                "unsupported entry block {block:?}; expected psb or psb-serdes"
+            )));
+        }
+    };
+    write_new_file(&output, &config.to_json_pretty()?)?;
+    println!(
+        "wrote expert {block} entry {index} patch for {} to {}; applying it requires --allow-expert-entries",
+        args[0],
+        output.display()
+    );
+    Ok(())
 }
 
 fn run_sbr_entries(args: &[String]) -> Result<()> {
@@ -166,7 +205,7 @@ fn run_export_config(args: &[String]) -> Result<()> {
 fn run_apply_config(args: &[String]) -> Result<()> {
     if args.len() < 2 {
         return Err(Error::Usage(
-            "usage: pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT".into(),
+            "usage: pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT [--allow-expert-fields] [--allow-expert-entries]".into(),
         ));
     }
     let input = PathBuf::from(&args[0]);
@@ -175,13 +214,25 @@ fn run_apply_config(args: &[String]) -> Result<()> {
     let allow_expert_fields = args
         .iter()
         .any(|argument| argument == "--allow-expert-fields");
-    reject_unknown_options_and_flags(args, &["--output"], &["--allow-expert-fields"])?;
+    let allow_expert_entries = args
+        .iter()
+        .any(|argument| argument == "--allow-expert-entries");
+    reject_unknown_options_and_flags(
+        args,
+        &["--output"],
+        &["--allow-expert-fields", "--allow-expert-entries"],
+    )?;
+    let policy = AtlasApplyPolicy {
+        allow_expert_soc_fields: allow_expert_fields,
+        allow_expert_entries,
+    };
+    let config = AtlasConfig::read(&config_path)?;
+    config.validate_with_policy(policy)?;
 
     let mut image = SbrImage::read(&input)?;
     image.validate()?;
     let before = image.clone();
-    let config = AtlasConfig::read(&config_path)?;
-    image.apply_config_with_policy(&config, allow_expert_fields)?;
+    image.apply_config_with_options(&config, policy)?;
     let differences = byte_differences(before.bytes(), image.bytes());
     if differences.is_empty() {
         return Err(Error::Safety(
@@ -587,7 +638,7 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
     let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
     reject_unknown_options(options, &["--bdf", "--station", "--layout", "--output-dir"])?;
     let config = AtlasConfig::station_layout(station, layout)?;
-    prepare_config_plan(bdf, &config, &output_dir, false)
+    prepare_config_plan(bdf, &config, &output_dir, AtlasApplyPolicy::default())
 }
 
 fn run_prepare_config(options: &[String]) -> Result<()> {
@@ -597,22 +648,33 @@ fn run_prepare_config(options: &[String]) -> Result<()> {
     let allow_expert_fields = options
         .iter()
         .any(|argument| argument == "--allow-expert-fields");
+    let allow_expert_entries = options
+        .iter()
+        .any(|argument| argument == "--allow-expert-entries");
     reject_unknown_options_and_flags(
         options,
         &["--bdf", "--config", "--output-dir"],
-        &["--allow-expert-fields"],
+        &["--allow-expert-fields", "--allow-expert-entries"],
     )?;
     let config = AtlasConfig::read(&config_path)?;
-    prepare_config_plan(bdf, &config, &output_dir, allow_expert_fields)
+    prepare_config_plan(
+        bdf,
+        &config,
+        &output_dir,
+        AtlasApplyPolicy {
+            allow_expert_soc_fields: allow_expert_fields,
+            allow_expert_entries,
+        },
+    )
 }
 
 fn prepare_config_plan(
     bdf: &str,
     config: &AtlasConfig,
     output_dir: &Path,
-    allow_expert_fields: bool,
+    policy: AtlasApplyPolicy,
 ) -> Result<()> {
-    config.validate()?;
+    config.validate_with_policy(policy)?;
     if output_dir.exists() {
         return Err(Error::Safety(format!(
             "{} already exists; choose a new plan directory",
@@ -664,7 +726,7 @@ fn prepare_config_plan(
     current_sbr.validate()?;
 
     let mut candidate_sbr = current_sbr.clone();
-    candidate_sbr.apply_config_with_policy(config, allow_expert_fields)?;
+    candidate_sbr.apply_config_with_options(config, policy)?;
     candidate_sbr.validate()?;
     let report = current_sbr.diff(&candidate_sbr);
     let sbr_differences = byte_differences(current_sbr.bytes(), candidate_sbr.bytes());
@@ -731,7 +793,21 @@ fn prepare_config_plan(
     writeln!(
         manifest,
         "expert-fields-enabled: {}",
-        if allow_expert_fields { "yes" } else { "no" }
+        if policy.allow_expert_soc_fields {
+            "yes"
+        } else {
+            "no"
+        }
+    )
+    .expect("writing to String");
+    writeln!(
+        manifest,
+        "expert-entries-enabled: {}",
+        if policy.allow_expert_entries {
+            "yes"
+        } else {
+            "no"
+        }
     )
     .expect("writing to String");
     writeln!(manifest).expect("writing to String");
@@ -761,6 +837,29 @@ fn prepare_config_plan(
             manifest,
             "  station {}: {:?} -> {:?}",
             difference.station, difference.before_codes, difference.after_codes
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest, "psb-entry-differences:").expect("writing to String");
+    for difference in &report.psb_entry_differences {
+        writeln!(
+            manifest,
+            "  entry {} {:?} register={:#x} descriptor={:#010x}: {:#010x} -> {:#010x}",
+            difference.index,
+            difference.register_key,
+            difference.register_offset,
+            difference.descriptor,
+            difference.before,
+            difference.after
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest, "psb-serdes-entry-differences:").expect("writing to String");
+    for difference in &report.psb_serdes_entry_differences {
+        writeln!(
+            manifest,
+            "  entry {} address={:#010x}: {:#010x} -> {:#010x}",
+            difference.index, difference.address, difference.before, difference.after
         )
         .expect("writing to String");
     }
@@ -795,10 +894,12 @@ fn prepare_config_plan(
     write_new_file(&output_dir.join("MANIFEST.txt"), manifest.as_bytes())?;
 
     println!(
-        "prepared verified configuration plan in {}: {} named field change(s), {} station change(s), {} changed SBR byte(s)",
+        "prepared verified configuration plan in {}: {} named field change(s), {} station change(s), {} PSB entry change(s), {} PSB-SerDes entry change(s), {} changed SBR byte(s)",
         output_dir.display(),
         report.named_differences.len(),
         report.station_differences.len(),
+        report.psb_entry_differences.len(),
+        report.psb_serdes_entry_differences.len(),
         sbr_differences.len()
     );
     println!(
@@ -887,6 +988,23 @@ fn print_diff(before: &SbrImage, after: &SbrImage) {
             println!("station {station}: {left:?} -> {right:?}");
         }
     }
+    let report = before.diff(after);
+    for difference in report.psb_entry_differences {
+        println!(
+            "PSB entry {} {:?} register={:#x}: {:#010x} -> {:#010x}",
+            difference.index,
+            difference.register_key,
+            difference.register_offset,
+            difference.before,
+            difference.after
+        );
+    }
+    for difference in report.psb_serdes_entry_differences {
+        println!(
+            "PSB-SerDes entry {} address={:#010x}: {:#010x} -> {:#010x}",
+            difference.index, difference.address, difference.before, difference.after
+        );
+    }
     for difference in byte_differences(before.bytes(), after.bytes()) {
         let label = if difference.offset == before.checksum_offset()
             || difference.offset == after.checksum_offset()
@@ -923,11 +1041,13 @@ fn print_entry_inspection(inspection: &pexctl::SbrEntryInspection) {
             "PSB register writes ({} entries):",
             inspection.psb_entries.len()
         );
-        println!("  idx sbr-off  register value      mask bcast descriptor reserved   name");
+        println!(
+            "  idx sbr-off  register value      mask bcast descriptor reserved   policy    name"
+        );
         for entry in &inspection.psb_entries {
             let name = entry.register_name.unwrap_or("unknown");
             println!(
-                "  {:>3} {:#06x} {:#08x} {:#010x} {:#03x}  {:<3}   {:#010x} {:#010x} {name}",
+                "  {:>3} {:#06x} {:#08x} {:#010x} {:#03x}  {:<3}   {:#010x} {:#010x} {:<9} {name}",
                 entry.index,
                 entry.sbr_offset,
                 entry.register_offset,
@@ -935,7 +1055,8 @@ fn print_entry_inspection(inspection: &pexctl::SbrEntryInspection) {
                 entry.byte_mask,
                 if entry.broadcast { "yes" } else { "no" },
                 entry.descriptor,
-                entry.reserved_bits
+                entry.reserved_bits,
+                entry.write_policy
             );
         }
     }
@@ -982,6 +1103,7 @@ fn optional_number(args: &[String], name: &str) -> Result<Option<u64>> {
 fn parse_number(value: &str) -> Result<u64> {
     let (digits, radix) = value
         .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
         .map(|digits| (digits, 16))
         .unwrap_or((value, 10));
     u64::from_str_radix(digits, radix)
@@ -1064,9 +1186,12 @@ USAGE:
   pexctl sbr validate IMAGE
   pexctl sbr fields IMAGE
   pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]
+  pexctl sbr export-entry-patch IMAGE --block psb|psb-serdes --index N \
+    --value VALUE --output CONFIG.json
   pexctl sbr diff BEFORE AFTER [--json]
   pexctl sbr export-config IMAGE --output CONFIG.json
-  pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT [--allow-expert-fields]
+  pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT \
+    [--allow-expert-fields] [--allow-expert-entries]
   pexctl sbr set-station INPUT --station N --layout x16|x4x4x4x4 --output OUTPUT
   pexctl sbr repair-checksum INPUT --output OUTPUT
 
@@ -1084,7 +1209,8 @@ USAGE:
   sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
     --station N --layout x16|x4x4x4x4 --output-dir DIRECTORY
   sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
-    --config CONFIG.json --output-dir DIRECTORY [--allow-expert-fields]
+    --config CONFIG.json --output-dir DIRECTORY \
+    [--allow-expert-fields] [--allow-expert-entries]
   sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
     --expected-current BACKUP --candidate CANDIDATE \
     --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
@@ -1094,6 +1220,8 @@ path. Device reads use the PlxSvc ioctl ABI. Hardware write support is
 limited to a whole, preserved sector 0 and requires an exact live-backup match,
 validated SBR-only changes, an explicit device-bound confirmation, and complete
 read-back verification. Expert fields additionally require expected-current
-values and --allow-expert-fields. No hardware command resets the switch."
+values and --allow-expert-fields. Expert indexed records require exact
+identity and expected-current values plus --allow-expert-entries. No hardware
+command resets the switch."
     );
 }

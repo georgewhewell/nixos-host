@@ -4,7 +4,7 @@
 //! retained verbatim, and mutation APIs expose only fields that have been
 //! confirmed against both a live PEX88096 image and Broadcom's RDK96 image.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::fmt;
 use std::fs;
@@ -306,6 +306,49 @@ pub struct ExpertSocFieldPatch {
     pub value: u8,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExpertPsbEntryPatch {
+    pub index: usize,
+    pub register_key: String,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub expected_descriptor: u32,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub expected_value: u32,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub value: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExpertPsbSerdesEntryPatch {
+    pub index: usize,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub expected_address: u32,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub expected_value: u32,
+    #[serde(
+        deserialize_with = "deserialize_u32",
+        serialize_with = "serialize_u32_hex"
+    )]
+    pub value: u32,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AtlasConfig {
@@ -316,6 +359,16 @@ pub struct AtlasConfig {
     pub stations: Vec<AtlasStationConfig>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub expert_soc_fields: Vec<ExpertSocFieldPatch>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expert_psb_entries: Vec<ExpertPsbEntryPatch>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expert_psb_serdes_entries: Vec<ExpertPsbSerdesEntryPatch>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct AtlasApplyPolicy {
+    pub allow_expert_soc_fields: bool,
+    pub allow_expert_entries: bool,
 }
 
 impl AtlasSocConfig {
@@ -334,6 +387,8 @@ impl AtlasConfig {
                 layout: Some(layout),
             }],
             expert_soc_fields: Vec::new(),
+            expert_psb_entries: Vec::new(),
+            expert_psb_serdes_entries: Vec::new(),
         };
         config.validate()?;
         Ok(config)
@@ -413,12 +468,93 @@ impl AtlasConfig {
                 )));
             }
         }
+        let mut seen_psb_entries = Vec::new();
+        for patch in &self.expert_psb_entries {
+            if seen_psb_entries.contains(&patch.index) {
+                return Err(Error::Config(format!(
+                    "expert PSB entry {} appears more than once",
+                    patch.index
+                )));
+            }
+            seen_psb_entries.push(patch.index);
+            let register = known_psb_register_by_key(&patch.register_key).ok_or_else(|| {
+                Error::Config(format!(
+                    "unknown PSB register key {:?}; use `pexctl sbr entries IMAGE --block psb` to list known keys",
+                    patch.register_key
+                ))
+            })?;
+            if !register.expert_writable {
+                return Err(Error::Config(format!(
+                    "PSB register key {:?} is classified as reserved and is not writable",
+                    patch.register_key
+                )));
+            }
+            let descriptor_offset = (patch.expected_descriptor & PSB_REGISTER_WORD_MASK) << 2;
+            if descriptor_offset != register.offset {
+                return Err(Error::Config(format!(
+                    "expert PSB entry {} key {:?} resolves to register {:#x}, but expected_descriptor resolves to {descriptor_offset:#x}",
+                    patch.index, patch.register_key, register.offset
+                )));
+            }
+            if patch.expected_value == patch.value {
+                return Err(Error::Config(format!(
+                    "expert PSB entry {} expected_value and value are identical",
+                    patch.index
+                )));
+            }
+            let byte_mask = ((patch.expected_descriptor & PSB_BYTE_MASK_MASK) >> 24) as u8;
+            let writable_mask = psb_value_mask(byte_mask);
+            let changed_bits = patch.expected_value ^ patch.value;
+            if changed_bits & !writable_mask != 0 {
+                return Err(Error::Config(format!(
+                    "expert PSB entry {} changes bits outside descriptor byte mask {byte_mask:#x}",
+                    patch.index
+                )));
+            }
+        }
+        let mut seen_psb_serdes_entries = Vec::new();
+        for patch in &self.expert_psb_serdes_entries {
+            if seen_psb_serdes_entries.contains(&patch.index) {
+                return Err(Error::Config(format!(
+                    "expert PSB-SerDes entry {} appears more than once",
+                    patch.index
+                )));
+            }
+            seen_psb_serdes_entries.push(patch.index);
+            if patch.expected_value == patch.value {
+                return Err(Error::Config(format!(
+                    "expert PSB-SerDes entry {} expected_value and value are identical",
+                    patch.index
+                )));
+            }
+        }
         if self.soc.is_empty()
             && self.stations.iter().all(|entry| entry.layout.is_none())
             && self.expert_soc_fields.is_empty()
+            && self.expert_psb_entries.is_empty()
+            && self.expert_psb_serdes_entries.is_empty()
         {
             return Err(Error::Config(
                 "configuration contains no writable values".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn validate_with_policy(&self, policy: AtlasApplyPolicy) -> Result<()> {
+        self.validate()?;
+        if !self.expert_soc_fields.is_empty() && !policy.allow_expert_soc_fields {
+            return Err(Error::Safety(
+                "configuration contains expert_soc_fields; pass --allow-expert-fields to acknowledge that their board behavior is not independently validated"
+                    .into(),
+            ));
+        }
+        if (!self.expert_psb_entries.is_empty() || !self.expert_psb_serdes_entries.is_empty())
+            && !policy.allow_expert_entries
+        {
+            return Err(Error::Safety(
+                "configuration contains expert PSB/PSB-SerDes entries; pass --allow-expert-entries to acknowledge that their register behavior is not independently validated"
+                    .into(),
             ));
         }
         Ok(())
@@ -508,6 +644,8 @@ pub struct PsbEntryInspection {
     pub register_offset: u32,
     pub register_key: Option<&'static str>,
     pub register_name: Option<&'static str>,
+    pub expert_writable: bool,
+    pub write_policy: &'static str,
     pub byte_mask: u8,
     pub broadcast: bool,
     pub reserved_bits: u32,
@@ -535,6 +673,7 @@ struct KnownPsbRegister {
     offset: u32,
     key: &'static str,
     name: &'static str,
+    expert_writable: bool,
 }
 
 const KNOWN_PSB_REGISTERS: &[KnownPsbRegister] = &[
@@ -542,58 +681,119 @@ const KNOWN_PSB_REGISTERS: &[KnownPsbRegister] = &[
         offset: 0x20c,
         key: "phy_user_test_pattern_0",
         name: "PHY User Test Pattern 0",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x210,
         key: "phy_user_test_pattern_4",
         name: "PHY User Test Pattern 4",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x214,
         key: "phy_user_test_pattern_8",
         name: "PHY User Test Pattern 8",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x218,
         key: "phy_user_test_pattern_12",
         name: "PHY User Test Pattern 12",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x22c,
         key: "phy_station_chicken_bits",
         name: "PHY Station Chicken Bits",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x264,
         key: "lane_margin_control_1",
         name: "Lane Margin Control 1",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x72c,
         key: "gen3_framing_error_disable",
         name: "Gen3 Framing Error Disable",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0x760,
         key: "tic_station_control",
         name: "TIC Station-Based Control",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0xbd4,
         key: "gen3_equalization_tx_coefficient",
         name: "8.0 GT/s Equalization TX Coefficient",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0xbf0,
         key: "port_safety_2",
         name: "Port Safety Register 2",
+        expert_writable: true,
     },
     KnownPsbRegister {
         offset: 0xd90,
         key: "reserved_0xd90",
         name: "Reserved",
+        expert_writable: false,
     },
 ];
+
+fn known_psb_register_by_key(key: &str) -> Option<&'static KnownPsbRegister> {
+    KNOWN_PSB_REGISTERS
+        .iter()
+        .find(|register| register.key == key)
+}
+
+fn psb_value_mask(byte_mask: u8) -> u32 {
+    (0..4).fold(0u32, |mask, byte| {
+        if byte_mask & (1 << byte) != 0 {
+            mask | (0xff << (byte * 8))
+        } else {
+            mask
+        }
+    })
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum U32Input {
+    Number(u64),
+    String(String),
+}
+
+fn deserialize_u32<'de, D>(deserializer: D) -> std::result::Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let input = U32Input::deserialize(deserializer)?;
+    let value = match input {
+        U32Input::Number(value) => value,
+        U32Input::String(value) => {
+            let trimmed = value.trim();
+            let (digits, radix) = trimmed
+                .strip_prefix("0x")
+                .or_else(|| trimmed.strip_prefix("0X"))
+                .map(|digits| (digits, 16))
+                .unwrap_or((trimmed, 10));
+            u64::from_str_radix(digits, radix).map_err(serde::de::Error::custom)?
+        }
+    };
+    u32::try_from(value).map_err(|_| serde::de::Error::custom("value exceeds 32 bits"))
+}
+
+fn serialize_u32_hex<S>(value: &u32, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&format!("{value:#010x}"))
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct StationInspection {
@@ -636,6 +836,24 @@ pub struct NamedDifference {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PsbEntryDifference {
+    pub index: usize,
+    pub register_key: Option<&'static str>,
+    pub register_offset: u32,
+    pub descriptor: u32,
+    pub before: u32,
+    pub after: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PsbSerdesEntryDifference {
+    pub index: usize,
+    pub address: u32,
+    pub before: u32,
+    pub after: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct SbrDiffReport {
     pub schema: &'static str,
     pub before_sha256: String,
@@ -644,6 +862,8 @@ pub struct SbrDiffReport {
     pub after_length: usize,
     pub named_differences: Vec<NamedDifference>,
     pub station_differences: Vec<StationDifference>,
+    pub psb_entry_differences: Vec<PsbEntryDifference>,
+    pub psb_serdes_entry_differences: Vec<PsbSerdesEntryDifference>,
     pub byte_differences: Vec<ByteDifference>,
 }
 
@@ -1013,6 +1233,14 @@ impl SbrImage {
                     register_offset,
                     register_key: known_register.map(|register| register.key),
                     register_name: known_register.map(|register| register.name),
+                    expert_writable: known_register
+                        .is_some_and(|register| register.expert_writable),
+                    write_policy: if known_register.is_some_and(|register| register.expert_writable)
+                    {
+                        "expert"
+                    } else {
+                        "read-only"
+                    },
                     byte_mask: ((descriptor & PSB_BYTE_MASK_MASK) >> 24) as u8,
                     broadcast: descriptor & PSB_BROADCAST_MASK != 0,
                     reserved_bits: descriptor
@@ -1140,7 +1368,71 @@ impl SbrImage {
                 })
                 .collect(),
             expert_soc_fields: Vec::new(),
+            expert_psb_entries: Vec::new(),
+            expert_psb_serdes_entries: Vec::new(),
         }
+    }
+
+    pub fn expert_psb_entry_config(&self, index: usize, value: u32) -> Result<AtlasConfig> {
+        self.validate()?;
+        let entries = self.psb_entries();
+        let entry = entries.get(index).ok_or_else(|| {
+            Error::Usage(format!(
+                "PSB entry {index} does not exist; image contains {} entries",
+                entries.len()
+            ))
+        })?;
+        if !entry.expert_writable {
+            return Err(Error::Safety(format!(
+                "PSB entry {index} at register {:#x} has policy {}; no patch generated",
+                entry.register_offset, entry.write_policy
+            )));
+        }
+        let config = AtlasConfig {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig::default(),
+            stations: Vec::new(),
+            expert_soc_fields: Vec::new(),
+            expert_psb_entries: vec![ExpertPsbEntryPatch {
+                index,
+                register_key: entry
+                    .register_key
+                    .expect("expert-writable PSB entry has a key")
+                    .into(),
+                expected_descriptor: entry.descriptor,
+                expected_value: entry.value,
+                value,
+            }],
+            expert_psb_serdes_entries: Vec::new(),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    pub fn expert_psb_serdes_entry_config(&self, index: usize, value: u32) -> Result<AtlasConfig> {
+        self.validate()?;
+        let entries = self.psb_serdes_entries();
+        let entry = entries.get(index).ok_or_else(|| {
+            Error::Usage(format!(
+                "PSB-SerDes entry {index} does not exist; image contains {} entries",
+                entries.len()
+            ))
+        })?;
+        let config = AtlasConfig {
+            schema: ATLAS_CONFIG_SCHEMA.into(),
+            soc: AtlasSocConfig::default(),
+            stations: Vec::new(),
+            expert_soc_fields: Vec::new(),
+            expert_psb_entries: Vec::new(),
+            expert_psb_serdes_entries: vec![ExpertPsbSerdesEntryPatch {
+                index,
+                expected_address: entry.address,
+                expected_value: entry.value,
+                value,
+            }],
+        };
+        config.validate()?;
+        Ok(config)
     }
 
     pub fn apply_config(&mut self, config: &AtlasConfig) -> Result<()> {
@@ -1152,14 +1444,22 @@ impl SbrImage {
         config: &AtlasConfig,
         allow_expert_fields: bool,
     ) -> Result<()> {
+        self.apply_config_with_options(
+            config,
+            AtlasApplyPolicy {
+                allow_expert_soc_fields: allow_expert_fields,
+                allow_expert_entries: false,
+            },
+        )
+    }
+
+    pub fn apply_config_with_options(
+        &mut self,
+        config: &AtlasConfig,
+        policy: AtlasApplyPolicy,
+    ) -> Result<()> {
         self.validate()?;
-        config.validate()?;
-        if !config.expert_soc_fields.is_empty() && !allow_expert_fields {
-            return Err(Error::Safety(
-                "configuration contains expert_soc_fields; pass --allow-expert-fields to acknowledge that their board behavior is not independently validated"
-                    .into(),
-            ));
-        }
+        config.validate_with_policy(policy)?;
         for patch in &config.expert_soc_fields {
             let field = named_soc_field(&patch.field).expect("validated expert field");
             let current = self.read_bits(
@@ -1170,6 +1470,56 @@ impl SbrImage {
                 return Err(Error::Safety(format!(
                     "expert SoC field {:?} expected {}, but input contains {}; no fields were changed",
                     patch.field, patch.expected, current
+                )));
+            }
+        }
+        let psb_entries = self.psb_entries();
+        for patch in &config.expert_psb_entries {
+            let current = psb_entries.get(patch.index).ok_or_else(|| {
+                Error::Safety(format!(
+                    "expert PSB entry {} does not exist; input contains {} entries; no fields were changed",
+                    patch.index,
+                    psb_entries.len()
+                ))
+            })?;
+            if current.descriptor != patch.expected_descriptor {
+                return Err(Error::Safety(format!(
+                    "expert PSB entry {} expected descriptor {:#010x}, but input contains {:#010x}; no fields were changed",
+                    patch.index, patch.expected_descriptor, current.descriptor
+                )));
+            }
+            if current.register_key != Some(patch.register_key.as_str()) {
+                return Err(Error::Safety(format!(
+                    "expert PSB entry {} expected register key {:?}, but input resolves it as {:?}; no fields were changed",
+                    patch.index, patch.register_key, current.register_key
+                )));
+            }
+            if current.value != patch.expected_value {
+                return Err(Error::Safety(format!(
+                    "expert PSB entry {} expected value {:#010x}, but input contains {:#010x}; no fields were changed",
+                    patch.index, patch.expected_value, current.value
+                )));
+            }
+        }
+        let psb_serdes_entries = self.psb_serdes_entries();
+        for patch in &config.expert_psb_serdes_entries {
+            let current = psb_serdes_entries.get(patch.index).ok_or_else(|| {
+                Error::Safety(format!(
+                    "expert PSB-SerDes entry {} does not exist; input contains {} entries; no fields were changed",
+                    patch.index,
+                    psb_serdes_entries.len()
+                ))
+            })?;
+            if current.address != patch.expected_address {
+                return Err(Error::Safety(format!(
+                    "expert PSB-SerDes entry {} expected address {:#010x}, but input contains {:#010x}; no fields were changed",
+                    patch.index, patch.expected_address, current.address
+                )));
+            }
+            if current.value != patch.expected_value {
+                return Err(Error::Safety(format!(
+                    "expert PSB-SerDes entry {} expected value {:#010x}, but input contains {:#010x}; no fields were changed",
+                    patch.index, patch.expected_value, current.value
                 )));
             }
         }
@@ -1198,6 +1548,16 @@ impl SbrImage {
                 usize::from(field.width),
                 patch.value,
             );
+        }
+        let psb_offset = self.block(BlockKind::Psb).offset as usize;
+        for patch in &config.expert_psb_entries {
+            let value_offset = psb_offset + patch.index * 8;
+            self.bytes[value_offset..value_offset + 4].copy_from_slice(&patch.value.to_le_bytes());
+        }
+        let psb_serdes_offset = self.block(BlockKind::PsbSerdes).offset as usize;
+        for patch in &config.expert_psb_serdes_entries {
+            let value_offset = psb_serdes_offset + patch.index * 8 + 4;
+            self.bytes[value_offset..value_offset + 4].copy_from_slice(&patch.value.to_le_bytes());
         }
         self.update_checksum();
         self.validate()
@@ -1330,6 +1690,40 @@ impl SbrImage {
             })
             .collect();
 
+        let psb_entry_differences = self
+            .psb_entries()
+            .into_iter()
+            .zip(after.psb_entries())
+            .filter_map(|(before, after)| {
+                (before.descriptor == after.descriptor && before.value != after.value).then_some({
+                    PsbEntryDifference {
+                        index: before.index,
+                        register_key: before.register_key,
+                        register_offset: before.register_offset,
+                        descriptor: before.descriptor,
+                        before: before.value,
+                        after: after.value,
+                    }
+                })
+            })
+            .collect();
+
+        let psb_serdes_entry_differences = self
+            .psb_serdes_entries()
+            .into_iter()
+            .zip(after.psb_serdes_entries())
+            .filter_map(|(before, after)| {
+                (before.address == after.address && before.value != after.value).then_some({
+                    PsbSerdesEntryDifference {
+                        index: before.index,
+                        address: before.address,
+                        before: before.value,
+                        after: after.value,
+                    }
+                })
+            })
+            .collect();
+
         SbrDiffReport {
             schema: ATLAS_DIFF_SCHEMA,
             before_sha256: sha256_hex(&self.bytes),
@@ -1338,6 +1732,8 @@ impl SbrImage {
             after_length: after.bytes.len(),
             named_differences,
             station_differences,
+            psb_entry_differences,
+            psb_serdes_entry_differences,
             byte_differences: byte_differences(&self.bytes, &after.bytes),
         }
     }
@@ -2355,6 +2751,8 @@ mod tests {
         assert_eq!(psb[0].register_offset, 0x20c);
         assert_eq!(psb[0].register_key, Some("phy_user_test_pattern_0"));
         assert_eq!(psb[0].register_name, Some("PHY User Test Pattern 0"));
+        assert!(psb[0].expert_writable);
+        assert_eq!(psb[0].write_policy, "expert");
         assert_eq!(psb[0].byte_mask, 0xb);
         assert!(psb[0].broadcast);
         assert_eq!(psb[0].reserved_bits, 0);
@@ -2377,6 +2775,232 @@ mod tests {
             vec![0x0604_2019, 0x1b00_0083, 0x81c0_a805, 0x0f00_02f5]
         );
         assert!(inspection.blocks[0].sha256.is_some());
+    }
+
+    #[test]
+    fn expert_entry_patches_require_identity_expectations_and_opt_in() {
+        let original = image_with_entry_blocks();
+        let config = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [
+                    {
+                        "index": 0,
+                        "register_key": "phy_user_test_pattern_0",
+                        "expected_descriptor": "0x1b000083",
+                        "expected_value": "0x06042019",
+                        "value": "0x06042018"
+                    }
+                ],
+                "expert_psb_serdes_entries": [
+                    {
+                        "index": 0,
+                        "expected_address": "0x72001234",
+                        "expected_value": 31,
+                        "value": "0x0000001e"
+                    }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let serialized = String::from_utf8(config.to_json_pretty().unwrap()).unwrap();
+        assert!(serialized.contains("\"expected_value\": \"0x06042019\""));
+        assert!(serialized.contains("\"expected_address\": \"0x72001234\""));
+
+        let mut without_opt_in = original.clone();
+        assert!(without_opt_in.apply_config(&config).is_err());
+        assert_eq!(without_opt_in, original);
+
+        let mut candidate = original.clone();
+        candidate
+            .apply_config_with_options(
+                &config,
+                AtlasApplyPolicy {
+                    allow_expert_soc_fields: false,
+                    allow_expert_entries: true,
+                },
+            )
+            .unwrap();
+        candidate.validate().unwrap();
+        assert_eq!(candidate.psb_entries()[0].value, 0x0604_2018);
+        assert_eq!(candidate.psb_entries()[0].descriptor, 0x1b00_0083);
+        assert_eq!(candidate.psb_serdes_entries()[0].address, 0x7200_1234);
+        assert_eq!(candidate.psb_serdes_entries()[0].value, 0x1e);
+
+        let report = original.diff(&candidate);
+        assert_eq!(report.psb_entry_differences.len(), 1);
+        assert_eq!(report.psb_entry_differences[0].index, 0);
+        assert_eq!(report.psb_serdes_entry_differences.len(), 1);
+        assert_eq!(report.psb_serdes_entry_differences[0].index, 0);
+        let expected_offsets = [SOC_END, SOC_END + 16 + 4, SOC_END + 32];
+        assert!(report
+            .byte_differences
+            .iter()
+            .all(|difference| expected_offsets.contains(&difference.offset)));
+
+        let mismatch = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [
+                    {
+                        "index": 0,
+                        "register_key": "phy_user_test_pattern_0",
+                        "expected_descriptor": "0x1b000083",
+                        "expected_value": "0x06042018",
+                        "value": "0x06042017"
+                    }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let mut unchanged = original.clone();
+        assert!(unchanged
+            .apply_config_with_options(
+                &mismatch,
+                AtlasApplyPolicy {
+                    allow_expert_soc_fields: false,
+                    allow_expert_entries: true,
+                },
+            )
+            .is_err());
+        assert_eq!(unchanged, original);
+
+        let cross_block_mismatch = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [
+                    {
+                        "index": 0,
+                        "register_key": "phy_user_test_pattern_0",
+                        "expected_descriptor": "0x1b000083",
+                        "expected_value": "0x06042019",
+                        "value": "0x06042018"
+                    }
+                ],
+                "expert_psb_serdes_entries": [
+                    {
+                        "index": 0,
+                        "expected_address": "0x72001234",
+                        "expected_value": "0x00000020",
+                        "value": "0x0000001e"
+                    }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let mut atomically_unchanged = original.clone();
+        assert!(atomically_unchanged
+            .apply_config_with_options(
+                &cross_block_mismatch,
+                AtlasApplyPolicy {
+                    allow_expert_soc_fields: false,
+                    allow_expert_entries: true,
+                },
+            )
+            .is_err());
+        assert_eq!(atomically_unchanged, original);
+    }
+
+    #[test]
+    fn expert_entry_config_rejects_ambiguous_or_unwritable_patches() {
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [{
+                    "index": 0,
+                    "register_key": "not_a_register",
+                    "expected_descriptor": "0x1b000083",
+                    "expected_value": 1,
+                    "value": 0
+                }]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [{
+                    "index": 8,
+                    "register_key": "reserved_0xd90",
+                    "expected_descriptor": "0x1f000364",
+                    "expected_value": 1,
+                    "value": 0
+                }]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [{
+                    "index": 0,
+                    "register_key": "phy_user_test_pattern_0",
+                    "expected_descriptor": "0x0f000084",
+                    "expected_value": 1,
+                    "value": 0
+                }]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_entries": [{
+                    "index": 0,
+                    "register_key": "phy_user_test_pattern_0",
+                    "expected_descriptor": "0x01000083",
+                    "expected_value": "0x00000000",
+                    "value": "0x00000100"
+                }]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_psb_serdes_entries": [
+                    {
+                        "index": 0,
+                        "expected_address": "0x72001234",
+                        "expected_value": 1,
+                        "value": 0
+                    },
+                    {
+                        "index": 0,
+                        "expected_address": "0x72001234",
+                        "expected_value": 1,
+                        "value": 0
+                    }
+                ]
+            }"#,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn generates_identity_bound_expert_entry_configs() {
+        let image = image_with_entry_blocks();
+        let psb = image.expert_psb_entry_config(0, 0x0604_2018).unwrap();
+        assert_eq!(psb.expert_psb_entries.len(), 1);
+        assert_eq!(
+            psb.expert_psb_entries[0].register_key,
+            "phy_user_test_pattern_0"
+        );
+        assert_eq!(psb.expert_psb_entries[0].expected_descriptor, 0x1b00_0083);
+        assert_eq!(psb.expert_psb_entries[0].expected_value, 0x0604_2019);
+        assert!(image.expert_psb_entry_config(0, 0x0604_2019).is_err());
+        assert!(image.expert_psb_entry_config(0, 0x06fb_2019).is_err());
+        assert!(image.expert_psb_entry_config(2, 0).is_err());
+
+        let serdes = image.expert_psb_serdes_entry_config(0, 0x1e).unwrap();
+        assert_eq!(serdes.expert_psb_serdes_entries.len(), 1);
+        assert_eq!(
+            serdes.expert_psb_serdes_entries[0].expected_address,
+            0x7200_1234
+        );
+        assert_eq!(serdes.expert_psb_serdes_entries[0].expected_value, 0x1f);
+        assert!(image.expert_psb_serdes_entry_config(0, 0x1f).is_err());
+        assert!(image.expert_psb_serdes_entry_config(2, 0).is_err());
     }
 
     #[test]
@@ -2605,6 +3229,8 @@ mod tests {
                 layout: Some(StationLayout::X4X4X4X4),
             }],
             expert_soc_fields: Vec::new(),
+            expert_psb_entries: Vec::new(),
+            expert_psb_serdes_entries: Vec::new(),
         };
         after.apply_config(&config).unwrap();
         let report = before.diff(&after);

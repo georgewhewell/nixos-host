@@ -28,12 +28,16 @@ pexctl sbr validate IMAGE
 pexctl sbr fields IMAGE
 pexctl sbr entries IMAGE
 pexctl sbr entries IMAGE --block psb-serdes --json
+pexctl sbr export-entry-patch IMAGE --block psb --index 0 \
+  --value 0x06042018 --output expert-entry.json
 pexctl sbr diff BEFORE AFTER
 pexctl sbr diff BEFORE AFTER --json
 pexctl sbr export-config IMAGE --output config.json
 pexctl sbr apply-config IMAGE config.json --output candidate.bin
 pexctl sbr apply-config IMAGE expert-config.json --output candidate.bin \
   --allow-expert-fields
+pexctl sbr apply-config IMAGE expert-entry.json --output candidate.bin \
+  --allow-expert-entries
 pexctl sbr set-station INPUT --station 4 --layout x4x4x4x4 --output candidate.bin
 pexctl sbr repair-checksum INPUT --output repaired.bin
 
@@ -56,6 +60,9 @@ sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
   --config config.json --output-dir config-plan
 sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
   --config expert-config.json --output-dir expert-plan --allow-expert-fields
+sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
+  --config expert-entry.json --output-dir expert-entry-plan \
+  --allow-expert-entries
 
 sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
   --expected-current sector-0.bin --candidate candidate-sector-0.bin \
@@ -68,7 +75,7 @@ its SHA-256, checksum state, raw station codes, and every currently understood
 field. It also decodes the PSB register-write records and PSB-SerDes AXI-write
 records described below. `sbr entries` prints those records directly and can
 select either block with `--block`. `diff --json` provides hashes, named-field
-changes, station changes, and byte changes.
+changes, station changes, PSB/PSB-SerDes entry-value changes, and byte changes.
 
 `export-config` creates the strict, versioned subset that `pexctl` knows how to
 write:
@@ -194,9 +201,34 @@ all set encode the vendor broadcast modes `none`, `lane`, `station`, or
 broadcast mode.
 
 Both blocks are validated as complete 8-byte records and against the vendor
-maximum sizes. These records are read-only for now: their container encoding
-is proven, but changing a register still requires register-specific reset,
-ordering, mask, and board constraints that the raw record does not express.
+maximum sizes. Their values can be patched through the separate
+`--allow-expert-entries` path. A PSB patch must supply an existing entry index,
+a known non-reserved `register_key`, its exact expected descriptor, and its
+exact expected value. It may change only bytes selected by the descriptor's
+byte mask. A PSB-SerDes patch must supply an existing index, exact expected
+address, and exact expected value. Every expectation is checked before any
+change occurs.
+
+The patch path cannot add, remove, reorder, resize, retarget, rebroadcast, or
+change the byte mask of a record. It changes only the value dword and updates
+the SBR checksum. This exposes the structurally understood configuration
+without pretending the register-specific reset and board behavior is safe.
+The JSON fields accept either unsigned integers or quoted hexadecimal values;
+normalized configurations serialize them as eight-digit hexadecimal strings.
+Missing expert acknowledgement is rejected before `prepare-config` opens or
+reads the live device.
+
+`export-entry-patch` generates this strict document from an existing image.
+It fills in the current key and descriptor/address and expected value, rejects
+unknown or read-only PSB records, enforces the byte mask, and refuses a no-op
+replacement. Generation does not imply that the requested register value is
+safe.
+
+Examples are
+[`expert-psb-entry.json`](examples/expert-psb-entry.json) and
+[`expert-psb-serdes-entry.json`](examples/expert-psb-serdes-entry.json).
+They demonstrate syntax against this board's current image and are not
+recommendations to make those value changes.
 
 ## PEX88096 station topology
 

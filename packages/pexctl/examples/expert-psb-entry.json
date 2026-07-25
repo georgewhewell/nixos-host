@@ -1,0 +1,12 @@
+{
+  "schema": "pexctl.atlas-config.v1",
+  "expert_psb_entries": [
+    {
+      "index": 0,
+      "register_key": "phy_user_test_pattern_0",
+      "expected_descriptor": "0x0f000083",
+      "expected_value": "0x06042019",
+      "value": "0x06042018"
+    }
+  ]
+}

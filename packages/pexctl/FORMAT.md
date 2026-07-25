@@ -76,8 +76,8 @@ larger than the Atlas `0x4000`-byte limit.
 
 `inspect --json` includes both decoded entry arrays plus the raw dwords and
 SHA-256 of every enabled indexed block. `sbr entries` provides a focused human
-or JSON view. Entry mutation is intentionally not exposed until individual
-register semantics and ordering constraints are established.
+or JSON view. Known non-reserved PSB records report an `expert` write policy;
+unknown and reserved records remain `read-only`.
 
 ## First SoC dword
 
@@ -136,12 +136,30 @@ claimed yet.
 binary format. Omitted fields and stations are unchanged. A station entry with
 no `layout` is also unchanged; this permits an exported file to preserve raw
 or unclassified layouts. Expert fields are omitted from exported editable
-configuration and must always be added deliberately.
+configuration and must always be added deliberately. Expert PSB and
+PSB-SerDes patches are also omitted.
+
+`expert_psb_entries` changes only the value dword of an existing PSB record.
+Each patch requires the record index, known non-reserved register key, exact
+expected descriptor, exact expected value, and replacement value. The
+descriptor must resolve to the keyed register, and changed bytes must be
+selected by its four-bit byte mask.
+
+`expert_psb_serdes_entries` similarly changes only an existing AXI record's
+value and requires its index, exact expected address, exact expected value,
+and replacement value. Neither form can modify record identity, descriptor,
+address, ordering, count, or block size. All identities and expected values
+are checked against the original input before any field or entry is changed.
+They require `--allow-expert-entries`, independently of the
+`--allow-expert-fields` acknowledgement for named SoC fields.
+`sbr export-entry-patch` can generate either form from an existing record so
+the identity and expected-current fields are not transcribed by hand.
 
 The parser rejects unknown JSON members. Applying a configuration:
 
 1. validates the input image and configuration;
-2. changes only named bit fields;
+2. changes only typed/named bit fields or explicitly identified expert record
+   value dwords;
 3. recalculates the checksum;
 4. validates the candidate;
 5. refuses to overwrite an existing output path.
