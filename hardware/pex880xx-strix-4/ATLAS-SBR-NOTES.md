@@ -113,6 +113,37 @@ It rejected the configuration in under one second, before opening or reading
 the device, created no plan directory, and explicitly requested the missing
 acknowledgement.
 
+## Machine-verifiable station-4 plan
+
+After adding the strict `pexctl.atlas-config-plan.v1` transaction format, a
+fresh read-only station-4 preparation was made with package
+`/nix/store/zr9ajlpxb0zgkv5am707rv42pm09q0l4-pexctl-0.1.0`:
+
+```text
+/tmp/pexctl-station4-plan-20260725-v4
+```
+
+Both complete 16 MiB reads again had SHA-256
+`16796f3fa9f0f88276635c60d1e1e2d581393a3eba5f7a03afed9975aa8ab83b`.
+The current and candidate SBR SHA-256 values remained respectively
+`f4e0bf5d1d01d3f8daccc7c9c792cf0174e509a725379a646c9704c2cd4caae5`
+and
+`3736c9fc9d67e99152fa834208ec303ccc2ebe0c60c8518777ab44eb9f87c0ea`.
+
+`pexctl plan verify` was then run separately as the unprivileged user. It
+verified all eleven artifact hashes and recomputed the complete-backup, recovery
+region, embedded-SBR, applied-configuration, inspection, and diff
+relationships. A `device program-plan` invocation with an invalid confirmation
+was rejected before device access. The boot ID remained
+`758399aa-a216-4733-90ad-eab6141f7c18`, and PCI identity
+`1000:c010` remained present at `0000:c4:00.0`. No hardware write, reset, or
+reboot was issued.
+
+The common hardware-writer validator now also refuses any changed byte at or
+beyond flash offset `0x10000`, because this recovery path erases and programs
+exactly one 64 KiB block. This prevents a larger, otherwise valid SBR from
+reaching an operation that could not reproduce its changes beyond block 0.
+
 ## Station-4 candidate
 
 The desired ASUS Hyper M.2 station is station 4:

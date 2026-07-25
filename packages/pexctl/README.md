@@ -44,6 +44,9 @@ pexctl sbr repair-checksum INPUT --output repaired.bin
 pexctl flash extract-sbr flash.bin --output current.bin
 pexctl flash replace-sbr flash.bin candidate.bin --output candidate-flash.bin
 
+pexctl plan verify config-plan
+pexctl plan verify config-plan --json
+
 sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output current.bin
 sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
 sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
@@ -63,6 +66,10 @@ sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
 sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
   --config expert-entry.json --output-dir expert-entry-plan \
   --allow-expert-entries
+
+sudo pexctl device program-plan --bdf 0000:c4:00.0 \
+  --plan-dir config-plan \
+  --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
 
 sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
   --expected-current sector-0.bin --candidate candidate-sector-0.bin \
@@ -161,8 +168,26 @@ for all changes in a configuration file. A plan contains both complete
 backups, current and candidate SBRs, current and candidate recovery images,
 the normalized applied configuration, before/after JSON inspections, a JSON
 diff, and a SHA-256 manifest. The manifest records every changed SBR and flash
-offset plus the exact device-bound confirmation needed by `program-sector0`.
+offset plus the exact device-bound confirmation needed by `program-plan`.
 Preparation never writes or resets the switch.
+
+Every new plan also contains a strict `pexctl.atlas-config-plan.v1`
+`PLAN.json`. `plan verify` checks all eleven listed artifacts, including the
+human-readable manifest, against fixed names, sizes, and hashes;
+requires the two complete flash reads to match; verifies that the saved
+recovery region and SBR are exact slices of those backups; reconstructs the
+candidate by applying `applied-config.json`; and regenerates both inspections
+and the diff byte-for-byte. Plan directories and their listed artifacts must
+be regular files rather than symlinks.
+
+`device program-plan` performs that complete offline verification before it
+opens the live device. It then requires the plan BDF and PCI identity to match
+the requested PEX88096 (`1000:c010`), requires any expert acknowledgements
+again, and passes the already-verified in-memory recovery images to the same
+live-current-match, erase, program, and read-back path. This is the normal
+write interface.
+`program-sector0` remains available as a lower-level recovery primitive for
+independently constructed recovery images.
 
 ## Understood SoC fields
 
@@ -248,18 +273,23 @@ or mixed layouts are displayed as raw codes and retained unchanged.
 
 ## Hardware-write safety boundary
 
-`program-sector0` is intentionally narrower than a generic flash writer. It:
+`program-plan` and its lower-level `program-sector0` primitive are
+intentionally narrower than a generic flash writer. The hardware path:
 
 1. requires exact 256 KiB expected-current and candidate recovery images;
 2. validates both embedded SBRs and requires equal SBR lengths;
 3. rejects every candidate difference outside the SBR;
-4. rereads the live sector and requires an exact expected-current match;
-5. requires a confirmation phrase bound to the BDF, CS0, and sector 0;
-6. erases only the first 64 KiB block with `D8`, programs only its non-erased
+4. rejects every difference beyond the one 64 KiB block the writer programs;
+5. rereads the live sector and requires an exact expected-current match;
+6. requires a confirmation phrase bound to the BDF, CS0, and sector 0;
+7. erases only the first 64 KiB block with `D8`, programs only its non-erased
    pages, and waits for every operation to finish;
-7. rereads and compares the complete 256 KiB recovery region before returning
+8. rereads and compares the complete 256 KiB recovery region before returning
    success;
-8. never resets the PEX switch.
+9. never resets the PEX switch.
+
+`program-plan` adds the plan-wide artifact, configuration-reconstruction, and
+device-binding checks described above before reaching this hardware path.
 
 This removes common software mistakes; it does not make an interrupted block
 erase recoverable. Do not run the command without an out-of-band way to

@@ -1,7 +1,9 @@
 use pexctl::{
-    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, AtlasApplyPolicy,
-    AtlasConfig, Error, PlxSvcDevice, Result, SbrImage, StationLayout,
-    ATLAS_SPI_RECOVERY_REGION_SIZE, SBR_FLASH_OFFSET, SOC_END,
+    byte_differences, normalize_bdf, required_confirmation, sha256_hex,
+    validate_sector0_replacement, verify_config_plan_directory, write_new_file, AtlasApplyPolicy,
+    AtlasConfig, AtlasConfigPlanArtifact, AtlasConfigPlanManifest, Error, PlxSvcDevice, Result,
+    SbrImage, StationLayout, ATLAS_CONFIG_PLAN_FILE, ATLAS_SPI_RECOVERY_REGION_SIZE,
+    SBR_FLASH_OFFSET, SOC_END,
 };
 use serde::Serialize;
 use std::env;
@@ -37,6 +39,7 @@ fn run(args: Vec<String>) -> Result<()> {
         }
         "sbr" => run_sbr(&args[1..]),
         "flash" => run_flash(&args[1..]),
+        "plan" => run_plan(&args[1..]),
         "device" => run_device(&args[1..]),
         other => Err(Error::Usage(format!(
             "unknown command {other:?}; run `pexctl help`"
@@ -414,6 +417,49 @@ fn run_replace_sbr(args: &[String]) -> Result<()> {
     Ok(())
 }
 
+fn run_plan(args: &[String]) -> Result<()> {
+    let Some(command) = args.first().map(String::as_str) else {
+        return Err(Error::Usage(
+            "missing plan command; run `pexctl help`".into(),
+        ));
+    };
+    match command {
+        "verify" => {
+            let json = optional_json_flag(args, 2, "pexctl plan verify DIRECTORY [--json]")?;
+            let plan = verify_config_plan_directory(Path::new(&args[1]))?;
+            if json {
+                print_json(plan.manifest())
+            } else {
+                let manifest = plan.manifest();
+                println!("valid Atlas configuration plan: {}", args[1]);
+                println!(
+                    "device: {} {:04x}:{:04x}, SPI CS0 {:02x} {:02x} {:02x}",
+                    manifest.bdf,
+                    manifest.pci_vendor,
+                    manifest.pci_device,
+                    manifest.jedec_id[0],
+                    manifest.jedec_id[1],
+                    manifest.jedec_id[2]
+                );
+                println!(
+                    "flash: {:#x} bytes, SBR: {:#x} bytes at {:#x}",
+                    manifest.flash_size, manifest.sbr_size, manifest.sbr_offset
+                );
+                println!(
+                    "verified {} hashes plus complete backup, region, SBR, configuration, inspection, and diff relationships",
+                    manifest.artifacts.len()
+                );
+                println!(
+                    "required write confirmation: {}",
+                    manifest.required_confirmation
+                );
+                Ok(())
+            }
+        }
+        other => Err(Error::Usage(format!("unknown plan command {other:?}"))),
+    }
+}
+
 fn run_device(args: &[String]) -> Result<()> {
     let Some(command) = args.first().map(String::as_str) else {
         return Err(Error::Usage(
@@ -541,9 +587,78 @@ fn run_device(args: &[String]) -> Result<()> {
         "entries" => run_device_entries(&args[1..]),
         "prepare-station" => run_prepare_station(&args[1..]),
         "prepare-config" => run_prepare_config(&args[1..]),
+        "program-plan" => {
+            let options = &args[1..];
+            let bdf = normalize_bdf(option_value(options, "--bdf")?)?;
+            let plan_dir = PathBuf::from(option_value(options, "--plan-dir")?);
+            let confirmation = option_value(options, "--confirm")?;
+            let allow_expert_fields = options
+                .iter()
+                .any(|argument| argument == "--allow-expert-fields");
+            let allow_expert_entries = options
+                .iter()
+                .any(|argument| argument == "--allow-expert-entries");
+            reject_unknown_options_and_flags(
+                options,
+                &["--bdf", "--plan-dir", "--confirm"],
+                &["--allow-expert-fields", "--allow-expert-entries"],
+            )?;
+            let required_confirmation = required_confirmation(&bdf)?;
+            if confirmation != required_confirmation {
+                return Err(Error::Safety(format!(
+                    "confirmation mismatch; this operation requires --confirm {required_confirmation:?}"
+                )));
+            }
+
+            let plan = verify_config_plan_directory(&plan_dir)?;
+            let manifest = plan.manifest();
+            if manifest.policy.allow_expert_soc_fields && !allow_expert_fields {
+                return Err(Error::Safety(
+                    "plan was prepared with expert SoC fields enabled; pass --allow-expert-fields again at programming time"
+                        .into(),
+                ));
+            }
+            if manifest.policy.allow_expert_entries && !allow_expert_entries {
+                return Err(Error::Safety(
+                    "plan was prepared with expert indexed records enabled; pass --allow-expert-entries again at programming time"
+                        .into(),
+                ));
+            }
+            if manifest.bdf != bdf {
+                return Err(Error::Safety(format!(
+                    "plan is bound to {}, not requested device {bdf}",
+                    manifest.bdf
+                )));
+            }
+            let device = PlxSvcDevice::open(&bdf)?;
+            if (device.vendor(), device.device()) != (manifest.pci_vendor, manifest.pci_device) {
+                return Err(Error::Safety(format!(
+                    "live PCI identity {:04x}:{:04x} differs from plan identity {:04x}:{:04x}",
+                    device.vendor(),
+                    device.device(),
+                    manifest.pci_vendor,
+                    manifest.pci_device
+                )));
+            }
+            eprintln!(
+                "pexctl: confirmation and complete plan accepted; checking live bytes, then erasing, programming, and verifying {} CS0 sector 0",
+                device.bdf()
+            );
+            device.program_sector0_recovery_gated(
+                plan.expected_current(),
+                plan.candidate(),
+                confirmation,
+            )?;
+            println!(
+                "programmed plan {} and read-back verified {} CS0 sector 0; no reset was issued",
+                plan_dir.display(),
+                device.bdf()
+            );
+            Ok(())
+        }
         "program-sector0" => {
             let options = &args[1..];
-            let bdf = option_value(options, "--bdf")?;
+            let bdf = normalize_bdf(option_value(options, "--bdf")?)?;
             let expected_path = PathBuf::from(option_value(options, "--expected-current")?);
             let candidate_path = PathBuf::from(option_value(options, "--candidate")?);
             let confirmation = option_value(options, "--confirm")?;
@@ -551,6 +666,12 @@ fn run_device(args: &[String]) -> Result<()> {
                 options,
                 &["--bdf", "--expected-current", "--candidate", "--confirm"],
             )?;
+            let required_confirmation = required_confirmation(&bdf)?;
+            if confirmation != required_confirmation {
+                return Err(Error::Safety(format!(
+                    "confirmation mismatch; this operation requires --confirm {required_confirmation:?}"
+                )));
+            }
             let expected = fs::read(&expected_path).map_err(|source| {
                 Error::io(format!("reading {}", expected_path.display()), source)
             })?;
@@ -558,16 +679,7 @@ fn run_device(args: &[String]) -> Result<()> {
                 Error::io(format!("reading {}", candidate_path.display()), source)
             })?;
             validate_sector0_replacement(&expected, &candidate)?;
-            let device = PlxSvcDevice::open(bdf)?;
-            let required_confirmation = format!(
-                "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
-                device.bdf().to_ascii_lowercase()
-            );
-            if confirmation != required_confirmation {
-                return Err(Error::Safety(format!(
-                    "confirmation mismatch; this operation requires --confirm {required_confirmation:?}"
-                )));
-            }
+            let device = PlxSvcDevice::open(&bdf)?;
             eprintln!(
                 "pexctl: confirmation accepted; checking live bytes, then erasing, programming, and verifying {} CS0 sector 0",
                 device.bdf()
@@ -744,10 +856,7 @@ fn prepare_config_plan(
     candidate_region[sbr_offset..sbr_end].copy_from_slice(candidate_sbr.bytes());
     validate_sector0_replacement(&current_region, &candidate_region)?;
 
-    let required_confirmation = format!(
-        "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
-        device.bdf().to_ascii_lowercase()
-    );
+    let required_confirmation = required_confirmation(device.bdf())?;
     let config_json = config.to_json_pretty()?;
     let current_inspection_json = json_bytes(&current_sbr.inspection())?;
     let candidate_inspection_json = json_bytes(&candidate_sbr.inspection())?;
@@ -770,7 +879,6 @@ fn prepare_config_plan(
         ),
         ("diff.json", diff_json.as_slice()),
     ];
-
     let mut manifest = String::new();
     writeln!(manifest, "format: pexctl-config-plan-v1").expect("writing to String");
     writeln!(manifest, "bdf: {}", device.bdf()).expect("writing to String");
@@ -821,6 +929,11 @@ fn prepare_config_plan(
         )
         .expect("writing to String");
     }
+    writeln!(
+        manifest,
+        "  {ATLAS_CONFIG_PLAN_FILE}: canonical machine-readable manifest (not self-hashed)"
+    )
+    .expect("writing to String");
     writeln!(manifest).expect("writing to String");
     writeln!(manifest, "named-differences:").expect("writing to String");
     for difference in &report.named_differences {
@@ -877,21 +990,50 @@ fn prepare_config_plan(
         .expect("writing to String");
     }
     writeln!(manifest).expect("writing to String");
+    let mut expert_options = String::new();
+    if policy.allow_expert_soc_fields {
+        expert_options.push_str(" --allow-expert-fields");
+    }
+    if policy.allow_expert_entries {
+        expert_options.push_str(" --allow-expert-entries");
+    }
     writeln!(
         manifest,
-        "program-command: pexctl device program-sector0 --bdf {} --expected-current current-region.bin --candidate candidate-region.bin --confirm {required_confirmation}",
-        device.bdf()
+        "program-command: pexctl device program-plan --bdf {} --plan-dir .{expert_options} --confirm {required_confirmation}",
+        device.bdf(),
     )
     .expect("writing to String");
     writeln!(manifest, "required-confirmation: {required_confirmation}")
         .expect("writing to String");
     writeln!(manifest, "hardware-written: no").expect("writing to String");
 
+    let mut artifacts: Vec<_> = files
+        .iter()
+        .map(|(name, bytes)| AtlasConfigPlanArtifact::from_bytes(name, bytes))
+        .collect();
+    artifacts.push(AtlasConfigPlanArtifact::from_bytes(
+        "MANIFEST.txt",
+        manifest.as_bytes(),
+    ));
+    let plan_manifest = AtlasConfigPlanManifest::new(
+        device.bdf(),
+        device.vendor(),
+        device.device(),
+        identity,
+        flash_a.len(),
+        current_sbr.bytes().len(),
+        policy,
+        artifacts,
+    )?;
+    let plan_json = plan_manifest.to_json_pretty()?;
+
     create_new_directory(output_dir)?;
     for (name, bytes) in files {
         write_new_file(&output_dir.join(name), bytes)?;
     }
     write_new_file(&output_dir.join("MANIFEST.txt"), manifest.as_bytes())?;
+    write_new_file(&output_dir.join(ATLAS_CONFIG_PLAN_FILE), &plan_json)?;
+    verify_config_plan_directory(output_dir)?;
 
     println!(
         "prepared verified configuration plan in {}: {} named field change(s), {} station change(s), {} PSB entry change(s), {} PSB-SerDes entry change(s), {} changed SBR byte(s)",
@@ -1198,6 +1340,8 @@ USAGE:
   pexctl flash extract-sbr FLASH --output OUTPUT [--offset 0x400]
   pexctl flash replace-sbr FLASH SBR --output OUTPUT [--offset 0x400]
 
+  pexctl plan verify DIRECTORY [--json]
+
   sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output OUTPUT [--offset 0x400]
   sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 [--offset 0x400] [--json]
   sudo pexctl device entries --bdf 0000:c4:00.0 [--offset 0x400] \
@@ -1211,6 +1355,10 @@ USAGE:
   sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
     --config CONFIG.json --output-dir DIRECTORY \
     [--allow-expert-fields] [--allow-expert-entries]
+  sudo pexctl device program-plan --bdf 0000:c4:00.0 \
+    --plan-dir DIRECTORY \
+    [--allow-expert-fields] [--allow-expert-entries] \
+    --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
   sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
     --expected-current BACKUP --candidate CANDIDATE \
     --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
@@ -1219,9 +1367,11 @@ All mutation commands create a new file and refuse to overwrite an existing
 path. Device reads use the PlxSvc ioctl ABI. Hardware write support is
 limited to a whole, preserved sector 0 and requires an exact live-backup match,
 validated SBR-only changes, an explicit device-bound confirmation, and complete
-read-back verification. Expert fields additionally require expected-current
-values and --allow-expert-fields. Expert indexed records require exact
-identity and expected-current values plus --allow-expert-entries. No hardware
-command resets the switch."
+read-back verification. program-plan additionally verifies every prepared
+artifact and reconstructs the candidate from its configuration before opening
+the device. Expert fields additionally require expected-current values and
+--allow-expert-fields. Expert indexed records require exact identity and
+expected-current values plus --allow-expert-entries. No hardware command resets
+the switch."
     );
 }

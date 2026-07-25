@@ -168,6 +168,40 @@ The full 22-dword index and 104-dword SoC block are present in
 `inspect --json` for differential research without claiming that their
 remaining values are understood.
 
+## Configuration-plan contract
+
+`device prepare-config` and `device prepare-station` emit a strict
+`pexctl.atlas-config-plan.v1` document as `PLAN.json`. It binds the plan to:
+
+- the normalized PCI BDF, PCI identity, and JEDEC identity;
+- the supported flash geometry and fixed SBR offset;
+- the ordinary and expert apply-policy acknowledgements;
+- exactly eleven named artifacts, in canonical order, with their byte lengths and
+  lowercase SHA-256 values;
+- the device-bound hardware-write confirmation phrase; and
+- `hardware_written: false`.
+
+`plan verify` rejects unknown manifest members, extra, missing, or reordered
+artifact records, noncanonical hashes, unexpected binary sizes, oversized JSON
+artifacts, symlinked directories or files, and any digest mismatch. It then
+checks relationships that hashes alone cannot prove: both full-flash reads
+must match; the saved current region must be their exact prefix; both saved
+SBRs must match their containing regions; the candidate region may differ
+only within the fixed-size SBR; applying the canonical saved configuration
+with the recorded policy must reproduce the candidate exactly; and the two
+inspection documents and diff must regenerate byte-for-byte.
+
+`device program-plan` retains the verified current and candidate recovery
+regions in memory, checks the requested live BDF and PCI identity against the
+plan, requires the recorded expert acknowledgements again, and passes those
+same bytes to the recovery-gated hardware writer. The writer rejects any
+candidate difference beyond the one 64 KiB erase block that it programs. A
+later file substitution therefore cannot change the bytes selected for the
+write. `PLAN.json` does not hash itself; its strict schema and the artifact
+relationships are the root of verification. A plan is not cryptographically
+signed: its hashes prove internal consistency, not authorship. The exact live
+current-region match and explicit device-bound confirmation remain mandatory.
+
 ## Evidence boundary
 
 - [Broadcom's SDK page](https://www.broadcom.com/products/pcie-switches-retimers/software-dev-kits)

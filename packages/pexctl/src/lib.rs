@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write};
@@ -29,11 +30,27 @@ pub const SOC_END: usize = SOC_OFFSET + SOC_SIZE;
 pub const CHECKSUM_SEED: u8 = 0xa5;
 pub const MAX_SBR_SIZE: usize = 128 * 1024;
 pub const ATLAS_CONFIG_SCHEMA: &str = "pexctl.atlas-config.v1";
+pub const ATLAS_CONFIG_PLAN_SCHEMA: &str = "pexctl.atlas-config-plan.v1";
 pub const ATLAS_INSPECTION_SCHEMA: &str = "pexctl.atlas-sbr-inspection.v1";
 pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
 pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v1";
+pub const ATLAS_CONFIG_PLAN_FILE: &str = "PLAN.json";
+pub const ATLAS_CONFIG_PLAN_ARTIFACT_NAMES: [&str; 11] = [
+    "current-flash-a.bin",
+    "current-flash-b.bin",
+    "current-region.bin",
+    "current-sbr.bin",
+    "candidate-region.bin",
+    "candidate-sbr.bin",
+    "applied-config.json",
+    "current-inspection.json",
+    "candidate-inspection.json",
+    "diff.json",
+    "MANIFEST.txt",
+];
 const PSB_MAX_SIZE: u32 = 0x2000;
 const PSB_SERDES_MAX_SIZE: u32 = 0x4000;
+const MAX_CONFIG_PLAN_JSON_SIZE: u64 = 4 * 1024 * 1024;
 const PSB_REGISTER_WORD_MASK: u32 = 0x000f_ffff;
 const PSB_BYTE_MASK_MASK: u32 = 0x0f00_0000;
 const PSB_BROADCAST_MASK: u32 = 0x1000_0000;
@@ -365,10 +382,210 @@ pub struct AtlasConfig {
     pub expert_psb_serdes_entries: Vec<ExpertPsbSerdesEntryPatch>,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct AtlasApplyPolicy {
     pub allow_expert_soc_fields: bool,
     pub allow_expert_entries: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtlasConfigPlanArtifact {
+    pub name: String,
+    pub size: usize,
+    pub sha256: String,
+}
+
+impl AtlasConfigPlanArtifact {
+    pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
+        Self {
+            name: name.into(),
+            size: bytes.len(),
+            sha256: sha256_hex(bytes),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtlasConfigPlanManifest {
+    pub schema: String,
+    pub bdf: String,
+    pub pci_vendor: u16,
+    pub pci_device: u16,
+    pub jedec_id: [u8; 3],
+    pub flash_size: usize,
+    pub sbr_offset: u64,
+    pub sbr_size: usize,
+    pub policy: AtlasApplyPolicy,
+    pub artifacts: Vec<AtlasConfigPlanArtifact>,
+    pub required_confirmation: String,
+    pub hardware_written: bool,
+}
+
+impl AtlasConfigPlanManifest {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        bdf: &str,
+        pci_vendor: u16,
+        pci_device: u16,
+        jedec_id: [u8; 3],
+        flash_size: usize,
+        sbr_size: usize,
+        policy: AtlasApplyPolicy,
+        artifacts: Vec<AtlasConfigPlanArtifact>,
+    ) -> Result<Self> {
+        let bdf = normalize_bdf(bdf)?;
+        let manifest = Self {
+            schema: ATLAS_CONFIG_PLAN_SCHEMA.into(),
+            required_confirmation: required_confirmation(&bdf)?,
+            bdf,
+            pci_vendor,
+            pci_device,
+            jedec_id,
+            flash_size,
+            sbr_offset: SBR_FLASH_OFFSET,
+            sbr_size,
+            policy,
+            artifacts,
+            hardware_written: false,
+        };
+        manifest.validate()?;
+        Ok(manifest)
+    }
+
+    pub fn parse_json(bytes: &[u8]) -> Result<Self> {
+        let manifest: Self = serde_json::from_slice(bytes)
+            .map_err(|error| Error::Config(format!("plan JSON: {error}")))?;
+        manifest.validate()?;
+        Ok(manifest)
+    }
+
+    pub fn to_json_pretty(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+        json_pretty_bytes(self)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.schema != ATLAS_CONFIG_PLAN_SCHEMA {
+            return Err(Error::Config(format!(
+                "unsupported plan schema {:?}; expected {ATLAS_CONFIG_PLAN_SCHEMA:?}",
+                self.schema
+            )));
+        }
+        let normalized_bdf = normalize_bdf(&self.bdf)?;
+        if self.bdf != normalized_bdf {
+            return Err(Error::Config(format!(
+                "plan BDF {:?} is not normalized as {normalized_bdf:?}",
+                self.bdf
+            )));
+        }
+        if self.pci_vendor != 0x1000 || self.pci_device != 0xc010 {
+            return Err(Error::Config(format!(
+                "unsupported plan PCI identity {:04x}:{:04x}; writable plans are proven only for PEX88096 1000:c010",
+                self.pci_vendor, self.pci_device
+            )));
+        }
+        let expected_flash_size = supported_flash_capacity(self.jedec_id)?;
+        if self.flash_size != expected_flash_size {
+            return Err(Error::Config(format!(
+                "plan flash_size {:#x} disagrees with JEDEC ID {:02x?} capacity {expected_flash_size:#x}",
+                self.flash_size, self.jedec_id
+            )));
+        }
+        if self.sbr_offset != SBR_FLASH_OFFSET {
+            return Err(Error::Config(format!(
+                "plan SBR offset {:#x} differs from supported Atlas offset {SBR_FLASH_OFFSET:#x}",
+                self.sbr_offset
+            )));
+        }
+        if !(SOC_END + 4..=MAX_SBR_SIZE).contains(&self.sbr_size) {
+            return Err(Error::Config(format!(
+                "plan SBR size {:#x} is outside the supported range",
+                self.sbr_size
+            )));
+        }
+        if self.required_confirmation != required_confirmation(&self.bdf)? {
+            return Err(Error::Config(
+                "plan required_confirmation is not bound to its BDF".into(),
+            ));
+        }
+        if self.hardware_written {
+            return Err(Error::Safety(
+                "plan claims hardware_written=true and cannot be reused".into(),
+            ));
+        }
+        if self.artifacts.len() != ATLAS_CONFIG_PLAN_ARTIFACT_NAMES.len() {
+            return Err(Error::Config(format!(
+                "plan must contain exactly {} artifact records",
+                ATLAS_CONFIG_PLAN_ARTIFACT_NAMES.len()
+            )));
+        }
+        for (artifact, expected_name) in self.artifacts.iter().zip(ATLAS_CONFIG_PLAN_ARTIFACT_NAMES)
+        {
+            if artifact.name != expected_name {
+                return Err(Error::Config(format!(
+                    "plan artifact {:?} is out of order or unexpected; expected {expected_name:?}",
+                    artifact.name
+                )));
+            }
+            if artifact.sha256.len() != 64
+                || !artifact
+                    .sha256
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            {
+                return Err(Error::Config(format!(
+                    "plan artifact {:?} has a non-canonical SHA-256",
+                    artifact.name
+                )));
+            }
+            let expected_size = match artifact.name.as_str() {
+                "current-flash-a.bin" | "current-flash-b.bin" => Some(self.flash_size),
+                "current-region.bin" | "candidate-region.bin" => {
+                    Some(ATLAS_SPI_RECOVERY_REGION_SIZE)
+                }
+                "current-sbr.bin" | "candidate-sbr.bin" => Some(self.sbr_size),
+                _ => None,
+            };
+            if let Some(expected_size) = expected_size {
+                if artifact.size != expected_size {
+                    return Err(Error::Config(format!(
+                        "plan artifact {:?} size {:#x} differs from required size {expected_size:#x}",
+                        artifact.name, artifact.size
+                    )));
+                }
+            } else if artifact.size == 0 || artifact.size as u64 > MAX_CONFIG_PLAN_JSON_SIZE {
+                return Err(Error::Config(format!(
+                    "plan metadata artifact {:?} has unsupported size {:#x}",
+                    artifact.name, artifact.size
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct VerifiedAtlasConfigPlan {
+    manifest: AtlasConfigPlanManifest,
+    expected_current: Vec<u8>,
+    candidate: Vec<u8>,
+}
+
+impl VerifiedAtlasConfigPlan {
+    pub fn manifest(&self) -> &AtlasConfigPlanManifest {
+        &self.manifest
+    }
+
+    pub fn expected_current(&self) -> &[u8] {
+        &self.expected_current
+    }
+
+    pub fn candidate(&self) -> &[u8] {
+        &self.candidate
+    }
 }
 
 impl AtlasSocConfig {
@@ -1962,6 +2179,177 @@ pub fn write_new_file(path: &Path, bytes: &[u8]) -> Result<()> {
         .map_err(|source| Error::io(format!("syncing {}", path.display()), source))
 }
 
+pub fn required_confirmation(bdf: &str) -> Result<String> {
+    Ok(format!(
+        "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
+        normalize_bdf(bdf)?
+    ))
+}
+
+pub fn verify_config_plan_directory(path: &Path) -> Result<VerifiedAtlasConfigPlan> {
+    let directory_metadata = fs::symlink_metadata(path)
+        .map_err(|source| Error::io(format!("inspecting {}", path.display()), source))?;
+    if directory_metadata.file_type().is_symlink() || !directory_metadata.is_dir() {
+        return Err(Error::Safety(format!(
+            "{} must be a real plan directory, not a symlink or other file type",
+            path.display()
+        )));
+    }
+
+    let manifest_path = path.join(ATLAS_CONFIG_PLAN_FILE);
+    let manifest_bytes =
+        read_regular_plan_file(&manifest_path, Some(MAX_CONFIG_PLAN_JSON_SIZE as usize))?;
+    let manifest = AtlasConfigPlanManifest::parse_json(&manifest_bytes)?;
+    if manifest.to_json_pretty()? != manifest_bytes {
+        return Err(Error::Safety(format!(
+            "{ATLAS_CONFIG_PLAN_FILE} is not in canonical form"
+        )));
+    }
+
+    let mut contents = BTreeMap::new();
+    for artifact in &manifest.artifacts {
+        let artifact_path = path.join(&artifact.name);
+        let bytes = read_regular_plan_file(&artifact_path, Some(artifact.size))?;
+        if bytes.len() != artifact.size {
+            return Err(Error::Safety(format!(
+                "plan artifact {:?} has size {:#x}, expected {:#x}",
+                artifact.name,
+                bytes.len(),
+                artifact.size
+            )));
+        }
+        let digest = sha256_hex(&bytes);
+        if digest != artifact.sha256 {
+            return Err(Error::Safety(format!(
+                "plan artifact {:?} SHA-256 is {digest}, expected {}",
+                artifact.name, artifact.sha256
+            )));
+        }
+        contents.insert(artifact.name.clone(), bytes);
+    }
+
+    let artifact = |name: &str| -> &[u8] {
+        contents
+            .get(name)
+            .expect("manifest validation requires every plan artifact")
+    };
+    let flash_a = artifact("current-flash-a.bin");
+    let flash_b = artifact("current-flash-b.bin");
+    if flash_a != flash_b {
+        return Err(Error::Safety(
+            "plan complete-flash passes do not match".into(),
+        ));
+    }
+    let current_region = artifact("current-region.bin");
+    if flash_a.get(..ATLAS_SPI_RECOVERY_REGION_SIZE) != Some(current_region) {
+        return Err(Error::Safety(
+            "plan current-region.bin is not the prefix of both complete-flash backups".into(),
+        ));
+    }
+
+    let sbr_offset = usize::try_from(manifest.sbr_offset)
+        .map_err(|_| Error::Config("plan SBR offset does not fit host address space".into()))?;
+    let current_image = SbrImage::parse_prefix(
+        current_region
+            .get(sbr_offset..)
+            .ok_or_else(|| Error::Config("plan current region ends before its SBR".into()))?,
+    )?;
+    current_image.validate()?;
+    if current_image.bytes() != artifact("current-sbr.bin") {
+        return Err(Error::Safety(
+            "plan current-sbr.bin does not match the SBR embedded in current-region.bin".into(),
+        ));
+    }
+
+    let candidate_region = artifact("candidate-region.bin");
+    validate_sector0_replacement(current_region, candidate_region)?;
+    let candidate_image = SbrImage::parse_prefix(
+        candidate_region
+            .get(sbr_offset..)
+            .ok_or_else(|| Error::Config("plan candidate region ends before its SBR".into()))?,
+    )?;
+    candidate_image.validate()?;
+    if candidate_image.bytes() != artifact("candidate-sbr.bin") {
+        return Err(Error::Safety(
+            "plan candidate-sbr.bin does not match the SBR embedded in candidate-region.bin".into(),
+        ));
+    }
+    if current_image.bytes().len() != manifest.sbr_size
+        || candidate_image.bytes().len() != manifest.sbr_size
+    {
+        return Err(Error::Safety(
+            "plan parsed SBR size disagrees with its manifest".into(),
+        ));
+    }
+
+    let config = AtlasConfig::parse_json(artifact("applied-config.json"))?;
+    config.validate_with_policy(manifest.policy)?;
+    if config.to_json_pretty()? != artifact("applied-config.json") {
+        return Err(Error::Safety(
+            "plan applied-config.json is not in canonical form".into(),
+        ));
+    }
+    let mut reconstructed_candidate = current_image.clone();
+    reconstructed_candidate.apply_config_with_options(&config, manifest.policy)?;
+    if reconstructed_candidate.bytes() != candidate_image.bytes() {
+        return Err(Error::Safety(
+            "plan candidate SBR is not the exact result of applying applied-config.json to current-sbr.bin"
+                .into(),
+        ));
+    }
+
+    if json_pretty_bytes(&current_image.inspection())? != artifact("current-inspection.json") {
+        return Err(Error::Safety(
+            "plan current-inspection.json does not match current-sbr.bin".into(),
+        ));
+    }
+    if json_pretty_bytes(&candidate_image.inspection())? != artifact("candidate-inspection.json") {
+        return Err(Error::Safety(
+            "plan candidate-inspection.json does not match candidate-sbr.bin".into(),
+        ));
+    }
+    if json_pretty_bytes(&current_image.diff(&candidate_image))? != artifact("diff.json") {
+        return Err(Error::Safety(
+            "plan diff.json does not match its current and candidate SBRs".into(),
+        ));
+    }
+
+    Ok(VerifiedAtlasConfigPlan {
+        manifest,
+        expected_current: current_region.to_vec(),
+        candidate: candidate_region.to_vec(),
+    })
+}
+
+fn read_regular_plan_file(path: &Path, maximum_size: Option<usize>) -> Result<Vec<u8>> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|source| Error::io(format!("inspecting {}", path.display()), source))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(Error::Safety(format!(
+            "{} must be a regular file, not a symlink or other file type",
+            path.display()
+        )));
+    }
+    let size = usize::try_from(metadata.len())
+        .map_err(|_| Error::Safety(format!("{} is too large for this host", path.display())))?;
+    if let Some(maximum_size) = maximum_size {
+        if size > maximum_size {
+            return Err(Error::Safety(format!(
+                "{} is {size:#x} bytes, larger than allowed {maximum_size:#x}",
+                path.display()
+            )));
+        }
+    }
+    fs::read(path).map_err(|source| Error::io(format!("reading {}", path.display()), source))
+}
+
+fn json_pretty_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>> {
+    let mut bytes = serde_json::to_vec_pretty(value)
+        .map_err(|error| Error::Config(format!("serializing JSON: {error}")))?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
 const PLX_DRIVER_PATH: &str = "/dev/plx/PlxSvc";
 const PLX_PARAMS_SIZE: usize = 356;
 const PLX_KEY_OFFSET: usize = 4;
@@ -2276,10 +2664,13 @@ impl PlxSvcDevice {
         candidate: &[u8],
         confirmation: &str,
     ) -> Result<()> {
-        let required_confirmation = format!(
-            "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
-            self.bdf.to_ascii_lowercase()
-        );
+        if (self.vendor, self.device) != (0x1000, 0xc010) {
+            return Err(Error::Safety(format!(
+                "hardware programming is proven only for PEX88096 1000:c010, not {:04x}:{:04x}",
+                self.vendor, self.device
+            )));
+        }
+        let required_confirmation = required_confirmation(&self.bdf)?;
         if confirmation != required_confirmation {
             return Err(Error::Safety(format!(
                 "confirmation mismatch; this operation requires --confirm {required_confirmation:?}"
@@ -2526,6 +2917,19 @@ pub fn validate_sector0_replacement(expected_current: &[u8], candidate: &[u8]) -
             "candidate changes byte {offset:#x} outside the validated SBR range {sbr_offset:#x}..{sbr_end:#x}"
         )));
     }
+    if let Some(offset) = expected_current
+        .iter()
+        .zip(candidate)
+        .take(ATLAS_SPI_RECOVERY_REGION_SIZE)
+        .enumerate()
+        .find_map(|(offset, (before, after))| {
+            (before != after && offset >= ATLAS_SPI_ERASE_BLOCK_SIZE).then_some(offset)
+        })
+    {
+        return Err(Error::Safety(format!(
+            "candidate changes byte {offset:#x} beyond the one {ATLAS_SPI_ERASE_BLOCK_SIZE:#x}-byte block programmed by this writer"
+        )));
+    }
     Ok(())
 }
 
@@ -2637,7 +3041,7 @@ fn read_sysfs_hex_u16(path: &Path) -> Result<u16> {
     })
 }
 
-fn normalize_bdf(value: &str) -> Result<String> {
+pub fn normalize_bdf(value: &str) -> Result<String> {
     let value = value.trim();
     let normalized = if value.matches(':').count() == 1 {
         format!("0000:{value}")
@@ -2724,6 +3128,136 @@ mod tests {
         bytes[checksum_offset..checksum_offset + 4]
             .copy_from_slice(&u32::from(checksum).to_le_bytes());
         SbrImage::parse(bytes).unwrap()
+    }
+
+    fn create_config_plan_fixture() -> PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        static NEXT_PLAN: AtomicU64 = AtomicU64::new(0);
+        let directory = std::env::temp_dir().join(format!(
+            "pexctl-plan-test-{}-{}",
+            std::process::id(),
+            NEXT_PLAN.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&directory).unwrap();
+
+        let current_sbr = minimal_image([[0; 4]; 6]);
+        let config = AtlasConfig::station_layout(4, StationLayout::X4X4X4X4).unwrap();
+        let mut candidate_sbr = current_sbr.clone();
+        candidate_sbr.apply_config(&config).unwrap();
+
+        let flash_size = 1usize << 24;
+        let mut current_flash = vec![0xff; flash_size];
+        let sbr_offset = SBR_FLASH_OFFSET as usize;
+        current_flash[sbr_offset..sbr_offset + current_sbr.bytes().len()]
+            .copy_from_slice(current_sbr.bytes());
+        let current_region = current_flash[..ATLAS_SPI_RECOVERY_REGION_SIZE].to_vec();
+        let mut candidate_region = current_region.clone();
+        candidate_region[sbr_offset..sbr_offset + candidate_sbr.bytes().len()]
+            .copy_from_slice(candidate_sbr.bytes());
+
+        let files = vec![
+            ("current-flash-a.bin", current_flash.clone()),
+            ("current-flash-b.bin", current_flash),
+            ("current-region.bin", current_region),
+            ("current-sbr.bin", current_sbr.bytes().to_vec()),
+            ("candidate-region.bin", candidate_region),
+            ("candidate-sbr.bin", candidate_sbr.bytes().to_vec()),
+            ("applied-config.json", config.to_json_pretty().unwrap()),
+            (
+                "current-inspection.json",
+                json_pretty_bytes(&current_sbr.inspection()).unwrap(),
+            ),
+            (
+                "candidate-inspection.json",
+                json_pretty_bytes(&candidate_sbr.inspection()).unwrap(),
+            ),
+            (
+                "diff.json",
+                json_pretty_bytes(&current_sbr.diff(&candidate_sbr)).unwrap(),
+            ),
+            (
+                "MANIFEST.txt",
+                b"test-only human-readable plan summary\n".to_vec(),
+            ),
+        ];
+        let manifest = AtlasConfigPlanManifest::new(
+            "0000:c4:00.0",
+            0x1000,
+            0xc010,
+            [0xef, 0x60, 0x18],
+            flash_size,
+            current_sbr.bytes().len(),
+            AtlasApplyPolicy::default(),
+            files
+                .iter()
+                .map(|(name, bytes)| AtlasConfigPlanArtifact::from_bytes(name, bytes))
+                .collect(),
+        )
+        .unwrap();
+        for (name, bytes) in files {
+            fs::write(directory.join(name), bytes).unwrap();
+        }
+        fs::write(
+            directory.join(ATLAS_CONFIG_PLAN_FILE),
+            manifest.to_json_pretty().unwrap(),
+        )
+        .unwrap();
+        directory
+    }
+
+    #[test]
+    fn verifies_complete_config_plan_and_rejects_semantic_or_symlink_tampering() {
+        let directory = create_config_plan_fixture();
+        let verified = verify_config_plan_directory(&directory).unwrap();
+        assert_eq!(verified.manifest().bdf, "0000:c4:00.0");
+        assert_eq!(
+            verified.expected_current().len(),
+            ATLAS_SPI_RECOVERY_REGION_SIZE
+        );
+        validate_sector0_replacement(verified.expected_current(), verified.candidate()).unwrap();
+
+        let manifest_path = directory.join(ATLAS_CONFIG_PLAN_FILE);
+        let diff_path = directory.join("diff.json");
+        let original_diff = fs::read(&diff_path).unwrap();
+        let forged_diff = b"{}\n";
+        fs::write(&diff_path, forged_diff).unwrap();
+        let mut manifest =
+            AtlasConfigPlanManifest::parse_json(&fs::read(&manifest_path).unwrap()).unwrap();
+        manifest.pci_device = 0xc011;
+        assert!(manifest.validate().is_err());
+        manifest.pci_device = 0xc010;
+        let artifact = manifest
+            .artifacts
+            .iter_mut()
+            .find(|artifact| artifact.name == "diff.json")
+            .unwrap();
+        *artifact = AtlasConfigPlanArtifact::from_bytes("diff.json", forged_diff);
+        fs::write(&manifest_path, json_pretty_bytes(&manifest).unwrap()).unwrap();
+        let error = verify_config_plan_directory(&directory)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("diff.json does not match"));
+
+        fs::write(&diff_path, &original_diff).unwrap();
+        let artifact = manifest
+            .artifacts
+            .iter_mut()
+            .find(|artifact| artifact.name == "diff.json")
+            .unwrap();
+        *artifact = AtlasConfigPlanArtifact::from_bytes("diff.json", &original_diff);
+        fs::write(&manifest_path, json_pretty_bytes(&manifest).unwrap()).unwrap();
+        verify_config_plan_directory(&directory).unwrap();
+
+        let real_diff_path = directory.join("real-diff.json");
+        fs::rename(&diff_path, &real_diff_path).unwrap();
+        std::os::unix::fs::symlink("real-diff.json", &diff_path).unwrap();
+        let error = verify_config_plan_directory(&directory)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("must be a regular file"));
+
+        fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -3279,6 +3813,40 @@ mod tests {
 
         valid_candidate[0] = 0;
         assert!(validate_sector0_replacement(&current, &valid_candidate).is_err());
+    }
+
+    #[test]
+    fn sector_replacement_rejects_sbr_changes_beyond_programmed_erase_block() {
+        fn large_sbr(value: u32) -> SbrImage {
+            let block_offset = 0x1_0000usize;
+            let checksum_offset = block_offset + 8;
+            let mut bytes = vec![0u8; checksum_offset + 4];
+            bytes[..4].copy_from_slice(&ATLAS_SIGNATURE_PEX88096.to_le_bytes());
+            bytes[SBR_INDEX_OFFSET + 18 * 4..SBR_INDEX_OFFSET + 19 * 4]
+                .copy_from_slice(&(block_offset as u32).to_le_bytes());
+            bytes[SBR_INDEX_OFFSET + 19 * 4..SBR_INDEX_OFFSET + 20 * 4]
+                .copy_from_slice(&8u32.to_le_bytes());
+            bytes[block_offset..block_offset + 4].copy_from_slice(&0x6041_0064u32.to_le_bytes());
+            bytes[block_offset + 4..block_offset + 8].copy_from_slice(&value.to_le_bytes());
+            let checksum = expected_checksum(&bytes[..checksum_offset]);
+            bytes[checksum_offset..checksum_offset + 4]
+                .copy_from_slice(&u32::from(checksum).to_le_bytes());
+            SbrImage::parse(bytes).unwrap()
+        }
+
+        let current_sbr = large_sbr(0x1f);
+        let candidate_sbr = large_sbr(0x1e);
+        let mut current = vec![0xff; ATLAS_SPI_RECOVERY_REGION_SIZE];
+        let mut candidate = current.clone();
+        let start = SBR_FLASH_OFFSET as usize;
+        current[start..start + current_sbr.bytes().len()].copy_from_slice(current_sbr.bytes());
+        candidate[start..start + candidate_sbr.bytes().len()]
+            .copy_from_slice(candidate_sbr.bytes());
+
+        let error = validate_sector0_replacement(&current, &candidate)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("beyond the one 0x10000-byte block"));
     }
 
     #[test]
