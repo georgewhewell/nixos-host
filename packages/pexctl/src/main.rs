@@ -571,6 +571,60 @@ fn run_device(args: &[String]) -> Result<()> {
             );
             Ok(())
         }
+        "flash-status" => {
+            let options = &args[1..];
+            let bdf = option_value(options, "--bdf")?;
+            let json = options.iter().any(|argument| argument == "--json");
+            reject_unknown_options_and_flags(options, &["--bdf"], &["--json"])?;
+            let device = PlxSvcDevice::open(bdf)?;
+            let status = device.spi_flash_status()?;
+            if json {
+                print_json(&status)
+            } else {
+                println!(
+                    "{} SPI CS0 JEDEC ID: {:02x} {:02x} {:02x}",
+                    status.bdf, status.jedec_id[0], status.jedec_id[1], status.jedec_id[2]
+                );
+                println!(
+                    "status registers: SR1={:#04x} SR2={:#04x} SR3={:#04x}",
+                    status.status_register_1, status.status_register_2, status.status_register_3
+                );
+                println!(
+                    "state: BUSY={} WEL={} suspended={} SRP={} SRL={}",
+                    status.busy,
+                    status.write_enable_latch,
+                    status.erase_program_suspended,
+                    status.status_register_protect,
+                    status.status_register_lock
+                );
+                if status.write_protect_selection_individual {
+                    println!(
+                        "protection: individual-block scheme, sector-0 lock={}",
+                        status
+                            .sector0_individual_lock
+                            .map(|locked| if locked { "locked" } else { "unlocked" })
+                            .unwrap_or("unavailable")
+                    );
+                } else {
+                    println!(
+                        "protection: status-register scheme, BP={:#05b} TB={} SEC={} CMP={}",
+                        status.block_protect,
+                        status.top_bottom,
+                        status.sector_protect,
+                        status.complement_protect
+                    );
+                }
+                if status.programming_preflight_passed {
+                    println!("sector-0 programming preflight: PASS");
+                } else {
+                    println!("sector-0 programming preflight: REFUSE");
+                    for reason in &status.refusal_reasons {
+                        println!("  - {reason}");
+                    }
+                }
+                Ok(())
+            }
+        }
         "backup-flash" => {
             let options = &args[1..];
             let bdf = option_value(options, "--bdf")?;
@@ -1626,6 +1680,7 @@ USAGE:
   sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 \
     [--method mapped|serial] --output OUTPUT
   sudo pexctl device spi-id --bdf 0000:c4:00.0
+  sudo pexctl device flash-status --bdf 0000:c4:00.0 [--json]
   sudo pexctl device backup-flash --bdf 0000:c4:00.0 --output OUTPUT
   sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
     --station N --layout x16|x4x4x4x4 --output-dir DIRECTORY
@@ -1644,11 +1699,12 @@ All mutation commands create a new file and refuse to overwrite an existing
 path. Device reads use the PlxSvc ioctl ABI. Hardware write support is
 limited to a whole, preserved sector 0 and requires an exact live-backup match,
 validated SBR-only changes, an explicit device-bound confirmation, and complete
-read-back verification. program-plan additionally verifies every prepared
-artifact and reconstructs the candidate from its configuration before opening
-the device. Expert fields additionally require expected-current values and
---allow-expert-fields. Expert indexed records require exact identity and
-expected-current values plus --allow-expert-entries. No hardware command resets
-the switch."
+read-back verification. It also refuses busy, suspended, pre-enabled, or
+write-protected flash and verifies WEL before and after every erase/program.
+program-plan additionally verifies every prepared artifact and reconstructs
+the candidate from its configuration before opening the device. Expert fields
+additionally require expected-current values and --allow-expert-fields. Expert
+indexed records require exact identity and expected-current values plus
+--allow-expert-entries. No hardware command resets the switch."
     );
 }

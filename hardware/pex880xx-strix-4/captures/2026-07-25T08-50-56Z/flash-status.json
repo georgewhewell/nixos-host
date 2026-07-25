@@ -1,0 +1,29 @@
+{
+  "schema": "pexctl.spi-flash-status.v1",
+  "bdf": "0000:c4:00.0",
+  "jedec_id": [
+    239,
+    96,
+    24
+  ],
+  "status_register_1": 0,
+  "status_register_2": 2,
+  "status_register_3": 0,
+  "busy": false,
+  "write_enable_latch": false,
+  "block_protect": 0,
+  "top_bottom": false,
+  "sector_protect": false,
+  "status_register_protect": false,
+  "status_register_lock": false,
+  "quad_enable": true,
+  "security_register_locks": 0,
+  "complement_protect": false,
+  "erase_program_suspended": false,
+  "write_protect_selection_individual": false,
+  "output_driver_strength": 0,
+  "sector0_lock_register": null,
+  "sector0_individual_lock": null,
+  "programming_preflight_passed": true,
+  "refusal_reasons": []
+}

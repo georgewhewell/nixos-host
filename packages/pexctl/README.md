@@ -66,6 +66,7 @@ sudo pexctl device read-flash --bdf 0000:c4:00.0 \
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --method serial --output sector-0-serial.bin
 sudo pexctl device spi-id --bdf 0000:c4:00.0
+sudo pexctl device flash-status --bdf 0000:c4:00.0 --json
 sudo pexctl device backup-flash --bdf 0000:c4:00.0 \
   --output complete-cs0.bin
 sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
@@ -180,6 +181,12 @@ resulting checksum. Mapped reads issue only register-read ioctls. Serial reads
 drive the Atlas manual-SPI controller registers and issue only JEDEC-ID and
 read commands; they do not issue flash write-enable, erase, page-program, PEX
 reset, or host reset operations.
+
+`device flash-status` is the read-only protection preflight for the supported
+Winbond `EF 60 18` flash. It reads Status Registers 1–3 and, when WPS selects
+individual block locks, reads the lock bit for address zero. Its JSON uses the
+`pexctl.spi-flash-status.v1` schema. The report includes BUSY, WEL, BP, TB,
+SEC, SRP, SRL, CMP, suspend and WPS state plus the raw status bytes.
 
 `device inspect-sbr`, `device fields`, `device entries`, `device psw`, and
 `device ports` provide the same focused views directly from the live mapped
@@ -351,11 +358,19 @@ intentionally narrower than a generic flash writer. The hardware path:
 4. rejects every difference beyond the one 64 KiB block the writer programs;
 5. rereads the live sector and requires an exact expected-current match;
 6. requires a confirmation phrase bound to the BDF, CS0, and sector 0;
-7. erases only the first 64 KiB block with `D8`, programs only its non-erased
-   pages, and waits for every operation to finish;
-8. rereads and compares the complete 256 KiB recovery region before returning
-   success;
-9. never resets the PEX switch.
+7. reads all three flash status registers and refuses BUSY, suspended,
+   unexpectedly write-enabled, or protected target state;
+8. refuses any nonzero BP or CMP setting when WPS selects status-register
+   protection, rather than guessing whether the setting covers block 0;
+9. reads and requires an unlocked address-zero sector when WPS selects
+   individual block locks;
+10. verifies that WEL becomes one after every Write Enable and returns to zero
+    after every accepted erase or page-program operation;
+11. erases only the first 64 KiB block with `D8`, programs only its non-erased
+    pages, and waits for every operation to finish;
+12. rereads and compares the complete 256 KiB recovery region before returning
+    success;
+13. never changes protection registers and never resets the PEX switch.
 
 `program-plan` adds the plan-wide artifact, configuration-reconstruction, and
 device-binding checks described above before reaching this hardware path.
@@ -363,6 +378,14 @@ device-binding checks described above before reaching this hardware path.
 This removes common software mistakes; it does not make an interrupted block
 erase recoverable. Do not run the command without an out-of-band way to
 restore CS0 block 0 and a verified cold power-cycle path.
+
+The protection checks follow the W25Q128JW status-register and individual-lock
+definitions, while the recovery boundary follows the PLX SDK FAQ warning that
+write protection can make SDK writes fail and a corrupt nonvolatile image can
+remove the in-band repair path. The board-specific evidence and exact source
+sections are recorded in the Strix-4
+[`FLASH-PROTECTION.md`](../../hardware/pex880xx-strix-4/FLASH-PROTECTION.md)
+dossier.
 
 ## License
 

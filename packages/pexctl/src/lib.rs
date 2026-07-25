@@ -37,6 +37,7 @@ pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v
 pub const ATLAS_PSW_INSPECTION_SCHEMA: &str = "pexctl.atlas-psw-inspection.v1";
 pub const ATLAS_SOC_FIELD_INSPECTION_SCHEMA: &str = "pexctl.atlas-soc-field-inspection.v1";
 pub const ATLAS_PORT_DEFAULT_INSPECTION_SCHEMA: &str = "pexctl.atlas-port-default-inspection.v1";
+pub const SPI_FLASH_STATUS_SCHEMA: &str = "pexctl.spi-flash-status.v1";
 pub const ATLAS_CONFIG_PLAN_FILE: &str = "PLAN.json";
 pub const ATLAS_CONFIG_PLAN_ARTIFACT_NAMES: [&str; 11] = [
     "current-flash-a.bin",
@@ -2840,10 +2841,27 @@ const SPI_MORE_DATA: u8 = 1 << 1;
 const SPI_CMD_READ_ID: u8 = 0x9f;
 const SPI_CMD_ERASE_SECTOR: u8 = 0xd8;
 const SPI_CMD_READ: u8 = 0x03;
-const SPI_CMD_READ_STATUS: u8 = 0x05;
+const SPI_CMD_READ_STATUS_1: u8 = 0x05;
+const SPI_CMD_READ_STATUS_2: u8 = 0x35;
+const SPI_CMD_READ_STATUS_3: u8 = 0x15;
+const SPI_CMD_READ_BLOCK_LOCK: u8 = 0x3d;
 const SPI_CMD_WRITE_ENABLE: u8 = 0x06;
+const SPI_CMD_WRITE_DISABLE: u8 = 0x04;
 const SPI_CMD_WRITE_PAGE: u8 = 0x02;
-const SPI_STATUS_WRITE_IN_PROGRESS: u8 = 1 << 0;
+const SPI_STATUS_1_BUSY: u8 = 1 << 0;
+const SPI_STATUS_1_WRITE_ENABLE_LATCH: u8 = 1 << 1;
+const SPI_STATUS_1_BLOCK_PROTECT_MASK: u8 = 0b111 << 2;
+const SPI_STATUS_1_TOP_BOTTOM: u8 = 1 << 5;
+const SPI_STATUS_1_SECTOR_PROTECT: u8 = 1 << 6;
+const SPI_STATUS_1_STATUS_REGISTER_PROTECT: u8 = 1 << 7;
+const SPI_STATUS_2_STATUS_REGISTER_LOCK: u8 = 1 << 0;
+const SPI_STATUS_2_QUAD_ENABLE: u8 = 1 << 1;
+const SPI_STATUS_2_SECURITY_REGISTER_LOCK_MASK: u8 = 0b111 << 3;
+const SPI_STATUS_2_COMPLEMENT_PROTECT: u8 = 1 << 6;
+const SPI_STATUS_2_ERASE_PROGRAM_SUSPENDED: u8 = 1 << 7;
+const SPI_STATUS_3_WRITE_PROTECT_SELECTION: u8 = 1 << 2;
+const SPI_STATUS_3_OUTPUT_DRIVER_STRENGTH_MASK: u8 = 0b11 << 5;
+const SPI_BLOCK_LOCKED: u8 = 1 << 0;
 const SPI_PAGE_SIZE: usize = 256;
 
 // Linux _IOWR('P', message, PLX_PARAMS), as defined by Broadcom's
@@ -2898,6 +2916,128 @@ impl PlxParams {
 
 unsafe extern "C" {
     fn ioctl(fd: i32, request: usize, ...) -> i32;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SpiFlashStatus {
+    pub schema: &'static str,
+    pub bdf: String,
+    pub jedec_id: [u8; 3],
+    pub status_register_1: u8,
+    pub status_register_2: u8,
+    pub status_register_3: u8,
+    pub busy: bool,
+    pub write_enable_latch: bool,
+    pub block_protect: u8,
+    pub top_bottom: bool,
+    pub sector_protect: bool,
+    pub status_register_protect: bool,
+    pub status_register_lock: bool,
+    pub quad_enable: bool,
+    pub security_register_locks: u8,
+    pub complement_protect: bool,
+    pub erase_program_suspended: bool,
+    pub write_protect_selection_individual: bool,
+    pub output_driver_strength: u8,
+    pub sector0_lock_register: Option<u8>,
+    pub sector0_individual_lock: Option<bool>,
+    pub programming_preflight_passed: bool,
+    pub refusal_reasons: Vec<String>,
+}
+
+impl SpiFlashStatus {
+    fn from_registers(
+        bdf: &str,
+        jedec_id: [u8; 3],
+        status_register_1: u8,
+        status_register_2: u8,
+        status_register_3: u8,
+        sector0_lock_register: Option<u8>,
+    ) -> Self {
+        let busy = status_register_1 & SPI_STATUS_1_BUSY != 0;
+        let write_enable_latch = status_register_1 & SPI_STATUS_1_WRITE_ENABLE_LATCH != 0;
+        let block_protect = (status_register_1 & SPI_STATUS_1_BLOCK_PROTECT_MASK) >> 2;
+        let top_bottom = status_register_1 & SPI_STATUS_1_TOP_BOTTOM != 0;
+        let sector_protect = status_register_1 & SPI_STATUS_1_SECTOR_PROTECT != 0;
+        let status_register_protect = status_register_1 & SPI_STATUS_1_STATUS_REGISTER_PROTECT != 0;
+        let status_register_lock = status_register_2 & SPI_STATUS_2_STATUS_REGISTER_LOCK != 0;
+        let quad_enable = status_register_2 & SPI_STATUS_2_QUAD_ENABLE != 0;
+        let security_register_locks =
+            (status_register_2 & SPI_STATUS_2_SECURITY_REGISTER_LOCK_MASK) >> 3;
+        let complement_protect = status_register_2 & SPI_STATUS_2_COMPLEMENT_PROTECT != 0;
+        let erase_program_suspended = status_register_2 & SPI_STATUS_2_ERASE_PROGRAM_SUSPENDED != 0;
+        let write_protect_selection_individual =
+            status_register_3 & SPI_STATUS_3_WRITE_PROTECT_SELECTION != 0;
+        let output_driver_strength =
+            (status_register_3 & SPI_STATUS_3_OUTPUT_DRIVER_STRENGTH_MASK) >> 5;
+        let sector0_individual_lock =
+            sector0_lock_register.map(|register| register & SPI_BLOCK_LOCKED != 0);
+
+        let mut refusal_reasons = Vec::new();
+        if busy {
+            refusal_reasons.push("the flash BUSY bit is set".into());
+        }
+        if write_enable_latch {
+            refusal_reasons
+                .push("the flash WEL bit was already set before pexctl issued Write Enable".into());
+        }
+        if erase_program_suspended {
+            refusal_reasons.push("an erase or program operation is suspended".into());
+        }
+        if write_protect_selection_individual {
+            match sector0_individual_lock {
+                Some(true) => refusal_reasons.push(
+                    "WPS selects individual locks and the sector at address 0 is locked".into(),
+                ),
+                Some(false) => {}
+                None => refusal_reasons.push(
+                    "WPS selects individual locks but the sector-0 lock state is unavailable"
+                        .into(),
+                ),
+            }
+        } else if block_protect != 0 || complement_protect {
+            refusal_reasons.push(format!(
+                "WPS selects status-register protection and its BP/CMP configuration is not entirely clear (BP={block_protect:#05b}, CMP={})",
+                u8::from(complement_protect)
+            ));
+        }
+
+        Self {
+            schema: SPI_FLASH_STATUS_SCHEMA,
+            bdf: bdf.into(),
+            jedec_id,
+            status_register_1,
+            status_register_2,
+            status_register_3,
+            busy,
+            write_enable_latch,
+            block_protect,
+            top_bottom,
+            sector_protect,
+            status_register_protect,
+            status_register_lock,
+            quad_enable,
+            security_register_locks,
+            complement_protect,
+            erase_program_suspended,
+            write_protect_selection_individual,
+            output_driver_strength,
+            sector0_lock_register,
+            sector0_individual_lock,
+            programming_preflight_passed: refusal_reasons.is_empty(),
+            refusal_reasons,
+        }
+    }
+
+    fn require_programming_preflight(&self) -> Result<()> {
+        if self.programming_preflight_passed {
+            return Ok(());
+        }
+        Err(Error::Safety(format!(
+            "SPI flash protection/status preflight failed: {}",
+            self.refusal_reasons.join("; ")
+        )))
+    }
 }
 
 #[derive(Debug)]
@@ -3089,6 +3229,12 @@ impl PlxSvcDevice {
         Ok(identity)
     }
 
+    pub fn spi_flash_status(&self) -> Result<SpiFlashStatus> {
+        let identity = self.spi_identity()?;
+        supported_flash_capacity(identity)?;
+        self.spi_flash_status_with_identity(identity)
+    }
+
     pub fn read_complete_flash(&self) -> Result<Vec<u8>> {
         let identity = self.spi_identity()?;
         let capacity = supported_flash_capacity(identity)?;
@@ -3155,10 +3301,13 @@ impl PlxSvcDevice {
         self.spi_set_serial_mode()?;
         let identity = self.spi_identity()?;
         supported_flash_capacity(identity)?;
+        let flash_status = self.spi_flash_status_with_identity(identity)?;
+        flash_status.require_programming_preflight()?;
 
-        self.spi_write_enable(true)?;
+        self.spi_write_enable_checked("sector-0 block erase")?;
         self.spi_command(0, &[SPI_CMD_ERASE_SECTOR, 0, 0, 0], 0)?;
-        self.spi_wait_flash_ready(Duration::from_secs(180))?;
+        let status = self.spi_wait_flash_ready(Duration::from_secs(180))?;
+        self.require_write_enable_cleared(status, "sector-0 block erase")?;
 
         for (page_index, page) in candidate[..ATLAS_SPI_ERASE_BLOCK_SIZE]
             .chunks_exact(SPI_PAGE_SIZE)
@@ -3168,7 +3317,7 @@ impl PlxSvcDevice {
                 continue;
             }
             let address = page_index * SPI_PAGE_SIZE;
-            self.spi_write_enable(true)?;
+            self.spi_write_enable_checked(&format!("page program at {address:#x}"))?;
             self.spi_command(
                 SPI_MORE_DATA,
                 &[
@@ -3180,7 +3329,8 @@ impl PlxSvcDevice {
                 0,
             )?;
             self.spi_command(0, page, 0)?;
-            self.spi_wait_flash_ready(Duration::from_secs(5))?;
+            let status = self.spi_wait_flash_ready(Duration::from_secs(5))?;
+            self.require_write_enable_cleared(status, &format!("page program at {address:#x}"))?;
         }
 
         let verify = self.read_flash_mapped(0, ATLAS_SPI_RECOVERY_REGION_SIZE)?;
@@ -3229,6 +3379,26 @@ impl PlxSvcDevice {
         Ok(bytes)
     }
 
+    fn spi_flash_status_with_identity(&self, identity: [u8; 3]) -> Result<SpiFlashStatus> {
+        let status_register_1 = self.spi_read_status_register_1(0)?;
+        let status_register_2 = self.spi_command(0, &[SPI_CMD_READ_STATUS_2], 1)?[0];
+        let status_register_3 = self.spi_command(0, &[SPI_CMD_READ_STATUS_3], 1)?[0];
+        let sector0_lock_register = if status_register_3 & SPI_STATUS_3_WRITE_PROTECT_SELECTION != 0
+        {
+            Some(self.spi_command(0, &[SPI_CMD_READ_BLOCK_LOCK, 0, 0, 0], 1)?[0])
+        } else {
+            None
+        };
+        Ok(SpiFlashStatus::from_registers(
+            &self.bdf,
+            identity,
+            status_register_1,
+            status_register_2,
+            status_register_3,
+            sector0_lock_register,
+        ))
+    }
+
     fn spi_write_enable(&self, more_commands: bool) -> Result<()> {
         self.spi_command(
             if more_commands { SPI_MORE_COMMANDS } else { 0 },
@@ -3238,12 +3408,44 @@ impl PlxSvcDevice {
         .map(|_| ())
     }
 
-    fn spi_wait_flash_ready(&self, timeout: Duration) -> Result<()> {
+    fn spi_write_enable_checked(&self, operation: &str) -> Result<()> {
+        self.spi_write_enable(true)?;
+        let status = match self.spi_read_status_register_1(SPI_MORE_COMMANDS) {
+            Ok(status) => status,
+            Err(error) => {
+                let _ = self.spi_command(0, &[SPI_CMD_WRITE_DISABLE], 0);
+                return Err(error);
+            }
+        };
+        if status & SPI_STATUS_1_BUSY != 0 || status & SPI_STATUS_1_WRITE_ENABLE_LATCH == 0 {
+            let _ = self.spi_command(0, &[SPI_CMD_WRITE_DISABLE], 0);
+            return Err(Error::Safety(format!(
+                "Write Enable did not produce ready WEL=1 before {operation} (status register 1 is {status:#04x}); the erase/program command was not issued"
+            )));
+        }
+        Ok(())
+    }
+
+    fn require_write_enable_cleared(&self, status: u8, operation: &str) -> Result<()> {
+        if status & SPI_STATUS_1_WRITE_ENABLE_LATCH == 0 {
+            return Ok(());
+        }
+        let _ = self.spi_command(0, &[SPI_CMD_WRITE_DISABLE], 0);
+        Err(Error::Device(format!(
+            "WEL remained set after {operation} (status register 1 is {status:#04x}); the flash may have rejected the command; do not reset or power-cycle the switch"
+        )))
+    }
+
+    fn spi_read_status_register_1(&self, flags: u8) -> Result<u8> {
+        Ok(self.spi_command(flags, &[SPI_CMD_READ_STATUS_1], 1)?[0])
+    }
+
+    fn spi_wait_flash_ready(&self, timeout: Duration) -> Result<u8> {
         let started = Instant::now();
         loop {
-            let status = self.spi_command(0, &[SPI_CMD_READ_STATUS], 1)?[0];
-            if status & SPI_STATUS_WRITE_IN_PROGRESS == 0 {
-                return Ok(());
+            let status = self.spi_read_status_register_1(0)?;
+            if status & SPI_STATUS_1_BUSY == 0 {
+                return Ok(status);
             }
             if started.elapsed() >= timeout {
                 return Err(Error::Device(format!(
@@ -4627,6 +4829,81 @@ mod tests {
         assert_eq!(normalize_bdf("c4:00.0").unwrap(), "0000:c4:00.0");
         assert_eq!(normalize_bdf("0000:C4:00.0").unwrap(), "0000:c4:00.0");
         assert!(normalize_bdf("c4:0.0").is_err());
+    }
+
+    #[test]
+    fn decodes_spi_flash_programming_preflight() {
+        let identity = [0xef, 0x60, 0x18];
+        let clean = SpiFlashStatus::from_registers("0000:c4:00.0", identity, 0, 0, 0, None);
+        assert_eq!(clean.schema, SPI_FLASH_STATUS_SCHEMA);
+        assert!(clean.programming_preflight_passed);
+        assert!(clean.require_programming_preflight().is_ok());
+
+        let global_protection = SpiFlashStatus::from_registers(
+            "0000:c4:00.0",
+            identity,
+            SPI_STATUS_1_BLOCK_PROTECT_MASK | SPI_STATUS_1_TOP_BOTTOM,
+            SPI_STATUS_2_COMPLEMENT_PROTECT,
+            0,
+            None,
+        );
+        assert_eq!(global_protection.block_protect, 7);
+        assert!(global_protection.top_bottom);
+        assert!(global_protection.complement_protect);
+        assert!(!global_protection.programming_preflight_passed);
+        assert!(global_protection
+            .require_programming_preflight()
+            .unwrap_err()
+            .to_string()
+            .contains("BP/CMP"));
+
+        let individual_locked = SpiFlashStatus::from_registers(
+            "0000:c4:00.0",
+            identity,
+            0,
+            0,
+            SPI_STATUS_3_WRITE_PROTECT_SELECTION,
+            Some(SPI_BLOCK_LOCKED),
+        );
+        assert_eq!(individual_locked.sector0_individual_lock, Some(true));
+        assert!(!individual_locked.programming_preflight_passed);
+
+        let individual_unlocked = SpiFlashStatus::from_registers(
+            "0000:c4:00.0",
+            identity,
+            SPI_STATUS_1_BLOCK_PROTECT_MASK,
+            SPI_STATUS_2_COMPLEMENT_PROTECT,
+            SPI_STATUS_3_WRITE_PROTECT_SELECTION,
+            Some(0),
+        );
+        assert_eq!(individual_unlocked.sector0_individual_lock, Some(false));
+        assert!(individual_unlocked.programming_preflight_passed);
+    }
+
+    #[test]
+    fn spi_flash_preflight_rejects_active_or_suspended_operations() {
+        let status = SpiFlashStatus::from_registers(
+            "0000:c4:00.0",
+            [0xef, 0x60, 0x18],
+            SPI_STATUS_1_BUSY | SPI_STATUS_1_WRITE_ENABLE_LATCH,
+            SPI_STATUS_2_ERASE_PROGRAM_SUSPENDED,
+            0,
+            None,
+        );
+        assert!(!status.programming_preflight_passed);
+        assert_eq!(status.refusal_reasons.len(), 3);
+        assert!(status
+            .refusal_reasons
+            .iter()
+            .any(|reason| reason.contains("BUSY")));
+        assert!(status
+            .refusal_reasons
+            .iter()
+            .any(|reason| reason.contains("WEL")));
+        assert!(status
+            .refusal_reasons
+            .iter()
+            .any(|reason| reason.contains("suspended")));
     }
 
     #[test]

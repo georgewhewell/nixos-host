@@ -10,6 +10,10 @@ See [`ATLAS-SBR-NOTES.md`](ATLAS-SBR-NOTES.md) for the decoded format facts,
 current hashes, independently cross-checked station encodings, and the exact
 station-4 candidate.
 
+See [`FLASH-PROTECTION.md`](FLASH-PROTECTION.md) for the PLX SDK FAQ recovery
+guidance, the exact W25Q128JW protection bits and commands, and the fail-closed
+write preflight.
+
 ## Safety rules
 
 - Capture the current state before and after any configuration change.
@@ -52,3 +56,7 @@ station-4 candidate.
   two matching complete flash passes, a serial-only recovery-region
   cross-check, a hashed station-4 plan, and exact candidate reproduction.
   Nothing was programmed.
+- [`2026-07-25T08-50-56Z`](captures/2026-07-25T08-50-56Z/README.md):
+  read-only W25Q128JW status/protection inspection after adding the fail-closed
+  writer preflight. SR1/SR2/SR3 were `00/02/00`, the preflight passed, and the
+  live SBR, boot ID, PCI identity, and station-4 recovery plan were unchanged.
