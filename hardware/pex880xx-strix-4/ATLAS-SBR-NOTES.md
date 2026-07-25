@@ -66,6 +66,11 @@ programs, partially labelled CPU boot words, and a 160-bit PBAM SPI-control
 object. They remain visible as raw dwords and are deliberately not writable by
 field name.
 
+The common parser now also rejects enabled indexed blocks that overlap the
+fixed header/SoC region or one another. Both the current and RDK images pass
+the stronger structural check, and the existing station-4 plan remains
+verifiable.
+
 ## Port defaults
 
 The Atlas database also defines two-bit `Port Type` and `Clocking mode` fields

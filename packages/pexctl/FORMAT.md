@@ -32,6 +32,12 @@ checksum = 0 - (0xa5 + sum(all bytes before the checksum dword)) mod 256
 The remaining three bytes of the checksum dword are zero in the observed
 images. Mutation rewrites the complete dword with the calculated low byte.
 
+Every enabled indexed block must start at or after `0x1fc`, the end of the
+fixed header and SoC settings, and enabled blocks may not overlap one another.
+The parser sorts enabled ranges and rejects either form of aliasing before
+exposing block contents or allowing mutation. Gaps and a non-index-order
+physical layout remain legal.
+
 ## PSB register-write records
 
 The indexed PSB block is a sequence of 8-byte records:

@@ -2386,6 +2386,7 @@ impl SbrImage {
                 self.signature()
             )));
         }
+        let mut enabled_blocks = Vec::new();
         for block in self.blocks() {
             if block.state() == BlockState::Invalid {
                 return Err(Error::Format(format!(
@@ -2395,6 +2396,13 @@ impl SbrImage {
                 )));
             }
             if let Some(end) = block.end() {
+                if block.offset < SOC_END as u32 {
+                    return Err(Error::Format(format!(
+                        "{} starts at {:#x}, overlapping the fixed header and SoC settings ending at {SOC_END:#x}",
+                        block.kind.name(),
+                        block.offset
+                    )));
+                }
                 if block.offset % 4 != 0 || block.size % 4 != 0 {
                     return Err(Error::Format(format!(
                         "{} is not dword aligned: offset={:#x} size={:#x}",
@@ -2455,6 +2463,21 @@ impl SbrImage {
                         )));
                     }
                 }
+                enabled_blocks.push(block);
+            }
+        }
+        enabled_blocks.sort_by_key(|block| block.offset);
+        for pair in enabled_blocks.windows(2) {
+            let before = pair[0];
+            let after = pair[1];
+            if after.offset < before.end().expect("enabled block has end") {
+                return Err(Error::Format(format!(
+                    "{} at {:#x} overlaps {} ending at {:#x}",
+                    after.kind.name(),
+                    after.offset,
+                    before.kind.name(),
+                    before.end().expect("enabled block has end")
+                )));
             }
         }
         Ok(())
@@ -4077,6 +4100,34 @@ mod tests {
 
         let error = SbrImage::parse(bytes).unwrap_err().to_string();
         assert!(error.contains("psb contains value/address pairs"));
+    }
+
+    #[test]
+    fn rejects_indexed_blocks_overlapping_soc_or_each_other() {
+        let mut soc_overlap = minimal_image([[0; 4]; 6]).into_bytes();
+        soc_overlap[SBR_INDEX_OFFSET + 2 * 4..SBR_INDEX_OFFSET + 3 * 4]
+            .copy_from_slice(&(SOC_OFFSET as u32).to_le_bytes());
+        soc_overlap[SBR_INDEX_OFFSET + 3 * 4..SBR_INDEX_OFFSET + 4 * 4]
+            .copy_from_slice(&16u32.to_le_bytes());
+        let checksum = expected_checksum(&soc_overlap[..SOC_END]);
+        soc_overlap[SOC_END..SOC_END + 4].copy_from_slice(&u32::from(checksum).to_le_bytes());
+        let error = SbrImage::parse(soc_overlap).unwrap_err().to_string();
+        assert!(error.contains("psw0 starts"));
+        assert!(error.contains("overlapping the fixed header"));
+
+        let image = image_with_entry_blocks();
+        let checksum_offset = image.checksum_offset();
+        let mut block_overlap = image.into_bytes();
+        block_overlap[SBR_INDEX_OFFSET + 18 * 4..SBR_INDEX_OFFSET + 19 * 4]
+            .copy_from_slice(&((SOC_END + 8) as u32).to_le_bytes());
+        block_overlap[SBR_INDEX_OFFSET + 19 * 4..SBR_INDEX_OFFSET + 20 * 4]
+            .copy_from_slice(&24u32.to_le_bytes());
+        let checksum = expected_checksum(&block_overlap[..checksum_offset]);
+        block_overlap[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        let error = SbrImage::parse(block_overlap).unwrap_err().to_string();
+        assert!(error.contains("psb-serdes"));
+        assert!(error.contains("overlaps psb"));
     }
 
     #[test]

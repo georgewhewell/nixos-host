@@ -12,7 +12,8 @@ The design is deliberately recovery-first:
 
 - parse every image losslessly and preserve unknown bytes;
 - derive image length from the SBR index instead of a reference filename;
-- validate all block ranges and the hardware checksum before mutation;
+- validate all block ranges, fixed-region and block overlap, exact known
+  sizes, reserved bits, and the hardware checksum before mutation;
 - expose only field encodings supported by observed hardware and reference
   images;
 - write candidates to new files and refuse accidental overwrites;
