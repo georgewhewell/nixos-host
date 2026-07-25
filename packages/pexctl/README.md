@@ -156,10 +156,11 @@ rejected.
 
 The catalog includes clock-source/divider, serial-debug, CPU-address,
 IOP-reset, system-counter, capture-clock, baud-clock, DCSG scratch and
-configuration, and customer-scratch fields at SBR offsets `0x6c` through
-`0x74`. Their bit positions and vendor names are known; their reset and board
-behavior are not independently characterized, so every one remains expert
-policy. Vendor spare and reserved fields remain absent. The example is in
+configuration, customer-scratch fields at SBR offsets `0x6c` through `0x74`,
+and three PVTMON pulse-count/ring-select fields at `0x140`. Their bit positions
+and vendor names are known; their reset and board behavior are not
+independently characterized, so every one remains expert policy. Vendor spare
+and reserved fields remain absent. The example is in
 [`examples/expert-fanout-enable.json`](examples/expert-fanout-enable.json);
 it demonstrates the syntax and is not a recommendation to enable fanout on
 this board.

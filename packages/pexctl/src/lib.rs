@@ -1583,6 +1583,27 @@ const NAMED_SOC_FIELDS: &[NamedSocField] = &[
         width: 8,
         writable: false,
     },
+    NamedSocField {
+        name: "soc.pvtmon_pulse_count_low",
+        offset: 0x140,
+        bit_low: 0,
+        width: 8,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.pvtmon_pulse_count_high",
+        offset: 0x140,
+        bit_low: 8,
+        width: 3,
+        writable: false,
+    },
+    NamedSocField {
+        name: "soc.pvtmon_ring_select",
+        offset: 0x140,
+        bit_low: 12,
+        width: 4,
+        writable: false,
+    },
 ];
 
 fn inspection_v1_soc_fields() -> &'static [NamedSocField] {
@@ -4230,7 +4251,7 @@ mod tests {
         assert_eq!(field_inspection.schema, ATLAS_SOC_FIELD_INSPECTION_SCHEMA);
         assert_eq!(
             field_inspection.fields.len(),
-            ATLAS_INSPECTION_V1_SOC_FIELD_COUNT + 16
+            ATLAS_INSPECTION_V1_SOC_FIELD_COUNT + 19
         );
         assert!(field_inspection.fields.iter().any(|field| field.name
             == "soc.ethernet_tx_clock_divider"
@@ -4244,6 +4265,18 @@ mod tests {
                 && field.offset == 0x74
                 && field.bit_low == 0
                 && field.bit_high == 7));
+        assert!(field_inspection.fields.iter().any(|field| field.name
+            == "soc.pvtmon_pulse_count_high"
+            && field.offset == 0x140
+            && field.bit_low == 8
+            && field.bit_high == 10));
+        assert!(field_inspection
+            .fields
+            .iter()
+            .any(|field| field.name == "soc.pvtmon_ring_select"
+                && field.offset == 0x140
+                && field.bit_low == 12
+                && field.bit_high == 15));
 
         let generated = original
             .expert_soc_field_config("soc.ethernet_tx_clock_divider", 3)
@@ -4269,6 +4302,12 @@ mod tests {
         assert!(original
             .expert_soc_field_config("soc.not_a_field", 1)
             .is_err());
+        assert!(original
+            .expert_soc_field_config("soc.pvtmon_pulse_count_high", 8)
+            .is_err());
+        assert!(original
+            .expert_soc_field_config("soc.pvtmon_ring_select", 15)
+            .is_ok());
 
         let config = AtlasConfig::parse_json(
             br#"{

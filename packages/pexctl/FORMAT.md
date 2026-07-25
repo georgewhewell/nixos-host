@@ -177,6 +177,9 @@ additional controls below:
 | `0x74` | 7:0 | `soc.customer_scratch1` |
 | `0x74` | 15:8 | `soc.customer_scratch2` |
 | `0x74` | 23:16 | `soc.dcsg_configuration` |
+| `0x140` | 7:0 | `soc.pvtmon_pulse_count_low` |
+| `0x140` | 10:8 | `soc.pvtmon_pulse_count_high` |
+| `0x140` | 15:12 | `soc.pvtmon_ring_select` |
 
 They appear under `fields` in the focused
 `pexctl.atlas-soc-field-inspection.v1` schema with their SBR offset, low/high
@@ -201,6 +204,13 @@ misrepresenting a vendor field name as evidence that an arbitrary board value
 is safe. `sbr export-field-patch` generates a single-field document from the
 input image, including the exact expected-current value; it rejects unknown,
 ordinary, out-of-range, and no-op requests.
+
+The remaining named regions in the 104-dword SoC block are not treated as
+scalar configuration: CCR register-update programs span multiple dwords, CPU
+boot address/instruction words are only partially labelled, and PBAM SPI
+control is a 160-bit object whose interior byte labels are mostly blank. They
+remain available in the lossless raw SoC dwords, but not through an expert
+field patch.
 
 ## Proven station codes
 
