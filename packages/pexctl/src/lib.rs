@@ -34,6 +34,7 @@ pub const ATLAS_CONFIG_PLAN_SCHEMA: &str = "pexctl.atlas-config-plan.v1";
 pub const ATLAS_INSPECTION_SCHEMA: &str = "pexctl.atlas-sbr-inspection.v1";
 pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
 pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v1";
+pub const ATLAS_PSW_INSPECTION_SCHEMA: &str = "pexctl.atlas-psw-inspection.v1";
 pub const ATLAS_CONFIG_PLAN_FILE: &str = "PLAN.json";
 pub const ATLAS_CONFIG_PLAN_ARTIFACT_NAMES: [&str; 11] = [
     "current-flash-a.bin",
@@ -130,6 +131,15 @@ impl BlockKind {
         Self::Pswx2,
         Self::PsbSerdes,
     ];
+    pub const PSW: [Self; 7] = [
+        Self::Psw0,
+        Self::Psw1,
+        Self::Psw2,
+        Self::Psw3,
+        Self::Psw4,
+        Self::Psw5,
+        Self::Pswx2,
+    ];
 
     fn index_pair(self) -> (usize, usize) {
         match self {
@@ -164,6 +174,27 @@ impl BlockKind {
         match self {
             Self::Psb => Some(PSB_MAX_SIZE),
             Self::PsbSerdes => Some(PSB_SERDES_MAX_SIZE),
+            _ => None,
+        }
+    }
+
+    fn exact_size(self) -> Option<u32> {
+        match self {
+            Self::Psw0 | Self::Psw1 | Self::Psw2 | Self::Psw3 | Self::Psw4 | Self::Psw5 => Some(16),
+            Self::Pswx2 => Some(4),
+            _ => None,
+        }
+    }
+
+    fn psw_station(self) -> Option<&'static str> {
+        match self {
+            Self::Psw0 => Some("0"),
+            Self::Psw1 => Some("1"),
+            Self::Psw2 => Some("2"),
+            Self::Psw3 => Some("3"),
+            Self::Psw4 => Some("4"),
+            Self::Psw5 => Some("5"),
+            Self::Pswx2 => Some("x2"),
             _ => None,
         }
     }
@@ -885,6 +916,37 @@ pub struct SbrEntryInspection {
     pub psb_serdes_entries: Vec<PsbSerdesEntryInspection>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PswLaneInspection {
+    pub lane: u8,
+    pub sbr_offset: usize,
+    pub raw_value: u8,
+    pub ssc_default: u8,
+    pub protocol_default: u8,
+    pub reserved_bits: u8,
+    pub soft_control: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PswBlockInspection {
+    pub block: &'static str,
+    pub station: &'static str,
+    pub offset: u32,
+    pub size: u32,
+    pub expected_size: u32,
+    pub state: String,
+    pub trailing_reserved_bits: u16,
+    pub write_policy: &'static str,
+    pub lanes: Vec<PswLaneInspection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PswInspection {
+    pub schema: &'static str,
+    pub sbr_sha256: String,
+    pub blocks: Vec<PswBlockInspection>,
+}
+
 #[derive(Clone, Copy)]
 struct KnownPsbRegister {
     offset: u32,
@@ -1503,6 +1565,54 @@ impl SbrImage {
         }
     }
 
+    pub fn psw_inspection(&self) -> PswInspection {
+        let blocks = BlockKind::PSW
+            .into_iter()
+            .map(|kind| {
+                let block = self.block(kind);
+                let bytes = self.block_bytes(kind);
+                let lane_count = if kind == BlockKind::Pswx2 {
+                    bytes.len().min(2)
+                } else {
+                    bytes.len()
+                };
+                let lanes = bytes[..lane_count]
+                    .iter()
+                    .enumerate()
+                    .map(|(lane, value)| PswLaneInspection {
+                        lane: lane as u8,
+                        sbr_offset: block.offset as usize + lane,
+                        raw_value: *value,
+                        ssc_default: value & 0x07,
+                        protocol_default: (value >> 3) & 0x03,
+                        reserved_bits: (value >> 5) & 0x03,
+                        soft_control: value & 0x80 != 0,
+                    })
+                    .collect();
+                PswBlockInspection {
+                    block: kind.name(),
+                    station: kind.psw_station().expect("PSW block has station"),
+                    offset: block.offset,
+                    size: block.size,
+                    expected_size: kind.exact_size().expect("PSW block has exact size"),
+                    state: block.state().to_string(),
+                    trailing_reserved_bits: if kind == BlockKind::Pswx2 && bytes.len() == 4 {
+                        u16::from_le_bytes(bytes[2..4].try_into().expect("two-byte PSWx2 tail"))
+                    } else {
+                        0
+                    },
+                    write_policy: "read-only",
+                    lanes,
+                }
+            })
+            .collect();
+        PswInspection {
+            schema: ATLAS_PSW_INSPECTION_SCHEMA,
+            sbr_sha256: sha256_hex(&self.bytes),
+            blocks,
+        }
+    }
+
     pub fn checksum_offset(&self) -> usize {
         self.checksum_offset
     }
@@ -2020,6 +2130,35 @@ impl SbrImage {
                             "{} size {:#x} exceeds the Atlas limit {max_size:#x}",
                             block.kind.name(),
                             block.size
+                        )));
+                    }
+                }
+                if let Some(exact_size) = block.kind.exact_size() {
+                    if block.size != exact_size {
+                        return Err(Error::Format(format!(
+                            "{} enabled size {:#x} does not match the Atlas field database size {exact_size:#x}",
+                            block.kind.name(),
+                            block.size
+                        )));
+                    }
+                    let bytes = &self.bytes[block.offset as usize..end as usize];
+                    let lane_count = if block.kind == BlockKind::Pswx2 {
+                        2
+                    } else {
+                        bytes.len()
+                    };
+                    for (lane, value) in bytes[..lane_count].iter().enumerate() {
+                        if value & 0x60 != 0 {
+                            return Err(Error::Format(format!(
+                                "{} lane {lane} has nonzero reserved bits in byte {value:#04x}",
+                                block.kind.name()
+                            )));
+                        }
+                    }
+                    if block.kind == BlockKind::Pswx2 && bytes[2..4] != [0, 0] {
+                        return Err(Error::Format(format!(
+                            "{} has nonzero reserved bits 31:16",
+                            block.kind.name()
                         )));
                     }
                 }
@@ -3130,6 +3269,34 @@ mod tests {
         SbrImage::parse(bytes).unwrap()
     }
 
+    fn image_with_psw_blocks() -> SbrImage {
+        fn write_dword(bytes: &mut [u8], offset: usize, value: u32) {
+            bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+
+        let psw0_offset = SOC_END;
+        let psw0_size = 16usize;
+        let pswx2_offset = psw0_offset + psw0_size;
+        let pswx2_size = 4usize;
+        let checksum_offset = pswx2_offset + pswx2_size;
+        let mut bytes = vec![0u8; checksum_offset + 4];
+        bytes[..4].copy_from_slice(&ATLAS_SIGNATURE_PEX88096.to_le_bytes());
+
+        write_dword(&mut bytes, SBR_INDEX_OFFSET + 2 * 4, psw0_offset as u32);
+        write_dword(&mut bytes, SBR_INDEX_OFFSET + 3 * 4, psw0_size as u32);
+        write_dword(&mut bytes, SBR_INDEX_OFFSET + 16 * 4, pswx2_offset as u32);
+        write_dword(&mut bytes, SBR_INDEX_OFFSET + 17 * 4, pswx2_size as u32);
+
+        bytes[psw0_offset..psw0_offset + psw0_size].fill(0x10);
+        bytes[psw0_offset + 1] = 0x9d;
+        bytes[pswx2_offset..pswx2_offset + pswx2_size].copy_from_slice(&[0x08, 0x87, 0, 0]);
+
+        let checksum = expected_checksum(&bytes[..checksum_offset]);
+        bytes[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        SbrImage::parse(bytes).unwrap()
+    }
+
     fn create_config_plan_fixture() -> PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -3309,6 +3476,74 @@ mod tests {
             vec![0x0604_2019, 0x1b00_0083, 0x81c0_a805, 0x0f00_02f5]
         );
         assert!(inspection.blocks[0].sha256.is_some());
+    }
+
+    #[test]
+    fn decodes_vendor_defined_psw_lane_fields_and_ignored_blocks() {
+        let image = image_with_psw_blocks();
+        image.validate().unwrap();
+
+        let inspection = image.psw_inspection();
+        assert_eq!(inspection.schema, ATLAS_PSW_INSPECTION_SCHEMA);
+        assert_eq!(inspection.blocks.len(), 7);
+
+        let psw0 = &inspection.blocks[0];
+        assert_eq!(psw0.block, "psw0");
+        assert_eq!(psw0.station, "0");
+        assert_eq!(psw0.state, "enabled");
+        assert_eq!(psw0.expected_size, 16);
+        assert_eq!(psw0.lanes.len(), 16);
+        assert_eq!(psw0.lanes[0].raw_value, 0x10);
+        assert_eq!(psw0.lanes[0].ssc_default, 0);
+        assert_eq!(psw0.lanes[0].protocol_default, 2);
+        assert!(!psw0.lanes[0].soft_control);
+        assert_eq!(psw0.lanes[1].ssc_default, 5);
+        assert_eq!(psw0.lanes[1].protocol_default, 3);
+        assert!(psw0.lanes[1].soft_control);
+        assert_eq!(psw0.lanes[1].reserved_bits, 0);
+
+        assert_eq!(inspection.blocks[1].state, "end");
+        assert!(inspection.blocks[1].lanes.is_empty());
+
+        let pswx2 = &inspection.blocks[6];
+        assert_eq!(pswx2.station, "x2");
+        assert_eq!(pswx2.expected_size, 4);
+        assert_eq!(pswx2.lanes.len(), 2);
+        assert_eq!(pswx2.lanes[0].protocol_default, 1);
+        assert_eq!(pswx2.lanes[1].ssc_default, 7);
+        assert!(pswx2.lanes[1].soft_control);
+        assert_eq!(pswx2.trailing_reserved_bits, 0);
+    }
+
+    #[test]
+    fn rejects_enabled_psw_size_and_reserved_bit_violations() {
+        let image = image_with_psw_blocks();
+        let checksum_offset = image.checksum_offset();
+
+        let mut wrong_size = image.bytes().to_vec();
+        wrong_size[SBR_INDEX_OFFSET + 3 * 4..SBR_INDEX_OFFSET + 4 * 4]
+            .copy_from_slice(&12u32.to_le_bytes());
+        let checksum = expected_checksum(&wrong_size[..checksum_offset]);
+        wrong_size[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        let error = SbrImage::parse(wrong_size).unwrap_err().to_string();
+        assert!(error.contains("psw0 enabled size"));
+
+        let mut reserved_lane = image.bytes().to_vec();
+        reserved_lane[SOC_END] |= 0x20;
+        let checksum = expected_checksum(&reserved_lane[..checksum_offset]);
+        reserved_lane[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        let error = SbrImage::parse(reserved_lane).unwrap_err().to_string();
+        assert!(error.contains("psw0 lane 0 has nonzero reserved bits"));
+
+        let mut reserved_tail = image.bytes().to_vec();
+        reserved_tail[SOC_END + 16 + 2] = 1;
+        let checksum = expected_checksum(&reserved_tail[..checksum_offset]);
+        reserved_tail[checksum_offset..checksum_offset + 4]
+            .copy_from_slice(&u32::from(checksum).to_le_bytes());
+        let error = SbrImage::parse(reserved_tail).unwrap_err().to_string();
+        assert!(error.contains("pswx2 has nonzero reserved bits 31:16"));
     }
 
     #[test]

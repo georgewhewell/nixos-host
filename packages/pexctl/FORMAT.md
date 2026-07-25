@@ -79,6 +79,37 @@ SHA-256 of every enabled indexed block. `sbr entries` provides a focused human
 or JSON view. Known non-reserved PSB records report an `expert` write policy;
 unknown and reserved records remain `read-only`.
 
+## PSW per-lane defaults
+
+The Atlas index contains PSW0 through PSW5 plus PSWx2. The vendor field
+database defines the enabled sizes and lane bytes as follows:
+
+| Block | Enabled size | Defined lane bytes | Remaining bytes |
+|---|---:|---:|---|
+| PSW0 through PSW5 | 16 | 16 | none |
+| PSWx2 | 4 | 2 | bits 31:16 reserved |
+
+Each defined lane byte has this layout:
+
+| Bits | Field |
+|---:|---|
+| 2:0 | `ssc_default` numeric code |
+| 4:3 | `protocol_default` numeric code |
+| 6:5 | reserved |
+| 7 | `soft_control` |
+
+`sbr psw` and `device psw` expose the raw byte, decoded numeric fields,
+reserved value, exact SBR offset, block state, and expected enabled size.
+The parser rejects enabled PSWs with a noncanonical size or nonzero reserved
+bits. This focused schema leaves the existing full-inspection and
+configuration-plan schemas byte-for-byte compatible.
+
+The live PEX88096 SBR and Broadcom Base RDK96 image both encode all seven PSW
+blocks as ignored (`offset=0`, `size=1`), so they contain no payload bytes to
+decode. The vendor editor's documented default display is not treated as an
+image fixture. PSW writes remain unavailable until an enabled image establishes
+payload behavior and block insertion/reindexing can be implemented safely.
+
 ## First SoC dword
 
 The SoC block begins at SBR offset `0x5c`.

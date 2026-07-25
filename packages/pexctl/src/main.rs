@@ -87,6 +87,7 @@ fn run_sbr(args: &[String]) -> Result<()> {
             Ok(())
         }
         "entries" => run_sbr_entries(&args[1..]),
+        "psw" => run_sbr_psw(&args[1..]),
         "export-entry-patch" => run_export_entry_patch(&args[1..]),
         "diff" => {
             let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
@@ -169,6 +170,34 @@ fn run_sbr_entries(args: &[String]) -> Result<()> {
         print_json(&inspection)
     } else {
         print_entry_inspection(&inspection);
+        Ok(())
+    }
+}
+
+fn run_sbr_psw(args: &[String]) -> Result<()> {
+    let usage = "pexctl sbr psw IMAGE [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]";
+    if args.is_empty()
+        || args
+            .iter()
+            .take_while(|argument| !argument.starts_with("--"))
+            .count()
+            != 1
+    {
+        return Err(Error::Usage(format!("usage: {usage}")));
+    }
+    reject_unknown_options_and_flags(args, &["--block"], &["--json"])?;
+    let block = if args.iter().any(|argument| argument == "--block") {
+        Some(option_value(args, "--block")?)
+    } else {
+        None
+    };
+    let image = SbrImage::read(Path::new(&args[0]))?;
+    image.validate()?;
+    let inspection = filtered_psw_inspection(&image, block)?;
+    if args.iter().any(|argument| argument == "--json") {
+        print_json(&inspection)
+    } else {
+        print_psw_inspection(&inspection);
         Ok(())
     }
 }
@@ -585,6 +614,7 @@ fn run_device(args: &[String]) -> Result<()> {
             }
         }
         "entries" => run_device_entries(&args[1..]),
+        "psw" => run_device_psw(&args[1..]),
         "prepare-station" => run_prepare_station(&args[1..]),
         "prepare-config" => run_prepare_config(&args[1..]),
         "program-plan" => {
@@ -723,6 +753,34 @@ fn run_device_entries(options: &[String]) -> Result<()> {
     }
 }
 
+fn run_device_psw(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let offset = optional_number(options, "--offset")?.unwrap_or(SBR_FLASH_OFFSET);
+    let block = if options.iter().any(|argument| argument == "--block") {
+        Some(option_value(options, "--block")?)
+    } else {
+        None
+    };
+    let json = options.iter().any(|argument| argument == "--json");
+    reject_unknown_options_and_flags(options, &["--bdf", "--offset", "--block"], &["--json"])?;
+
+    let device = PlxSvcDevice::open(bdf)?;
+    let image = device.read_sbr(offset)?;
+    image.validate()?;
+    let inspection = filtered_psw_inspection(&image, block)?;
+    eprintln!(
+        "pexctl: read valid {}-byte SBR from {} at flash offset {offset:#x}",
+        image.bytes().len(),
+        device.bdf()
+    );
+    if json {
+        print_json(&inspection)
+    } else {
+        print_psw_inspection(&inspection);
+        Ok(())
+    }
+}
+
 fn filtered_entry_inspection(
     image: &SbrImage,
     block: Option<&str>,
@@ -737,6 +795,22 @@ fn filtered_entry_inspection(
             )));
         }
         None => {}
+    }
+    Ok(inspection)
+}
+
+fn filtered_psw_inspection(image: &SbrImage, block: Option<&str>) -> Result<pexctl::PswInspection> {
+    let mut inspection = image.psw_inspection();
+    if let Some(block) = block {
+        if !matches!(
+            block,
+            "psw0" | "psw1" | "psw2" | "psw3" | "psw4" | "psw5" | "pswx2"
+        ) {
+            return Err(Error::Usage(format!(
+                "unsupported PSW block {block:?}; expected psw0, psw1, psw2, psw3, psw4, psw5, or pswx2"
+            )));
+        }
+        inspection.blocks.retain(|entry| entry.block == block);
     }
     Ok(inspection)
 }
@@ -1224,6 +1298,47 @@ fn print_entry_inspection(inspection: &pexctl::SbrEntryInspection) {
     }
 }
 
+fn print_psw_inspection(inspection: &pexctl::PswInspection) {
+    for (index, block) in inspection.blocks.iter().enumerate() {
+        if index != 0 {
+            println!();
+        }
+        println!(
+            "{} station {}: state={} offset={:#x} size={:#x} expected-size={:#x} policy={}",
+            block.block,
+            block.station,
+            block.state,
+            block.offset,
+            block.size,
+            block.expected_size,
+            block.write_policy
+        );
+        if block.lanes.is_empty() {
+            println!("  no lane settings: block is not enabled");
+            continue;
+        }
+        println!("  lane sbr-off raw  ssc protocol soft-control reserved");
+        for lane in &block.lanes {
+            println!(
+                "  {:>4} {:#06x}  {:#04x} {:>3} {:>8} {:>12} {:#04x}",
+                lane.lane,
+                lane.sbr_offset,
+                lane.raw_value,
+                lane.ssc_default,
+                lane.protocol_default,
+                if lane.soft_control { "yes" } else { "no" },
+                lane.reserved_bits
+            );
+        }
+        if block.block == "pswx2" {
+            println!(
+                "  trailing reserved bits 31:16: {:#06x}",
+                block.trailing_reserved_bits
+            );
+        }
+    }
+}
+
 fn option_value<'a>(args: &'a [String], name: &str) -> Result<&'a str> {
     let position = args
         .iter()
@@ -1328,6 +1443,7 @@ USAGE:
   pexctl sbr validate IMAGE
   pexctl sbr fields IMAGE
   pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]
+  pexctl sbr psw IMAGE [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]
   pexctl sbr export-entry-patch IMAGE --block psb|psb-serdes --index N \
     --value VALUE --output CONFIG.json
   pexctl sbr diff BEFORE AFTER [--json]
@@ -1346,6 +1462,8 @@ USAGE:
   sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 [--offset 0x400] [--json]
   sudo pexctl device entries --bdf 0000:c4:00.0 [--offset 0x400] \
     [--block psb|psb-serdes] [--json]
+  sudo pexctl device psw --bdf 0000:c4:00.0 [--offset 0x400] \
+    [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]
   sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 \
     [--method mapped|serial] --output OUTPUT
   sudo pexctl device spi-id --bdf 0000:c4:00.0

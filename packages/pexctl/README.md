@@ -28,6 +28,8 @@ pexctl sbr validate IMAGE
 pexctl sbr fields IMAGE
 pexctl sbr entries IMAGE
 pexctl sbr entries IMAGE --block psb-serdes --json
+pexctl sbr psw IMAGE
+pexctl sbr psw IMAGE --block psw4 --json
 pexctl sbr export-entry-patch IMAGE --block psb --index 0 \
   --value 0x06042018 --output expert-entry.json
 pexctl sbr diff BEFORE AFTER
@@ -50,6 +52,7 @@ pexctl plan verify config-plan --json
 sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output current.bin
 sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
 sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
+sudo pexctl device psw --bdf 0000:c4:00.0 --block psw4
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --output sector-0.bin
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
@@ -80,9 +83,11 @@ sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
 dwords, all 104 raw SoC-setting dwords, every indexed block as raw dwords with
 its SHA-256, checksum state, raw station codes, and every currently understood
 field. It also decodes the PSB register-write records and PSB-SerDes AXI-write
-records described below. `sbr entries` prints those records directly and can
-select either block with `--block`. `diff --json` provides hashes, named-field
-changes, station changes, PSB/PSB-SerDes entry-value changes, and byte changes.
+records described below. `sbr entries` prints the indexed write records
+directly and can select either block with `--block`. `sbr psw` prints the
+station/lane PSW view and can select `psw0` through `psw5`, or `pswx2`.
+`diff --json` provides hashes, named-field changes, station changes,
+PSB/PSB-SerDes entry-value changes, and byte changes.
 
 `export-config` creates the strict, versioned subset that `pexctl` knows how to
 write:
@@ -254,6 +259,26 @@ Examples are
 [`expert-psb-serdes-entry.json`](examples/expert-psb-serdes-entry.json).
 They demonstrate syntax against this board's current image and are not
 recommendations to make those value changes.
+
+## PSW lane defaults
+
+The vendor Atlas field database defines one PSW block for each of stations
+0 through 5 and one smaller PSWx2 block. An enabled station PSW is exactly
+16 bytes, one byte per lane. Bits 2:0 are `ssc_default`, bits 4:3 are
+`protocol_default`, bits 6:5 are reserved, and bit 7 is `soft_control`.
+PSWx2 is exactly four bytes: the first two bytes use the same lane layout and
+bits 31:16 are reserved.
+
+`sbr psw` and `device psw` decode these values without assigning undocumented
+meanings to the numeric SSC and protocol codes. Enabled blocks with a wrong
+size or nonzero reserved bits are rejected. The command reports ignored blocks
+as ignored and does not substitute the editor's displayed defaults.
+
+PSW mutation is intentionally unavailable. Both the live Strix-4 image and
+Broadcom's Base RDK96 image mark every PSW block ignored with offset zero and
+size one, so there is no observed enabled payload or safe evidence for adding,
+resizing, and reindexing these blocks. This is a read-only format guarantee,
+not a claim that PSW settings are unnecessary.
 
 ## PEX88096 station topology
 

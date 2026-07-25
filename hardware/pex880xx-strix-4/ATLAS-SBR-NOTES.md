@@ -113,6 +113,45 @@ It rejected the configuration in under one second, before opening or reading
 the device, created no plan directory, and explicitly requested the missing
 acknowledgement.
 
+## Per-lane PSW blocks
+
+The Atlas field database defines PSW0 through PSW5 as 16-byte blocks with one
+byte per lane. Each byte contains a three-bit `ssc_default` code, a two-bit
+`protocol_default` code, two reserved bits, and a `soft_control` bit. PSWx2 is
+four bytes, defines the same fields for two lanes, and reserves its upper
+16 bits.
+
+The current Strix-4 SBR and Broadcom Base RDK96 image both mark PSW0 through
+PSW5 and PSWx2 ignored (`offset=0`, `size=1`). There are consequently no PSW
+payload bytes in either image. `pexctl sbr psw` now reports this state directly;
+it does not turn the editor screenshot's displayed defaults into synthetic
+configuration. Enabled PSWs, when encountered, are decoded read-only and must
+have the exact database-defined size and zero reserved bits.
+
+The Nix-built CLI at
+`/nix/store/cb7h50inl8nzn6vsqr28zxbkspphy771-pexctl-0.1.0` reproduced the
+ignored state for all seven blocks in both images. No PSW write support was
+enabled and no hardware was written.
+
+That package was copied to Strix-4 and the new direct-device path was exercised:
+
+```console
+sudo pexctl device psw --bdf 0000:c4:00.0 --json
+```
+
+It read the same 2896-byte image with SHA-256
+`f4e0bf5d1d01d3f8daccc7c9c792cf0174e509a725379a646c9704c2cd4caae5`
+and reported all seven blocks ignored. The boot ID remained
+`758399aa-a216-4733-90ad-eab6141f7c18`, and sysfs still reported the device
+present as `1000:c010` revision `0xb0`. The command performed only mapped SPI
+reads; it did not erase, program, reset, or reboot anything.
+
+The same final package also re-verified the pre-existing
+`/tmp/pexctl-station4-plan-20260725-v4` as
+`pexctl.atlas-config-plan.v1`, still bound to `0000:c4:00.0` and still marked
+`hardware_written: false`. The focused PSW schema therefore did not change the
+byte-for-byte full-inspection artifacts or invalidate the recovery plan.
+
 ## Machine-verifiable station-4 plan
 
 After adding the strict `pexctl.atlas-config-plan.v1` transaction format, a
