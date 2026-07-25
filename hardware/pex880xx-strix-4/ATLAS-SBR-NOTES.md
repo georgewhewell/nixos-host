@@ -56,6 +56,28 @@ inspection schema remains frozen at its original 35 named fields; the new
 All sixteen new fields use expected-current expert policy. No field was changed
 and no hardware write, reset, or reboot was issued.
 
+## Port defaults
+
+The Atlas database also defines two-bit `Port Type` and `Clocking mode` fields
+for ports 0 through 95, 116, and 117. Package
+`/nix/store/daw0lf3yswk3lz94g78axhnxav62mhij-pexctl-0.1.0` decoded all 98
+records from both the current image and Base RDK96. Every type code and every
+clock-mode code is zero in both images; there are no differences, even though
+the RDK image contains proven fan-out station codes.
+
+The packaged live commands for port 64, in station 4's lane range, and special
+port 116 reproduced the current SBR hash and zero values:
+
+```console
+sudo pexctl device ports --bdf 0000:c4:00.0 --port 64 --json
+sudo pexctl device ports --bdf 0000:c4:00.0 --port 116
+```
+
+The boot ID stayed unchanged and sysfs retained `1000:c010` revision B0.
+Because the enum meanings are unknown and the two reference images provide no
+differential evidence, the port-default schema is read-only. No hardware write,
+reset, or reboot was issued.
+
 ## Indexed write blocks
 
 The live PSB block at SBR offset `0x1fc` is 72 bytes and decodes as nine

@@ -36,6 +36,7 @@ pub const ATLAS_DIFF_SCHEMA: &str = "pexctl.atlas-sbr-diff.v1";
 pub const ATLAS_ENTRY_INSPECTION_SCHEMA: &str = "pexctl.atlas-entry-inspection.v1";
 pub const ATLAS_PSW_INSPECTION_SCHEMA: &str = "pexctl.atlas-psw-inspection.v1";
 pub const ATLAS_SOC_FIELD_INSPECTION_SCHEMA: &str = "pexctl.atlas-soc-field-inspection.v1";
+pub const ATLAS_PORT_DEFAULT_INSPECTION_SCHEMA: &str = "pexctl.atlas-port-default-inspection.v1";
 pub const ATLAS_CONFIG_PLAN_FILE: &str = "PLAN.json";
 pub const ATLAS_CONFIG_PLAN_ARTIFACT_NAMES: [&str; 11] = [
     "current-flash-a.bin",
@@ -853,6 +854,27 @@ pub struct SocFieldInspection {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PortDefaultInspection {
+    pub port: u8,
+    pub port_type_raw: u8,
+    pub port_type_offset: usize,
+    pub port_type_bit_low: u8,
+    pub port_type_bit_high: u8,
+    pub clock_mode_raw: u8,
+    pub clock_mode_offset: usize,
+    pub clock_mode_bit_low: u8,
+    pub clock_mode_bit_high: u8,
+    pub write_policy: &'static str,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct PortDefaultsInspection {
+    pub schema: &'static str,
+    pub sbr_sha256: String,
+    pub ports: Vec<PortDefaultInspection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BlockInspection {
     pub name: &'static str,
     pub offset: u32,
@@ -1164,6 +1186,42 @@ struct NamedSocField {
     bit_low: u8,
     width: u8,
     writable: bool,
+}
+
+#[derive(Clone, Copy)]
+struct PortDefaultLocation {
+    port_type_offset: usize,
+    port_type_bit_low: u8,
+    clock_mode_offset: usize,
+    clock_mode_bit_low: u8,
+}
+
+fn port_default_location(port: u8) -> Option<PortDefaultLocation> {
+    match port {
+        0..=95 => {
+            let group = usize::from(port / 16);
+            let bit_low = (port % 16) * 2;
+            Some(PortDefaultLocation {
+                port_type_offset: 0xc0 + group * 4,
+                port_type_bit_low: bit_low,
+                clock_mode_offset: 0xe0 + group * 4,
+                clock_mode_bit_low: bit_low,
+            })
+        }
+        116 => Some(PortDefaultLocation {
+            port_type_offset: 0xdc,
+            port_type_bit_low: 8,
+            clock_mode_offset: 0xf8,
+            clock_mode_bit_low: 24,
+        }),
+        117 => Some(PortDefaultLocation {
+            port_type_offset: 0xdc,
+            port_type_bit_low: 10,
+            clock_mode_offset: 0xf8,
+            clock_mode_bit_low: 26,
+        }),
+        _ => None,
+    }
 }
 
 const NAMED_SOC_FIELDS: &[NamedSocField] = &[
@@ -2100,6 +2158,38 @@ impl SbrImage {
             schema: ATLAS_SOC_FIELD_INSPECTION_SCHEMA,
             sbr_sha256: sha256_hex(&self.bytes),
             fields,
+        }
+    }
+
+    pub fn port_defaults_inspection(&self) -> PortDefaultsInspection {
+        let ports = (0..=95)
+            .chain([116, 117])
+            .map(|port| {
+                let location = port_default_location(port).expect("fixed Atlas port set");
+                PortDefaultInspection {
+                    port,
+                    port_type_raw: self.read_bits(
+                        location.port_type_offset * 8 + usize::from(location.port_type_bit_low),
+                        2,
+                    ),
+                    port_type_offset: location.port_type_offset,
+                    port_type_bit_low: location.port_type_bit_low,
+                    port_type_bit_high: location.port_type_bit_low + 1,
+                    clock_mode_raw: self.read_bits(
+                        location.clock_mode_offset * 8 + usize::from(location.clock_mode_bit_low),
+                        2,
+                    ),
+                    clock_mode_offset: location.clock_mode_offset,
+                    clock_mode_bit_low: location.clock_mode_bit_low,
+                    clock_mode_bit_high: location.clock_mode_bit_low + 1,
+                    write_policy: "read-only",
+                }
+            })
+            .collect();
+        PortDefaultsInspection {
+            schema: ATLAS_PORT_DEFAULT_INSPECTION_SCHEMA,
+            sbr_sha256: sha256_hex(&self.bytes),
+            ports,
         }
     }
 
@@ -4253,6 +4343,88 @@ mod tests {
             }"#,
         )
         .is_err());
+    }
+
+    #[test]
+    fn decodes_database_defined_port_type_and_clock_mode_tables() {
+        let mut image = minimal_image([[0; 4]; 6]);
+        let values = [(0, 1, 2), (15, 2, 3), (16, 3, 1), (95, 1, 3)];
+        for (port, port_type, clock_mode) in values {
+            let location = port_default_location(port).unwrap();
+            image.write_bits(
+                location.port_type_offset * 8 + usize::from(location.port_type_bit_low),
+                2,
+                port_type,
+            );
+            image.write_bits(
+                location.clock_mode_offset * 8 + usize::from(location.clock_mode_bit_low),
+                2,
+                clock_mode,
+            );
+        }
+        for (port, port_type, clock_mode) in [(116, 2, 1), (117, 3, 2)] {
+            let location = port_default_location(port).unwrap();
+            image.write_bits(
+                location.port_type_offset * 8 + usize::from(location.port_type_bit_low),
+                2,
+                port_type,
+            );
+            image.write_bits(
+                location.clock_mode_offset * 8 + usize::from(location.clock_mode_bit_low),
+                2,
+                clock_mode,
+            );
+        }
+        image.update_checksum();
+        image.validate().unwrap();
+
+        let inspection = image.port_defaults_inspection();
+        assert_eq!(inspection.schema, ATLAS_PORT_DEFAULT_INSPECTION_SCHEMA);
+        assert_eq!(inspection.ports.len(), 98);
+        assert!(!inspection.ports.iter().any(|entry| entry.port == 96));
+
+        let port0 = &inspection.ports[0];
+        assert_eq!(port0.port_type_raw, 1);
+        assert_eq!(port0.port_type_offset, 0xc0);
+        assert_eq!(port0.port_type_bit_low, 0);
+        assert_eq!(port0.clock_mode_raw, 2);
+        assert_eq!(port0.clock_mode_offset, 0xe0);
+        assert_eq!(port0.clock_mode_bit_low, 0);
+
+        let port95 = inspection
+            .ports
+            .iter()
+            .find(|entry| entry.port == 95)
+            .unwrap();
+        assert_eq!(port95.port_type_raw, 1);
+        assert_eq!(port95.port_type_offset, 0xd4);
+        assert_eq!(port95.port_type_bit_low, 30);
+        assert_eq!(port95.clock_mode_raw, 3);
+        assert_eq!(port95.clock_mode_offset, 0xf4);
+        assert_eq!(port95.clock_mode_bit_low, 30);
+
+        let port116 = inspection
+            .ports
+            .iter()
+            .find(|entry| entry.port == 116)
+            .unwrap();
+        assert_eq!(port116.port_type_raw, 2);
+        assert_eq!(port116.port_type_offset, 0xdc);
+        assert_eq!(port116.port_type_bit_low, 8);
+        assert_eq!(port116.clock_mode_raw, 1);
+        assert_eq!(port116.clock_mode_offset, 0xf8);
+        assert_eq!(port116.clock_mode_bit_low, 24);
+
+        let port117 = inspection.ports.last().unwrap();
+        assert_eq!(port117.port, 117);
+        assert_eq!(port117.port_type_raw, 3);
+        assert_eq!(port117.port_type_bit_low, 10);
+        assert_eq!(port117.clock_mode_raw, 2);
+        assert_eq!(port117.clock_mode_bit_low, 26);
+        assert!(inspection
+            .ports
+            .iter()
+            .all(|entry| entry.write_policy == "read-only"));
     }
 
     #[test]

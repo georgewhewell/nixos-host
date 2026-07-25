@@ -93,6 +93,7 @@ fn run_sbr(args: &[String]) -> Result<()> {
         }
         "entries" => run_sbr_entries(&args[1..]),
         "psw" => run_sbr_psw(&args[1..]),
+        "ports" => run_sbr_ports(&args[1..]),
         "export-field-patch" => run_export_field_patch(&args[1..]),
         "export-entry-patch" => run_export_entry_patch(&args[1..]),
         "diff" => {
@@ -233,6 +234,30 @@ fn run_sbr_psw(args: &[String]) -> Result<()> {
         print_json(&inspection)
     } else {
         print_psw_inspection(&inspection);
+        Ok(())
+    }
+}
+
+fn run_sbr_ports(args: &[String]) -> Result<()> {
+    let usage = "pexctl sbr ports IMAGE [--port N] [--json]";
+    if args.is_empty()
+        || args
+            .iter()
+            .take_while(|argument| !argument.starts_with("--"))
+            .count()
+            != 1
+    {
+        return Err(Error::Usage(format!("usage: {usage}")));
+    }
+    reject_unknown_options_and_flags(args, &["--port"], &["--json"])?;
+    let port = optional_u8(args, "--port")?;
+    let image = SbrImage::read(Path::new(&args[0]))?;
+    image.validate()?;
+    let inspection = filtered_port_defaults_inspection(&image, port)?;
+    if args.iter().any(|argument| argument == "--json") {
+        print_json(&inspection)
+    } else {
+        print_port_defaults_inspection(&inspection);
         Ok(())
     }
 }
@@ -651,6 +676,7 @@ fn run_device(args: &[String]) -> Result<()> {
         "entries" => run_device_entries(&args[1..]),
         "fields" => run_device_fields(&args[1..]),
         "psw" => run_device_psw(&args[1..]),
+        "ports" => run_device_ports(&args[1..]),
         "prepare-station" => run_prepare_station(&args[1..]),
         "prepare-config" => run_prepare_config(&args[1..]),
         "program-plan" => {
@@ -840,6 +866,30 @@ fn run_device_psw(options: &[String]) -> Result<()> {
     }
 }
 
+fn run_device_ports(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let offset = optional_number(options, "--offset")?.unwrap_or(SBR_FLASH_OFFSET);
+    let port = optional_u8(options, "--port")?;
+    let json = options.iter().any(|argument| argument == "--json");
+    reject_unknown_options_and_flags(options, &["--bdf", "--offset", "--port"], &["--json"])?;
+
+    let device = PlxSvcDevice::open(bdf)?;
+    let image = device.read_sbr(offset)?;
+    image.validate()?;
+    let inspection = filtered_port_defaults_inspection(&image, port)?;
+    eprintln!(
+        "pexctl: read valid {}-byte SBR from {} at flash offset {offset:#x}",
+        image.bytes().len(),
+        device.bdf()
+    );
+    if json {
+        print_json(&inspection)
+    } else {
+        print_port_defaults_inspection(&inspection);
+        Ok(())
+    }
+}
+
 fn filtered_entry_inspection(
     image: &SbrImage,
     block: Option<&str>,
@@ -870,6 +920,22 @@ fn filtered_psw_inspection(image: &SbrImage, block: Option<&str>) -> Result<pexc
             )));
         }
         inspection.blocks.retain(|entry| entry.block == block);
+    }
+    Ok(inspection)
+}
+
+fn filtered_port_defaults_inspection(
+    image: &SbrImage,
+    port: Option<u8>,
+) -> Result<pexctl::PortDefaultsInspection> {
+    let mut inspection = image.port_defaults_inspection();
+    if let Some(port) = port {
+        if !matches!(port, 0..=95 | 116 | 117) {
+            return Err(Error::Usage(format!(
+                "unsupported Atlas port {port}; expected 0 through 95, 116, or 117"
+            )));
+        }
+        inspection.ports.retain(|entry| entry.port == port);
     }
     Ok(inspection)
 }
@@ -1398,6 +1464,25 @@ fn print_psw_inspection(inspection: &pexctl::PswInspection) {
     }
 }
 
+fn print_port_defaults_inspection(inspection: &pexctl::PortDefaultsInspection) {
+    println!("port type type-off bits clock clock-off bits policy");
+    for port in &inspection.ports {
+        println!(
+            "{:>4} {:>4}   {:#06x} {:>5}:{:<2} {:>5}    {:#06x} {:>5}:{:<2} {}",
+            port.port,
+            port.port_type_raw,
+            port.port_type_offset,
+            port.port_type_bit_high,
+            port.port_type_bit_low,
+            port.clock_mode_raw,
+            port.clock_mode_offset,
+            port.clock_mode_bit_high,
+            port.clock_mode_bit_low,
+            port.write_policy
+        );
+    }
+}
+
 fn option_value<'a>(args: &'a [String], name: &str) -> Result<&'a str> {
     let position = args
         .iter()
@@ -1414,6 +1499,15 @@ fn optional_number(args: &[String], name: &str) -> Result<Option<u64>> {
         return Ok(None);
     }
     Ok(Some(parse_number(option_value(args, name)?)?))
+}
+
+fn optional_u8(args: &[String], name: &str) -> Result<Option<u8>> {
+    optional_number(args, name)?
+        .map(|value| {
+            u8::try_from(value)
+                .map_err(|_| Error::Usage(format!("{name} must fit in an unsigned byte")))
+        })
+        .transpose()
 }
 
 fn parse_number(value: &str) -> Result<u64> {
@@ -1503,6 +1597,7 @@ USAGE:
   pexctl sbr fields IMAGE [--json]
   pexctl sbr entries IMAGE [--block psb|psb-serdes] [--json]
   pexctl sbr psw IMAGE [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]
+  pexctl sbr ports IMAGE [--port N] [--json]
   pexctl sbr export-field-patch IMAGE --field NAME --value VALUE \
     --output CONFIG.json
   pexctl sbr export-entry-patch IMAGE --block psb|psb-serdes --index N \
@@ -1526,6 +1621,8 @@ USAGE:
     [--block psb|psb-serdes] [--json]
   sudo pexctl device psw --bdf 0000:c4:00.0 [--offset 0x400] \
     [--block psw0|psw1|psw2|psw3|psw4|psw5|pswx2] [--json]
+  sudo pexctl device ports --bdf 0000:c4:00.0 [--offset 0x400] \
+    [--port N] [--json]
   sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 \
     [--method mapped|serial] --output OUTPUT
   sudo pexctl device spi-id --bdf 0000:c4:00.0

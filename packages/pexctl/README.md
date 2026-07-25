@@ -31,6 +31,8 @@ pexctl sbr entries IMAGE
 pexctl sbr entries IMAGE --block psb-serdes --json
 pexctl sbr psw IMAGE
 pexctl sbr psw IMAGE --block psw4 --json
+pexctl sbr ports IMAGE
+pexctl sbr ports IMAGE --port 64 --json
 pexctl sbr export-field-patch IMAGE --field soc.customer_scratch1 \
   --value 1 --output expert-field.json
 pexctl sbr export-entry-patch IMAGE --block psb --index 0 \
@@ -57,6 +59,7 @@ sudo pexctl device inspect-sbr --bdf 0000:c4:00.0 --json
 sudo pexctl device fields --bdf 0000:c4:00.0 --json
 sudo pexctl device entries --bdf 0000:c4:00.0 --block psb
 sudo pexctl device psw --bdf 0000:c4:00.0 --block psw4
+sudo pexctl device ports --bdf 0000:c4:00.0 --port 64
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --output sector-0.bin
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
@@ -90,6 +93,7 @@ set. It also decodes the PSB register-write records and PSB-SerDes AXI-write
 records described below. `sbr entries` prints the indexed write records
 directly and can select either block with `--block`. `sbr psw` prints the
 station/lane PSW view and can select `psw0` through `psw5`, or `pswx2`.
+`sbr ports` prints the database-defined port-type and clock-mode tables.
 `diff --json` provides hashes, named-field changes, station changes,
 PSB/PSB-SerDes entry-value changes, and byte changes.
 
@@ -175,9 +179,10 @@ drive the Atlas manual-SPI controller registers and issue only JEDEC-ID and
 read commands; they do not issue flash write-enable, erase, page-program, PEX
 reset, or host reset operations.
 
-`device inspect-sbr`, `device fields`, `device entries`, and `device psw`
-provide the same focused views directly from the live mapped CS0 SBR, without
-first creating an intermediate image. They perform only PlxSvc mapped reads.
+`device inspect-sbr`, `device fields`, `device entries`, `device psw`, and
+`device ports` provide the same focused views directly from the live mapped
+CS0 SBR, without first creating an intermediate image. They perform only
+PlxSvc mapped reads.
 
 On the observed PEX88096, the safe memory-mapped CS0 prefix is `0x500000`
 bytes. At flash offset `0x500000`, the nominal flash mapping reaches BAR0
@@ -302,6 +307,20 @@ Broadcom's Base RDK96 image mark every PSW block ignored with offset zero and
 size one, so there is no observed enabled payload or safe evidence for adding,
 resizing, and reindexing these blocks. This is a read-only format guarantee,
 not a claim that PSW settings are unnecessary.
+
+## Port defaults
+
+The Atlas field database defines two-bit `Port Type` and `Clocking mode`
+defaults for ports 0 through 95, plus special ports 116 and 117. `sbr ports`
+and `device ports` report each raw code, its exact SBR offset and bit range,
+and a read-only policy. `--port` selects one supported port; ports 96 through
+115 are not present in the database table and are rejected.
+
+The enum meanings are not available in the evidence corpus. More importantly,
+all 98 type codes and all 98 clock-mode codes are zero in both the live
+all-x16 image and Broadcom's fan-out Base RDK96 image. These tables therefore
+do not distinguish the proven x16 and x4+x4+x4+x4 station layouts. `pexctl`
+does not invent names for zero and does not permit these values to be changed.
 
 ## PEX88096 station topology
 

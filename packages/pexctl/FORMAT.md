@@ -110,6 +110,30 @@ decode. The vendor editor's documented default display is not treated as an
 image fixture. PSW writes remain unavailable until an enabled image establishes
 payload behavior and block insertion/reindexing can be implemented safely.
 
+## Port type and clock-mode defaults
+
+The Atlas database defines a two-bit `Port Type` and a two-bit `Clocking mode`
+for 98 ports:
+
+| Ports | Port-type fields | Clock-mode fields |
+|---|---|---|
+| 0–95 | `0xc0 + (port / 16) * 4`, bits `2*(port%16)+1 : 2*(port%16)` | `0xe0 + (port / 16) * 4`, same bit position |
+| 116 | `0xdc`, bits 9:8 | `0xf8`, bits 25:24 |
+| 117 | `0xdc`, bits 11:10 | `0xf8`, bits 27:26 |
+
+In the first row, the displayed low bit is `(port % 16) * 2` and the high bit
+is one greater. Ports 96 through 115 have no corresponding fields in the
+database and are not inferred from surrounding reserved dwords.
+
+`sbr ports` and `device ports` expose these values through
+`pexctl.atlas-port-default-inspection.v1`. Every record includes the port,
+both raw two-bit values, both SBR offsets and bit ranges, and a `read-only`
+policy. The numeric enum meanings are not established.
+
+All 196 decoded values are zero in both the live all-x16 PEX88096 image and
+Broadcom's Base RDK96 fan-out image. They therefore do not distinguish the two
+known station layouts, and no write path is exposed.
+
 ## First SoC dword
 
 The SoC block begins at SBR offset `0x5c`.
