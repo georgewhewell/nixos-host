@@ -69,7 +69,9 @@ field name.
 The common parser now also rejects enabled indexed blocks that overlap the
 fixed header/SoC region or one another. Both the current and RDK images pass
 the stronger structural check, and the existing station-4 plan remains
-verifiable.
+verifiable. Vendor enum inspection further identifies index pairs 14–15 and
+20–21 as `RSVD0` and `RSVD1`; the parser now rejects a nonzero offset in either
+reserved pair.
 
 ## Port defaults
 

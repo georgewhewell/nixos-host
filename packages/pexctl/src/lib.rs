@@ -2530,6 +2530,14 @@ pub fn expected_size_from_prefix(bytes: &[u8]) -> Result<usize> {
         )));
     }
     let index = parse_index(bytes)?;
+    for (name, offset_index, size_index) in [("rsvd0", 14, 15), ("rsvd1", 20, 21)] {
+        if index[offset_index] != 0 {
+            return Err(Error::Format(format!(
+                "{name} index pair is reserved but has offset {:#x} and size {:#x}",
+                index[offset_index], index[size_index]
+            )));
+        }
+    }
     let mut checksum_offset = SOC_END as u32;
     for kind in BlockKind::ALL {
         let (offset_index, size_index) = kind.index_pair();
@@ -4128,6 +4136,20 @@ mod tests {
         let error = SbrImage::parse(block_overlap).unwrap_err().to_string();
         assert!(error.contains("psb-serdes"));
         assert!(error.contains("overlaps psb"));
+    }
+
+    #[test]
+    fn rejects_enabled_vendor_reserved_index_pairs() {
+        for (name, offset_index, size_index) in [("rsvd0", 14, 15), ("rsvd1", 20, 21)] {
+            let mut bytes = minimal_image([[0; 4]; 6]).into_bytes();
+            bytes[SBR_INDEX_OFFSET + offset_index * 4..SBR_INDEX_OFFSET + (offset_index + 1) * 4]
+                .copy_from_slice(&(SOC_END as u32).to_le_bytes());
+            bytes[SBR_INDEX_OFFSET + size_index * 4..SBR_INDEX_OFFSET + (size_index + 1) * 4]
+                .copy_from_slice(&4u32.to_le_bytes());
+            let error = SbrImage::parse(bytes).unwrap_err().to_string();
+            assert!(error.contains(name));
+            assert!(error.contains("index pair is reserved"));
+        }
     }
 
     #[test]

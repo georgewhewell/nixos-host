@@ -17,11 +17,12 @@ All integers are little-endian.
 | indexed | variable | PSB, per-station PSW, PSWx2, and PSB SerDes blocks |
 | final dword | 4 | hardware checksum in the low byte |
 
-The index consists primarily of offset/size pairs. Entries 14 and 15 are
-reserved in the observed Atlas database; entries 20 and 21 follow the known
-block pairs but remain uninterpreted. `pexctl` derives the image end from the
-largest enabled block end, then expects the checksum dword immediately after
-it. Ignored blocks use offset zero with a nonzero size.
+The index consists of offset/size pairs. The vendor enum identifies entries
+14–15 as `RSVD0` and entries 20–21 as `RSVD1`; neither is an extension slot.
+`pexctl` rejects a nonzero offset in either pair. It derives the image end from
+the largest enabled non-reserved block end, then expects the checksum dword
+immediately after it. Ignored blocks use offset zero with a nonzero size, so
+the observed reserved encodings `(0,1)` and `(0,0)` remain valid.
 
 The checksum is:
 
