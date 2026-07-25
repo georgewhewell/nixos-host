@@ -1,0 +1,28 @@
+format: pexctl-station-plan-v1
+bdf: 0000:c4:00.0
+pci-id: 1000:c010
+jedec-id: ef 60 18
+flash-size: 0x1000000
+sbr-offset: 0x400
+sbr-size: 0xb50
+station: 4
+old-codes: [0, 0, 0, 0]
+new-codes: [1, 1, 1, 1]
+new-layout: x4+x4+x4+x4
+
+files:
+  current-flash-a.bin: sha256=16796f3fa9f0f88276635c60d1e1e2d581393a3eba5f7a03afed9975aa8ab83b size=0x1000000
+  current-flash-b.bin: sha256=16796f3fa9f0f88276635c60d1e1e2d581393a3eba5f7a03afed9975aa8ab83b size=0x1000000
+  current-region.bin: sha256=52dabae4bbeecbb404371e13634d68a565f687cffa74308a67d641edd30ad6bb size=0x40000
+  current-sbr.bin: sha256=f4e0bf5d1d01d3f8daccc7c9c792cf0174e509a725379a646c9704c2cd4caae5 size=0xb50
+  candidate-region.bin: sha256=eae37576515486e0e00db49d96e89ef26c9e02b4d34f9db1800b44fd44af4ce1 size=0x40000
+  candidate-sbr.bin: sha256=3736c9fc9d67e99152fa834208ec303ccc2ebe0c60c8518777ab44eb9f87c0ea size=0xb50
+
+sbr-byte-differences:
+  sbr=0x64 flash=0x464 00->49
+  sbr=0x65 flash=0x465 00->02
+  sbr=0xb4c flash=0xf4c 1a->cf
+
+program-command: pexctl device program-sector0 --bdf 0000:c4:00.0 --expected-current current-region.bin --candidate candidate-region.bin --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
+required-confirmation: ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
+hardware-written: no

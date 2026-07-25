@@ -1,9 +1,12 @@
 use pexctl::{
-    byte_differences, validate_sector0_replacement, write_new_file, Error, PlxSvcDevice, Result,
-    SbrImage, StationLayout, SBR_FLASH_OFFSET, SOC_END,
+    byte_differences, sha256_hex, validate_sector0_replacement, write_new_file, Error,
+    PlxSvcDevice, Result, SbrImage, StationLayout, ATLAS_SPI_RECOVERY_REGION_SIZE,
+    SBR_FLASH_OFFSET, SOC_END,
 };
 use std::env;
+use std::fmt::Write as _;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -293,21 +296,39 @@ fn run_device(args: &[String]) -> Result<()> {
             let offset = optional_number(options, "--offset")?.unwrap_or(0);
             let size = usize::try_from(parse_number(option_value(options, "--size")?)?)
                 .map_err(|_| Error::Usage("--size does not fit host address space".into()))?;
-            reject_unknown_options(options, &["--bdf", "--output", "--offset", "--size"])?;
+            let method = if options.iter().any(|argument| argument == "--method") {
+                option_value(options, "--method")?
+            } else {
+                "mapped"
+            };
+            reject_unknown_options(
+                options,
+                &["--bdf", "--output", "--offset", "--size", "--method"],
+            )?;
             let device = PlxSvcDevice::open(bdf)?;
-            let bytes = device.read_flash_mapped(offset, size)?;
+            let bytes = match method {
+                "mapped" => device.read_flash_mapped(offset, size)?,
+                "serial" => device.read_flash_serial(offset, size)?,
+                _ => {
+                    return Err(Error::Usage(format!(
+                        "unsupported flash read method {method:?}; expected mapped or serial"
+                    )));
+                }
+            };
             write_new_file(&output, &bytes)?;
             println!(
-                "read {size} bytes from {} ({:04x}:{:04x}) through the PlxSvc mapped CS0 window at flash offset {offset:#x} into {}",
+                "read {size} bytes from {} ({:04x}:{:04x}) through the PlxSvc {method} CS0 path at flash offset {offset:#x} into {}",
                 device.bdf(),
                 device.vendor(),
                 device.device(),
                 output.display()
             );
-            println!(
-                "BAR0 exposes {:#x} bytes of the flash window",
-                device.mapped_flash_size()
-            );
+            if method == "mapped" {
+                println!(
+                    "BAR0 safely exposes {:#x} bytes before the port-register overlap",
+                    device.mapped_flash_size()
+                );
+            }
             Ok(())
         }
         "read-sbr" => {
@@ -329,6 +350,7 @@ fn run_device(args: &[String]) -> Result<()> {
             );
             Ok(())
         }
+        "prepare-station" => run_prepare_station(&args[1..]),
         "program-sector0" => {
             let options = &args[1..];
             let bdf = option_value(options, "--bdf")?;
@@ -368,6 +390,192 @@ fn run_device(args: &[String]) -> Result<()> {
             Ok(())
         }
         other => Err(Error::Usage(format!("unknown device command {other:?}"))),
+    }
+}
+
+fn run_prepare_station(options: &[String]) -> Result<()> {
+    let bdf = option_value(options, "--bdf")?;
+    let station = option_value(options, "--station")?
+        .parse::<usize>()
+        .map_err(|_| Error::Usage("--station must be an integer from 0 through 5".into()))?;
+    let layout = StationLayout::parse(option_value(options, "--layout")?)?;
+    let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
+    reject_unknown_options(options, &["--bdf", "--station", "--layout", "--output-dir"])?;
+    if output_dir.exists() {
+        return Err(Error::Safety(format!(
+            "{} already exists; choose a new plan directory",
+            output_dir.display()
+        )));
+    }
+
+    let device = PlxSvcDevice::open(bdf)?;
+    let identity = device.spi_identity()?;
+    eprintln!(
+        "pexctl: pass 1/2: reading complete {} CS0 flash",
+        device.bdf()
+    );
+    let flash_a = device.read_complete_flash()?;
+    eprintln!(
+        "pexctl: pass 2/2: reading complete {} CS0 flash",
+        device.bdf()
+    );
+    let flash_b = device.read_complete_flash()?;
+    if flash_a != flash_b {
+        let first = flash_a
+            .iter()
+            .zip(&flash_b)
+            .position(|(left, right)| left != right)
+            .or_else(|| {
+                (flash_a.len() != flash_b.len()).then_some(flash_a.len().min(flash_b.len()))
+            });
+        return Err(Error::Safety(format!(
+            "complete flash passes differ{}; no plan directory was created",
+            first
+                .map(|offset| format!(" (first mismatch at {offset:#x})"))
+                .unwrap_or_default()
+        )));
+    }
+    if flash_a.len() < ATLAS_SPI_RECOVERY_REGION_SIZE {
+        return Err(Error::Safety(format!(
+            "complete flash is only {:#x} bytes, shorter than the {ATLAS_SPI_RECOVERY_REGION_SIZE:#x}-byte recovery region",
+            flash_a.len()
+        )));
+    }
+
+    let sbr_offset = usize::try_from(SBR_FLASH_OFFSET)
+        .map_err(|_| Error::Usage("SBR offset does not fit host address space".into()))?;
+    let current_sbr = SbrImage::parse_prefix(
+        flash_a
+            .get(sbr_offset..)
+            .ok_or_else(|| Error::Format("complete flash ends before the SBR".into()))?,
+    )?;
+    current_sbr.validate()?;
+    let old_codes = current_sbr.station_codes(station)?;
+
+    let mut candidate_sbr = current_sbr.clone();
+    candidate_sbr.set_station_layout(station, layout)?;
+    candidate_sbr.validate()?;
+    let new_codes = candidate_sbr.station_codes(station)?;
+    let sbr_differences = byte_differences(current_sbr.bytes(), candidate_sbr.bytes());
+    if sbr_differences.is_empty() {
+        return Err(Error::Safety(format!(
+            "station {station} already has layout {layout}; no plan directory was created"
+        )));
+    }
+
+    let current_region = flash_a[..ATLAS_SPI_RECOVERY_REGION_SIZE].to_vec();
+    let mut candidate_region = current_region.clone();
+    let sbr_end = sbr_offset
+        .checked_add(candidate_sbr.bytes().len())
+        .ok_or_else(|| Error::Usage("candidate SBR range overflow".into()))?;
+    candidate_region[sbr_offset..sbr_end].copy_from_slice(candidate_sbr.bytes());
+    validate_sector0_replacement(&current_region, &candidate_region)?;
+
+    let required_confirmation = format!(
+        "ERASE-PROGRAM-VERIFY:{}:CS0:SECTOR0",
+        device.bdf().to_ascii_lowercase()
+    );
+    let files = [
+        ("current-flash-a.bin", flash_a.as_slice()),
+        ("current-flash-b.bin", flash_b.as_slice()),
+        ("current-region.bin", current_region.as_slice()),
+        ("current-sbr.bin", current_sbr.bytes()),
+        ("candidate-region.bin", candidate_region.as_slice()),
+        ("candidate-sbr.bin", candidate_sbr.bytes()),
+    ];
+
+    let mut manifest = String::new();
+    writeln!(manifest, "format: pexctl-station-plan-v1").expect("writing to String");
+    writeln!(manifest, "bdf: {}", device.bdf()).expect("writing to String");
+    writeln!(
+        manifest,
+        "pci-id: {:04x}:{:04x}",
+        device.vendor(),
+        device.device()
+    )
+    .expect("writing to String");
+    writeln!(
+        manifest,
+        "jedec-id: {:02x} {:02x} {:02x}",
+        identity[0], identity[1], identity[2]
+    )
+    .expect("writing to String");
+    writeln!(manifest, "flash-size: {:#x}", flash_a.len()).expect("writing to String");
+    writeln!(manifest, "sbr-offset: {SBR_FLASH_OFFSET:#x}").expect("writing to String");
+    writeln!(manifest, "sbr-size: {:#x}", current_sbr.bytes().len()).expect("writing to String");
+    writeln!(manifest, "station: {station}").expect("writing to String");
+    writeln!(manifest, "old-codes: {old_codes:?}").expect("writing to String");
+    writeln!(manifest, "new-codes: {new_codes:?}").expect("writing to String");
+    writeln!(manifest, "new-layout: {layout}").expect("writing to String");
+    writeln!(manifest).expect("writing to String");
+    writeln!(manifest, "files:").expect("writing to String");
+    for (name, bytes) in files {
+        writeln!(
+            manifest,
+            "  {name}: sha256={} size={:#x}",
+            sha256_hex(bytes),
+            bytes.len()
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest).expect("writing to String");
+    writeln!(manifest, "sbr-byte-differences:").expect("writing to String");
+    for difference in &sbr_differences {
+        writeln!(
+            manifest,
+            "  sbr={:#x} flash={:#x} {:02x}->{:02x}",
+            difference.offset,
+            sbr_offset + difference.offset,
+            difference.before,
+            difference.after
+        )
+        .expect("writing to String");
+    }
+    writeln!(manifest).expect("writing to String");
+    writeln!(
+        manifest,
+        "program-command: pexctl device program-sector0 --bdf {} --expected-current current-region.bin --candidate candidate-region.bin --confirm {required_confirmation}",
+        device.bdf()
+    )
+    .expect("writing to String");
+    writeln!(manifest, "required-confirmation: {required_confirmation}")
+        .expect("writing to String");
+    writeln!(manifest, "hardware-written: no").expect("writing to String");
+
+    create_new_directory(&output_dir)?;
+    for (name, bytes) in files {
+        write_new_file(&output_dir.join(name), bytes)?;
+    }
+    write_new_file(&output_dir.join("MANIFEST.txt"), manifest.as_bytes())?;
+
+    println!(
+        "prepared verified station plan in {}: station {} {:?} -> {:?} ({layout})",
+        output_dir.display(),
+        station,
+        old_codes,
+        new_codes
+    );
+    println!(
+        "two complete {}-byte flash reads matched; hardware was not written",
+        flash_a.len()
+    );
+    println!("required write confirmation: {required_confirmation}");
+    Ok(())
+}
+
+fn create_new_directory(path: &Path) -> Result<()> {
+    match fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(source) if source.kind() == io::ErrorKind::AlreadyExists => {
+            Err(Error::Safety(format!(
+                "{} already exists; choose a new plan directory",
+                path.display()
+            )))
+        }
+        Err(source) => Err(Error::io(
+            format!("creating directory {}", path.display()),
+            source,
+        )),
     }
 }
 
@@ -510,9 +718,12 @@ USAGE:
   pexctl flash replace-sbr FLASH SBR --output OUTPUT [--offset 0x400]
 
   sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output OUTPUT [--offset 0x400]
-  sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 --output OUTPUT
+  sudo pexctl device read-flash --bdf 0000:c4:00.0 --offset 0 --size 0x40000 \
+    [--method mapped|serial] --output OUTPUT
   sudo pexctl device spi-id --bdf 0000:c4:00.0
   sudo pexctl device backup-flash --bdf 0000:c4:00.0 --output OUTPUT
+  sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
+    --station N --layout x16|x4x4x4x4 --output-dir DIRECTORY
   sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
     --expected-current BACKUP --candidate CANDIDATE \
     --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0

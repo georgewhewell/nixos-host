@@ -43,3 +43,8 @@ immutable evidence: do not replace an old dump with a newer one.
   corrections, two matching complete 16 MiB CS0 backups, three matching
   recovery-region reads, and a sector-preserving candidate. Nothing was
   programmed.
+- [`2026-07-25T00-05-29Z`](captures/2026-07-25T00-05-29Z/README.md):
+  live validation of the recovery-first `prepare-station` workflow, including
+  two matching complete flash passes, a serial-only recovery-region
+  cross-check, a hashed station-4 plan, and exact candidate reproduction.
+  Nothing was programmed.

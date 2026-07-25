@@ -1,12 +1,13 @@
-//! Lossless helpers for Broadcom/PLX Atlas SBR images and read-only devices.
+//! Lossless helpers for Broadcom/PLX Atlas SBR images and live devices.
 //!
 //! The format support here is deliberately conservative. Unknown bytes are
 //! retained verbatim, and mutation APIs expose only fields that have been
 //! confirmed against both a live PEX88096 image and Broadcom's RDK96 image.
 
+use sha2::{Digest, Sha256};
 use std::fmt;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -357,7 +358,7 @@ impl SbrImage {
                 "image exceeds Atlas limit of {MAX_SBR_SIZE:#x} bytes"
             )));
         }
-        if self.bytes.len() % 4 != 0 {
+        if self.bytes.len() & 3 != 0 {
             return Err(Error::Format("image length is not dword aligned".into()));
         }
         if self.signature() != ATLAS_SIGNATURE_PEX88096 {
@@ -509,15 +510,31 @@ pub fn byte_differences(before: &[u8], after: &[u8]) -> Vec<ByteDifference> {
     differences
 }
 
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
 pub fn write_new_file(path: &Path, bytes: &[u8]) -> Result<()> {
-    if path.exists() {
-        return Err(Error::Safety(format!(
-            "{} already exists; choose a new output path",
-            path.display()
-        )));
-    }
-    fs::write(path, bytes)
-        .map_err(|source| Error::io(format!("writing {}", path.display()), source))
+    let mut file = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(file) => file,
+        Err(source) if source.kind() == io::ErrorKind::AlreadyExists => {
+            return Err(Error::Safety(format!(
+                "{} already exists; choose a new output path",
+                path.display()
+            )));
+        }
+        Err(source) => {
+            return Err(Error::io(format!("creating {}", path.display()), source));
+        }
+    };
+    file.write_all(bytes)
+        .map_err(|source| Error::io(format!("writing {}", path.display()), source))?;
+    file.sync_all()
+        .map_err(|source| Error::io(format!("syncing {}", path.display()), source))
 }
 
 const PLX_DRIVER_PATH: &str = "/dev/plx/PlxSvc";
@@ -628,7 +645,7 @@ impl PlxSvcDevice {
                 "{bdf} vendor is {vendor:#06x}, not Broadcom/PLX 0x1000"
             )));
         }
-        if !matches!(device, 0xc010 | 0xc011 | 0xc012) {
+        if !matches!(device, 0xc010..=0xc012) {
             return Err(Error::Safety(format!(
                 "{bdf} device is {device:#06x}, not a supported Atlas PEX88000-family switch"
             )));
@@ -805,9 +822,27 @@ impl PlxSvcDevice {
             })?;
         let mut bytes = self.read_flash_mapped(0, mapped_size)?;
         if mapped_size < capacity {
-            bytes.extend(self.read_flash_serial(mapped_size, capacity - mapped_size)?);
+            bytes.extend(self.read_flash_serial_unchecked(mapped_size, capacity - mapped_size)?);
         }
         Ok(bytes)
+    }
+
+    pub fn read_flash_serial(&self, flash_offset: u64, size: usize) -> Result<Vec<u8>> {
+        let identity = self.spi_identity()?;
+        let capacity = supported_flash_capacity(identity)?;
+        let flash_offset = usize::try_from(flash_offset).map_err(|_| {
+            Error::Usage("serial flash offset does not fit host address space".into())
+        })?;
+        let end = flash_offset
+            .checked_add(size)
+            .ok_or_else(|| Error::Usage("serial flash read range overflow".into()))?;
+        if end > capacity {
+            return Err(Error::Safety(format!(
+                "serial read ends at {end:#x}, beyond the {capacity:#x}-byte flash reported by JEDEC ID {:02x?}",
+                identity
+            )));
+        }
+        self.read_flash_serial_unchecked(flash_offset, size)
     }
 
     pub fn program_sector0_recovery_gated(
@@ -840,12 +875,7 @@ impl PlxSvcDevice {
 
         self.spi_set_serial_mode()?;
         let identity = self.spi_identity()?;
-        if matches!(identity[0], 0x00 | 0xff) {
-            return Err(Error::Safety(format!(
-                "refusing erase with implausible SPI manufacturer ID {:#04x}",
-                identity[0]
-            )));
-        }
+        supported_flash_capacity(identity)?;
 
         self.spi_write_enable(true)?;
         self.spi_command(0, &[SPI_CMD_ERASE_SECTOR, 0, 0, 0], 0)?;
@@ -891,7 +921,7 @@ impl PlxSvcDevice {
         self.mapped_register_write(SPI_MANUAL_IO_MODE, 0)
     }
 
-    fn read_flash_serial(&self, flash_offset: usize, size: usize) -> Result<Vec<u8>> {
+    fn read_flash_serial_unchecked(&self, flash_offset: usize, size: usize) -> Result<Vec<u8>> {
         let end = flash_offset
             .checked_add(size)
             .ok_or_else(|| Error::Usage("serial flash read range overflow".into()))?;
@@ -977,7 +1007,7 @@ impl PlxSvcDevice {
         let mut reply = vec![0u8; rx_size];
         let reply_chunks = rx_size.div_ceil(4);
         for (index, chunk) in reply.chunks_mut(4).enumerate() {
-            let mut control = chunk.len() as u32 * 8 | SPI_CONTROL_VALID;
+            let mut control = (chunk.len() as u32 * 8) | SPI_CONTROL_VALID;
             if index + 1 == reply_chunks {
                 control |= SPI_CONTROL_LAST;
             }
@@ -1301,5 +1331,13 @@ mod tests {
         assert_eq!(PLX_IOCTL_PCI_DEVICE_FIND, 0xc164_5007);
         assert_eq!(PLX_IOCTL_MAPPED_REGISTER_READ, 0xc164_5011);
         assert_eq!(PLX_IOCTL_MAPPED_REGISTER_WRITE, 0xc164_5012);
+    }
+
+    #[test]
+    fn sha256_matches_standard_vector() {
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
     }
 }

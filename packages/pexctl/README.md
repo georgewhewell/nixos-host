@@ -4,6 +4,10 @@
 Broadcom's PLX SDK and PEX Device Editor. The initial target is the Atlas
 PEX88000 family, tested against a PEX88096.
 
+See [`PRIOR-ART.md`](PRIOR-ART.md) for the surveyed open projects, SDK source
+mirrors, hardware projects, and field reports, including the boundary between
+older PLX EEPROM formats and Atlas SBR.
+
 The design is deliberately recovery-first:
 
 - parse every image losslessly and preserve unknown bytes;
@@ -30,9 +34,13 @@ pexctl flash replace-sbr flash.bin candidate.bin --output candidate-flash.bin
 sudo pexctl device read-sbr --bdf 0000:c4:00.0 --output current.bin
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --output sector-0.bin
+sudo pexctl device read-flash --bdf 0000:c4:00.0 \
+  --offset 0 --size 0x40000 --method serial --output sector-0-serial.bin
 sudo pexctl device spi-id --bdf 0000:c4:00.0
 sudo pexctl device backup-flash --bdf 0000:c4:00.0 \
   --output complete-cs0.bin
+sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
+  --station 4 --layout x4x4x4x4 --output-dir station4-plan
 
 sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
   --expected-current sector-0.bin --candidate candidate-sector-0.bin \
@@ -43,8 +51,10 @@ The device reader accesses the Atlas CS0 memory-mapped flash window through the
 open PlxSvc ioctl ABI from Broadcom's dual-BSD/GPL SDK. It verifies the PCI
 address and device identity against sysfs and PlxSvc independently, checks the
 driver ABI version, derives the SBR length from its index, and validates the
-resulting checksum. It issues mapped-register reads only; it does not reset the
-switch or write a register.
+resulting checksum. Mapped reads issue only register-read ioctls. Serial reads
+drive the Atlas manual-SPI controller registers and issue only JEDEC-ID and
+read commands; they do not issue flash write-enable, erase, page-program, PEX
+reset, or host reset operations.
 
 On the observed PEX88096, the safe memory-mapped CS0 prefix is `0x500000`
 bytes. At flash offset `0x500000`, the nominal flash mapping reaches BAR0
@@ -54,6 +64,15 @@ as flash produces changing register data. The normalized JEDEC ID is
 the first 5 MiB through the mapped window and the remaining 11 MiB through
 serial SPI, and it refuses any other unproven flash ID. A claimed 64 MiB dump
 based on the SDK's hard-coded geometry would be four times too large.
+
+`prepare-station` performs two complete flash reads and requires them to match
+before deriving anything. It validates the live SBR, applies one named station
+layout, constructs and validates the preserved 256 KiB recovery image, and
+then writes a new plan directory containing both complete backups, current and
+candidate SBRs, current and candidate recovery images, and a SHA-256 manifest.
+The manifest records every changed SBR and flash offset plus the exact
+device-bound confirmation needed by `program-sector0`. Preparation never
+writes or resets the switch.
 
 ## PEX88096 station topology
 
