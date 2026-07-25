@@ -31,7 +31,8 @@ legacy_plx_i2c_target_enable
 ```
 
 Secure boot, watchdog, fanout, and flash-signature enablement are currently
-clear. These fields are inspection-only in `pexctl`.
+clear. These fields require an expected-current expert patch and
+`--allow-expert-fields` in `pexctl`; none was changed during this work.
 
 ## Station-4 candidate
 

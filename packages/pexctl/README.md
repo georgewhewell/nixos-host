@@ -25,10 +25,13 @@ The design is deliberately recovery-first:
 pexctl sbr inspect IMAGE
 pexctl sbr inspect IMAGE --json
 pexctl sbr validate IMAGE
+pexctl sbr fields IMAGE
 pexctl sbr diff BEFORE AFTER
 pexctl sbr diff BEFORE AFTER --json
 pexctl sbr export-config IMAGE --output config.json
 pexctl sbr apply-config IMAGE config.json --output candidate.bin
+pexctl sbr apply-config IMAGE expert-config.json --output candidate.bin \
+  --allow-expert-fields
 pexctl sbr set-station INPUT --station 4 --layout x4x4x4x4 --output candidate.bin
 pexctl sbr repair-checksum INPUT --output repaired.bin
 
@@ -47,6 +50,8 @@ sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
   --station 4 --layout x4x4x4x4 --output-dir station4-plan
 sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
   --config config.json --output-dir config-plan
+sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
+  --config expert-config.json --output-dir expert-plan --allow-expert-fields
 
 sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
   --expected-current sector-0.bin --candidate candidate-sector-0.bin \
@@ -84,6 +89,33 @@ not match a proven layout has no `layout` member, so applying the exported file
 preserves that station. See
 [`examples/station4-x4x4x4x4.json`](examples/station4-x4x4x4x4.json) and
 [`FORMAT.md`](FORMAT.md).
+
+Named fields whose positions are understood but whose board behavior has not
+been independently validated can be changed through an explicit expert patch:
+
+```json
+{
+  "schema": "pexctl.atlas-config.v1",
+  "expert_soc_fields": [
+    {
+      "field": "soc.fanout_enable",
+      "expected": 0,
+      "value": 1
+    }
+  ]
+}
+```
+
+Both `apply-config` and `prepare-config` refuse this document unless
+`--allow-expert-fields` is present. Each patch must name a field reported with
+an `expert` policy by `sbr fields` or `"write_policy": "expert"` by
+`inspect --json`, and `expected` must exactly match the input image before any
+mutation occurs. Unknown fields, duplicate fields, values wider than the
+field, and attempts to bypass ordinary typed settings are rejected. The
+example is in
+[`examples/expert-fanout-enable.json`](examples/expert-fanout-enable.json);
+it demonstrates the syntax and is not a recommendation to enable fanout on
+this board.
 
 The device reader accesses the Atlas CS0 memory-mapped flash window through the
 open PlxSvc ioctl ABI from Broadcom's dual-BSD/GPL SDK. It verifies the PCI
@@ -125,12 +157,14 @@ The following fields are writable through `pexctl.atlas-config.v1`:
 | station layout | four packed 3-bit quarter codes per station | only the two complete layouts below are writable |
 
 The first-dword PCIe lane-enable field at bits 15:13 is reported as
-`lane_enable_code_raw`, but it is not writable because its value semantics are
-not yet established. JSON also names 33 read-only fields in SoC dwords
+`lane_enable_code_raw`; its value semantics are not yet established. JSON also
+names 33 expert fields in SoC dwords
 `0x68`–`0x70`, including DPR, link-training, clock, hot-plug, power, watchdog,
 secure-boot, and ECC controls. Their positions and vendor names are known, but
-write behavior has not been independently validated. Every SoC dword remains
-available as raw inspection data and is retained byte-for-byte.
+write behavior has not been independently validated. These fields are
+available only through the expected-current and command-line opt-in mechanism
+above. Every SoC dword remains available as raw inspection data and is retained
+byte-for-byte.
 
 ## PEX88096 station topology
 

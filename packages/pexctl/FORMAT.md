@@ -57,9 +57,18 @@ STP controls, station clock controls, hot-plug and power controls, secure boot,
 watchdog, SPI ECC, and boot-ROM/RAM ECC controls.
 
 They appear under `soc.named_fields` with their SBR offset, low/high bit,
-numeric value, and write-support flag. These are read-only: a field name and
-bit width establish how to inspect a value, but do not establish the board
-constraints or reset behavior needed to mutate it safely.
+numeric value, and `write_policy`. A policy of `ordinary` means the field has
+a typed configuration member. A policy of `expert` means its position is known
+but its board constraints and reset behavior have not been independently
+validated. The compatibility `writable` boolean is true only for `ordinary`
+fields; expert access always requires the separate acknowledgement below.
+
+Expert fields can be changed by exact name through `expert_soc_fields`. Each
+patch includes a mandatory `expected` value and is rejected unless the caller
+also passes `--allow-expert-fields`. All expected values are checked against
+the original input before any field is changed. This supplies access without
+misrepresenting a vendor field name as evidence that an arbitrary board value
+is safe.
 
 ## Proven station codes
 
@@ -79,7 +88,8 @@ claimed yet.
 `pexctl.atlas-config.v1` is a patch, not a complete reserialization of the
 binary format. Omitted fields and stations are unchanged. A station entry with
 no `layout` is also unchanged; this permits an exported file to preserve raw
-or unclassified layouts.
+or unclassified layouts. Expert fields are omitted from exported editable
+configuration and must always be added deliberately.
 
 The parser rejects unknown JSON members. Applying a configuration:
 

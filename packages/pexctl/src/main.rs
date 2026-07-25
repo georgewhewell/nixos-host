@@ -76,6 +76,13 @@ fn run_sbr(args: &[String]) -> Result<()> {
             );
             Ok(())
         }
+        "fields" => {
+            expect_len(args, 2, "pexctl sbr fields IMAGE")?;
+            let image = SbrImage::read(Path::new(&args[1]))?;
+            image.validate()?;
+            print_named_fields(&image);
+            Ok(())
+        }
         "diff" => {
             let json = optional_json_flag(args, 3, "pexctl sbr diff BEFORE AFTER [--json]")?;
             let before = SbrImage::read(Path::new(&args[1]))?;
@@ -136,13 +143,16 @@ fn run_apply_config(args: &[String]) -> Result<()> {
     let input = PathBuf::from(&args[0]);
     let config_path = PathBuf::from(&args[1]);
     let output = PathBuf::from(option_value(args, "--output")?);
-    reject_unknown_options(args, &["--output"])?;
+    let allow_expert_fields = args
+        .iter()
+        .any(|argument| argument == "--allow-expert-fields");
+    reject_unknown_options_and_flags(args, &["--output"], &["--allow-expert-fields"])?;
 
     let mut image = SbrImage::read(&input)?;
     image.validate()?;
     let before = image.clone();
     let config = AtlasConfig::read(&config_path)?;
-    image.apply_config(&config)?;
+    image.apply_config_with_policy(&config, allow_expert_fields)?;
     let differences = byte_differences(before.bytes(), image.bytes());
     if differences.is_empty() {
         return Err(Error::Safety(
@@ -480,19 +490,31 @@ fn run_prepare_station(options: &[String]) -> Result<()> {
     let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
     reject_unknown_options(options, &["--bdf", "--station", "--layout", "--output-dir"])?;
     let config = AtlasConfig::station_layout(station, layout)?;
-    prepare_config_plan(bdf, &config, &output_dir)
+    prepare_config_plan(bdf, &config, &output_dir, false)
 }
 
 fn run_prepare_config(options: &[String]) -> Result<()> {
     let bdf = option_value(options, "--bdf")?;
     let config_path = PathBuf::from(option_value(options, "--config")?);
     let output_dir = PathBuf::from(option_value(options, "--output-dir")?);
-    reject_unknown_options(options, &["--bdf", "--config", "--output-dir"])?;
+    let allow_expert_fields = options
+        .iter()
+        .any(|argument| argument == "--allow-expert-fields");
+    reject_unknown_options_and_flags(
+        options,
+        &["--bdf", "--config", "--output-dir"],
+        &["--allow-expert-fields"],
+    )?;
     let config = AtlasConfig::read(&config_path)?;
-    prepare_config_plan(bdf, &config, &output_dir)
+    prepare_config_plan(bdf, &config, &output_dir, allow_expert_fields)
 }
 
-fn prepare_config_plan(bdf: &str, config: &AtlasConfig, output_dir: &Path) -> Result<()> {
+fn prepare_config_plan(
+    bdf: &str,
+    config: &AtlasConfig,
+    output_dir: &Path,
+    allow_expert_fields: bool,
+) -> Result<()> {
     config.validate()?;
     if output_dir.exists() {
         return Err(Error::Safety(format!(
@@ -545,7 +567,7 @@ fn prepare_config_plan(bdf: &str, config: &AtlasConfig, output_dir: &Path) -> Re
     current_sbr.validate()?;
 
     let mut candidate_sbr = current_sbr.clone();
-    candidate_sbr.apply_config(config)?;
+    candidate_sbr.apply_config_with_policy(config, allow_expert_fields)?;
     candidate_sbr.validate()?;
     let report = current_sbr.diff(&candidate_sbr);
     let sbr_differences = byte_differences(current_sbr.bytes(), candidate_sbr.bytes());
@@ -609,6 +631,12 @@ fn prepare_config_plan(bdf: &str, config: &AtlasConfig, output_dir: &Path) -> Re
     writeln!(manifest, "flash-size: {:#x}", flash_a.len()).expect("writing to String");
     writeln!(manifest, "sbr-offset: {SBR_FLASH_OFFSET:#x}").expect("writing to String");
     writeln!(manifest, "sbr-size: {:#x}", current_sbr.bytes().len()).expect("writing to String");
+    writeln!(
+        manifest,
+        "expert-fields-enabled: {}",
+        if allow_expert_fields { "yes" } else { "no" }
+    )
+    .expect("writing to String");
     writeln!(manifest).expect("writing to String");
     writeln!(manifest, "files:").expect("writing to String");
     for (name, bytes) in files {
@@ -777,6 +805,21 @@ fn print_diff(before: &SbrImage, after: &SbrImage) {
     }
 }
 
+fn print_named_fields(image: &SbrImage) {
+    println!("field                                      offset bits   value policy");
+    for field in image.inspection().soc.named_fields {
+        let bits = if field.bit_low == field.bit_high {
+            field.bit_low.to_string()
+        } else {
+            format!("{}:{}", field.bit_high, field.bit_low)
+        };
+        println!(
+            "{:<42} {:#06x} {:>5} {:>7} {}",
+            field.name, field.offset, bits, field.value, field.write_policy
+        );
+    }
+}
+
 fn option_value<'a>(args: &'a [String], name: &str) -> Result<&'a str> {
     let position = args
         .iter()
@@ -805,6 +848,14 @@ fn parse_number(value: &str) -> Result<u64> {
 }
 
 fn reject_unknown_options(args: &[String], known: &[&str]) -> Result<()> {
+    reject_unknown_options_and_flags(args, known, &[])
+}
+
+fn reject_unknown_options_and_flags(
+    args: &[String],
+    value_options: &[&str],
+    flag_options: &[&str],
+) -> Result<()> {
     let positional = args
         .iter()
         .take_while(|argument| !argument.starts_with("--"))
@@ -812,7 +863,17 @@ fn reject_unknown_options(args: &[String], known: &[&str]) -> Result<()> {
     let mut index = positional;
     while index < args.len() {
         let option = &args[index];
-        if !known.contains(&option.as_str()) {
+        if args[positional..index]
+            .iter()
+            .any(|previous| previous == option)
+        {
+            return Err(Error::Usage(format!("duplicate option {option:?}")));
+        }
+        if flag_options.contains(&option.as_str()) {
+            index += 1;
+            continue;
+        }
+        if !value_options.contains(&option.as_str()) {
             return Err(Error::Usage(format!("unknown option {option:?}")));
         }
         if index + 1 >= args.len() || args[index + 1].starts_with("--") {
@@ -860,9 +921,10 @@ pexctl — open Broadcom/PLX PEX switch configuration tools
 USAGE:
   pexctl sbr inspect IMAGE [--json]
   pexctl sbr validate IMAGE
+  pexctl sbr fields IMAGE
   pexctl sbr diff BEFORE AFTER [--json]
   pexctl sbr export-config IMAGE --output CONFIG.json
-  pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT
+  pexctl sbr apply-config INPUT CONFIG.json --output OUTPUT [--allow-expert-fields]
   pexctl sbr set-station INPUT --station N --layout x16|x4x4x4x4 --output OUTPUT
   pexctl sbr repair-checksum INPUT --output OUTPUT
 
@@ -877,7 +939,7 @@ USAGE:
   sudo pexctl device prepare-station --bdf 0000:c4:00.0 \
     --station N --layout x16|x4x4x4x4 --output-dir DIRECTORY
   sudo pexctl device prepare-config --bdf 0000:c4:00.0 \
-    --config CONFIG.json --output-dir DIRECTORY
+    --config CONFIG.json --output-dir DIRECTORY [--allow-expert-fields]
   sudo pexctl device program-sector0 --bdf 0000:c4:00.0 \
     --expected-current BACKUP --candidate CANDIDATE \
     --confirm ERASE-PROGRAM-VERIFY:0000:c4:00.0:CS0:SECTOR0
@@ -886,6 +948,7 @@ All mutation commands create a new file and refuse to overwrite an existing
 path. Device reads use the PlxSvc ioctl ABI. Hardware write support is
 limited to a whole, preserved sector 0 and requires an exact live-backup match,
 validated SBR-only changes, an explicit device-bound confirmation, and complete
-read-back verification. No hardware command resets the switch."
+read-back verification. Expert fields additionally require expected-current
+values and --allow-expert-fields. No hardware command resets the switch."
     );
 }

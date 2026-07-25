@@ -277,6 +277,14 @@ pub struct AtlasStationConfig {
     pub layout: Option<StationLayout>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExpertSocFieldPatch {
+    pub field: String,
+    pub expected: u8,
+    pub value: u8,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AtlasConfig {
@@ -285,6 +293,8 @@ pub struct AtlasConfig {
     pub soc: AtlasSocConfig,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stations: Vec<AtlasStationConfig>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expert_soc_fields: Vec<ExpertSocFieldPatch>,
 }
 
 impl AtlasSocConfig {
@@ -302,6 +312,7 @@ impl AtlasConfig {
                 station,
                 layout: Some(layout),
             }],
+            expert_soc_fields: Vec::new(),
         };
         config.validate()?;
         Ok(config)
@@ -352,7 +363,39 @@ impl AtlasConfig {
             }
             seen[station] = true;
         }
-        if self.soc.is_empty() && self.stations.iter().all(|entry| entry.layout.is_none()) {
+        let mut seen_expert_fields: Vec<&str> = Vec::new();
+        for patch in &self.expert_soc_fields {
+            let field = named_soc_field(&patch.field).ok_or_else(|| {
+                Error::Config(format!(
+                    "unknown expert SoC field {:?}; use `pexctl sbr fields IMAGE` to list named fields",
+                    patch.field
+                ))
+            })?;
+            if field.writable {
+                return Err(Error::Config(format!(
+                    "{:?} has an ordinary typed configuration field; do not configure it through expert_soc_fields",
+                    patch.field
+                )));
+            }
+            if seen_expert_fields.contains(&patch.field.as_str()) {
+                return Err(Error::Config(format!(
+                    "expert SoC field {:?} appears more than once",
+                    patch.field
+                )));
+            }
+            seen_expert_fields.push(&patch.field);
+            let maximum = ((1u16 << field.width) - 1) as u8;
+            if patch.expected > maximum || patch.value > maximum {
+                return Err(Error::Config(format!(
+                    "{:?} is {} bit(s) wide, so expected and value must be at most {maximum}",
+                    patch.field, field.width
+                )));
+            }
+        }
+        if self.soc.is_empty()
+            && self.stations.iter().all(|entry| entry.layout.is_none())
+            && self.expert_soc_fields.is_empty()
+        {
             return Err(Error::Config(
                 "configuration contains no writable values".into(),
             ));
@@ -390,6 +433,7 @@ pub struct NamedSocFieldInspection {
     pub bit_high: u8,
     pub value: u8,
     pub writable: bool,
+    pub write_policy: &'static str,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -707,6 +751,13 @@ const NAMED_SOC_FIELDS: &[NamedSocField] = &[
     },
 ];
 
+fn named_soc_field(name: &str) -> Option<NamedSocField> {
+    NAMED_SOC_FIELDS
+        .iter()
+        .copied()
+        .find(|field| field.name == name)
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SbrImage {
     bytes: Vec<u8>,
@@ -862,12 +913,40 @@ impl SbrImage {
                         .expect("fixed station range"),
                 })
                 .collect(),
+            expert_soc_fields: Vec::new(),
         }
     }
 
     pub fn apply_config(&mut self, config: &AtlasConfig) -> Result<()> {
+        self.apply_config_with_policy(config, false)
+    }
+
+    pub fn apply_config_with_policy(
+        &mut self,
+        config: &AtlasConfig,
+        allow_expert_fields: bool,
+    ) -> Result<()> {
         self.validate()?;
         config.validate()?;
+        if !config.expert_soc_fields.is_empty() && !allow_expert_fields {
+            return Err(Error::Safety(
+                "configuration contains expert_soc_fields; pass --allow-expert-fields to acknowledge that their board behavior is not independently validated"
+                    .into(),
+            ));
+        }
+        for patch in &config.expert_soc_fields {
+            let field = named_soc_field(&patch.field).expect("validated expert field");
+            let current = self.read_bits(
+                field.offset * 8 + usize::from(field.bit_low),
+                usize::from(field.width),
+            );
+            if current != patch.expected {
+                return Err(Error::Safety(format!(
+                    "expert SoC field {:?} expected {}, but input contains {}; no fields were changed",
+                    patch.field, patch.expected, current
+                )));
+            }
+        }
         if let Some(upstream_port) = config.soc.upstream_port {
             self.write_bits(UPSTREAM_PORT_START_BIT, 8, upstream_port);
         }
@@ -885,6 +964,14 @@ impl SbrImage {
                     );
                 }
             }
+        }
+        for patch in &config.expert_soc_fields {
+            let field = named_soc_field(&patch.field).expect("validated expert field");
+            self.write_bits(
+                field.offset * 8 + usize::from(field.bit_low),
+                usize::from(field.width),
+                patch.value,
+            );
         }
         self.update_checksum();
         self.validate()
@@ -943,6 +1030,7 @@ impl SbrImage {
                             usize::from(field.width),
                         ),
                         writable: field.writable,
+                        write_policy: if field.writable { "ordinary" } else { "expert" },
                     })
                     .collect(),
             },
@@ -968,28 +1056,28 @@ impl SbrImage {
     }
 
     pub fn diff(&self, after: &Self) -> SbrDiffReport {
-        let mut named_differences = Vec::new();
-        if self.upstream_port() != after.upstream_port() {
-            named_differences.push(NamedDifference {
-                field: "soc.upstream_port",
-                before: self.upstream_port().to_string(),
-                after: after.upstream_port().to_string(),
-            });
-        }
-        if self.max_link_speed() != after.max_link_speed() {
-            named_differences.push(NamedDifference {
-                field: "soc.max_link_speed",
-                before: self.max_link_speed().to_string(),
-                after: after.max_link_speed().to_string(),
-            });
-        }
-        if self.lane_enable_code_raw() != after.lane_enable_code_raw() {
-            named_differences.push(NamedDifference {
-                field: "soc.lane_enable_code_raw",
-                before: self.lane_enable_code_raw().to_string(),
-                after: after.lane_enable_code_raw().to_string(),
-            });
-        }
+        let named_differences = NAMED_SOC_FIELDS
+            .iter()
+            .filter_map(|field| {
+                let start_bit = field.offset * 8 + usize::from(field.bit_low);
+                let width = usize::from(field.width);
+                let before = self.read_bits(start_bit, width);
+                let after_value = after.read_bits(start_bit, width);
+                (before != after_value).then(|| NamedDifference {
+                    field: field.name,
+                    before: if field.name == "soc.max_link_speed" {
+                        PcieGeneration::from_code(before).to_string()
+                    } else {
+                        before.to_string()
+                    },
+                    after: if field.name == "soc.max_link_speed" {
+                        PcieGeneration::from_code(after_value).to_string()
+                    } else {
+                        after_value.to_string()
+                    },
+                })
+            })
+            .collect();
 
         let station_differences = (0..6)
             .filter_map(|station| {
@@ -2023,6 +2111,88 @@ mod tests {
         )
         .is_err());
         assert!(AtlasConfig::parse_json(br#"{"schema": "pexctl.atlas-config.v1"}"#,).is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.not_a_field", "expected": 0, "value": 1}
+                ]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.upstream_port", "expected": 0, "value": 1}
+                ]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.fanout_enable", "expected": 0, "value": 2}
+                ]
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.fanout_enable", "expected": 0, "value": 1},
+                    {"field": "soc.fanout_enable", "expected": 0, "value": 1}
+                ]
+            }"#,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn expert_fields_require_opt_in_and_expected_current_match() {
+        let original = minimal_image([[0; 4]; 6]);
+        let config = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.fanout_enable", "expected": 0, "value": 1}
+                ]
+            }"#,
+        )
+        .unwrap();
+
+        let mut without_opt_in = original.clone();
+        assert!(without_opt_in.apply_config(&config).is_err());
+        assert_eq!(without_opt_in, original);
+
+        let mut candidate = original.clone();
+        candidate.apply_config_with_policy(&config, true).unwrap();
+        assert_eq!(candidate.read_bits(0x68 * 8 + 20, 1), 1);
+        candidate.validate().unwrap();
+        let differences = byte_differences(original.bytes(), candidate.bytes());
+        assert!(differences
+            .iter()
+            .all(|difference| difference.offset == 0x6a || difference.offset == SOC_END));
+        assert!(original
+            .diff(&candidate)
+            .named_differences
+            .iter()
+            .any(|difference| difference.field == "soc.fanout_enable"));
+
+        let mismatch = AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "expert_soc_fields": [
+                    {"field": "soc.fanout_enable", "expected": 1, "value": 0}
+                ]
+            }"#,
+        )
+        .unwrap();
+        let mut unchanged = original.clone();
+        assert!(unchanged.apply_config_with_policy(&mismatch, true).is_err());
+        assert_eq!(unchanged, original);
     }
 
     #[test]
@@ -2052,7 +2222,7 @@ mod tests {
                 .soc
                 .named_fields
                 .iter()
-                .filter(|field| field.writable)
+                .filter(|field| field.write_policy == "ordinary")
                 .count(),
             2
         );
@@ -2082,6 +2252,7 @@ mod tests {
                 station: 4,
                 layout: Some(StationLayout::X4X4X4X4),
             }],
+            expert_soc_fields: Vec::new(),
         };
         after.apply_config(&config).unwrap();
         let report = before.diff(&after);
