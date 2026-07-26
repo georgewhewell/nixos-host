@@ -31,6 +31,7 @@ let
   # The 120 W strix-3/4 boards give substantially more decode throughput when
   # CPU boost cannot consume the GPU's package-power headroom.
   inferenceCpuMaxKHz = if builtins.elem index [ 3 4 ] then 2500000 else null;
+  cx5ForcedSpeed = if self.strix.bluefield or false then "100G_4X" else "100G";
   tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
   tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
 
@@ -76,46 +77,46 @@ in
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
 
-  # node_exporter's hwmon collector sees only edge temperature, PPT and sclk
-  # on this APU. The SMU exporter module exports AMDGPU's richer, versioned
-  # SMU metrics table through the existing node_exporter endpoint without
-  # pulling ROCm into the system closure or opening another port.
+  # Export the APU's versioned SMU table, every AMD GPU's sysfs telemetry, and
+  # the NPU into node_exporter's shared textfile collector.
   services.strix-halo.smu-exporter.enable = true;
-
-  # NPU telemetry alongside the SMU metrics: the module writes its .prom file
-  # into the same textfile directory, rebuilt against the running kernel's
-  # amdxdna uapi so the 7.x-only queries are compiled in.
   services.strix-halo.npu-exporter.enable = true;
 
   environment.systemPackages = [
     pkgs.kexec-tools
-  ]
-  ++ lib.optional (tbvHipGdaProbes != null) tbvHipGdaProbes
-  ++ lib.optionals enableSharedCx5 [
     pkgs.mlnx-mft
-  ]
-  ++ lib.optionals enableCx5Fabric [
     pkgs.perftest
     pkgs.iperf3
-  ]
-  ++ lib.optional enableSharedIb pkgs.mlnx-opensm;
+    pkgs.mlnx-opensm
+  ];
+
   environment.etc."mft/mft.conf" = lib.mkIf enableSharedCx5 {
     source = "${pkgs.mlnx-mft}/etc/mft/mft.conf";
   };
 
-  # boot.binfmt.emulatedSystems = ["aarch64-linux"];
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
   boot.kernelPackages = lib.mkOverride 900 linuxPackagesThunderbolt;
 
   boot.kernelParams =
     [
       "iommu=pt"
+      # Permit privileged firmware tooling to map the system ROM through
+      # /dev/mem. This is intentionally shared by all four lab nodes so a
+      # socketed BIOS can be captured and verified from Linux.
+      "iomem=relaxed"
     ]
     # Netboot hosts skip profiles/uefi-boot.nix, which normally supplies
     # these host-class tuning params.
     ++ lib.optionals netboot [
       "msr.allow_writes=on"
       "mitigations=off"
+    ]
+    # The PEX880xx subtree on strix-4 needs one more 1 MiB bridge window than
+    # firmware allocated on the 2026-07-24 cold boot. Without reallocation the
+    # NVMe link trains, but BAR 0 remains unassigned and nvme_probe returns
+    # -ENODEV. Keep this scoped to the affected netboot host.
+    ++ lib.optionals (netboot && index == 4) [
+      "pci=realloc=on"
     ]
     # Disabled after strix-1 amdgpu failed to fetch VBIOS from ACPI VFCT while
     # booted with these experimental PCIe enumeration parameters.
@@ -138,66 +139,67 @@ in
   # ConnectX-5 fabric address so data connections use RoCE rather than
   # falling back to the ordinary LAN. Filtering by inventory-derived address
   # avoids coupling BeeGFS to PCI-enumeration-dependent Linux interface names.
-  services.beegfs-cluster = {
-    meta = lib.mkIf (index == 1) {
-      enable = true;
-      # The metadata set is tiny for this cluster. Co-locate it on strix-1's
-      # NVMe-backed XFS target rather than putting latency-sensitive metadata
-      # on the BlueField's eMMC.
-      directory = "${beegfsMountPoint}/metadata";
-      allowFirstRunInit = false;
-      settings = {
-        connInterfacesFile = "${beegfsFabricInterfaces}";
-        connRestrictOutboundInterfaces = true;
-        storeFsUUID = self.strix.beegfsFsUUID;
-      };
-    };
-    storage = {
-      enable = true;
-      directories = [ beegfsMountPoint ];
-      # All four targets have been initialized and registered. Refuse to
-      # manufacture a new target if this directory is ever unexpectedly empty.
-      allowFirstRunInit = false;
-      settings = {
-        connInterfacesFile = "${beegfsFabricInterfaces}";
-        connRestrictOutboundInterfaces = true;
-        # Match the 4 MiB filesystem stripe chunks with 4.5 MiB of RDMA
-        # buffers per connection.  The BeeGFS defaults total only 560 KiB
-        # and force large transfers through repeated protocol rounds.  The
-        # userspace storage daemon does not accept the client-only
-        # connRDMAFragmentSize setting in BeeGFS 8.4.
-        connRDMABufSize = 131072;
-        connRDMABufNum = 36;
-        storeFsUUID = self.strix.beegfsFsUUID;
-      };
-    };
-  };
+  # services.beegfs-cluster = {
+  #   meta = lib.mkIf (index == 1) {
+  #     enable = true;
+  #     # The metadata set is tiny for this cluster. Co-locate it on strix-1's
+  #     # NVMe-backed XFS target rather than putting latency-sensitive metadata
+  #     # on the BlueField's eMMC.
+  #     directory = "${beegfsMountPoint}/metadata";
+  #     allowFirstRunInit = false;
+  #     settings = {
+  #       connInterfacesFile = "${beegfsFabricInterfaces}";
+  #       connRestrictOutboundInterfaces = true;
+  #       storeFsUUID = self.strix.beegfsFsUUID;
+  #     };
+  #   };
+  #   storage = {
+  #     enable = true;
+  #     directories = [ beegfsMountPoint ];
+  #     # All four targets have been initialized and registered. Refuse to
+  #     # manufacture a new target if this directory is ever unexpectedly empty.
+  #     allowFirstRunInit = false;
+  #     settings = {
+  #       connInterfacesFile = "${beegfsFabricInterfaces}";
+  #       connRestrictOutboundInterfaces = true;
+  #       # Match the 4 MiB filesystem stripe chunks with 4.5 MiB of RDMA
+  #       # buffers per connection.  The BeeGFS defaults total only 560 KiB
+  #       # and force large transfers through repeated protocol rounds.  The
+  #       # userspace storage daemon does not accept the client-only
+  #       # connRDMAFragmentSize setting in BeeGFS 8.4.
+  #       connRDMABufSize = 131072;
+  #       connRDMABufNum = 36;
+  #       storeFsUUID = self.strix.beegfsFsUUID;
+  #     };
+  #   };
+  # };
 
-  sconfig.mounts.beegfs = {
-    enable = true;
-    clientAddresses = [ vllmHostIp ];
-  };
+  # sconfig.mounts.beegfs = {
+  #   enable = true;
+  #   clientAddresses = [ vllmHostIp ];
+  # };
 
-  systemd.services.beegfs-root-layout = lib.mkIf (index == 1) {
-    description = "Set the BeeGFS root stripe layout";
-    requires = [ "mnt-beegfs.mount" ];
-    after = [ "mnt-beegfs.mount" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      exec ${config.services.beegfs-cluster.ctlPackage}/bin/beegfs \
-        entry set /mnt/beegfs \
-        --pattern raid0 \
-        --num-targets 4 \
-        --chunk-size 4Mi \
-        --mgmtd-addr ${config.services.beegfs-cluster.mgmtdHost}:${toString config.services.beegfs-cluster.mgmtd.grpcPort} \
-        --tls-disable \
-        --auth-file ${config.sops.secrets.beegfs-conn-auth.path}
-    '';
-  };
+  # systemd.services.beegfs-root-layout = lib.mkIf (index == 1) {
+  #   description = "Set the BeeGFS root stripe layout";
+  #   requires = [ "mnt-beegfs.mount" ];
+  #   after = [ "mnt-beegfs.mount" ];
+  #   wantedBy = [ "multi-user.target" ];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     RemainAfterExit = true;
+  #   };
+  #   script = ''
+  #     exec ${config.services.beegfs-cluster.ctlPackage}/bin/beegfs \
+  #       entry set /mnt/beegfs \
+  #       --pattern raid0 \
+  #       --num-targets 4 \
+  #       --chunk-size 4Mi \
+  #       --mgmtd-addr ${config.services.beegfs-cluster.mgmtdHost}:${toString config.services.beegfs-cluster.mgmtd.grpcPort} \
+  #       --tls-disable \
+  #       --auth-file ${config.sops.secrets.beegfs-conn-auth.path}
+  #   '';
+  # };
+  #
   hardware.strixHalo = {
     enable = true;
     # Efficient-but-boostable: DPM idles the GPU clocks (sclk rests ~600 MHz)
@@ -222,7 +224,80 @@ in
   # fabric; hardware.infiniband supplies the verbs/RDMA userspace.
   hardware.infiniband = {
     enable = enableCx5Fabric;
-    guids = lib.optionals (enableSharedIb && index == 4) [ "0x1c34da03006112b0" ];
+  };
+
+  # RouterOS 7.23.2 and the HELLAS HQSFP56-200G-C1M DACs fail 100G
+  # autonegotiation. Match the CRS804's forced 100G CR4 configuration after
+  # every boot or PCI reset. Select the PF by inventory MAC: these SharedIO
+  # adapters expose both ports to each host, but only one port is cabled.
+  systemd.services.cx5-fabric-link = lib.mkIf enableCx5Fabric {
+    description = "Force the CRS804 fabric link to 100 GbE";
+    wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
+    wantedBy = [ "network-online.target" ];
+    before = [ "network-online.target" ];
+    after = [ "systemd-udevd.service" ]
+      ++ lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      target_mac=${lib.escapeShellArg self.strix.cx5FabricMac}
+      nic_path=
+
+      for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
+        for candidate in /sys/class/net/*; do
+          [ -r "$candidate/address" ] || continue
+          if [ "$(${pkgs.coreutils}/bin/cat "$candidate/address")" = "$target_mac" ]; then
+            nic_path="$candidate"
+            break 2
+          fi
+        done
+        ${pkgs.coreutils}/bin/sleep 1
+      done
+
+      if [ -z "$nic_path" ]; then
+        echo "fabric NIC with permanent MAC $target_mac did not appear" >&2
+        exit 1
+      fi
+
+      pci_path=$(${pkgs.coreutils}/bin/readlink -f "$nic_path/device")
+      pci_address="''${pci_path##*/}"
+      exec ${pkgs.mlnx-mft}/bin/mlxlink \
+        -d "$pci_address" \
+        -s ${cx5ForcedSpeed} \
+        --link_mode_force \
+        --yes
+    '';
+  };
+
+  # Clear PCIe ACS P2P-redirect on the Broadcom PEX880xx switch bridges so
+  # GPUDirect P2P (V620 VRAM <-> BlueField ConnectX-6, both under the switch)
+  # stays in-switch at x16 rather than being redirected up the x4 host uplink.
+  # Keyed on the switch vendor:device (1000:c010) because bridge BDFs renumber
+  # across reboots. Safe under iommu=pt on this dedicated compute host: the ACS
+  # control register keeps SrcValid (0x0001) and drops only the redirect bits.
+  systemd.services.pex-acs-clear = lib.mkIf (self.strix.bluefield or false) {
+    description = "Clear ACS P2P redirect on the PEX880xx GPU/NIC fabric switch";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-udevd.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      cleared=0
+      for dev in /sys/bus/pci/devices/*; do
+        [ "$(${pkgs.coreutils}/bin/cat "$dev/vendor" 2>/dev/null)" = "0x1000" ] || continue
+        [ "$(${pkgs.coreutils}/bin/cat "$dev/device" 2>/dev/null)" = "0xc010" ] || continue
+        bdf=$(${pkgs.coreutils}/bin/basename "$dev")
+        bdf=''${bdf#0000:}
+        if ${pkgs.pciutils}/bin/setpci -s "$bdf" ECAP_ACS+0x6.w=0001 2>/dev/null; then
+          cleared=$((cleared + 1))
+        fi
+      done
+      echo "pex-acs-clear: cleared ACS on $cleared PEX880xx bridges"
+    '';
   };
 
   # Strix Halo GPU workloads use UMA heavily. Large vLLM runs can leave
@@ -237,58 +312,58 @@ in
   # Netboot nodes mount only the BeeGFS partition. Turning netboot off makes
   # the already-provisioned root and ESP become an ordinary local NixOS boot
   # disk without repartitioning or sacrificing the storage target.
-  disko.devices.disk.beegfs = {
-    type = "disk";
-    device = beegfsDisk;
-    content = {
-      type = "gpt";
-      partitions = {
-        ESP = {
-          label = "${hostName}-ESP";
-          size = "1G";
-          type = "EF00";
-          content = {
-            type = "filesystem";
-            format = "vfat";
-            extraArgs = [ "-F" "32" "-n" "STRIX${toString index}ESP" ];
-            mountpoint = if netboot then null else "/boot";
-            mountOptions = [ "umask=0077" ];
-          };
-        };
-        root = {
-          label = "${hostName}-root";
-          size = "128G";
-          type = "8304";
-          content = {
-            type = "btrfs";
-            extraArgs = [ "-L" "${hostName}-root" ];
-            subvolumes."@root" = {
-              mountpoint = if netboot then null else "/";
-            } // lib.optionalAttrs (!netboot) {
-              mountOptions = [
-                "compress=zstd:1"
-                "discard=async"
-                "noatime"
-              ];
-            };
-          };
-        };
-        beegfs = {
-          label = "${hostName}-beegfs";
-          size = "100%";
-          type = "8300";
-          content = {
-            type = "filesystem";
-            format = "xfs";
-            # XFS filesystem labels are limited to 12 characters.
-            extraArgs = [ "-L" "STRIX${toString index}BEEGFS" ];
-            mountpoint = beegfsMountPoint;
-            mountOptions = [ "noatime" ];
-          };
-        };
-      };
-    };
-  };
+  # disko.devices.disk.beegfs = {
+  #   type = "disk";
+  #   device = beegfsDisk;
+  #   content = {
+  #     type = "gpt";
+  #     partitions = {
+  #       ESP = {
+  #         label = "${hostName}-ESP";
+  #         size = "1G";
+  #         type = "EF00";
+  #         content = {
+  #           type = "filesystem";
+  #           format = "vfat";
+  #           extraArgs = [ "-F" "32" "-n" "STRIX${toString index}ESP" ];
+  #           mountpoint = if netboot then null else "/boot";
+  #           mountOptions = [ "umask=0077" ];
+  #         };
+  #       };
+  #       root = {
+  #         label = "${hostName}-root";
+  #         size = "128G";
+  #         type = "8304";
+  #         content = {
+  #           type = "btrfs";
+  #           extraArgs = [ "-L" "${hostName}-root" ];
+  #           subvolumes."@root" = {
+  #             mountpoint = if netboot then null else "/";
+  #           } // lib.optionalAttrs (!netboot) {
+  #             mountOptions = [
+  #               "compress=zstd:1"
+  #               "discard=async"
+  #               "noatime"
+  #             ];
+  #           };
+  #         };
+  #       };
+  #       beegfs = {
+  #         label = "${hostName}-beegfs";
+  #         size = "100%";
+  #         type = "8300";
+  #         content = {
+  #           type = "filesystem";
+  #           format = "xfs";
+  #           # XFS filesystem labels are limited to 12 characters.
+  #           extraArgs = [ "-L" "STRIX${toString index}BEEGFS" ];
+  #           mountpoint = beegfsMountPoint;
+  #           mountOptions = [ "noatime" ];
+  #         };
+  #       };
+  #     };
+  #   };
+  # };
 
   # Mount by GPT partition label instead of the provisioning disk's by-id path:
   # the layout must boot identically whether the drive hangs off M.2 or a USB
@@ -300,16 +375,18 @@ in
     options = [ "subvol=@root" "compress=zstd:1" "discard=async" "noatime" ];
     neededForBoot = true;
   });
+
   fileSystems."/boot" = lib.mkIf (!netboot) (lib.mkForce {
     device = "/dev/disk/by-partlabel/${hostName}-ESP";
     fsType = "vfat";
     options = [ "umask=0077" ];
   });
-  fileSystems.${beegfsMountPoint} = lib.mkForce {
-    device = "/dev/disk/by-partlabel/${hostName}-beegfs";
-    fsType = "xfs";
-    options = [ "noatime" "nofail" ];
-  };
+
+  # fileSystems.${beegfsMountPoint} = lib.mkForce {
+  #   device = "/dev/disk/by-partlabel/${hostName}-beegfs";
+  #   fsType = "xfs";
+  #   options = [ "noatime" "nofail" ];
+  # };
 
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
@@ -334,8 +411,8 @@ in
     inputs.nix-strix-halo.nixosModules.ec-su-axb35
     inputs.nix-strix-halo.nixosModules.ryzenadj
     inputs.nix-strix-halo.nixosModules.amduprof
-    inputs.nix-strix-halo.nixosModules.npu-exporter
     inputs.nix-strix-halo.nixosModules.smu-exporter
+    inputs.nix-strix-halo.nixosModules.npu-exporter
 
     ../../../profiles/amd-npu.nix
   ]) ++ [
@@ -464,12 +541,14 @@ in
       "/dev/accel"
       "/sys/class/drm"
       "/sys/class/kfd"
-      "/models"
       "/sys/class/accel"
       "/sys/bus/pci"
       "/sys/devices"
       "/sys/dev"
       "/proc"
+
+      # and our nfs /models
+      "/models"
     ];
   };
 
@@ -516,6 +595,9 @@ in
   # nixbld builders both have access without per-user group plumbing.
   services.fastflowlm = {
     enable = false;
+    # IOMMU passthrough is an explicit host policy in boot.kernelParams; do not
+    # make that policy depend on whether this NPU service is enabled.
+    setIommuPt = false;
     model = "gpt-oss:20b";
     openFirewall = false;
   };
@@ -570,10 +652,10 @@ in
     HF_HUB_OFFLINE = "1";
     TRANSFORMERS_OFFLINE = "1";
     HF_HUB_DISABLE_TELEMETRY = "1";
-    VLLM_USE_RAY_V2_EXECUTOR_BACKEND = "0";
-    VLLM_USE_RAY_COMPILED_DAG = "1";
-    VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM = "0";
-    RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES = "0";
+    # VLLM_USE_RAY_V2_EXECUTOR_BACKEND = "0";
+    # VLLM_USE_RAY_COMPILED_DAG = "1";
+    # VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM = "0";
+    # RAY_EXPERIMENTAL_NOSET_HIP_VISIBLE_DEVICES = "0";
   };
 
   profiles.thunderbolt-bridge = {
@@ -673,16 +755,10 @@ in
     "net.ipv4.tcp_wmem" = "4096 65536 134217728";
   };
 
-
-
   users.users.grw.extraGroups = [ "networkmanager" ];
 
   systemd.network =
     let
-      hasDirectThunderbolt = enableUsb4Tcp;
-      useArdma0 =
-        enableUsb4Rdma
-        && config.hardware."thunderbolt-ibverbs".config.tbnet_identity == "minimal_packet";
       thunderboltIp = "10.0.${toString (index + 3)}.2/24";
     in
     {
@@ -697,27 +773,6 @@ in
           linkConfig.Name = vllmFabricInterface;
         };
       };
-      netdevs =
-        lib.optionalAttrs useArdma0
-          {
-            "30-ardma0" = {
-              netdevConfig = {
-                Kind = "dummy";
-                Name = "ardma0";
-              };
-            };
-          }
-        // lib.optionalAttrs enableUsb4Tcp {
-          # Layer-2 bridge for strix-to-strix Thunderbolt TCP (TP control plane).
-          # STP prevents loops in ring/mesh topologies.
-          "25-br-strix" = {
-            netdevConfig = {
-              Kind = "bridge";
-              Name = "br.strix";
-            };
-            bridgeConfig.STP = true;
-          };
-        };
       networks = {
         "10-lan" = {
           matchConfig.Name = "eno1";
@@ -727,9 +782,8 @@ in
           networkConfig = {
             DHCP = "no";
             IPv6AcceptRA = true;
+            MulticastDNS = "yes";
           } // lib.optionalAttrs netboot {
-            # The NFS root was configured by the initrd on this interface;
-            # never let networkd flush it while taking over.
             KeepConfiguration = "static";
           };
           linkConfig = {
@@ -741,37 +795,11 @@ in
             MTUBytes = if netboot then "1500" else "9000";
           };
         };
-        "10-aquantia" = {
-          matchConfig.Driver = "atlantic";
-          networkConfig = {
-            DHCP = "no";
-            LinkLocalAddressing = "no";
-            ConfigureWithoutCarrier = true;
-          };
-          linkConfig.RequiredForOnline = "no";
-        };
-      } // lib.optionalAttrs enableSharedIb {
-        # Use opposite physical ports on the looped dual-port HCA.  This gives
-        # application traffic an ordinary IPoIB address while verbs benchmarks
-        # can select mlx5_1 on strix-3 and mlx5_0 on strix-4 directly.
-        "15-shared-ib" = {
-          matchConfig.Name = if index == 3 then "ibp195s0f1" else "ibp195s0f0";
-          address = [ "10.5.0.${toString index}/24" ];
-          networkConfig = {
-            DHCP = "no";
-            IPv6AcceptRA = false;
-            LinkLocalAddressing = "no";
-          };
-          linkConfig = {
-            MTUBytes = "4092";
-            RequiredForOnline = "no";
-          };
-        };
-      } // lib.optionalAttrs enableSharedCx5 {
-        # Raise both Ethernet PFs of the shared ConnectX-5, but put the fabric
-        # address on the port renamed by permanent MAC. Addressing both
-        # physical ports in the same CRS804 VLAN would create ambiguous routes.
-        "15-shared-cx5-fabric" = {
+
+        # Give the inventory-selected ConnectX port its fabric (RoCE) address.
+        # Its permanent MAC is renamed to cx5fabric0 by 10-cx5-fabric.link, so
+        # PCI enumeration and the unused second PF cannot redirect the address.
+        "15-cx5-fabric" = {
           matchConfig.Name = vllmFabricInterface;
           address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
           networkConfig = {
@@ -785,10 +813,8 @@ in
             RequiredForOnline = "no";
           };
         };
+
         "16-shared-cx5-unaddressed" = {
-          # The earlier, name-specific fabric unit wins for cx5fabric0. This
-          # generic fallback keeps every other mlx5 Ethernet PF up without
-          # depending on PCI bus numbering.
           matchConfig.Driver = "mlx5_core";
           networkConfig = {
             DHCP = "no";
@@ -801,7 +827,7 @@ in
             RequiredForOnline = "no";
           };
         };
-      } // lib.optionalAttrs (hasDirectThunderbolt && reserveThunderbolt0ForMac) {
+
         # Direct point-to-point link to Mac. Wins over the profile's
         # 50-thunderbolt bridge match by lexical order on the iface name.
         "20-thunderbolt0" = {
@@ -810,52 +836,6 @@ in
           networkConfig = {
             LinkLocalAddressing = "no";
             IPv6AcceptRA = false;
-            ConfigureWithoutCarrier = true;
-          };
-          linkConfig = {
-            MTUBytes = "9000";
-            RequiredForOnline = "no";
-          };
-        };
-      } // lib.optionalAttrs useArdma0 {
-        "30-ardma0" = {
-          matchConfig.Name = "ardma0";
-          address = [ (lib.replaceStrings [ "/24" ] [ "/32" ] thunderboltIp) ];
-          routes = lib.optionals (index == 2) [
-            { Destination = "10.0.5.3/32"; }
-          ];
-          networkConfig = {
-            LinkLocalAddressing = "no";
-            IPv6AcceptRA = false;
-            ConfigureWithoutCarrier = true;
-          };
-          linkConfig.RequiredForOnline = "no";
-        };
-      } // lib.optionalAttrs enableUsb4Tcp {
-        # Enslave strix-to-strix thunderbolt-net interfaces into br.strix.
-        # Optionally excludes thunderbolt0 when reserved for the Mac p2p link.
-        # Wins over the profile's 50-thunderbolt match by sort order.
-        "25-thunderbolt-strix" = {
-          matchConfig = {
-            Driver = "thunderbolt-net";
-          } // lib.optionalAttrs reserveThunderbolt0ForMac {
-            Name = "!thunderbolt0";
-          };
-          networkConfig.Bridge = "br.strix";
-          linkConfig = {
-            MTUBytes = "9000";
-            RequiredForOnline = "no";
-          };
-        };
-        # Static IP on the strix bridge: 10.4.0.{index}/24.
-        # strix-1=10.4.0.1, strix-2=10.4.0.2, strix-3=10.4.0.3, strix-4=10.4.0.4
-        "26-br-strix" = {
-          matchConfig.Name = "br.strix";
-          address = [ "10.4.0.${toString index}/24" ];
-          networkConfig = {
-            DHCP = "no";
-            IPv6AcceptRA = false;
-            LinkLocalAddressing = "no";
             ConfigureWithoutCarrier = true;
           };
           linkConfig = {
