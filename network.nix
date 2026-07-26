@@ -365,18 +365,13 @@ lib: rec {
         lan = 136;
         fabric = 101;
       };
-      # Boot from the local disk (NVMe in the USB enclosure); the PXE/iPXE
-      # netboot detour while the enclosure boot path was being sorted is over.
-      netboot = false;
+      # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
+      netboot = true;
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
         cx5Port = 1;
-        cx5FabricMac = "1c:34:da:61:12:9d";
-        # strix-1's fabric NIC was swapped for a BlueField-2 DPU (EMBEDDED_CPU
-        # mode): the host PF only inits once the DPU's ARM cores boot, so this
-        # host needs the bluefield-host profile (rshim + retrying nic-bind).
-        bluefield = true;
+        cx5FabricMac = "1c:34:da:61:12:b1";
         ryzenAdj = {
           stapm = 132000;
           fast = 176000;
@@ -392,12 +387,12 @@ lib: rec {
         lan = 192;
         fabric = 102;
       };
-      netboot = false;
+      netboot = true;
       strix = {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
-        cx5Port = 0;
-        cx5FabricMac = "1c:34:da:61:12:98";
+        cx5Port = 1;
+        cx5FabricMac = "1c:34:da:61:12:99";
         ryzenAdj = {
           stapm = 132000;
           fast = 176000;
@@ -412,12 +407,18 @@ lib: rec {
         lan = 25;
         fabric = 103;
       };
-      netboot = false;
+      netboot = true;
       strix = {
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
-        cx5Port = 1;
-        cx5FabricMac = "1c:34:da:61:12:b5";
+        cx5Port = 0;
+        cx5FabricMac = "b8:ce:f6:f8:d7:aa";
+        # strix-3 hosts the BlueField-2 DPU: its ConnectX-6 is the fabric NIC,
+        # cabled to the cage-1 400G->2x200G splitter (one leg to the DPU/CX6,
+        # the other to strix-2). The host PF only inits once the DPU ARM boots,
+        # so this host needs the bluefield-host profile (rshim + retrying
+        # nic-bind).
+        bluefield = true;
         # Strix 3/4 currently clamp package requests to these values.
         ryzenAdj = {
           stapm = 120000;
@@ -433,12 +434,12 @@ lib: rec {
         lan = 26;
         fabric = 104;
       };
-      netboot = false;
+      netboot = true;
       strix = {
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
-        cx5Port = 0;
-        cx5FabricMac = "1c:34:da:61:12:b0";
+        cx5Port = 1;
+        cx5FabricMac = "b8:59:9f:54:db:e5";
         ryzenAdj = {
           stapm = 120000;
           fast = 160000;
