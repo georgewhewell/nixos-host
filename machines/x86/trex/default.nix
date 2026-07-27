@@ -394,6 +394,7 @@ in {
     ../../../services/virt/host.nix
     ../../../services/virt/vfio.nix
     ../../../services/apple-health-ingester.nix
+    ./spdk-optane.nix
   ];
 
   deployment = {

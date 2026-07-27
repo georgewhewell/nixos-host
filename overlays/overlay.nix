@@ -82,6 +82,7 @@ self: super: {
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
   bios-setup-var = super.callPackage ../packages/bios-setup-var {};
   pexctl = super.callPackage ../packages/pexctl {};
+  spdk-ublk = super.callPackage ../packages/spdk-ublk {};
   mlnx-mft = super.callPackage ../packages/mlnx-mft {};
   mlnx-opensm = super.callPackage ../packages/mlnx-opensm {};
   nvidia_oc = super.callPackage ../packages/nvidia-oc {};
