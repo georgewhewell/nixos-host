@@ -283,7 +283,11 @@ in
   # Keyed on the switch vendor:device (1000:c010) because bridge BDFs renumber
   # across reboots. Safe under iommu=pt on this dedicated compute host: the ACS
   # control register keeps SrcValid (0x0001) and drops only the redirect bits.
-  systemd.services.pex-acs-clear = lib.mkIf (self.strix.bluefield or false) {
+  # Unconditional: no-op on hosts without the switch, and the DPU/PEX board
+  # moves between chassis — keying this on the bluefield inventory flag
+  # silently dropped the clear everywhere when the card moved out of strix-3
+  # (2026-07-29 GPU attach + thermal incident).
+  systemd.services.pex-acs-clear = {
     description = "Clear ACS P2P redirect on the PEX880xx GPU/NIC fabric switch";
     wantedBy = [ "multi-user.target" ];
     after = [ "systemd-udevd.service" ];

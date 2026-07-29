@@ -407,6 +407,9 @@ in {
     # ConnectX-4 VF in the host namespace, so RDMA consumers have a verbs
     # device to bind on the fabric.
     ./fabric-rdma-vf.nix
+    # Safe read-only publication of the models volume (frozen snapshots, never
+    # the live mount).
+    ./spdk-models-snapshot.nix
   ];
 
   deployment = {
