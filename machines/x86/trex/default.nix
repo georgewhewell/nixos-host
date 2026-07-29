@@ -817,9 +817,9 @@ in {
 
   # Big, cold /var trees live on bpool instead of the small fast root.
   fileSystems."/var/lib/nixos-containers" = {
-    device = "bpool/trex/nixos-containers";
-    fsType = "zfs";
-    options = ["nofail"];
+    device = "/dev/disk/by-label/trexroot";
+    fsType = "btrfs";
+    options = ["subvol=/nixos-containers" "compress=zstd:3" "noatime" "flushoncommit" "nofail"];
   };
 
   fileSystems."/var/lib/libvirt" = {
@@ -829,9 +829,9 @@ in {
   };
 
   fileSystems."/mnt/victoriametrics" = {
-    device = "bpool/trex/victoriametrics";
-    fsType = "zfs";
-    options = ["nofail"];
+    device = "/dev/disk/by-label/trexroot";
+    fsType = "btrfs";
+    options = ["subvol=/victoriametrics" "compress=zstd:3" "noatime" "flushoncommit" "nofail"];
   };
 
   # Do not let services fall through to the disposable tmpfs root if their
@@ -964,9 +964,9 @@ in {
   '';
 
   fileSystems."/home/grw" = {
-    device = "bpool/trex/grw-home";
-    fsType = "zfs";
-    options = ["noatime" "nofail"];
+    device = "/dev/disk/by-label/nand4";
+    fsType = "btrfs";
+    options = ["subvol=/grw-home" "compress=zstd" "noatime" "nofail"];
   };
 
   # Bind mount for NFSv4 export

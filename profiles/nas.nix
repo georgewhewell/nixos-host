@@ -9,9 +9,9 @@ in {
   };
 
   fileSystems."/mnt/Home" = {
-    device = "bpool/Home";
-    fsType = "zfs";
-    options = ["nofail"];
+    device = "/dev/disk/by-label/nand4";
+    fsType = "btrfs";
+    options = ["subvol=/Home" "compress=zstd" "noatime" "nofail"];
     neededForBoot = false;
   };
 
