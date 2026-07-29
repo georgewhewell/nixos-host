@@ -625,6 +625,26 @@ fn run_device(args: &[String]) -> Result<()> {
                 Ok(())
             }
         }
+        "reg-read" => {
+            let options = &args[1..];
+            let bdf = option_value(options, "--bdf")?;
+            let offset = parse_number(option_value(options, "--offset")?)?;
+            let count = optional_number(options, "--count")?.unwrap_or(1);
+            reject_unknown_options(options, &["--bdf", "--offset", "--count"])?;
+            if offset > u64::from(u32::MAX) || count > 1024 {
+                return Err(Error::Usage(
+                    "reg-read offset must fit a u32 and --count must not exceed 1024".into(),
+                ));
+            }
+            let device = PlxSvcDevice::open(bdf)?;
+            for index in 0..count {
+                let dword_offset = u32::try_from(offset + 4 * index)
+                    .map_err(|_| Error::Usage("reg-read offset range overflow".into()))?;
+                let value = device.mapped_register_read(dword_offset)?;
+                println!("{} [{dword_offset:#010x}] {value:#010x}", device.bdf());
+            }
+            Ok(())
+        }
         "backup-flash" => {
             let options = &args[1..];
             let bdf = option_value(options, "--bdf")?;

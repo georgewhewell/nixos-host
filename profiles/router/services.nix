@@ -15,6 +15,7 @@
   # over TFTP as a compatibility bootstrap. Everything after that remains
   # HTTP via this router; NFS/store traffic still goes directly to trex.
   netbootHosts = lib.filterAttrs (_: h: h.netboot or false) network.hosts;
+  netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
   routerIp = network.routerIp;
   trexIp = network.primaryIp network.hosts.trex;
   netbootBaseUrl = "http://${routerIp}/strix-netboot";
@@ -38,15 +39,24 @@
       '';
   };
 
-  netbootByMac = pkgs.linkFarm "strix-router-netboot-by-mac" (lib.mapAttrsToList
-    (name: h: {
-      name = "${h.mac}.ipxe";
-      path = pkgs.writeText "router-chain-${name}.ipxe" ''
-        #!ipxe
-        chain ${netbootBaseUrl}/hosts/${name}/netboot.ipxe
-      '';
-    })
-    netbootHosts);
+  netbootByMac = pkgs.linkFarm "strix-router-netboot-by-mac" (
+    lib.concatLists (
+      lib.mapAttrsToList
+        (
+          name: h:
+            map
+              (mac: {
+                name = "${mac}.ipxe";
+                path = pkgs.writeText "router-chain-${name}-${mac}.ipxe" ''
+                  #!ipxe
+                  chain ${netbootBaseUrl}/hosts/${name}/netboot.ipxe
+                '';
+              })
+              (netbootMacs h)
+        )
+        netbootHosts
+    )
+  );
 
   netbootTftpRoot = pkgs.runCommand "strix-router-netboot-tftp-root" { } ''
     mkdir -p "$out"
@@ -110,7 +120,11 @@ in {
       # Netboot is restricted to the four tagged Strix MACs. Native UEFI HTTP
       # clients retain the URI offer; the firmware's earlier PXE attempt gets
       # snponly.efi over TFTP and iPXE immediately switches back to HTTP.
-      "dhcp-mac" = lib.mapAttrsToList (_: h: "set:netboot,${h.mac}") netbootHosts;
+      "dhcp-mac" = lib.concatLists (
+        lib.mapAttrsToList
+          (_: h: map (mac: "set:netboot,${mac}") (netbootMacs h))
+          netbootHosts
+      );
       "dhcp-vendorclass" = [ "set:httpboot,HTTPClient" ];
       enable-tftp = true;
       tftp-root = "${netbootTftpRoot}";

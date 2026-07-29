@@ -13,7 +13,7 @@
   };
 
   fileSystems."/var/lib/apple-health-ingester" = {
-    device = "pool3d/root/apple-health-ingester";
+    device = "bpool/trex/apple-health-ingester";
     fsType = "zfs";
     options = ["nofail"];
   };

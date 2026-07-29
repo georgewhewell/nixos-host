@@ -4,6 +4,16 @@ let
   self = network.hosts.${hostName};
   trexIp = network.primaryIp network.hosts.trex;
   clientIp = network.primaryIp self;
+  # Firmware now boots from a cabled ConnectX-5 port rather than the onboard
+  # Realtek NIC. Record that identity explicitly so the same interface keeps
+  # the LAN address when Linux replaces iPXE.
+  bootMac = self.netbootMac or self.mac;
+  bootLinuxMac = self.netbootLinuxMac or bootMac;
+  bootMacMatch = lib.concatStringsSep " " (lib.unique [ bootMac bootLinuxMac ]);
+  bootMacCandidates =
+    lib.unique ([ bootMac bootLinuxMac ] ++ (self.extraMacs or [ ]));
+  bootMacCandidateArgs = lib.escapeShellArgs bootMacCandidates;
+  sharesFabric = self.netbootSharesFabric or false;
 
   # Kernel-direct NFSv4.2 mount options. The initrd has no mount.nfs
   # helper, so every option here must be understood by the kernel nfs4
@@ -126,13 +136,103 @@ in
   boot.initrd.supportedFilesystems = [ "nfs" "overlay" ];
   boot.initrd.availableKernelModules = [
     "r8169"
+    "mlx5_core"
     "nfsv4"
     "overlay"
     # Keep the diskless image bootable under KVM for regression tests.
     "virtio_pci"
     "virtio_net"
   ];
-  boot.initrd.kernelModules = [ "nfsv4" ];
+  # mlx5_core is both available and explicitly loaded. SharedIO firmware can
+  # leave the PCI function without a fresh uevent when Linux takes over from
+  # iPXE, so relying only on modalias autoloading is not robust enough here.
+  boot.initrd.kernelModules = [ "mlx5_core" "nfsv4" ];
+
+  # Do not leave the NFS-root interface to udev timing alone. UEFI SharedIO
+  # PXE can hand mlx5_core a PF under a different MAC from the one advertised
+  # by DHCP, and on some boots the corresponding .link event has already
+  # passed before initrd-networkd starts. Resolve the cabled PF from every
+  # inventory identity, bind any still-unbound Mellanox Ethernet function,
+  # and establish the static route before networkd and the NFS mounts run.
+  boot.initrd.systemd.services.strix-netboot-link-rescue = {
+    description = "Establish the Strix MLX5 NFS-root link";
+    wantedBy = [ "initrd.target" ];
+    before = [
+      "systemd-networkd.service"
+      "systemd-networkd-wait-online.service"
+      "remote-fs-pre.target"
+    ];
+    after = [
+      "systemd-modules-load.service"
+      "systemd-udev-trigger.service"
+    ];
+    wants = [
+      "systemd-modules-load.service"
+      "systemd-udev-trigger.service"
+    ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.kmod}/bin/modprobe mlx5_core
+      ${config.systemd.package}/bin/udevadm settle --timeout=30 || true
+
+      boot_if=
+      for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
+        # Prefer the exact PXE/Linux identities in inventory order. All four
+        # hosts may expose sibling SharedIO PFs, so "first mlx5 device" is not
+        # a safe selector.
+        for wanted in ${bootMacCandidateArgs}; do
+          for candidate in /sys/class/net/*; do
+            [ -r "$candidate/address" ] || continue
+            [ "$(${pkgs.coreutils}/bin/cat "$candidate/address")" = "$wanted" ] || continue
+            boot_if="''${candidate##*/}"
+            break 2
+          done
+        done
+
+        [ -n "$boot_if" ] && break
+
+        # Retry functions for which the firmware-to-kernel handoff left no
+        # driver. Already-bound functions are never reset here.
+        for device in /sys/bus/pci/devices/*; do
+          [ "$(${pkgs.coreutils}/bin/cat "$device/vendor" 2>/dev/null)" = "0x15b3" ] || continue
+          case "$(${pkgs.coreutils}/bin/cat "$device/class" 2>/dev/null)" in
+            0x0200*) ;;
+            *) continue ;;
+          esac
+          [ -e "$device/driver" ] && continue
+          bdf="''${device##*/}"
+          echo "$bdf" > /sys/bus/pci/drivers/mlx5_core/bind 2>/dev/null || true
+        done
+
+        ${config.systemd.package}/bin/udevadm settle --timeout=2 || true
+        ${pkgs.coreutils}/bin/sleep 1
+      done
+
+      if [ -z "$boot_if" ]; then
+        echo "no MLX5 netdev matched: ${lib.concatStringsSep ", " bootMacCandidates}" >&2
+        exit 1
+      fi
+
+      if [ "$boot_if" != eno1 ]; then
+        ${pkgs.iproute2}/bin/ip link set dev "$boot_if" down
+        ${pkgs.iproute2}/bin/ip link set dev "$boot_if" name eno1
+      fi
+
+      ${pkgs.iproute2}/bin/ip link set dev eno1 up
+      ${pkgs.iproute2}/bin/ip address replace \
+        ${clientIp}/${toString network.vlans.lan.cidr} dev eno1
+      ${lib.optionalString sharesFabric ''
+        ${pkgs.iproute2}/bin/ip address replace \
+          ${network.cidrOf "fabric" self.addresses.fabric} dev eno1
+      ''}
+      ${pkgs.iproute2}/bin/ip route replace default via ${network.routerIp} dev eno1
+      echo "NFS-root link ready on eno1 ($(${pkgs.coreutils}/bin/cat /sys/class/net/eno1/address))"
+    '';
+  };
 
   # Static stage-1 networking (systemd initrd) mirroring the stage-2
   # 10-lan config. systemd-networkd-wait-online gates the NFS mounts via
@@ -141,14 +241,27 @@ in
   boot.initrd.systemd.network = {
     enable = true;
     links."00-netboot-eno1" = {
-      matchConfig.MACAddress = self.mac;
+      # Strix 1/2 PXE with a firmware-assigned SharedIO MAC, then mlx5_core
+      # restores the PF's permanent Linux MAC. systemd accepts a whitespace-
+      # separated OR-list here, so either identity names the one cabled rail.
+      matchConfig.MACAddress = bootMacMatch;
       linkConfig.Name = "eno1";
     };
     networks."10-lan" = {
       matchConfig.Name = "eno1";
-      address = [ "${clientIp}/${toString network.vlans.lan.cidr}" ];
+      address = [
+        "${clientIp}/${toString network.vlans.lan.cidr}"
+      ] ++ lib.optionals sharesFabric [
+        (network.cidrOf "fabric" self.addresses.fabric)
+      ];
       gateway = [ network.routerIp ];
-      networkConfig.DHCP = "no";
+      networkConfig = {
+        DHCP = "no";
+        # The Nix store is already live over NFS when initrd-networkd stops.
+        # Preserve the static address across switch-root; otherwise removing
+        # it deadlocks stage 2 before its own networkd can restore the link.
+        KeepConfiguration = "static";
+      };
       linkConfig.RequiredForOnline = "routable";
     };
   };

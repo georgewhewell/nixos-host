@@ -9,7 +9,7 @@ in {
   };
 
   fileSystems."/mnt/Home" = {
-    device = "pool3d/bpool-backup/Home";
+    device = "bpool/Home";
     fsType = "zfs";
     options = ["nofail"];
     neededForBoot = false;

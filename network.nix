@@ -242,8 +242,15 @@ lib: rec {
       # address and shadowing the static .8 in DNS. Reserve its MAC to .8 too so
       # any stray lease resolves to the correct host instead of a dynamic IP.
       extraMacs = ["50:6b:4b:0d:24:86"];
-      addresses = {lan = 8;};
-      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui"];
+      # The CRS804 cage-4 25G access uplink extends the untagged LAN broadcast
+      # domain into fabric VLAN 25. Keep both subnets on the same OVS internal
+      # port so Trex reaches the Strix fabric through ASIC switching instead
+      # of routing through the CRS804 CPU and the main router.
+      addresses = {
+        lan = 8;
+        fabric = 8;
+      };
+      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" "cache"];
     };
     "mikrotik-100g" = {
       mac = "48:a9:8a:93:42:4c";
@@ -361,12 +368,31 @@ lib: rec {
       # client identifies with this, so dnsmasq netboot tagging depends
       # on it being the real permanent address.
       mac = "84:47:09:68:82:b1";
+      # The ConnectX-5 firmware exposes different MACs for its PXE functions
+      # and ports. Keep every observed identity tied to this host so moving
+      # netboot from eno1 to the 100G fabric does not lose its DHCP tag.
+      extraMacs = [
+        "1c:34:da:61:12:b1"
+        "1c:34:da:61:12:b4"
+        "1c:34:da:61:12:b5"
+      ];
       addresses = {
         lan = 136;
         fabric = 101;
       };
       # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
       netboot = true;
+      # The cabled CX5 port used for firmware PXE and the stage-1 NFS root.
+      # Keep this separate from cx5FabricMac: each SharedIO host sees both
+      # physical ports, so LAN boot traffic and the RoCE fabric can use one
+      # port each.
+      netbootMac = "1c:34:da:61:12:b4";
+      # The SharedIO firmware presents b4 to PXE, while mlx5_core restores
+      # the host PF's permanent b1 identity when Linux takes ownership.
+      netbootLinuxMac = "1c:34:da:61:12:b1";
+      # Only the bottom physical port is cabled on this adapter. Carry the
+      # ordinary LAN/NFS address and the fabric address on that one rail.
+      netbootSharesFabric = true;
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
@@ -383,11 +409,19 @@ lib: rec {
     "strix-2" = {
       # Burned-in eno1 MAC observed from the firmware HTTPClient.
       mac = "84:47:09:68:79:a6";
+      extraMacs = [
+        "1c:34:da:61:12:99"
+        "1c:34:da:61:12:9c"
+        "1c:34:da:61:12:9d"
+      ];
       addresses = {
         lan = 192;
         fabric = 102;
       };
       netboot = true;
+      netbootMac = "1c:34:da:61:12:9d";
+      netbootLinuxMac = "1c:34:da:61:12:99";
+      netbootSharesFabric = true;
       strix = {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
@@ -403,22 +437,27 @@ lib: rec {
     };
     "strix-3" = {
       mac = "84:47:09:80:64:50";
+      extraMacs = [
+        # Previous BlueField PXE identity, retained as a fallback.
+        "b8:ce:f6:f8:d7:aa"
+        # ConnectX-5 multi-host functions observed after the card swap.
+        "b8:59:9f:54:db:e8"
+        "b8:59:9f:54:db:e9"
+      ];
       addresses = {
         lan = 25;
         fabric = 103;
       };
       netboot = true;
+      netbootMac = "b8:59:9f:54:db:e8";
+      netbootLinuxMac = "b8:59:9f:54:db:e8";
       strix = {
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
         cx5Port = 0;
-        cx5FabricMac = "b8:ce:f6:f8:d7:aa";
-        # strix-3 hosts the BlueField-2 DPU: its ConnectX-6 is the fabric NIC,
-        # cabled to the cage-1 400G->2x200G splitter (one leg to the DPU/CX6,
-        # the other to strix-2). The host PF only inits once the DPU ARM boots,
-        # so this host needs the bluefield-host profile (rshim + retrying
-        # nic-bind).
-        bluefield = true;
+        # The BlueField is no longer installed. Port e8 performs LAN netboot;
+        # use the other cabled port of the shared CX5 for the RoCE fabric.
+        cx5FabricMac = "b8:59:9f:54:db:e9";
         # Strix 3/4 currently clamp package requests to these values.
         ryzenAdj = {
           stapm = 120000;
@@ -430,11 +469,18 @@ lib: rec {
     };
     "strix-4" = {
       mac = "84:47:09:81:22:35";
+      extraMacs = [
+        # ConnectX-5 multi-host functions observed by router dnsmasq.
+        "b8:59:9f:54:db:e4"
+        "b8:59:9f:54:db:e5"
+      ];
       addresses = {
         lan = 26;
         fabric = 104;
       };
       netboot = true;
+      netbootMac = "b8:59:9f:54:db:e4";
+      netbootLinuxMac = "b8:59:9f:54:db:e4";
       strix = {
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";

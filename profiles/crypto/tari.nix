@@ -6,7 +6,7 @@
   ...
 }: {
   fileSystems."/var/lib/tari" = {
-    device = "pool3d/root/tari";
+    device = "bpool/trex/tari";
     fsType = "zfs";
     options = ["nofail" "sync=disabled"];
   };

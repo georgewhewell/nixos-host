@@ -138,8 +138,14 @@ both raw two-bit values, both SBR offsets and bit ranges, and a `read-only`
 policy. The numeric enum meanings are not established.
 
 All 196 decoded values are zero in both the live all-x16 PEX88096 image and
-Broadcom's Base RDK96 fan-out image. They therefore do not distinguish the two
-known station layouts, and no write path is exposed.
+Broadcom's Base RDK96 fan-out image, and also in the vendor `AtlasSBR.db`
+template defaults. They therefore do not distinguish the two known station
+layouts, and no write path is exposed. The complete vendor template was
+audited beyond these tables: no other SoC field encodes virtual switches,
+per-VS upstream ports, port membership vectors, or NT ports; multi-host and
+NT configuration exist only as runtime registers (see the Strix-4
+[`ATLAS-VS-REGISTERS.md`](../../hardware/pex880xx-strix-4/ATLAS-VS-REGISTERS.md)
+dossier).
 
 ## First SoC dword
 
@@ -147,7 +153,7 @@ The SoC block begins at SBR offset `0x5c`.
 
 | Bits | JSON field | Interpretation | Writable |
 |---:|---|---|---|
-| 7:0 | `soc.upstream_port` | upstream port number | yes |
+| 7:0 | `soc.upstream_port` | upstream port number; restricted to database ports 0–95, 116, 117 | yes |
 | 9:8 | `soc.max_link_speed` | `0` Gen1, `1` Gen2, `2` Gen3, `3` Gen4 | yes |
 | 12:10 | — | reserved | no |
 | 15:13 | `soc.lane_enable_code_raw` | vendor-named lane-enable field; value semantics unknown | no |

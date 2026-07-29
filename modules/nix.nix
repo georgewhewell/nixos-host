@@ -6,6 +6,7 @@
     settings = {
       trusted-users = [ "grw" ];
       extra-substituters = [
+        "https://${network.publicFqdn "cache"}"
         "https://cache.numtide.com"
       ];
       trusted-public-keys = [

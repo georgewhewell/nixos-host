@@ -13,7 +13,7 @@
   # Internal-only services: no public A/AAAA records, so HTTP-01 can't renew.
   # Their certs use DNS-01 against Cloud DNS via lego's gcloud provider, reusing
   # the GCP ADC (authorized_user) stored in sops as acme-gcp-adc.
-  internalCerts = ["radarr" "sonarr" "autobrr" "open-webui"];
+  internalCerts = ["radarr" "sonarr" "autobrr" "open-webui" "cache"];
   gcpAcmeEnv = pkgs.writeText "acme-gcloud.env" ''
     GCE_PROJECT=domain-owner
     GOOGLE_APPLICATION_CREDENTIALS=${config.sops.secrets.acme-gcp-adc.path}
@@ -204,6 +204,21 @@ in {
       '';
       proxyPass = "http://${arrIp}:7474";
       proxyWebsockets = true;
+    };
+  };
+
+  # Binary cache: nix-serve on trex signs with the trex.satanic.link key that
+  # modules/nix.nix already trusts fleet-wide. NARs are large and immutable,
+  # so skip proxy buffering and let clients stream.
+  services.nginx.virtualHosts.${network.publicFqdn "cache"} = {
+    forceSSL = true;
+    useACMEHost = network.publicFqdn "cache";
+    locations."/" = {
+      extraConfig = ''
+        proxy_buffering off;
+        ${lanOnly}
+      '';
+      proxyPass = "http://${trexIp}:${toString config.services.nix-serve.port}";
     };
   };
 

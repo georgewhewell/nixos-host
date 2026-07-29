@@ -1,6 +1,11 @@
 { config, lib, pkgs, network, inputs, ... }:
 let
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+  # Point-to-point USB-gadget link used by the nixos-nanokvm dev boards
+  # (target 10.55.0.1, this host 10.55.0.2 — lib/protocol.nix there).
+  # They mount the store read-only from this export just like the
+  # strix netboot clients do.
+  nanokvmUsbCidr = "10.55.0.0/24";
   trexIp = network.primaryIp network.hosts.trex;
   port = network.netbootHttpPort;
   httpAuthority =
@@ -9,6 +14,7 @@ let
     else "${trexIp}:${toString port}";
 
   netbootHosts = lib.filterAttrs (_: h: h.netboot or false) network.hosts;
+  netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
 
   # iPXE binary fetched by the firmware's UEFI HTTP boot client (the
   # router's dnsmasq hands out its URL). snponly.efi rides the firmware's
@@ -36,15 +42,24 @@ let
   # Firmware PXE loads iPXE with an embedded script that chains to
   # http://trex:<port>/by-mac/<mac>.ipxe; these per-MAC stubs redirect to
   # the host's current netboot.ipxe under /var/lib/strix-netboot.
-  byMac = pkgs.linkFarm "strix-netboot-by-mac" (lib.mapAttrsToList
-    (name: h: {
-      name = "${h.mac}.ipxe";
-      path = pkgs.writeText "chain-${name}.ipxe" ''
-        #!ipxe
-        chain http://${httpAuthority}/hosts/${name}/netboot.ipxe
-      '';
-    })
-    netbootHosts);
+  byMac = pkgs.linkFarm "strix-netboot-by-mac" (
+    lib.concatLists (
+      lib.mapAttrsToList
+        (
+          name: h:
+            map
+              (mac: {
+                name = "${mac}.ipxe";
+                path = pkgs.writeText "chain-${name}-${mac}.ipxe" ''
+                  #!ipxe
+                  chain http://${httpAuthority}/hosts/${name}/netboot.ipxe
+                '';
+              })
+              (netbootMacs h)
+        )
+        netbootHosts
+    )
+  );
 
   stateDir = "/var/lib/strix-netboot";
 
@@ -107,7 +122,7 @@ in
     netbootImages;
 
   services.nfs.server.exports = ''
-    /export/nix-store      ${lanCidr}(ro,nohide,no_subtree_check)
+    /export/nix-store      ${lanCidr}(ro,nohide,no_subtree_check) ${nanokvmUsbCidr}(ro,nohide,no_subtree_check)
     /export/strix-models   ${lanCidr}(ro,nohide,insecure,no_subtree_check)
   '';
 

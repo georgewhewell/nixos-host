@@ -298,6 +298,30 @@ The JSON diff contained one station change and three byte changes. The host
 boot ID remained `758399aa-a216-4733-90ad-eab6141f7c18`, the switch remained
 visible at `0000:c4:00.0`, and `hardware-written` remained `no`.
 
+## Vendor template and multi-host boundary
+
+On 2026-07-25 the vendor SBR template (`Pde/db/AtlasSBR.db`, a serialized
+`SerialBootRom`) and the full runtime register database
+(`Pde/db/pex_device_atlas.db`) were decoded with reflection probes over the
+vendor Java classes. Results:
+
+- All 104 SoC dwords carry vendor field names in the template; the template
+  independently confirms the `STRAP_UPSTRM_PORT` bits 7:0, max-link-speed
+  bits 9:8, lane-enable bits 15:13, and the station quarter-code packing
+  used by `pexctl`.
+- Template defaults: station quarter codes all `1` (x4/x4/x4/x4 fallback),
+  max link speed Gen3, upstream port 0, `VS0 Enable` set.
+- No SBR field encodes virtual switches, per-VS upstream ports, port
+  vectors, or NT ports. Multi-host and NT are runtime CSR configuration;
+  the decoded register map lives in
+  [`ATLAS-VS-REGISTERS.md`](ATLAS-VS-REGISTERS.md).
+- An offline candidate moving `soc.upstream_port` 0 to 16 changes exactly
+  `0x5c: 00 -> 10` and checksum `0x0b4c: 1a -> 0a`; no other SBR bytes are
+  required by any evidence in the corpus.
+- `pexctl` now rejects `soc.upstream_port` values outside the
+  database-defined port set (0–95, 116, 117), and gained the read-only
+  `device reg-read` command for the runtime registers above.
+
 ## Cross-checks
 
 The 2664-byte Broadcom `Base_RDK96_v0.0.1.0.bin` image distributed with the

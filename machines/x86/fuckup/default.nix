@@ -12,20 +12,20 @@ let
     cudaPackages = pkgs.cudaPackages_12_8;
     cudaCapability = "8.9";
   };
-  moshiConfig = pkgs.writeText "moshi-q8.json" (builtins.toJSON {
-    instance_name = "fuckup-q8";
-    hf_repo = "kyutai/moshiko-candle-q8";
-    lm_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/model.q8.gguf";
-    text_tokenizer_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/tokenizer_spm_32k_3.model";
+  moshiConfig = pkgs.writeText "moshi-bf16.json" (builtins.toJSON {
+    instance_name = "fuckup-bf16";
+    hf_repo = "kyutai/moshiko-candle-bf16";
+    lm_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/model.safetensors";
+    text_tokenizer_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/tokenizer_spm_32k_3.model";
     log_dir = "$HOME/.local/state/moshi/logs";
-    mimi_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-q8/tokenizer-e351c8d8-checkpoint125.safetensors";
+    mimi_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/tokenizer-e351c8d8-checkpoint125.safetensors";
     mimi_num_codebooks = 8;
     static_dir = "/models/.cache/huggingface/moshi/web-dist";
     addr = "127.0.0.1";
     port = 8998;
     cert_dir = "$HOME/.local/state/moshi/certs";
   });
-  moshiQ8 = pkgs.writeShellScriptBin "moshi-q8" ''
+  moshiBf16 = pkgs.writeShellScriptBin "moshi-bf16" ''
     set -euo pipefail
 
     state_dir="$HOME/.local/state/moshi"
@@ -113,7 +113,7 @@ in
   environment.systemPackages = [
     pkgs.kexec-tools
     moshi
-    moshiQ8
+    moshiBf16
     pkgs.gpu-screen-recorder-gtk
     pkgs.wl-screenrec
     (pkgs.writeShellScriptBin "wl-capture" ''
@@ -148,6 +148,10 @@ in
       "hf/Qwen/Qwen3.5-0.8B"
     ];
     metricsPort = 9400;
+    # Placeholder assurance terms (mirrors nix/tests/e2e.nix) until the
+    # attested-execution plan drops these flags.
+    assuranceCodec = "tpm2.quote.v1";
+    assurancePolicy = "0000000000000000000000000000000000000000000000000000000000000000";
     graffiti = "cuda12-sm89";
     preloadWeights = [
       "Qwen/Qwen3.5-0.8B"

@@ -78,7 +78,7 @@
     # UniFi controller removed 2026-06-14 — the last UniFi device (AC-Pro) now
     # runs OpenWrt, so the controller is no longer needed.
     ../../../services/home-assistant/default.nix
-    ../../../services/frigate.nix
+    # ../../../services/frigate.nix
   ];
 
   hardware.cpu.amd.ryzen-smu.enable = true;
@@ -314,34 +314,6 @@
   boot.extraModprobeConfig = ''
     options it87 force_id=0x8620
   '';
-
-  systemd.services.router-system-fan-max = {
-    description = "Set the verified router system fan to maximum speed";
-    after = [ "systemd-modules-load.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      set -eu
-
-      for hwmon in /sys/class/hwmon/hwmon*; do
-        [ -r "$hwmon/name" ] || continue
-        [ "$(cat "$hwmon/name")" = "it8620" ] || continue
-        [ -r "$hwmon/fan2_input" ] || continue
-        [ -w "$hwmon/pwm2_enable" ] || continue
-        [ -w "$hwmon/pwm2" ] || continue
-
-        echo 1 > "$hwmon/pwm2_enable"
-        echo 255 > "$hwmon/pwm2"
-        exit 0
-      done
-
-      echo "verified IT8620 hwmon fan2/pwm2 mapping was not found" >&2
-      exit 1
-    '';
-  };
 
   fileSystems."/" = {
     device = "zpool/root/nixos-router";

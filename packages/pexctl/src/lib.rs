@@ -676,6 +676,13 @@ impl AtlasConfig {
                 self.schema
             )));
         }
+        if let Some(upstream_port) = self.soc.upstream_port {
+            if port_default_location(upstream_port).is_none() {
+                return Err(Error::Config(format!(
+                    "upstream port {upstream_port} is not a database-defined PEX88096 port (0-95, 116, or 117)"
+                )));
+            }
+        }
         let mut seen = [false; 6];
         for entry in &self.stations {
             let station = usize::from(entry.station);
@@ -4405,6 +4412,27 @@ mod tests {
 
     #[test]
     fn config_parser_rejects_unknown_duplicate_and_empty_inputs() {
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "soc": {"upstream_port": 96}
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "soc": {"upstream_port": 200}
+            }"#,
+        )
+        .is_err());
+        assert!(AtlasConfig::parse_json(
+            br#"{
+                "schema": "pexctl.atlas-config.v1",
+                "soc": {"upstream_port": 116}
+            }"#,
+        )
+        .is_ok());
         assert!(AtlasConfig::parse_json(
             br#"{
                 "schema": "pexctl.atlas-config.v1",

@@ -14,6 +14,10 @@ See [`FLASH-PROTECTION.md`](FLASH-PROTECTION.md) for the PLX SDK FAQ recovery
 guidance, the exact W25Q128JW protection bits and commands, and the fail-closed
 write preflight.
 
+See [`ATLAS-VS-REGISTERS.md`](ATLAS-VS-REGISTERS.md) for the decoded
+virtual-switch (multi-host), NT, management, and port-control runtime
+register map, and for the single-host upstream-port configuration boundary.
+
 ## Safety rules
 
 - Capture the current state before and after any configuration change.

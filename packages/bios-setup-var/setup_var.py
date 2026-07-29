@@ -234,17 +234,32 @@ def cmd_set(db, name, value, varstore, dry_run):
         return
 
     backup = f"/var/tmp/{efivar}.{cur}.bak"
-    with open(backup, "wb") as fh:
-        fh.write(attrs + payload)
-    print(f"  backed up to {backup}")
+    old_raw = attrs + payload
+    if os.path.exists(backup):
+        with open(backup, "rb") as fh:
+            if fh.read() != old_raw:
+                sys.exit(f"refusing to overwrite mismatched backup {backup}")
+        print(f"  using existing matching backup {backup}")
+    else:
+        with open(backup, "xb") as fh:
+            fh.write(old_raw)
+        print(f"  backed up to {backup}")
 
     new = bytearray(payload)
     new[q["offset"]:q["offset"] + q["width"]] = target.to_bytes(q["width"], "little")
     path = os.path.join(EFIVARS, efivar)
-    subprocess.run(["chattr", "-i", path], check=False)
-    # efivarfs requires the 4-byte attribute header and data in one write.
-    with open(path, "wb") as fh:
-        fh.write(attrs + bytes(new))
+    subprocess.run(["chattr", "-i", path], check=True)
+    # efivarfs requires the 4-byte attribute header and payload in one write.
+    # Do not use open(..., "wb"): its O_TRUNC flag is rejected by efivarfs
+    # before the write reaches the firmware.
+    new_raw = attrs + bytes(new)
+    fd = os.open(path, os.O_WRONLY)
+    try:
+        written = os.write(fd, new_raw)
+    finally:
+        os.close(fd)
+    if written != len(new_raw):
+        sys.exit(f"short efivarfs write: wrote {written} of {len(new_raw)} bytes")
 
     _, verify = _read_var(efivar)
     got, got_label = _decode(q, verify)

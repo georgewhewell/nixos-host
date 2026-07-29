@@ -61,5 +61,6 @@ in {
   nix.gc = {
     automatic = true;
     dates = pkgs.lib.mkDefault "weekly";
+    options = pkgs.lib.mkDefault "--delete-older-than 14d";
   };
 }

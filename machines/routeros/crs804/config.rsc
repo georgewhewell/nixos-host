@@ -1,8 +1,8 @@
 # CRS804 desired state for the MLX5/BlueField fabric.
 # Applied by scripts/mikrotik-400g-apply-config.
 
-# Preserve the existing management bridge object so its IP addresses never
-# leave a running interface during migration.
+# Preserve the existing management bridge as an Ethernet recovery path. The
+# normal LAN management address moves onto the fabric SVI below.
 :if ([:len [/interface bridge find where name="bridge-mgmt"]] = 0) do={
     :local oldBridge [/interface bridge find where name="bridge"]
     :if ([:len $oldBridge] > 0) do={
@@ -20,7 +20,7 @@
 /interface bridge set [find where name="bridge-fabric"] protocol-mode=rstp vlan-filtering=no mtu=9000 auto-mac=no admin-mac=D0:EA:11:D1:9D:85 comment="nixos-config: hardware QSFP fabric bridge"
 
 # Both CPU-connected 10G Ethernet interfaces remain a software-switched
-# management/recovery LAN. hw=yes is harmless here and permits fast-path
+# recovery LAN. hw=yes is harmless here and permits fast-path
 # behavior if RouterOS gains hardware support for these ports later.
 :foreach p in={"ether1";"ether2"} do={
     /interface ethernet set [find where name=$p] mtu=1500 l2mtu=1600
@@ -32,83 +32,64 @@
     }
 }
 
-# Each cage carries one direct 100G four-lane link on lanes 1-4 (primary
-# interface -1 participates in the bridge). Lanes 5-8 are the unused second
-# half EXCEPT on cage 1, which is a 400G->2x200G splitter DAC: lanes 1-4 go to
-# the BlueField-2, lanes 5-8 go to a Strix host (strix-2). Cage 1's -5 is
-# therefore a second fabric access port (mirrors -1); see the cage==1 branch.
-# Set L2MTU before MTU: RouterOS otherwise rejects mtu=9000 against the
-# factory l2mtu=1584.
+# Physical topology:
+#   cage 1: 400G -> 2x200G, primary interfaces -1 and -5 (four lanes each)
+#   cage 2: 400G -> 4x100G to strix-1..4, primaries -1/-3/-5/-7
+#            (two lanes each)
+#   cage 3: QSFP-to-SFP28 adapter, 25G untagged router LAN uplink
+#   cage 4: QSFP-to-SFP28 adapter, 25G untagged uplink to the CRS504/Trex
+#
+# First remove every QSFP lane from any old bridge membership. This prevents
+# stale primaries from surviving a breakout-mode change. Member lanes remain
+# enabled only where their primary needs them for link training.
 :for cage from=1 to=4 do={
-    :local p ("qsfp56-dd-" . $cage . "-1")
-    /interface ethernet set [find where name=$p] disabled=no l2mtu=9216 mtu=9000
-
-    :local bp [/interface bridge port find where interface=$p]
-    :if ([:len $bp] = 0) do={
-        /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
-    } else={
-        /interface bridge port set $bp bridge="bridge-fabric" hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
-    }
-
-    # The 98DX7335/RouterOS 7.23 combination installs duplicate external FDB
-    # entries (internal VID 4098) when L3HW is enabled on these access ports,
-    # breaking ordinary cage-to-cage traffic. L2 bridge offload remains the
-    # fast path used by RoCE.
-    /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
-
-    :for lane from=2 to=4 do={
-        :local member ("qsfp56-dd-" . $cage . "-" . $lane)
-        :local memberBp [/interface bridge port find where interface=$member]
-        :if ([:len $memberBp] > 0) do={
-            /interface bridge port remove $memberBp
+    :for lane from=1 to=8 do={
+        :local p ("qsfp56-dd-" . $cage . "-" . $lane)
+        :local bp [/interface bridge port find where interface=$p]
+        :if ([:len $bp] > 0) do={
+            /interface bridge port remove $bp
         }
-        /interface ethernet set [find where name=$member] disabled=no l2mtu=9216 mtu=9000
-    }
-
-    :if ($cage = 1) do={
-        # Cage 1 splitter second half (lanes 5-8) -> strix-2. Bring -5 up as a
-        # fabric access port exactly like a -1 primary; 6-8 are its members.
-        :local p2 "qsfp56-dd-1-5"
-        /interface ethernet set [find where name=$p2] disabled=no l2mtu=9216 mtu=9000
-        :local bp2 [/interface bridge port find where interface=$p2]
-        :if ([:len $bp2] = 0) do={
-            /interface bridge port add bridge="bridge-fabric" interface=$p2 hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
-        } else={
-            /interface bridge port set $bp2 bridge="bridge-fabric" hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
-        }
-        /interface ethernet switch port set [find where name=$p2] l3-hw-offloading=no
-        :for lane from=6 to=8 do={
-            :local member ("qsfp56-dd-1-" . $lane)
-            :local memberBp [/interface bridge port find where interface=$member]
-            :if ([:len $memberBp] > 0) do={
-                /interface bridge port remove $memberBp
-            }
-            /interface ethernet set [find where name=$member] disabled=no l2mtu=9216 mtu=9000
-        }
-    } else={
-        :for lane from=5 to=8 do={
-            :local secondary ("qsfp56-dd-" . $cage . "-" . $lane)
-            :local secondaryBp [/interface bridge port find where interface=$secondary]
-            :if ([:len $secondaryBp] > 0) do={
-                /interface bridge port remove $secondaryBp
-            }
-            /interface ethernet set [find where name=$secondary] disabled=yes
-        }
+        /interface ethernet set [find where name=$p] l2mtu=9216 mtu=9000 disabled=yes
     }
 }
 
-# RouterOS 7.23.2 cannot autonegotiate these HELLAS HQSFP56-200G-C1M DACs
-# with the 100G ConnectX endpoints: every cage reports auto-init-failed and
-# an empty partner advertisement. Forced 100G CR4 trains all four links;
-# the Strix hosts apply the matching force mode at boot.
-:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
-    /interface ethernet set [find where name=$p] auto-negotiation=no fec-mode=auto speed=100G-baseCR4
+# Cage 1: two 200G CR4 access links.
+:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5"} do={
+    /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=auto speed=200G-baseCR4
+    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+    /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
+}
+:foreach lane in={2;3;4;6;7;8} do={
+    :local p ("qsfp56-dd-1-" . $lane)
+    /interface ethernet set [find where name=$p] disabled=no
+}
+
+# Cage 2: four independent 100G CR2 access links, in cable-leg order to
+# strix-1, strix-2, strix-3, and strix-4.
+:foreach p in={"qsfp56-dd-2-1";"qsfp56-dd-2-3";"qsfp56-dd-2-5";"qsfp56-dd-2-7"} do={
+    /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=auto speed=100G-baseCR2
+    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+    /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
+}
+:foreach lane in={2;4;6;8} do={
+    :local p ("qsfp56-dd-2-" . $lane)
+    /interface ethernet set [find where name=$p] disabled=no
+}
+
+# Cages 3 and 4: ordinary 25G optical access ports in fabric VLAN 25. The
+# router and CRS504 continue to see untagged Ethernet. Both known peers use
+# forced 25G with RS-FEC; matching that here avoids the failed autonegotiation
+# seen when the cage-4 peer does not advertise.
+:foreach p in={"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
+    /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=fec91 speed=25G-baseSR-LR
+    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+    /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
 }
 
 # Reconcile only the VLAN rows owned by this file.
 /interface bridge vlan remove [find where comment="nixos-config: fabric VLAN 25"]
 /interface bridge vlan remove [find where comment="nixos-config: router transit VLAN 26"]
-/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-3-1,qsfp56-dd-4-1 comment="nixos-config: fabric VLAN 25"
+/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-2-3,qsfp56-dd-2-5,qsfp56-dd-2-7,qsfp56-dd-3-1,qsfp56-dd-4-1 comment="nixos-config: fabric VLAN 25"
 
 :if ([:len [/interface vlan find where name="vlan25-fabric"]] = 0) do={
     /interface vlan add name=vlan25-fabric interface="bridge-fabric" vlan-id=25 mtu=9000 comment="nixos-config: fabric SVI"
@@ -119,6 +100,15 @@
     /ip address add address=192.168.25.1/24 interface=vlan25-fabric comment="nixos-config: fabric gateway"
 } else={
     /ip address set [find where comment="nixos-config: fabric gateway"] address=192.168.25.1/24 interface=vlan25-fabric
+}
+
+# The two 25G handoffs replace the old CPU-Ethernet management uplink. Keep the
+# established LAN address and DNS name on the hardware-offloaded fabric SVI.
+# The factory 192.168.88.1 address remains on bridge-mgmt for recovery.
+:if ([:len [/ip address find where comment="nixos-config-lan-mgmt"]] = 0) do={
+    /ip address add address=192.168.23.27/24 interface=vlan25-fabric comment="nixos-config-lan-mgmt"
+} else={
+    /ip address set [find where comment="nixos-config-lan-mgmt"] address=192.168.23.27/24 interface=vlan25-fabric
 }
 # Fixed fabric members get static neighbors so the L3HW dataplane starts
 # deterministically after boot without temporarily disabling offloading.
@@ -147,7 +137,7 @@
 # link retraining: the bridge reports learning+forwarding and H, but frames
 # reach only the switch CPU. Rebinding each active cage once repairs the group;
 # the final and persistent state remains hardware-offloaded.
-:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
+:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-2-3";"qsfp56-dd-2-5";"qsfp56-dd-2-7";"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
     :local bp [/interface bridge port find where interface=$p]
     /interface bridge port set $bp hw=no
     :delay 100ms
@@ -175,9 +165,17 @@
 
 # PFC requires an explicit queue rate to calculate pause timing.  These rates
 # mirror each cage's endpoint ceiling but do not select the physical link mode.
-:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
+:foreach p in={"qsfp56-dd-2-1";"qsfp56-dd-2-3";"qsfp56-dd-2-5";"qsfp56-dd-2-7"} do={
     /interface ethernet switch qos port set [find where name=$p] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=100G
 }
+:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5"} do={
+    /interface ethernet switch qos port set [find where name=$p] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=200G
+}
+# Cage 3 carries ordinary routed LAN traffic; explicitly clear the stale PFC
+# profile left by its former 100G fabric role. Cage 4 carries Trex/RDMA traffic
+# and therefore participates in the lossless TC3 policy at its 25G line rate.
+/interface ethernet switch qos port set [find where name="qsfp56-dd-3-1"] trust-l3=keep pfc=disabled egress-rate-queue3=25G
+/interface ethernet switch qos port set [find where name="qsfp56-dd-4-1"] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=25G
 # The 98DX7335 always enables QoS offload on current RouterOS, but retain the
 # explicit setting so the desired state remains clear across upgrades.
 /interface ethernet switch set [find where name="switch1"] qos-hw-offloading=yes

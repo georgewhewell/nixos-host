@@ -1,7 +1,7 @@
 {config, ...}: {
   # monero
   fileSystems."/var/lib/monero" = {
-    device = "pool3d/root/monero";
+    device = "bpool/trex/monero";
     fsType = "zfs";
     options = ["nofail" "sync=disabled"];
   };

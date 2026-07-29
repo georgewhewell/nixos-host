@@ -5,7 +5,7 @@
 -    // Do not check for '+', '-', '=' and '!' characters in file name. Allow file name as it is.
 -    if (
 -	 (Plx_strcasecmp( pCmd->szCmd, "spiload" ) == 0) ||
--    	 (Plx_strcasecmp( pCmd->szCmd, "spisave" ) == 0)
+-    	 (Plx_strcasecmp( pCmd->szCmd, "spisave" ) == 0) 
 -       )
 -    {
 -        CmdLine_GetNextToken( &pBuffer, strArg, FALSE );

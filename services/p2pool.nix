@@ -3,7 +3,7 @@
 
   # ZFS filesystem for p2pool data
   fileSystems."/var/lib/p2pool" = {
-    device = "pool3d/root/p2pool";
+    device = "bpool/trex/p2pool";
     fsType = "zfs";
     options = ["nofail" "sync=disabled"];
   };

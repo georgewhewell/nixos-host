@@ -50,15 +50,9 @@ in {
     config.services.cadvisor.port
   ];
 
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    publish = {
-      enable = true;
-      addresses = true;
-      userServices = true;
-    };
-  };
-
-  services.resolved.settings.Resolve.MulticastDNS = "no";
+  # systemd-networkd enables systemd-resolved by default. Let resolved handle
+  # ordinary per-link mDNS, but leave it disabled on the router where Avahi is
+  # explicitly enabled to reflect HomeKit discovery between LAN and WiFi.
+  services.resolved.settings.Resolve.MulticastDNS =
+    if config.services.avahi.enable then "no" else "yes";
 }

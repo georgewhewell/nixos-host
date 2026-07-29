@@ -1,0 +1,6 @@
+{
+  "schema": "pexctl.atlas-config.v1",
+  "soc": {
+    "upstream_port": 16
+  }
+}

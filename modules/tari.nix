@@ -13,7 +13,7 @@ in {
 
     dataDir = mkOption {
       type = types.path;
-      default = "/pool3d/root/tari";
+      default = "/var/lib/tari";
       description = "Directory to store Tari node data";
     };
 

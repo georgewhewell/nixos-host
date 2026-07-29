@@ -66,6 +66,8 @@ sudo pexctl device read-flash --bdf 0000:c4:00.0 \
 sudo pexctl device read-flash --bdf 0000:c4:00.0 \
   --offset 0 --size 0x40000 --method serial --output sector-0-serial.bin
 sudo pexctl device spi-id --bdf 0000:c4:00.0
+sudo pexctl device reg-read --bdf 0000:c4:00.0 --offset 0x800358
+sudo pexctl device reg-read --bdf 0000:c4:00.0 --offset 0x800360 --count 4
 sudo pexctl device flash-status --bdf 0000:c4:00.0 --json
 sudo pexctl device backup-flash --bdf 0000:c4:00.0 \
   --output complete-cs0.bin
@@ -237,9 +239,40 @@ The following fields are writable through `pexctl.atlas-config.v1`:
 
 | Field | Encoding | Status |
 |---|---|---|
-| `soc.upstream_port` | first SoC dword, bits 7:0 | vendor field name and width confirmed |
+| `soc.upstream_port` | first SoC dword, bits 7:0 | vendor field name and width confirmed; restricted to database-defined ports 0–95, 116, 117 |
 | `soc.max_link_speed` | first SoC dword, bits 9:8; 0–3 = Gen1–Gen4 | vendor encoding confirmed |
 | station layout | four packed 3-bit quarter codes per station | only the two complete layouts below are writable |
+
+`device reg-read` reads one or more BAR0 dwords through the same PlxSvc
+mapped-register ioctl the flash reader uses. It is a read-only research
+interface to the Atlas runtime registers. Port CSRs begin at BAR0 offset
+`0x800000`; the port-0 global registers decoded so far are recorded in the
+Strix-4 [`ATLAS-VS-REGISTERS.md`](../../hardware/pex880xx-strix-4/ATLAS-VS-REGISTERS.md)
+dossier.
+
+## Upstream and downstream port roles
+
+In the default single-host (fan-out) configuration, the switch takes its
+upstream port from `soc.upstream_port` and treats every other enabled port as
+downstream. Moving the upstream port therefore changes exactly the first SoC
+byte plus the checksum; an offline upstream-port-16 candidate changes
+`0x5c: 00 -> 10` and the checksum byte. See
+[`examples/upstream-port-16.json`](examples/upstream-port-16.json); it
+demonstrates the syntax against port 16 and is not a recommendation to move
+this board's upstream port. Moving the upstream port away from the port the
+host is cabled to removes the switch—and the in-band repair path—from that
+host after the next reset.
+
+The two-bit per-port `Port Type` and `Clocking mode` tables remain read-only:
+their enum meanings are not established, and all reference images hold zeros.
+No SBR field encodes virtual-switch (multi-host) membership, per-VS upstream
+ports, or NT ports; those exist only as runtime registers (VS Enable,
+VS0–VS3 Upstream, VS0 Port Vector, and friends) and can be baked at boot only
+indirectly through PSB register-write records. The vendor template defaults
+(all station quarter codes `1`, max link speed Gen3) corroborate the
+published fallback behaviour: without a valid SBR, stations come up as
+x4/x4/x4/x4.
+
 
 The first-dword PCIe lane-enable field at bits 15:13 is reported as
 `lane_enable_code_raw`; its value semantics are not yet established. JSON also

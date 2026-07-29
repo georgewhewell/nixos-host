@@ -20,6 +20,7 @@ let
   enableUsb4Rdma = builtins.elem index [ 1 2 3 4 ];
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
+  netbootSharesFabric = netboot && (self.netbootSharesFabric or false);
 
   # The shared ConnectX-5 ports attach to the Ethernet-only CRS804.  Keep the
   # separate flag so the old IPoIB/OpenSM experiment cannot silently return.
@@ -230,7 +231,12 @@ in
   # autonegotiation. Match the CRS804's forced 100G CR4 configuration after
   # every boot or PCI reset. Select the PF by inventory MAC: these SharedIO
   # adapters expose both ports to each host, but only one port is cabled.
-  systemd.services.cx5-fabric-link = lib.mkIf enableCx5Fabric {
+  # A diskless host has already proved its selected CX5 rail is trained by
+  # downloading iPXE, the kernel, and the initrd across it. Running mlxlink in
+  # stage 2 resets the dual-port/SharedIO adapter and also drops the sibling
+  # PF carrying the live NFS root. Keep forced retraining for local-disk boots,
+  # but never disrupt a netboot host after the initrd handoff.
+  systemd.services.cx5-fabric-link = lib.mkIf (enableCx5Fabric && !netboot) {
     description = "Force the CRS804 fabric link to 100 GbE";
     wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
     wantedBy = [ "network-online.target" ];
@@ -767,16 +773,30 @@ in
         enable = true;
         anyInterface = true;
       };
-      links = lib.optionalAttrs enableSharedCx5 {
-        "10-cx5-fabric" = {
-          matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
-          linkConfig.Name = vllmFabricInterface;
+      links =
+        lib.optionalAttrs netboot {
+          # Preserve the CX5 interface name chosen in the initrd. This MAC is
+          # a separate physical port on Strix 3/4; on Strix 1/2 its firmware
+          # alias and permanent Linux identity describe the one cabled rail.
+          "00-netboot-lan" = {
+            matchConfig.PermanentMACAddress = self.netbootLinuxMac or self.netbootMac;
+            linkConfig.Name = "eno1";
+          };
+        }
+        // lib.optionalAttrs (enableSharedCx5 && !netbootSharesFabric) {
+          "10-cx5-fabric" = {
+            matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
+            linkConfig.Name = vllmFabricInterface;
+          };
         };
-      };
       networks = {
         "10-lan" = {
           matchConfig.Name = "eno1";
-          address = [ (network.cidrOf "lan" self.addresses.lan) ];
+          address = [
+            (network.cidrOf "lan" self.addresses.lan)
+          ] ++ lib.optionals netbootSharesFabric [
+            (network.cidrOf "fabric" self.addresses.fabric)
+          ];
           gateway = [ network.routerIp ];
           dns = [ network.routerIp ];
           networkConfig = {

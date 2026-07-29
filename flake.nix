@@ -2,7 +2,7 @@
   description = "satanic.link fleet: NixOS (x86/aarch64/riscv), nix-darwin, OpenWrt and RouterOS configs, deployed with colmena";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.follows = "nix-strix-halo/nixpkgs";
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -28,8 +28,9 @@
     darwin.url = "github:lnl7/nix-darwin/master";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
+    # No nixpkgs follow: its flake eagerly instantiates x86_64-darwin, which
+    # nixpkgs 26.11 (via nix-strix-halo) no longer supports.
     vscode-server.url = "github:nix-community/nixos-vscode-server";
-    vscode-server.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
     nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs";
@@ -50,7 +51,6 @@
 
     nix-strix-halo = {
       url = "path:/mnt/Home/src/nix-strix-halo";
-      inputs.nixpkgs.follows = "nixpkgs";
       inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel";
     };
 
@@ -484,7 +484,12 @@
 
       # Image artifacts (ISOs, SD cards, USB sticks) that evaluate as full
       # NixOS systems but are never colmena deployment targets.
-      imageOnlyNixosConfigurations = [ "router-usb" "strix-installer" "k3SdImage" ];
+      imageOnlyNixosConfigurations = [
+        "router-usb"
+        "strix-installer"
+        "strix-2-nvme-image"
+        "k3SdImage"
+      ];
       deployableNixosConfigurations =
         builtins.removeAttrs nixosConfigurations imageOnlyNixosConfigurations;
 
@@ -506,9 +511,6 @@
             nodeNixpkgs = {
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
-              # Keep the Strix machines on the same generic ROCm package set
-              # for routine reliability work; znver5 can be reintroduced only
-              # for focused performance A/B runs.
               strix-2 = pkgsForRocmStrixHalo "x86_64-linux";
               strix-3 = pkgsForRocmStrixHalo "x86_64-linux";
               strix-4 = pkgsForRocmStrixHalo "x86_64-linux";
@@ -670,26 +672,26 @@
           };
       };
 
-      # The Strix fleet normally netboots, but every node also carries a
-      # complete local fallback installation. These configurations reuse the
-      # production host modules while changing only that host's boot mode;
-      # they are install artifacts, not additional Colmena deployment nodes.
-      localBootNixosConfigurations =
-        nixpkgs.lib.genAttrs
-          [ "strix-1" "strix-2" "strix-3" "strix-4" ]
-          (hostName:
-            let
-              localBootNetwork = network // {
-                hosts = network.hosts // {
-                  ${hostName} = network.hosts.${hostName} // {
-                    netboot = false;
-                  };
-                };
-              };
-            in
-            nixosConfigurations.${hostName}.extendModules {
-              specialArgs.network = localBootNetwork;
-            });
+      # # The Strix fleet normally netboots, but every node also carries a
+      # # complete local fallback installation. These configurations reuse the
+      # # production host modules while changing only that host's boot mode;
+      # # they are install artifacts, not additional Colmena deployment nodes.
+      # localBootNixosConfigurations =
+      #   nixpkgs.lib.genAttrs
+      #     [ "strix-1" "strix-2" "strix-3" "strix-4" ]
+      #     (hostName:
+      #       let
+      #         localBootNetwork = network // {
+      #           hosts = network.hosts // {
+      #             ${hostName} = network.hosts.${hostName} // {
+      #               netboot = false;
+      #             };
+      #           };
+      #         };
+      #       in
+      #       nixosConfigurations.${hostName}.extendModules {
+      #         specialArgs.network = localBootNetwork;
+      #       });
 
       githubActions =
         let

@@ -1,4 +1,14 @@
-{ lib, ... }:
+{ config, pkgs, ... }:
+let
+  # Disko currently passes an aggregateModules result as vmTools.kernel.
+  # Newer nixpkgs correctly requires an explicit image name for that module
+  # bundle because it has no `target` passthru of its own.
+  imagePkgs = pkgs.extend (_: prev: {
+    vmTools = prev.vmTools.override {
+      kernelImage = config.system.boot.loader.kernelFile;
+    };
+  });
+in
 {
   # A self-contained local-boot image for recovering strix-2 when firmware
   # network boot is unavailable. 13 GiB fits the 14,403,239,936-byte USB/NVMe
@@ -7,6 +17,7 @@
   disko.imageBuilder = {
     name = "strix-2-nvme";
     copyNixStoreThreads = 8;
+    pkgs = imagePkgs;
   };
 
   disko.devices.disk.strix-2-nvme = {
@@ -19,6 +30,7 @@
       partitions = {
         ESP = {
           name = "strix-2-ESP";
+          label = "strix-2-ESP";
           start = "1M";
           size = "512M";
           type = "EF00";
@@ -32,6 +44,7 @@
         };
         root = {
           name = "strix-2-root";
+          label = "strix-2-root";
           size = "100%";
           type = "8304";
           content = {
@@ -51,8 +64,4 @@
     };
   };
 
-  # The image is copied to a larger NVMe in normal use. Grow the root
-  # partition and filesystem explicitly after the first successful boot;
-  # keeping image-time resizing disabled makes the artifact deterministic.
-  systemd.services.strix-grow-root.enable = lib.mkForce false;
 }
