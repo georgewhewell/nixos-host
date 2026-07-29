@@ -611,7 +611,7 @@ in {
       "console=tty0"
       "amd_pstate=passive"
       "hugepagesz=1G"
-      "hugepages=1"
+      "hugepages=8"
       "transparent_hugepages=madvise"
       # amd_iommu handled by VFIO config (services/virt/vfio.nix)
       "pci=realloc=off" # fixes: only 7 of 8 pex downstream work

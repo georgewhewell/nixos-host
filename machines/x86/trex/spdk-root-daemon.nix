@@ -43,7 +43,7 @@
     "--wait-for-rpc"
     "-m ${cpuMask}"
     "-p ${mainCore}"
-    "-s 1024"
+    "-s 6144"
     "--huge-dir /dev/hugepages1G"
     "-r ${rpcSocket}"
   ];
