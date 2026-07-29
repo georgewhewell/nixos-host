@@ -483,12 +483,10 @@ in {
     options = ["nofail"];
   };
 
-  # Keep volatile partial payloads out of recursive snapshots and replication.
-  fileSystems."/var/lib/qbittorrent/incomplete" = {
-    device = "bpool/trex/downloads/incomplete";
-    fsType = "zfs";
-    options = ["nofail"];
-  };
+  # Volatile partial payloads live on the SPDK Optane array (optstore/qb-incomplete
+  # lvol via ublk, XFS). The mount is established by the SPDK assembly flow, not
+  # fstab, until the declarative phase-2 units land. Old zfs dataset
+  # bpool/trex/downloads/incomplete retired 2026-07-29 (was empty).
 
   fileSystems."/models" = {
     device = "bpool/trex/models";
