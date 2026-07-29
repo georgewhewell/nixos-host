@@ -1,0 +1,69 @@
+--- a/lib/event/app.c	2026-07-29 14:26:51.847882588 +0200
++++ b/lib/event/app.c	2026-07-29 14:26:51.859438655 +0200
+@@ -750,16 +750,30 @@
+ #undef SET_FIELD
+ }
+ 
++static const char *
++cpu_lock_dir(void)
++{
++	const char *dir = getenv("SPDK_CPU_LOCK_DIR");
++
++	if (dir == NULL || dir[0] == '\0') {
++		dir = getenv("TMPDIR");
++	}
++	if (dir == NULL || dir[0] == '\0') {
++		dir = "/var/tmp";
++	}
++	return dir;
++}
++
+ static int
+ unclaim_cpu_cores(uint32_t *failed_core)
+ {
+-	char core_name[40];
++	char core_name[256];
+ 	uint32_t i;
+ 	int rc;
+ 
+ 	for (i = 0; i < SPDK_CONFIG_MAX_LCORES; i++) {
+ 		if (g_core_locks[i] != -1 && g_core_locks[i] != 0) {
+-			snprintf(core_name, sizeof(core_name), "/var/tmp/spdk_cpu_lock_%03d", i);
++			snprintf(core_name, sizeof(core_name), "%s/spdk_cpu_lock_%03d", cpu_lock_dir(), i);
+ 			rc = close(g_core_locks[i]);
+ 			if (rc) {
+ 				SPDK_ERRLOG("Failed to close lock fd for core %d, errno: %d\n", i, errno);
+@@ -788,7 +802,7 @@
+ static int
+ claim_cpu_cores(uint32_t *failed_core)
+ {
+-	char core_name[40];
++	char core_name[256];
+ 	int core_fd, pid;
+ 	int *core_map;
+ 	uint32_t core;
+@@ -806,7 +820,7 @@
+ 			continue;
+ 		}
+ 
+-		snprintf(core_name, sizeof(core_name), "/var/tmp/spdk_cpu_lock_%03d", core);
++		snprintf(core_name, sizeof(core_name), "%s/spdk_cpu_lock_%03d", cpu_lock_dir(), core);
+ 		core_fd = open(core_name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+ 		if (core_fd == -1) {
+ 			SPDK_ERRLOG("Could not open %s (%s).\n", core_name, spdk_strerror(errno));
+@@ -1271,6 +1285,15 @@
+ 
+ 	g_executable_name = argv[0];
+ 
++	/*
++	 * systemd ROOT_STORAGE_DAEMONS: when running from an initramfs, mark
++	 * the process to survive the shutdown/switch-root killing spree.
++	 * Only argv[0][0] is modified; comm is left untouched, per the spec.
++	 */
++	if (access("/etc/initrd-release", F_OK) == 0) {
++		argv[0][0] = '@';
++	}
++
+ 	while ((ch = getopt_long(argc, argv, cmdline_short_opts, cmdline_options, &opt_idx)) != -1) {
+ 		switch (ch) {
+ 		case CONFIG_FILE_OPT_IDX:

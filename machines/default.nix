@@ -178,6 +178,20 @@ in
   # runs, but it makes routine system rebuilds depend on gccarch-specific
   # builders.
   strix-2 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 2);
+  strix-2-nvme-image =
+    let
+      localBootNetwork = network // {
+        hosts = network.hosts // {
+          strix-2 = network.hosts.strix-2 // {
+            netboot = false;
+          };
+        };
+      };
+    in
+    (sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 2)).extendModules {
+      specialArgs.network = localBootNetwork;
+      modules = [ ./x86/strix-halo/nvme-image.nix ];
+    };
   strix-3 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 3);
   strix-4 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 4);
 

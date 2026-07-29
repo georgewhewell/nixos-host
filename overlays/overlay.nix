@@ -18,7 +18,16 @@ self: super: {
   # Fix mtail cross-compilation - upstream vendor directory is out of sync
   mtail = super.mtail.overrideAttrs (old: {
     proxyVendor = true;
-    vendorHash = "sha256-NKNCpTCfc2U5fqdhXu30w7QlUjCwSX0l+t5ivWtEgdU=";
+    vendorHash = "sha256-9XEg7Io3yi/6PKgc0oKmTWNYACOLf8FfKM/c15jXOUQ=";
+  });
+
+  # moshi's PyO3 supports Python <= 3.13; nixpkgs default python3 is 3.14.
+  moshi = super.moshi.override { python3 = super.python313; };
+
+  # lld 21 rejects the ThinLTO'd .debug_gdb_scripts section ("string is not
+  # null terminated"); disable IPO until lld/openscad settle it.
+  openscad-unstable = super.openscad-unstable.overrideAttrs (old: {
+    cmakeFlags = (old.cmakeFlags or []) ++ [ "-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF" ];
   });
 
   # open-webui's pytest suite has a flaky SSE test that collides on a fixed
@@ -74,6 +83,7 @@ self: super: {
   });
 
   beegfs = super.callPackage ../packages/beegfs {};
+  spdk-ublk = super.callPackage ../packages/spdk-ublk {};
   beegfs-mgmtd = super.callPackage ../packages/beegfs/mgmtd.nix {};
   beegfs-ctl = super.callPackage ../packages/beegfs/ctl.nix {};
   # Client kernel module builds per-kernel:
@@ -82,7 +92,6 @@ self: super: {
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
   bios-setup-var = super.callPackage ../packages/bios-setup-var {};
   pexctl = super.callPackage ../packages/pexctl {};
-  spdk-ublk = super.callPackage ../packages/spdk-ublk {};
   mlnx-mft = super.callPackage ../packages/mlnx-mft {};
   mlnx-opensm = super.callPackage ../packages/mlnx-opensm {};
   nvidia_oc = super.callPackage ../packages/nvidia-oc {};
@@ -540,6 +549,22 @@ self: super: {
     super.pythonPackagesExtensions
     ++ [
       (python-final: python-prev: {
+        # ai-edge-litert 2.1.5's wheel was linked against OpenVINO 2026.2.0,
+        # while this nixpkgs revision provides 2026.2.1. Backport the upstream
+        # nixpkgs fix (7198eeede333): use OpenVINO's unversioned ABI names so
+        # autoPatchelf can resolve the Intel plugin against the packaged release.
+        ai-edge-litert = python-prev.ai-edge-litert.overridePythonAttrs (old: {
+          buildInputs = (old.buildInputs or [ ]) ++ [ super.openvino ];
+          preFixup = (old.preFixup or "") + ''
+            while IFS= read -r -d "" so; do
+              ${super.patchelf}/bin/patchelf \
+                --replace-needed libopenvino.so.2620 libopenvino.so "$so"
+              ${super.patchelf}/bin/patchelf \
+                --replace-needed libopenvino_tensorflow_lite_frontend.so.2620 \
+                libopenvino_tensorflow_lite_frontend.so "$so"
+            done < <(find "$out" -type f \( -name '*.so' -o -name '*.so.*' \) -print0)
+          '';
+        });
         # One timing-sensitive memory-channel test intermittently receives the
         # next SSE event before its assertion. The package's other 69 tests pass.
         sse-starlette = python-prev.sse-starlette.overridePythonAttrs (old: {

@@ -10,7 +10,6 @@
   self = network.hosts.trex;
   beegfsMgmtd = network.hosts.bluefield2;
   beegfsMgmtdLanIp = network.ipOf "lan" beegfsMgmtd.addresses.lan;
-  beegfsMgmtdFabricIp = network.ipOf "fabric" beegfsMgmtd.addresses.fabric;
 
   # ConnectX-4 switchdev: pin interface names to the ASIC's phys_switch_id so
   # they survive PCIe re-enumeration. The card's bus number moves whenever the
@@ -195,6 +194,10 @@ in {
     port = 31145;
     # downloadPolicy = "eager";
     executePolicy = "allow(hf/HuggingFaceTB/SmolLM2-135M-Instruct)";
+    # Placeholder assurance terms (mirrors nix/tests/e2e.nix) until the
+    # attested-execution plan drops these flags.
+    assuranceCodec = "tpm2.quote.v1";
+    assurancePolicy = "0000000000000000000000000000000000000000000000000000000000000000";
     graffiti = "trex";
     preloadWeights = [
       "Qwen/Qwen3.5-0.8B"
@@ -394,7 +397,13 @@ in {
     ../../../services/virt/host.nix
     ../../../services/virt/vfio.nix
     ../../../services/apple-health-ingester.nix
-    ./spdk-optane.nix
+    # 905P shelf physically detached 2026-07-29: the module's initrd assembly
+    # service aborts boot when the array is absent. Superseded by the SPDK
+    # root-daemon path below; kept for reference.
+    # ./optane-dm-stripe.nix
+    # SPDK as a proper systemd root storage daemon (phase 1: daemon only,
+    # no bdevs/mounts). See systemd.io/ROOT_STORAGE_DAEMONS.
+    ./spdk-root-daemon.nix
   ];
 
   deployment = {
@@ -454,6 +463,7 @@ in {
   systemd.services.qbittorrent = {
     bindsTo = ["mnt-Media.mount"];
     after = ["mnt-Media.mount"];
+    unitConfig.RequiresMountsFor = ["/var/lib/qbittorrent/incomplete"];
   };
 
   services.qbittorrent = {
@@ -469,6 +479,13 @@ in {
 
   fileSystems."/var/lib/qbittorrent" = {
     device = "bpool/trex/downloads";
+    fsType = "zfs";
+    options = ["nofail"];
+  };
+
+  # Keep volatile partial payloads out of recursive snapshots and replication.
+  fileSystems."/var/lib/qbittorrent/incomplete" = {
+    device = "bpool/trex/downloads/incomplete";
     fsType = "zfs";
     options = ["nofail"];
   };
@@ -588,8 +605,10 @@ in {
       # ASRock-Rack SOL UART by convention — confirm against the ACPI SPCR
       # table once BIOS Console Redirection (menu 3.4.8, COM0, VT-UTF8,
       # 115200 8N1) is enabled, and swap to ttyS0 here if SPCR says 0x3F8.
-      "console=tty0"
+      # ttyS1 first, tty0 last: the LAST console is primary, and with the BMC
+      # SOL unreliable the local display must win (2026-07-29)
       "console=ttyS1,115200n8"
+      "console=tty0"
       "amd_pstate=passive"
       "hugepagesz=1G"
       "hugepages=1"
@@ -764,22 +783,9 @@ in {
     '';
   };
 
-  services.avahi.allowInterfaces = lib.mkForce ["ovs-host"];
-
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
     "x86_64-windows"
-  ];
-
-  swapDevices = [
-    {device = "/dev/disk/by-uuid/c4052b76-2ab1-4715-b55d-07b0720d58cc";}
-    {device = "/dev/disk/by-uuid/30927806-c236-42dc-a198-462b757fd80f";}
-    {device = "/dev/disk/by-uuid/74122086-e876-4846-803f-62147dd54895";}
-    {device = "/dev/disk/by-uuid/3abe0f94-1b4b-40bf-8023-9cedaa4e8485";}
-    {device = "/dev/disk/by-uuid/7f89d211-da19-4b27-864b-aa16761af3b5";}
-    {device = "/dev/disk/by-uuid/84df5a65-7f52-4350-84f2-9c38fb4747bb";}
-    {device = "/dev/disk/by-uuid/9c8d8671-759b-48ba-a4e9-92cc3c20f8cb";}
-    {device = "/dev/disk/by-uuid/d8aac565-6df0-42be-bb6f-d8f42cb8cd81";}
   ];
 
   # Ephemeral root (2026-07-24): tmpfs /, with /nix and /persist as btrfs
@@ -809,11 +815,6 @@ in {
     options = ["subvol=/persist" "compress=zstd" "noatime" "flushoncommit"];
   };
 
-  # Keep pool3d imported temporarily as the rollback source for the migrated
-  # datasets and old ZFS root. No live filesystem depends on it after the
-  # VictoriaMetrics cutover.
-  boot.zfs.extraPools = ["pool3d"];
-
   # Big, cold /var trees live on bpool instead of the small fast root.
   fileSystems."/var/lib/nixos-containers" = {
     device = "bpool/trex/nixos-containers";
@@ -837,6 +838,7 @@ in {
   # bpool datasets fail to mount.
   systemd.services."container@arr-servers".unitConfig.RequiresMountsFor = [
     "/var/lib/nixos-containers"
+    "/var/lib/qbittorrent/incomplete"
   ];
   systemd.services.libvirtd.unitConfig.RequiresMountsFor = ["/var/lib/libvirt"];
   systemd.services.victoriametrics.unitConfig.RequiresMountsFor = [
@@ -992,20 +994,6 @@ in {
     in {
       enable = true;
       interval = "hourly";
-      # Keep snapshotting the old pool while its migration-source datasets
-      # remain as rollback copies; retire this with the pool.
-      datasets."pool3d" = {
-        recursive = true;
-        autosnap = true;
-        hourly = 24;
-        daily = 7;
-        weekly = 0;
-        monthly = 0;
-      };
-      datasets."pool3d/root/tari" = excluded;
-      datasets."pool3d/root/monero" = excluded;
-      datasets."pool3d/root/models" = excluded;
-      # migrated data lives here now
       datasets."bpool/trex" = {
         recursive = true;
         autosnap = true;
@@ -1025,21 +1013,33 @@ in {
       datasets."bpool/trex/monero" = excluded;
       # re-downloadable model weights — no snapshots (churn is large, value is zero)
       datasets."bpool/trex/models" = excluded;
+      # Partial torrents are disposable and high-churn.
+      datasets."bpool/trex/downloads/incomplete" = excluded;
     };
 
-    # ZFS replication to fuckup
+    # Replicate only current live datasets. --no-stream deliberately omits
+    # pre-migration snapshot history, including partial torrent payloads that
+    # predate the excluded downloads/incomplete child dataset.
     syncoid = let
-      excludedDatasets = ["tari" "monero" "models" "bitcoind"];
+      excludedDatasets = ["tari" "monero" "models" "bitcoind" "downloads/incomplete"];
+      exclusions = lib.concatMap (d: ["--exclude-datasets" d]) excludedDatasets;
     in {
       enable = true;
       interval = "hourly";
       sshKey = "/var/lib/syncoid/.ssh/id_ed25519";
-      commands."pool3d-to-archive" = {
-        source = "pool3d";
-        target = "root@fuckup:archive/pool3d";
+      commands."trex-bpool-to-archive" = {
+        source = "bpool/trex";
+        target = "root@fuckup:archive/pool3d/bpool-trex";
         recursive = true;
         sendOptions = "w";
-        extraArgs = lib.concatMap (d: ["--exclude" d]) excludedDatasets;
+        extraArgs = ["--no-stream"] ++ exclusions;
+      };
+      commands."home-to-archive" = {
+        source = "bpool/Home";
+        target = "root@fuckup:archive/pool3d/bpool-backup/Home";
+        recursive = false;
+        sendOptions = "w";
+        extraArgs = ["--no-stream"];
       };
     };
   };
@@ -1197,16 +1197,18 @@ in {
       # OVS internal port for host connectivity
       "10-ovs-host" = {
         matchConfig.Name = "ovs-host";
-        address = [(network.cidrOf "lan" self.addresses.lan)];
+        # The existing 100G LAN attachment also receives the fabric subnet
+        # through the CRS804 cage-4 10G access uplink. Two subnets share this
+        # L2 domain deliberately; fabric peers then use the direct ASIC path.
+        address = [
+          (network.cidrOf "lan" self.addresses.lan)
+          (network.cidrOf "fabric" self.addresses.fabric)
+        ];
         routes = [
           {Gateway = network.routerIp;}
-          # The management daemon is on the BlueField itself. Reach both
-          # addresses it currently advertises through the DPU's LAN side;
-          # storage and metadata traffic still follows the 100G router path.
-          {
-            Destination = "${beegfsMgmtdFabricIp}/32";
-            Gateway = beegfsMgmtdLanIp;
-          }
+          # The management daemon is on the BlueField itself. Its fabric
+          # address is now directly connected; only the private DPU address
+          # still needs the BlueField LAN side as a gateway.
           {
             Destination = "192.168.100.2/32";
             Gateway = beegfsMgmtdLanIp;
@@ -1214,6 +1216,7 @@ in {
         ];
         networkConfig = {
           DNS = network.routerIp;
+          MulticastDNS = "yes";
         };
         # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
         # other devices on the LAN (e.g. Apple devices acting as Tailscale
@@ -1253,7 +1256,7 @@ in {
     # Individual DynamicUser subtrees are persisted, not their parent. Keep the
     # source-side parent private without turning it into a persistence catch-all.
     "d /persist/var/lib/private 0700 root root -"
-    # qBittorrent profile + incomplete on SSD (pool3d)
+    # qBittorrent profile + separately mounted incomplete dataset
     "d /var/lib/qbittorrent 0775 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/incomplete 0775 qbittorrent qbittorrent -"
   ];

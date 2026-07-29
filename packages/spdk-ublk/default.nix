@@ -17,6 +17,23 @@
 spdk.overrideAttrs (old: {
   pname = "spdk-ublk";
 
+  patches =
+    (old.patches or [ ])
+    ++ [
+      # Initramfs compatibility (systemd ROOT_STORAGE_DAEMONS deployment):
+      # honor SPDK_CPU_LOCK_DIR/TMPDIR for core locks, and set argv[0][0]='@'
+      # when /etc/initrd-release exists.
+      ./initrd-compat.patch
+    ];
+
+  # Fail loudly if the patch above was silently skipped.
+  postPatch =
+    (old.postPatch or "")
+    + ''
+      grep -q cpu_lock_dir lib/event/app.c
+      grep -q initrd-release lib/event/app.c
+    '';
+
   buildInputs =
     builtins.filter (input: input != dpdk) (old.buildInputs or [ ])
     ++ [
