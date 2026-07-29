@@ -8,7 +8,16 @@
   python3,
   rdma-core,
   spdk,
-}:
+}: let
+  # mlx5 SR-IOV VFs may report node_guid=0 even though the kernel CM has a
+  # valid device index.  Unpatched librdmacm then leaves rdma_cm_id.verbs NULL,
+  # which SPDK correctly rejects when creating an RDMA listener.
+  rdma-core-for-spdk = rdma-core.overrideAttrs (old: {
+    patches =
+      (old.patches or [ ])
+      ++ [ ./rdma-core-zero-node-guid.patch ];
+  });
+in
 
 # nixpkgs' SPDK 26.01 package currently links against a newer external DPDK
 # than SPDK accepts at runtime.  Use the DPDK revision vendored and tested by
@@ -38,7 +47,7 @@ spdk.overrideAttrs (old: {
     builtins.filter (input: input != dpdk) (old.buildInputs or [ ])
     ++ [
       liburing
-      rdma-core
+      rdma-core-for-spdk
     ];
 
   nativeBuildInputs =

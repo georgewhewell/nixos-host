@@ -1,0 +1,37 @@
+From: Codex <codex@localhost>
+Subject: [PATCH] librdmacm: use ibdev index when node GUID is zero
+
+mlx5 SR-IOV VFs can expose a zero node GUID.  The kernel still returns a
+valid ibdev_index in UCMA_QUERY_ADDR/UCMA_QUERY_ROUTE, but librdmacm skips
+ucma_get_device() solely because node_guid is zero.  The CM ID is therefore
+bound in the kernel while its userspace verbs context remains NULL.
+
+New kernels return a positive ibdev_index specifically to identify the device
+without depending on GUID uniqueness.  Use it whenever it is available.  A
+zero-filled response means no device, and -1 detects kernels too old to return
+the field, so retain both exclusions.
+
+diff --git a/librdmacm/cma.c b/librdmacm/cma.c
+index 129a20cf..7cd996e1 100644
+--- a/librdmacm/cma.c
++++ b/librdmacm/cma.c
+@@ -889,7 +889,8 @@ static int ucma_query_addr(struct rdma_cm_id *id)
+ 	memcpy(&id->route.addr.src_addr, &resp.src_addr, resp.src_size);
+ 	memcpy(&id->route.addr.dst_addr, &resp.dst_addr, resp.dst_size);
+ 
+-	if (!id_priv->cma_dev && resp.node_guid) {
++	if (!id_priv->cma_dev && (resp.node_guid || (resp.ibdev_index &&
++	    resp.ibdev_index != UCMA_INVALID_IB_INDEX))) {
+ 		ret = ucma_get_device(id_priv, resp.node_guid,
+ 				      resp.ibdev_index);
+ 		if (ret)
+@@ -1040,7 +1041,8 @@ static int ucma_query_route(struct rdma_cm_id *id)
+ 	memcpy(&id->route.addr.dst_addr, &resp.dst_addr,
+ 	       sizeof resp.dst_addr);
+ 
+-	if (!id_priv->cma_dev && resp.node_guid) {
++	if (!id_priv->cma_dev && (resp.node_guid || (resp.ibdev_index &&
++	    resp.ibdev_index != UCMA_INVALID_IB_INDEX))) {
+ 		ret = ucma_get_device(id_priv, resp.node_guid,
+ 				      resp.ibdev_index);
+ 		if (ret)
