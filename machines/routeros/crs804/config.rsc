@@ -19,16 +19,18 @@
 # Filtering is enabled only after all ports and VLAN-table entries exist.
 /interface bridge set [find where name="bridge-fabric"] protocol-mode=rstp vlan-filtering=no mtu=9000 auto-mac=no admin-mac=D0:EA:11:D1:9D:85 comment="nixos-config: hardware QSFP fabric bridge"
 
-# Both CPU-connected 10G Ethernet interfaces remain a software-switched
-# recovery LAN. hw=yes is harmless here and permits fast-path
-# behavior if RouterOS gains hardware support for these ports later.
+# Both CPU-connected 10G Ethernet interfaces carry the OOB management
+# island (BlueField-2 OOB on ether1, BMC switch on ether2) as ordinary
+# LAN access ports in fabric VLAN 25 (2026-07-29: the island lost its
+# separate LAN uplink in the re-cabling; it now reaches .23 through the
+# fabric bridge like every other untagged port).
 :foreach p in={"ether1";"ether2"} do={
     /interface ethernet set [find where name=$p] mtu=1500 l2mtu=1600
     :local bp [/interface bridge port find where interface=$p]
     :if ([:len $bp] = 0) do={
-        /interface bridge port add bridge="bridge-mgmt" interface=$p hw=yes pvid=1 ingress-filtering=yes frame-types=admit-all
+        /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
     } else={
-        /interface bridge port set $bp bridge="bridge-mgmt" hw=yes pvid=1 ingress-filtering=yes frame-types=admit-all
+        /interface bridge port set $bp bridge="bridge-fabric" hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
     }
 }
 
@@ -77,19 +79,23 @@
 }
 
 # Cages 3 and 4: ordinary 25G optical access ports in fabric VLAN 25. The
-# router and CRS504 continue to see untagged Ethernet. Both known peers use
+# router and CRS504 continue to see untagged Ethernet; tagged WiFi VLAN 50
+# also rides these two links (hence frame-types=admit-all). Both known peers use
 # forced 25G with RS-FEC; matching that here avoids the failed autonegotiation
 # seen when the cage-4 peer does not advertise.
 :foreach p in={"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
     /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=fec91 speed=25G-baseSR-LR
-    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
+    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-all
     /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
 }
 
 # Reconcile only the VLAN rows owned by this file.
 /interface bridge vlan remove [find where comment="nixos-config: fabric VLAN 25"]
 /interface bridge vlan remove [find where comment="nixos-config: router transit VLAN 26"]
-/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-2-3,qsfp56-dd-2-5,qsfp56-dd-2-7,qsfp56-dd-3-1,qsfp56-dd-4-1 comment="nixos-config: fabric VLAN 25"
+/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-2-3,qsfp56-dd-2-5,qsfp56-dd-2-7,qsfp56-dd-3-1,qsfp56-dd-4-1,ether1,ether2 comment="nixos-config: fabric VLAN 25"
+/interface bridge vlan remove [find where comment="nixos-config: WiFi VLAN 50"]
+/interface bridge vlan remove [find where comment~"WiFi VLAN 50 - added 2026-07-29"]
+/interface bridge vlan add bridge="bridge-fabric" vlan-ids=50 tagged=qsfp56-dd-3-1,qsfp56-dd-4-1 comment="nixos-config: WiFi VLAN 50"
 
 :if ([:len [/interface vlan find where name="vlan25-fabric"]] = 0) do={
     /interface vlan add name=vlan25-fabric interface="bridge-fabric" vlan-id=25 mtu=9000 comment="nixos-config: fabric SVI"
