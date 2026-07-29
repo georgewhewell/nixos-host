@@ -252,6 +252,16 @@ lib: rec {
       };
       extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" "cache"];
     };
+    # Trex's RoCE endpoint: a ConnectX-4 SR-IOV VF in the host namespace
+    # (mlxlan0v1 / mlx5_1). The OVS internal port ovs-host cannot serve RDMA
+    # because it is a software port with no verbs device, so RDMA consumers
+    # (SPDK NVMe-oF target, NFS/BeeGFS over RDMA) bind this address instead.
+    # Traffic leaves via the VF's switchdev representor into the ovs-mlx bridge.
+    # MAC last octet 0xd0 == 208 to mirror the host octet.
+    "trex-rdma" = {
+      mac = "52:6b:4b:0d:24:d0";
+      addresses = {fabric = 208;};
+    };
     "mikrotik-100g" = {
       mac = "48:a9:8a:93:42:4c";
       addresses = {lan = 9;};

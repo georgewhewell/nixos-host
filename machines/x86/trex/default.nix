@@ -404,6 +404,9 @@ in {
     # SPDK as a proper systemd root storage daemon (phase 1: daemon only,
     # no bdevs/mounts). See systemd.io/ROOT_STORAGE_DAEMONS.
     ./spdk-root-daemon.nix
+    # ConnectX-4 VF in the host namespace, so RDMA consumers have a verbs
+    # device to bind on the fabric.
+    ./fabric-rdma-vf.nix
   ];
 
   deployment = {
