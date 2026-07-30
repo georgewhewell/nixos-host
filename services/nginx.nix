@@ -271,6 +271,12 @@ in {
     wantedBy = ["multi-user.target"];
     before = ["nginx.service"];
     requiredBy = ["nginx.service"];
+    # Must run AFTER impermanence has bind-mounted /persist/var/lib/kimi-certs
+    # onto this path. Without this the generator wins the race, writes into the
+    # tmpfs underneath, and the bind mount then hides its work -- openssl
+    # reports success, the directory reads empty, and nginx dies on a missing
+    # ssl_certificate. That happened on the first deploy of this unit.
+    unitConfig.RequiresMountsFor = "/var/lib/kimi-certs";
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
