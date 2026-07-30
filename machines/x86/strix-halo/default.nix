@@ -36,6 +36,22 @@ let
   tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
   tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
 
+  # trex's models export. The constants file is the single pin shared by the
+  # target and every client; see machines/x86/trex/spdk-storage-constants.nix.
+  modelsStorage = import ../trex/spdk-storage-constants.nix;
+  modelsTargetAddress =
+    network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
+  # Deterministic per-host NVMe host ID in UUID form. hashString gives 64 hex
+  # characters; the first 32 are sliced into the 8-4-4-4-12 layout.
+  nvmeHostIdHash = builtins.hashString "sha256" "nvme-hostid-${hostName}";
+  nvmeHostId = lib.concatStringsSep "-" [
+    (lib.substring 0 8 nvmeHostIdHash)
+    (lib.substring 8 4 nvmeHostIdHash)
+    (lib.substring 12 4 nvmeHostIdHash)
+    (lib.substring 16 4 nvmeHostIdHash)
+    (lib.substring 20 12 nvmeHostIdHash)
+  ];
+
   vllmFabricInterface = "cx5fabric0";
   vllmHostIp =
     if enableCx5Fabric
@@ -89,6 +105,8 @@ in
     pkgs.perftest
     pkgs.iperf3
     pkgs.mlnx-opensm
+  ] ++ lib.optionals enableCx5Fabric [
+    pkgs.nvme-cli
   ];
 
   environment.etc."mft/mft.conf" = lib.mkIf enableSharedCx5 {
@@ -644,6 +662,100 @@ in
     ];
   };
 
+  # trex's pinned read-only models snapshot over NVMe-oF/RDMA, bound explicitly
+  # to ${vllmFabricInterface}. RDMA needs a verbs device, so this can never
+  # silently fall back to the 2.5G Realtek — if the fabric address is not on the
+  # ConnectX, the connection simply does not happen.
+  #
+  # Mounted alongside /models rather than replacing it, for now. /models is in
+  # the nix builders' extra-sandbox-paths, so an absent /models fails every
+  # build on the host; until the pinned snapshot actually contains the models it
+  # must not become /models. See profiles/netboot-client.nix.
+  fileSystems."/mnt/trex-models" = lib.mkIf enableCx5Fabric {
+    device = "/dev/disk/by-id/nvme-uuid.${modelsStorage.modelsSnapshot.uuid}";
+    fsType = "xfs";
+    options = [
+      "ro"
+      # A frozen XFS snapshot is consistent, but XFS still considers its log to
+      # need recovery on a different host. The lvol snapshot rejects those
+      # writes, so mount without replaying it.
+      "norecovery"
+      "nofail"
+      "_netdev"
+      "x-systemd.automount"
+      "x-systemd.requires=nvme-trex-models.service"
+      "x-systemd.after=nvme-trex-models.service"
+      "x-systemd.device-timeout=30s"
+    ];
+  };
+
+  # Every client of one target needs its own host NQN, or the target treats them
+  # as multiple paths from a single host. Derived from the hostname so it is
+  # stable across reboots — these roots are diskless, so /etc/machine-id cannot
+  # be relied on to persist.
+  environment.etc."nvme/hostnqn" = lib.mkIf enableCx5Fabric {
+    text = "nqn.2026-07.link.satanic:${hostName}\n";
+  };
+  environment.etc."nvme/hostid" = lib.mkIf enableCx5Fabric {
+    text = "${nvmeHostId}\n";
+  };
+
+  systemd.services.nvme-trex-models = lib.mkIf enableCx5Fabric {
+    description = "Connect trex's pinned read-only models snapshot over NVMe/RDMA";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    path = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.iproute2
+      pkgs.kmod
+      pkgs.nvme-cli
+    ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    # Must never be fatal: a missing fabric leaves /models absent, which is bad,
+    # but a failing unit that blocked the boot of a diskless node would be worse.
+    unitConfig.StartLimitIntervalSec = 0;
+    script = ''
+      set -euo pipefail
+
+      # Idempotent: never create a second controller for the same subsystem.
+      if grep -Fxq ${modelsStorage.modelsNqn} \
+        /sys/class/nvme-subsystem/*/subsysnqn 2>/dev/null; then
+        echo "already connected to ${modelsStorage.modelsNqn}"
+        exit 0
+      fi
+
+      for _ in $(seq 1 100); do
+        if ip -4 -o address show dev ${vllmFabricInterface} 2>/dev/null |
+          grep -Fq "inet ${vllmHostIp}/"; then
+          break
+        fi
+        sleep 0.1
+      done
+      ip -4 -o address show dev ${vllmFabricInterface} 2>/dev/null |
+        grep -Fq "inet ${vllmHostIp}/" || {
+          echo "fabric address ${vllmHostIp} is not on ${vllmFabricInterface};" >&2
+          echo "refusing to reach the target over any other interface" >&2
+          exit 1
+        }
+
+      modprobe nvme-rdma
+      nvme connect \
+        --transport=rdma \
+        --traddr=${modelsTargetAddress} \
+        --trsvcid=4420 \
+        --nqn=${modelsStorage.modelsNqn} \
+        --host-traddr=${vllmHostIp}
+    '';
+    preStop = ''
+      nvme disconnect --nqn=${modelsStorage.modelsNqn} || true
+    '';
+  };
+
   # On every Strix host the server side owns model directory creation (chown
   # from an all_squash client fails). The local mountpoint itself is enough.
   systemd.tmpfiles.rules = [
@@ -745,6 +857,8 @@ in
 
   boot.kernelModules = [ "sp5100_tco" ] ++ lib.optionals enableCx5Fabric [
     "ib_umad"
+    # /models arrives over NVMe-oF/RDMA from trex.
+    "nvme-rdma"
   ] ++ lib.optionals enableSharedIb [ "ib_ipoib" ];
 
   boot.kernel.sysctl = {

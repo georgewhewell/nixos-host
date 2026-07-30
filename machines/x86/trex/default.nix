@@ -87,10 +87,6 @@ in {
     # Ephemeral tmpfs root (2026-07-24); explicit persistence list below.
     # sops/ssh host identity moves to /persist/etc/ssh via profiles/sops.nix.
     impermanence.enable = true;
-    mounts.beegfs = {
-      enable = true;
-      clientAddresses = [(network.primaryIp self)];
-    };
     home-manager = {
       enable = true;
       enableVscodeServer = true;

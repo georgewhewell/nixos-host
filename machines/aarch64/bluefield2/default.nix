@@ -7,7 +7,6 @@
   ...
 }: let
   self = network.hosts.bluefield2;
-  beegfsFabricIp = network.ipOf "fabric" self.addresses.fabric;
   oobMac = lib.toLower self.mac;
   oobRenegotiate = pkgs.writeShellScript "bluefield-oob-renegotiate" ''
     for _ in $(${pkgs.coreutils}/bin/seq 1 20); do
@@ -79,10 +78,6 @@ in {
   sconfig = {
     profile = "server";
     home-manager.enable = false;
-    mounts.beegfs = {
-      enable = true;
-      clientAddresses = [ beegfsFabricIp ];
-    };
   };
 
   networking = {
@@ -92,24 +87,17 @@ in {
     firewall.enable = true;
   };
 
-  # Keep BeeGFS cluster coordination on the always-on DPU rather than the
-  # router. The management database is tiny but defines the cluster's node,
-  # target and storage-pool identity, so the BlueField's persistent eMMC root
-  # is a better home than an impermanent network appliance. Data traffic does
-  # not pass through mgmtd; meta/storage nodes use the 200G fabric directly.
-  services.beegfs-cluster = {
-    mgmtd = {
-      enable = true;
-      # The DPU firewall is enabled and neither interface is globally trusted.
-      # Authentication still gates BeeMsg; gRPC remains on the private LAN.
-      openFirewall = true;
-      # Advertise only the 200G fabric address to BeeGFS peers. The RShim and
-      # OOB addresses are management paths, not cluster data paths, and their
-      # higher default priority otherwise causes a five-second TCP fallback on
-      # every node registration.
-      extraArgs = [ "--interfaces" "enp3s0np0 * 4" ];
-    };
-  };
+  # BeeGFS is retired (2026-07-30). mgmtd ran here as the always-on
+  # coordinator, but the meta and storage daemons on the Strix nodes were
+  # commented out, so it had been coordinating an empty cluster: clients found
+  # no storage targets and mnt-beegfs.mount simply failed. Models are served
+  # from trex over NVMe-oF/RDMA instead -- see machines/x86/trex/
+  # spdk-models-snapshot.nix and machines/x86/fuckup/nvme-models.nix.
+  #
+  # modules/beegfs.nix, modules/mounts-beeg.nix, packages/beegfs/ and
+  # tests/beegfs.nix are all left intact, as is the per-node
+  # beegfsDiskSerial/beegfsFsUUID inventory in network.nix, so this can be
+  # revived without rediscovering any of it.
 
   systemd.network = {
     enable = true;

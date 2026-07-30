@@ -14,9 +14,13 @@
     modelsMount
     modelsNqn
     modelsSerial
+    modelsSnapshot
     modelsSnapshotPattern
     rpcSocket
     ;
+
+  # The one snapshot this host publishes; clients name the same UUID.
+  pinnedSnapshotAlias = "${storage.lvstore}/${modelsSnapshot.name}";
 
   rdma = network.hosts."trex-rdma";
   rdmaAddress = network.ipOf "fabric" rdma.addresses.fabric;
@@ -273,11 +277,26 @@
           -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null
       fi
 
+      # Export the PINNED snapshot from spdk-storage-constants.nix, not simply
+      # the newest one. Clients mount /dev/disk/by-id/nvme-uuid.<uuid>, so what
+      # is exported must be exactly what their configuration names; picking
+      # "newest" would silently move every client onto a snapshot its own
+      # config never mentioned, and would defeat rollback.
       lvols=$(rpc bdev_lvol_get_lvols)
-      snapshot=$(jq -r --arg pattern ${lib.escapeShellArg modelsSnapshotPattern} '
-          [.[] | select(.is_snapshot == true and (.alias | test($pattern)))]
-          | sort_by(.alias) | last | .alias // empty
+      snapshot=$(jq -r --arg alias ${lib.escapeShellArg pinnedSnapshotAlias} '
+          [.[] | select(.is_snapshot == true and .alias == $alias)]
+          | last | .alias // empty
         ' <<<"$lvols")
+      if [ -z "$snapshot" ]; then
+        echo "spdk-export: pinned snapshot ${pinnedSnapshotAlias} does not exist." >&2
+        echo "spdk-export: run spdk-models-snapshot and update modelsSnapshot in" >&2
+        echo "spdk-export: spdk-storage-constants.nix, or restore that snapshot." >&2
+        available=$(jq -r --arg pattern ${lib.escapeShellArg modelsSnapshotPattern} '
+            [.[] | select(.is_snapshot == true and (.alias | test($pattern))) | .alias]
+            | sort | join(" ")
+          ' <<<"$lvols")
+        echo "spdk-export: snapshots present: ''${available:-none}" >&2
+      fi
 
       subsystems=$(rpc nvmf_get_subsystems)
       mapfile -t current_nsids < <(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} '
@@ -302,6 +321,21 @@
         exit 1
       fi
       snapshot_uuid=$(jq -er '.[0].uuid' <<<"$snapshot_bdev")
+
+      # The two halves of the pin must describe the same object. If they drift,
+      # trex would export the named snapshot while clients look for a UUID that
+      # is not there, and the failure would appear on the clients rather than
+      # here. Refuse instead, and say exactly what to correct.
+      if [ "$snapshot_uuid" != ${lib.escapeShellArg modelsSnapshot.uuid} ]; then
+        for nsid in "''${current_nsids[@]}"; do
+          rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
+        done
+        echo "spdk-export: pin mismatch in spdk-storage-constants.nix." >&2
+        echo "spdk-export:   modelsSnapshot.name = ${modelsSnapshot.name}" >&2
+        echo "spdk-export:   modelsSnapshot.uuid = ${modelsSnapshot.uuid}" >&2
+        echo "spdk-export:   that snapshot's real uuid = $snapshot_uuid" >&2
+        exit 1
+      fi
 
       selected_present=$(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} \
         --arg uuid "$snapshot_uuid" '
@@ -417,7 +451,7 @@ in {
   };
 
   systemd.services.spdk-models-export = {
-    description = "Export the newest existing models snapshot over NVMe/RDMA";
+    description = "Export the pinned models snapshot over NVMe/RDMA";
     after = [
       "spdk-storage-assemble.service"
       "systemd-networkd.service"

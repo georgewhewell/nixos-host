@@ -1,8 +1,15 @@
 {pkgs, ...}: let
-  nqn = "nqn.2026-07.link.satanic.trex:models";
+  storage = import ../trex/spdk-storage-constants.nix;
+  nqn = storage.modelsNqn;
   targetAddress = "192.168.25.208";
   hostAddress = "192.168.25.207";
-  device = "/dev/disk/by-id/nvme-SPDK_bdev_Controller_TREXMODELS01";
+  # Name the pinned snapshot's namespace UUID, so this host can only ever mount
+  # the exact snapshot spdk-storage-constants.nix pins -- never "whatever is
+  # currently exported". Not the XFS UUID (identical across all snapshots, so
+  # it floats) and not nvme-SPDK_bdev_Controller_TREXMODELS01_N (that N is the
+  # namespace ID and moves). The previous value here omitted the suffix
+  # entirely and so resolved to nothing at all.
+  device = "/dev/disk/by-id/nvme-uuid.${storage.modelsSnapshot.uuid}";
 in {
   boot.kernelModules = ["nvme-rdma"];
 

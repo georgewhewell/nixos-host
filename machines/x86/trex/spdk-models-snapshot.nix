@@ -21,7 +21,6 @@
     runtimeInputs = [pkgs.spdk-ublk pkgs.util-linux pkgs.jq pkgs.coreutils];
     text = ''
       set -euo pipefail
-      keep=''${SPDK_SNAPSHOT_KEEP:-2}
       rpc() { spdk-rpc -s ${rpcSocket} "$@"; }
 
       mountpoint -q ${modelsMount} || {
@@ -32,6 +31,31 @@
         echo "subsystem ${modelsNqn} does not exist yet" >&2
         exit 1
       }
+
+      # Refuse to freeze a filesystem whose store cannot absorb writes.
+      #
+      # 2026-07-30 incident: optstore reached free_clusters=0 while ~1.2 TiB was
+      # still being copied in. `models` is thin, so every write needed a fresh
+      # cluster, got ENOSPC, and XFS silently lost writeback on 26 files. Then
+      # fsfreeze here forced a log write, which also failed, and XFS shut the
+      # filesystem down. Sizes read from `find` still looked correct throughout,
+      # because the correct sizes were in log records that never reached disk.
+      #
+      # A freeze is the worst possible moment to discover the store is full, so
+      # check first and say so loudly.
+      free=$(rpc bdev_lvol_get_lvstores |
+        jq -er --arg n ${lvstore} '.[] | select(.name == $n) | .free_clusters')
+      cluster=$(rpc bdev_lvol_get_lvstores |
+        jq -er --arg n ${lvstore} '.[] | select(.name == $n) | .cluster_size')
+      free_gib=$(( free * cluster / 1073741824 ))
+      min_gib=''${SPDK_SNAPSHOT_MIN_FREE_GIB:-64}
+      echo "${lvstore}: $free_gib GiB free ($free clusters)"
+      if [ "$free_gib" -lt "$min_gib" ]; then
+        echo "refusing to snapshot: only $free_gib GiB free, want >= $min_gib GiB" >&2
+        echo "freezing a filesystem on a full lvstore shuts it down; free space first" >&2
+        echo "(override with SPDK_SNAPSHOT_MIN_FREE_GIB if you know better)" >&2
+        exit 1
+      fi
 
       snap="models-$(date +%Y%m%d-%H%M%S)"
 
@@ -49,39 +73,48 @@
       # ones so a client never sees an empty subsystem.
       snapshot_bdev=$(rpc bdev_get_bdevs -b "${lvstore}/$snap")
       jq -e '.[0].supported_io_types.write == false' <<<"$snapshot_bdev" >/dev/null || {
-        echo "new snapshot ${lvstore}/$snap unexpectedly supports writes; refusing export" >&2
+        echo "new snapshot ${lvstore}/$snap unexpectedly supports writes; refusing to offer it" >&2
         exit 1
       }
-      old_nsids=$(rpc nvmf_get_subsystems |
-        jq -r --arg n ${modelsNqn} '.[] | select(.nqn == $n) | .namespaces[].nsid')
-      rpc nvmf_subsystem_add_ns ${modelsNqn} "${lvstore}/$snap" >/dev/null
-      for nsid in $old_nsids; do
-        rpc nvmf_subsystem_remove_ns ${modelsNqn} "$nsid" >/dev/null
-      done
-      echo "exported ${lvstore}/$snap over ${modelsNqn}"
+      snap_uuid=$(jq -er '.[0].uuid' <<<"$snapshot_bdev")
 
-      # Retire the oldest snapshots. A snapshot backing a clone, or one a
-      # client still holds, refuses deletion — that is fine, skip it.
-      mapfile -t stale < <(rpc bdev_lvol_get_lvols |
+      # Deliberately does NOT touch the export. Which snapshot is served is
+      # decided by modelsSnapshot in spdk-storage-constants.nix, and clients
+      # mount that UUID by name. Swapping the namespace here would yank the
+      # block device out from under every connected client and move them onto a
+      # snapshot their own configuration never mentions.
+      cat <<EOF
+
+Created ${lvstore}/$snap
+
+To publish it, set this in machines/x86/trex/spdk-storage-constants.nix and
+deploy trex and its clients:
+
+  modelsSnapshot = {
+    name = "$snap";
+    uuid = "$snap_uuid";
+  };
+
+Nothing is serving it yet; the current pin is still in effect.
+EOF
+
+      # No automatic retirement: an old snapshot may still be the pin that a
+      # client -- or a rollback -- depends on. Deleting snapshots is a separate,
+      # deliberate act. List what has accumulated so it is visible.
+      echo "Snapshots present:"
+      rpc bdev_lvol_get_lvols |
         jq -r '.[] | select(.is_snapshot) | .alias' |
-        grep -E '/models-[0-9]{8}-[0-9]{6}$' | sort | head -n -"$keep")
-      for lv in "''${stale[@]:-}"; do
-        [ -n "$lv" ] || continue
-        if rpc bdev_lvol_delete "$lv" >/dev/null 2>&1; then
-          echo "deleted old snapshot $lv"
-        else
-          echo "kept $lv (still in use)"
-        fi
-      done
+        grep -E '/models-[0-9]{8}-[0-9]{6}$' | sort | sed 's/^/  /'
     '';
   };
 in {
   environment.systemPackages = [snapshotScript];
 
-  # Snapshots remain an explicit administrative action: boot publishes the
-  # newest existing one but never creates a fresh snapshot merely by rebooting.
+  # Snapshots remain an explicit administrative action: rebooting never creates
+  # one, and creating one never changes what is served. Publishing is the
+  # separate act of bumping modelsSnapshot in spdk-storage-constants.nix.
   systemd.services.spdk-models-snapshot = {
-    description = "Publish a frozen-consistent snapshot of the models volume over NVMe-oF";
+    description = "Create a frozen-consistent snapshot of the models volume";
     after = [
       "spdk-storage-assemble.service"
       "spdk-models-export.service"

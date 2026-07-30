@@ -118,6 +118,15 @@ in
   # builders list /models in extra-sandbox-paths, and bind-mounting an
   # un-triggered autofs mountpoint into a sandbox userns fails with EPERM,
   # which aborts every build scheduled to the host (not just model builds).
+  #
+  # This runs over the 2.5G Realtek netboot link, which is slow. The intended
+  # replacement is trex's pinned NVMe-oF snapshot over the ConnectX fabric,
+  # already mounted at /mnt/trex-models by machines/x86/strix-halo/default.nix.
+  # /models moves there once that volume is repopulated: on 2026-07-30 the
+  # Optane models volume was rebuilt empty after an ENOSPC-induced XFS
+  # shutdown, while this NFS path still serves the full, undamaged 4.2 TB from
+  # bpool/trex/models. Do not switch until the pinned snapshot has the data,
+  # or every build on these hosts fails on a missing /models.
   fileSystems."/models" = {
     device = "${trexIp}:/strix-models";
     fsType = "nfs";

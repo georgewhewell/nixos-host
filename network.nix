@@ -393,16 +393,23 @@ lib: rec {
       # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
       netboot = true;
       # Netboot is via the onboard 2.5G Realtek ONLY (proven working
-      # 2026-07-29). The ConnectX-5 identities (PXE 1c:34:da:61:12:b4,
-      # permanent :b1, aux :b5) are deliberately absent from extraMacs so
-      # the firmware cannot PXE from the fabric card; the CX5 is the RoCE
-      # fabric port and nothing else.
+      # 2026-07-29). The ConnectX-5 identities are deliberately absent from
+      # extraMacs so the firmware cannot PXE from the fabric card; the CX5 is
+      # the RoCE fabric port and nothing else.
+      #
+      # 2026-07-30: this comment previously described the CX5 as "PXE
+      # 1c:34:da:61:12:b4, permanent :b1, aux :b5". That is strix-2's card.
+      # `ethtool -P` on the running host reports this chassis holds
+      # 1c:34:da:61:12:98 (f0np0) and :99 (f1np1); the :b0/:b1 pair is in
+      # strix-2. The strix-1 and strix-2 CX5 identities were transposed.
       netbootMac = "84:47:09:68:82:b1";
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
         cx5Port = 1;
-        cx5FabricMac = "1c:34:da:61:12:b1";
+        # Port f1np1 of this chassis's card, matching cx5Port = 1. Verified by
+        # ethtool -P on strix-1 (2026-07-30). Was :b1, which is in strix-2.
+        cx5FabricMac = "1c:34:da:61:12:99";
         ryzenAdj = {
           stapm = 132000;
           fast = 176000;
@@ -424,14 +431,29 @@ lib: rec {
         fabric = 102;
       };
       netboot = true;
+      # WARNING (2026-07-30): these three netboot identities and the extraMacs
+      # list above all name 1c:34:da:61:12:99/:9c/:9d, which `ethtool -P`
+      # proves are in *strix-1's* chassis -- this host holds :b0/:b1. The two
+      # nodes' CX5 identities were transposed. They are left untouched because
+      # netboot currently works and retagging a diskless host's PXE identity
+      # risks stranding it; note the consequence that strix-1's fabric card is
+      # netboot-tagged as strix-2, contradicting strix-1's own comment that it
+      # deliberately cannot PXE from the CX5.
       netbootMac = "1c:34:da:61:12:9d";
       netbootLinuxMac = "1c:34:da:61:12:99";
-      netbootSharesFabric = true;
+      # netbootSharesFabric dropped (2026-07-30): it put the fabric address on
+      # eno1, and eno1 here is the 2.5G Realtek, so the RoCE address landed on
+      # the slow NIC with no verbs device -- NVMe-oF could never bind it. With
+      # the flag gone, 10-cx5-fabric renames the CX5 to cx5fabric0 and
+      # 15-cx5-fabric gives it the fabric address at MTU 9000. The NFS netboot
+      # root is unaffected: it runs over eno1's *LAN* address to 192.168.23.8.
       strix = {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
         cx5Port = 1;
-        cx5FabricMac = "1c:34:da:61:12:99";
+        # Port f1np1 of this chassis's card, matching cx5Port = 1. Verified by
+        # ethtool -P on strix-2 (2026-07-30). Was :99, which is in strix-1.
+        cx5FabricMac = "1c:34:da:61:12:b1";
         ryzenAdj = {
           stapm = 132000;
           fast = 176000;
@@ -461,7 +483,15 @@ lib: rec {
         # DPU ARM boots, so this host needs the bluefield-host profile
         # (rshim + retrying nic-bind).
         bluefield = true;
-        cx5FabricMac = "b8:59:9f:54:db:e9";
+        # The DPU's ConnectX-6, which is what this host actually sees: the only
+        # mlx5 netdev present is b8:ce:f6:f8:d7:aa (ethtool -P, 2026-07-30).
+        # Was b8:59:9f:54:db:e9 -- a function of the multi-host CX5 shared with
+        # strix-4, which this host cannot enumerate, so the rename never
+        # matched and the fabric address was never assigned at all. Note this
+        # MAC is the same identity the comment above calls the "DPU PXE
+        # identity"; it is deliberately not netboot-tagged, and using it here
+        # only drives the cx5fabric0 rename and the fabric address.
+        cx5FabricMac = "b8:ce:f6:f8:d7:aa";
         # Strix 3/4 currently clamp package requests to these values.
         ryzenAdj = {
           stapm = 120000;
