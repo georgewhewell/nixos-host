@@ -238,22 +238,39 @@ in
     };
   };
 
-  # Strix 1/2 share one dual-port ConnectX-5 SharedIO adapter and Strix 3/4
-  # share the other. All four physical ports connect to the CRS804 Ethernet
-  # fabric; hardware.infiniband supplies the verbs/RDMA userspace.
+  # Each node has its OWN ConnectX-5; they do not share one. Verified
+  # 2026-07-30 with mstflint: strix-1's card is base GUID 1c34da0300611298 and
+  # strix-2's is 1c34da03006112b0 -- different cards, both the SharedIO
+  # "Adapter Kit" SKU (PSID LNV0000000012), i.e. a two-card kit joined by an
+  # interlink cable, which has been disconnected.
+  #
+  # The multi-host/Socket-Direct functions are also already disabled in
+  # firmware on both: HOST_CHAINING_MODE=DISABLED, MULTI_PORT_VHCA_EN=False,
+  # PF_SD_GROUP=0. So forcing one node's link cannot disturb another's, and
+  # there is nothing left to turn off. Do NOT "disable" PORT_OWNER looking for
+  # a multi-host switch: True means this host owns its own physical port, and
+  # clearing it surrenders port control.
+  #
+  # Ports connect to the CRS804 Ethernet fabric; hardware.infiniband supplies
+  # the verbs/RDMA userspace.
   hardware.infiniband = {
     enable = enableCx5Fabric;
   };
 
   # RouterOS 7.23.2 and the HELLAS HQSFP56-200G-C1M DACs fail 100G
   # autonegotiation. Match the CRS804's forced 100G CR4 configuration after
-  # every boot or PCI reset. Select the PF by inventory MAC: these SharedIO
-  # adapters expose both ports to each host, but only one port is cabled.
+  # every boot or PCI reset. Select the PF by inventory MAC: both ports are
+  # visible but only one is cabled.
   # A diskless host has already proved its selected CX5 rail is trained by
-  # downloading iPXE, the kernel, and the initrd across it. Running mlxlink in
-  # stage 2 resets the dual-port/SharedIO adapter and also drops the sibling
-  # PF carrying the live NFS root. Keep forced retraining for local-disk boots,
-  # but never disrupt a netboot host after the initrd handoff.
+  # downloading iPXE, the kernel, and the initrd across it, and running mlxlink
+  # in stage 2 would reset the adapter under its live NFS root. Hence forced
+  # retraining only on local-disk boots, never on a netboot host after the
+  # initrd handoff.
+  #
+  # 2026-07-30: this previously warned that the reset also drops "the sibling
+  # PF" on the SharedIO adapter. That no longer applies -- multi-host was
+  # disabled in the NIC firmware, so each node's card is its own and forcing
+  # one node's link cannot affect another's.
   systemd.services.cx5-fabric-link = lib.mkIf (enableCx5Fabric && !netboot) {
     description = "Force the CRS804 fabric link to 100 GbE";
     wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];

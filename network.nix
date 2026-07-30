@@ -378,8 +378,9 @@ lib: rec {
     #  - beegfsDiskSerial: each node's dedicated 4 TB BeeGFS NVMe, by serial
     #    (CX5/SSD PCIe enumeration order differs between the four boxes, so
     #    destructive disko runs must never address by nvme0n1).
-    #  - cx5Port: which port of the shared multi-host ConnectX-5 this node
-    #    owns (pairs 1+2 and 3+4 share a NIC; ports checked out per host).
+    #  - cx5Port: which port of this node's own ConnectX-5 is cabled. Each node
+    #    has its own card (verified 2026-07-30, distinct base GUIDs), not a
+    #    shared multi-host adapter; see the note in machines/x86/strix-halo.
     #  - ryzenAdj: package power limits (1/2 sustain more than 3/4).
     "strix-1" = {
       # eno1 burned-in MAC (confirmed via ethtool -P); the firmware PXE
@@ -430,15 +431,26 @@ lib: rec {
         lan = 192;
         fabric = 102;
       };
-      netboot = true;
-      # WARNING (2026-07-30): these three netboot identities and the extraMacs
-      # list above all name 1c:34:da:61:12:99/:9c/:9d, which `ethtool -P`
-      # proves are in *strix-1's* chassis -- this host holds :b0/:b1. The two
-      # nodes' CX5 identities were transposed. They are left untouched because
-      # netboot currently works and retagging a diskless host's PXE identity
-      # risks stranding it; note the consequence that strix-1's fabric card is
-      # netboot-tagged as strix-2, contradicting strix-1's own comment that it
-      # deliberately cannot PXE from the CX5.
+      # LOCAL DISK, not netboot (corrected 2026-07-30). This host boots from
+      # /dev/sda: GPT labels strix-2-ESP (vfat) and strix-2-root (btrfs,
+      # subvol=@root), exactly what the !netboot branch of
+      # machines/x86/strix-halo/default.nix expects. It has three local
+      # generations and mounts no NFS store.
+      #
+      # It was declared netboot = true, but netboot here could never have
+      # worked: the identities below name 1c:34:da:61:12:99/:9c/:9d, which
+      # `ethtool -P` proves are in *strix-1's* chassis -- this host holds
+      # :b0/:b1. The two nodes' CX5 identities were transposed, so dnsmasq
+      # never tagged strix-2, PXE never matched, and the firmware fell through
+      # to the local disk. The flag described an intent, not reality.
+      #
+      # They are still left untouched rather than repointed at this host's own
+      # Realtek: nothing now depends on them, and rewriting a PXE identity that
+      # the firmware may also consult is not worth the risk for a host that
+      # boots fine from disk. Note the side effect that strix-1's fabric card
+      # is netboot-tagged as strix-2, contradicting strix-1's own comment that
+      # it deliberately cannot PXE from the CX5.
+      netboot = false;
       netbootMac = "1c:34:da:61:12:9d";
       netbootLinuxMac = "1c:34:da:61:12:99";
       # netbootSharesFabric dropped (2026-07-30): it put the fabric address on
