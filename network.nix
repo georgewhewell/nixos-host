@@ -262,6 +262,14 @@ lib: rec {
       mac = "52:6b:4b:0d:24:d0";
       addresses = {fabric = 208;};
     };
+    # fuckup's RoCE endpoint: VF 0 on the live ConnectX-4 Lx port. The PF
+    # remains a br0.lan slave for the workstation's LAN traffic, while this
+    # VF stays standalone so it retains a real mlx5 verbs device and can own
+    # the fabric address directly.
+    "fuckup-rdma" = {
+      mac = "52:6f:35:ab:31:cf";
+      addresses = {fabric = 207;};
+    };
     "mikrotik-100g" = {
       mac = "48:a9:8a:93:42:4c";
       addresses = {lan = 9;};

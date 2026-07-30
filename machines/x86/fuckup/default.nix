@@ -194,6 +194,9 @@ in
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.hellas.nixosModules.default
     # inputs.nix-strix-halo.nixosModules.tuning
+
+    ./fabric-rdma-vf.nix
+    ./nvme-models.nix
   ];
 
   benchmark.runners.cuda-rtx4090 = {
