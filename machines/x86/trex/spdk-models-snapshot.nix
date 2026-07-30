@@ -1,9 +1,13 @@
 {pkgs, ...}: let
-  rpcSocket = "/run/spdk/spdk.sock";
-  modelsMount = "/mnt/optane/models";
-  lvstore = "optstore";
-  modelsLvol = "${lvstore}/models";
-  nqn = "nqn.2026-07.link.satanic.trex:models";
+  storage = import ./spdk-storage-constants.nix;
+  inherit
+    (storage)
+    lvstore
+    modelsLvol
+    modelsMount
+    modelsNqn
+    rpcSocket
+    ;
 
   # Publishing the live, read-write-mounted models volume over NVMe-oF is
   # unsafe: XFS is not a shared-disk filesystem, so a client mounting it — even
@@ -24,8 +28,8 @@
         echo "${modelsMount} is not mounted; nothing to snapshot" >&2
         exit 1
       }
-      rpc nvmf_get_subsystems | jq -e --arg n ${nqn} '.[] | select(.nqn == $n)' >/dev/null || {
-        echo "subsystem ${nqn} does not exist yet" >&2
+      rpc nvmf_get_subsystems | jq -e --arg n ${modelsNqn} '.[] | select(.nqn == $n)' >/dev/null || {
+        echo "subsystem ${modelsNqn} does not exist yet" >&2
         exit 1
       }
 
@@ -43,13 +47,18 @@
 
       # Swap the export over: add the new namespace, then drop the previous
       # ones so a client never sees an empty subsystem.
+      snapshot_bdev=$(rpc bdev_get_bdevs -b "${lvstore}/$snap")
+      jq -e '.[0].supported_io_types.write == false' <<<"$snapshot_bdev" >/dev/null || {
+        echo "new snapshot ${lvstore}/$snap unexpectedly supports writes; refusing export" >&2
+        exit 1
+      }
       old_nsids=$(rpc nvmf_get_subsystems |
-        jq -r --arg n ${nqn} '.[] | select(.nqn == $n) | .namespaces[].nsid')
-      rpc nvmf_subsystem_add_ns ${nqn} "${lvstore}/$snap" >/dev/null
+        jq -r --arg n ${modelsNqn} '.[] | select(.nqn == $n) | .namespaces[].nsid')
+      rpc nvmf_subsystem_add_ns ${modelsNqn} "${lvstore}/$snap" >/dev/null
       for nsid in $old_nsids; do
-        rpc nvmf_subsystem_remove_ns ${nqn} "$nsid" >/dev/null
+        rpc nvmf_subsystem_remove_ns ${modelsNqn} "$nsid" >/dev/null
       done
-      echo "exported ${lvstore}/$snap over ${nqn}"
+      echo "exported ${lvstore}/$snap over ${modelsNqn}"
 
       # Retire the oldest snapshots. A snapshot backing a clone, or one a
       # client still holds, refuses deletion — that is fine, skip it.
@@ -69,13 +78,17 @@
 in {
   environment.systemPackages = [snapshotScript];
 
-  # Manual for now: run after adding models. The NVMe-oF export itself is still
-  # brought up by hand after boot (phase-2 automation pending), so there is no
-  # timer here yet — a scheduled snapshot against a missing subsystem would
-  # only produce noise.
+  # Snapshots remain an explicit administrative action: boot publishes the
+  # newest existing one but never creates a fresh snapshot merely by rebooting.
   systemd.services.spdk-models-snapshot = {
     description = "Publish a frozen-consistent snapshot of the models volume over NVMe-oF";
-    after = ["spdk-tgt.service"];
+    after = [
+      "spdk-storage-assemble.service"
+      "spdk-models-export.service"
+      "mnt-optane-models.mount"
+    ];
+    requires = ["spdk-storage-assemble.service"];
+    unitConfig.RequiresMountsFor = modelsMount;
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${snapshotScript}/bin/spdk-models-snapshot";
