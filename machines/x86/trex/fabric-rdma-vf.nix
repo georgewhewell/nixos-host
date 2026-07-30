@@ -30,7 +30,13 @@ in {
       RequiredForOnline = "no";
     };
     # Directly connected fabric only; the default route stays on ovs-host.
-    networkConfig.LinkLocalAddressing = "ipv6";
+    # No router advertisements either: this is a storage-only endpoint, and
+    # accepting RAs here autoconfigured both a global and a rogue ULA prefix
+    # from the LAN (ovs-host carries a PrefixAllowList for the same reason).
+    networkConfig = {
+      LinkLocalAddressing = "ipv6";
+      IPv6AcceptRA = false;
+    };
   };
 
   # ovs-host and this VF both hold addresses in the fabric subnet, so with the
