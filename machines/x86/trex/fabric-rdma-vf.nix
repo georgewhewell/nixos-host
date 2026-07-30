@@ -5,6 +5,9 @@
 }: let
   rdma = network.hosts."trex-rdma";
   vfName = "mlxlan0v1";
+  # Switchdev representor for the same VF: frames leaving mlxlan0v1 traverse
+  # mlxlan0r1 on their way through ovs-mlx to the PF uplink.
+  repName = "mlxlan0r1";
 in {
   # RoCE endpoint for this host.
   #
@@ -36,6 +39,24 @@ in {
     networkConfig = {
       LinkLocalAddressing = "ipv6";
       IPv6AcceptRA = false;
+    };
+  };
+
+  # The representor must carry the same MTU as the VF, or jumbo frames are
+  # silently dropped one hop into the host and RoCE is stuck at a 1024-byte
+  # path MTU. With the VF at 9000 and this left at default.nix's implicit
+  # 1500, every frame over 1500 bytes vanished between mlxlan0v1 and the wire:
+  # ping -M do -s 1972 to a fabric peer failed while -s 1472 succeeded, and
+  # NVMe-oF reads at 1 MiB collapsed to 3.7 MiB/s with I/O timeouts and
+  # controller reconnects. Raising it took the same test to 2279 MiB/s.
+  # Must sort before default.nix's broad 10-mlx5-rep rule, which matches
+  # every mlxlan0r* and would otherwise win and leave this one at 1500.
+  systemd.network.networks."09-mlx-rdma-rep" = {
+    matchConfig.Name = repName;
+    linkConfig = {
+      MTUBytes = "9000";
+      ActivationPolicy = "up";
+      RequiredForOnline = "no";
     };
   };
 

@@ -398,6 +398,13 @@ in
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
           };
+          # Jumbo on the ConnectX PFs so the RoCE VF in fabric-rdma-vf.nix can
+          # reach MTU 9000 -- a VF's MTU is capped by its PF's. This does not
+          # give br0.lan jumbo: a Linux bridge takes the minimum MTU of its
+          # ports and the igc/aquantia members stay at 1500, so LAN behaviour
+          # is unchanged (verified: br0.lan remained 1500 with both PFs at
+          # 9000, and the router stayed reachable at 0.078 ms).
+          linkConfig.MTUBytes = "9000";
           linkConfig.RequiredForOnline = "enslaved";
         };
         "10-igc" = {

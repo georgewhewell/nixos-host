@@ -62,12 +62,21 @@ in {
     address = [(network.cidrOf "fabric" rdma.addresses.fabric)];
     linkConfig = {
       MACAddress = rdma.mac;
-      # br0.lan and its PF are intentionally MTU 1500.  Advertising a 4096-byte
-      # RoCE path MTU on this child while the physical bridge path remains 1500
-      # makes the target's first Identify response hit retry-exceeded.  Keep
-      # this VF at 1500 (RoCE MTU 1024) unless the whole LAN bridge is migrated
-      # to jumbo frames.
-      MTUBytes = "1500";
+      # Jumbo, giving a 4096-byte RoCE path MTU (the steps are
+      # 256/512/1024/2048/4096, so 9000 buys the largest one).
+      #
+      # An earlier revision pinned this to 1500 believing br0.lan's 1500 was
+      # the binding constraint. It is not: this VF is deliberately *not* a
+      # bridge port, so its frames go VF -> PF -> wire and never traverse
+      # br0.lan. The real blocker was trex's switchdev representor mlxlan0r1
+      # sitting at 1500 and dropping everything larger. With that raised (see
+      # machines/x86/trex/fabric-rdma-vf.nix) the whole path passes
+      # ping -M do -s 8972, and 1 MiB NVMe-oF reads went from 3.7 MiB/s with
+      # controller reconnects to 2279 MiB/s with zero out_of_sequence growth.
+      #
+      # br0.lan is unaffected: a Linux bridge adopts the *minimum* MTU of its
+      # ports, and the igc/aquantia members remain at 1500.
+      MTUBytes = "9000";
       ActivationPolicy = "up";
       RequiredForOnline = "no";
     };
