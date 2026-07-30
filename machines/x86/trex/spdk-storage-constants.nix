@@ -45,8 +45,8 @@
   # remains the hard backstop. Note ublk does NOT propagate a live lvol
   # resize: growing requires umount + ublk stop/start + xfs_growfs.
   modelsSnapshot = {
-    name = "models-20260730-235807";
-    uuid = "1d2d714b-81f3-442d-98c2-56a993e03161";
+    name = "models-20260731-002801";
+    uuid = "fdbc2781-0dc3-4338-8b14-177e5a85d8ca";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.
