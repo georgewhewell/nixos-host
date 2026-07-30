@@ -30,13 +30,15 @@
   #   - /dev/disk/by-id/nvme-SPDK_bdev_Controller_TREXMODELS01_N: the trailing
   #     N is the namespace ID, which changes as namespaces are added/removed.
   #
-  # This snapshot is of the freshly rebuilt, EMPTY volume (2026-07-30). The
-  # models themselves still live on bpool/trex/models and are served to the
-  # Strix nodes over NFS; refill /mnt/optane/models, snapshot again, and bump
-  # this before moving /models onto the fabric.
+  # Holds ds4 + GLM-5.2-int4 + GLM-5.2-FP8 (1.29 TB, 976 files, verified
+  # byte-for-byte against bpool with zero writeback errors). /models on the
+  # Strix nodes is still the NFS export from bpool; move it onto this only once
+  # the set here is the one you actually want, since /models is in the nix
+  # builders' extra-sandbox-paths and an absent or wrong /models breaks every
+  # build on those hosts.
   modelsSnapshot = {
-    name = "models-20260730-115608";
-    uuid = "8bcd25ec-850b-40c2-9aab-3b1ed604cbec";
+    name = "models-20260730-173208";
+    uuid = "b24f87cc-8cba-43f5-91e2-e1df50943ba1";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.
