@@ -16,7 +16,9 @@ in {
   # already a port on the ovs-mlx bridge, so frames reach the fabric through
   # the same PF uplink as everything else. Untagged, matching the CRS804
   # cage-4 access port's pvid 25.
-  systemd.network.networks."25-mlx-rdma-vf" = {
+  # This exact match must sort before default.nix's broad 10-mlx5-vf rule,
+  # which deliberately marks every other mlxlan0v* interface unmanaged.
+  systemd.network.networks."09-mlx-rdma-vf" = {
     matchConfig.Name = vfName;
     address = [(network.cidrOf "fabric" rdma.addresses.fabric)];
     # VF MACs are unset by the PF (all-zero), so without this the driver picks
