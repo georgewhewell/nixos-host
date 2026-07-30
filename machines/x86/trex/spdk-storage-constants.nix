@@ -30,15 +30,23 @@
   #   - /dev/disk/by-id/nvme-SPDK_bdev_Controller_TREXMODELS01_N: the trailing
   #     N is the namespace ID, which changes as namespaces are added/removed.
   #
-  # Holds ds4 + GLM-5.2-int4 + GLM-5.2-FP8 (1.29 TB, 976 files, verified
-  # byte-for-byte against bpool with zero writeback errors). /models on the
-  # Strix nodes is still the NFS export from bpool; move it onto this only once
-  # the set here is the one you actually want, since /models is in the nix
-  # builders' extra-sandbox-paths and an absent or wrong /models breaks every
-  # build on those hosts.
+  # The full migrated model set (bpool/trex/models is destroyed): Kimi-K3,
+  # both GLM-5.2 quants, ds4, gguf/, flm/, llama-2-7b, the Qwen ggufs, plus a
+  # partial Inkling (~715 GB of 1.9 TB, stopped by request, hf-resumable).
+  # The HF hub .cache was deliberately NOT migrated -- entries re-fetch on
+  # demand at ~1.7 GB/s rather than copying 1.5 TB of cold cache from HDDs.
+  #
+  # Sizing note: the models lvol grew 4.5 -> 7 TiB (2026-07-30, Inkling would
+  # not fit). That abandons the "volume + one full worst-case snapshot + qb
+  # <= store" rule from the ENOSPC post-mortem in favour of the realistic
+  # model: snapshots of an append-mostly volume cost only their delta, and the
+  # whole-device-write pathology that created a full-size snapshot is
+  # understood and avoided. The free-space guard in spdk-models-snapshot
+  # remains the hard backstop. Note ublk does NOT propagate a live lvol
+  # resize: growing requires umount + ublk stop/start + xfs_growfs.
   modelsSnapshot = {
-    name = "models-20260730-173208";
-    uuid = "b24f87cc-8cba-43f5-91e2-e1df50943ba1";
+    name = "models-20260730-235807";
+    uuid = "1d2d714b-81f3-442d-98c2-56a993e03161";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.

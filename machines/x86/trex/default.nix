@@ -496,10 +496,17 @@ in {
   # fstab, until the declarative phase-2 units land. Old zfs dataset
   # bpool/trex/downloads/incomplete retired 2026-07-29 (was empty).
 
+  # /models moved off bpool/trex/models (2026-07-30): the model set now lives on
+  # the SPDK Optane volume, and this bind is what the NFS export
+  # (/export/strix-models in profiles/netboot-server.nix) chains from, so the
+  # Strix fleet transparently reads Optane instead of six seeking HDDs. The
+  # bpool dataset was migrated (verified byte-exact, .cache deliberately left
+  # behind to be re-fetched on demand) and then destroyed. Local writes land
+  # here rw; clients get ro NFS or, preferably, the pinned snapshot over RDMA.
   fileSystems."/models" = {
-    device = "bpool/trex/models";
-    fsType = "zfs";
-    options = ["nofail"];
+    device = "/mnt/optane/models";
+    fsType = "none";
+    options = ["bind" "nofail" "x-systemd.requires-mounts-for=/mnt/optane/models"];
   };
 
   system.stateVersion = "24.11";
