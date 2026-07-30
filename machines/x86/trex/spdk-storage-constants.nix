@@ -13,9 +13,27 @@
   modelsSnapshotPattern = "^optstore/models-[0-9]{8}-[0-9]{6}$";
 
   # THE PIN. This is the single place that decides which snapshot trex exports
-  # and which one every client mounts. To publish a new model set: run
-  # `spdk-models-snapshot` on trex, paste the name/uuid it prints here, and
-  # deploy. Upgrading is then a reviewable diff and rolling back is a revert.
+  # and which one every client mounts. Upgrading is a reviewable diff and
+  # rolling back is a revert.
+  #
+  # THE PROCEDURE for publishing a new model set (in this order):
+  #   1. Get /mnt/optane/models to the state you want and run
+  #      `spdk-models-snapshot` on trex; paste the name/uuid it prints here.
+  #   2. Deploy trex (colmena apply switch --on trex). The export refuses to
+  #      swap namespaces while any controller is connected -- SPDK 26.01
+  #      SEGVs on a live swap (twice, 2026-07-31) -- so if clients are
+  #      attached it drops the listener and logs "swap pending".
+  #   3. Bounce the clients: reboot strix-1/3/4 (netboot picks up images with
+  #      the new pin automatically -- trex's closure builds them) and
+  #      `colmena apply switch` + `systemctl restart nvme-trex-models` on the
+  #      local-disk hosts (strix-2, fuckup).
+  #   4. Within a minute of the last controller dropping, the retry timer
+  #      completes the swap and re-adds the listener; rebooted clients mount
+  #      the new snapshot by its UUID. Verify with
+  #      `nvmf_get_subsystems | jq ...namespaces[].uuid` against the pin.
+  # Client fstabs name /dev/disk/by-id/nvme-uuid.<uuid>, so a client on a
+  # stale generation simply gets no device (nofail, mount absent) rather
+  # than the wrong data.
   #
   # `uuid` is the lvol snapshot's own UUID. SPDK propagates a bdev's UUID to
   # the NVMe namespace, the kernel exposes it, and udev creates
