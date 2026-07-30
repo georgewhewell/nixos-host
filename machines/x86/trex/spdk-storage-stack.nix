@@ -97,7 +97,17 @@
           continue
         fi
         echo "spdk-storage: attaching $bdf as opt$index"
-        rpc bdev_nvme_attach_controller -b "opt$index" -t pcie -a "$bdf" >/dev/null
+        # The attach RPC does not return until bdev examine completes, and for
+        # the LAST array member that examine is the whole chain: RAID
+        # superblock match plus the full blobstore load of optstore, whose
+        # metadata scan grows with the store's contents. With ~1.3 TB on the
+        # store that exceeds the general 15 s rpc() guard, so the unit failed
+        # with 124 on every boot (attempt 1 at 22:33:02->22:33:17 on
+        # 2026-07-30) and only the retry timer, finding the work already
+        # finished, brought the stack up ~40 s late. Give attaches their own
+        # generous budget; the first seven still return in under a second.
+        timeout 120s spdk-rpc -s ${rpcSocket} \
+          bdev_nvme_attach_controller -b "opt$index" -t pcie -a "$bdf" >/dev/null
         controllers=$(rpc bdev_nvme_get_controllers)
       done
 
@@ -407,7 +417,12 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      TimeoutStartSec = "150s";
+      # Must cover the worst honest path: 30 s socket wait + a 120 s final
+      # attach (which absorbs the RAID + blobstore examine, see above) + the
+      # 60 s array wait + ublk setup. Nothing orders boot on this unit, so a
+      # generous ceiling costs nothing; a tight one converts a slow-but-
+      # succeeding assembly into a spurious failure.
+      TimeoutStartSec = "300s";
       ExecStart = "${assembleScript}/bin/spdk-storage-assemble";
     };
   };
