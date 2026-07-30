@@ -23,15 +23,20 @@
   # ever get this exact snapshot.
   #
   # Deliberately NOT keys for the client mount:
-  #   - the XFS UUID (7748df47-65fa-4182-bf98-666efc5661b1) and LABEL
+  #   - the XFS UUID (2f53a91e-d215-4344-9702-eb8cda15ea8d) and LABEL
   #     "optmodels" are identical across every snapshot, because snapshots are
   #     block-level copies. Mounting by those makes the client float onto
   #     whatever happens to be exported.
   #   - /dev/disk/by-id/nvme-SPDK_bdev_Controller_TREXMODELS01_N: the trailing
   #     N is the namespace ID, which changes as namespaces are added/removed.
+  #
+  # This snapshot is of the freshly rebuilt, EMPTY volume (2026-07-30). The
+  # models themselves still live on bpool/trex/models and are served to the
+  # Strix nodes over NFS; refill /mnt/optane/models, snapshot again, and bump
+  # this before moving /models onto the fabric.
   modelsSnapshot = {
-    name = "models-20260730-092516";
-    uuid = "4d22485e-5caa-4aae-a76e-a2f14263546d";
+    name = "models-20260730-115608";
+    uuid = "8bcd25ec-850b-40c2-9aab-3b1ed604cbec";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.
