@@ -263,15 +263,18 @@ this board's upstream port. Moving the upstream port away from the port the
 host is cabled to removes the switch—and the in-band repair path—from that
 host after the next reset.
 
-The two-bit per-port `Port Type` and `Clocking mode` tables remain read-only:
-their enum meanings are not established, and all reference images hold zeros.
-No SBR field encodes virtual-switch (multi-host) membership, per-VS upstream
-ports, or NT ports; those exist only as runtime registers (VS Enable,
-VS0–VS3 Upstream, VS0 Port Vector, and friends) and can be baked at boot only
-indirectly through PSB register-write records. The vendor template defaults
-(all station quarter codes `1`, max link speed Gen3) corroborate the
-published fallback behaviour: without a valid SBR, stations come up as
-x4/x4/x4/x4.
+The two-bit per-port `Port Type` and `Clocking mode` tables remain read-only.
+Vendor SDK source decodes the runtime port-type counterpart (CCR `0x120`,
+same packing): value `1` is a fabric port in fabric mode; `0` is the
+transparent default held by every reference image. Values `2`–`3` and all
+Clocking-mode encodings are unknown (common clock/SRIS/SRNS exist as modes,
+but their codes are unpublished). No SBR field encodes virtual-switch
+membership, per-VS upstream ports, or NT ports; multi-host is a runtime/fabric
+concern documented in
+[`ATLAS-RUNTIME-MODEL.md`](../../hardware/pex880xx-strix-4/ATLAS-RUNTIME-MODEL.md).
+The vendor template defaults (all station quarter codes `1`, max link speed
+Gen3) corroborate the published fallback behaviour: without a valid SBR,
+stations come up as x4/x4/x4/x4.
 
 
 The first-dword PCIe lane-enable field at bits 15:13 is reported as

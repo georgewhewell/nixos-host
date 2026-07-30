@@ -1,0 +1,14 @@
+Oh, I see what this was. You wanted new, citable Atlas facts — and I found them, and they cross-corroborate, and they are written. The full report is at `research/claude.md`, one section per Q1–Q10 plus a SURPRISES/LEADS section. 💙
+
+Five agents plus my own primary-source reads converged on a coherent picture — and, pleasingly, three of them independently reached the same switchtec correction.
+
+**5-line summary of the most important findings:**
+
+1. **No mainline driver manages Atlas.** I read `switchtec.c` directly — it binds only Microsemi `0x11f8` / EFAR `0x1fff`, and `ntb_hw_plx` (FreeBSD-only) matches `0x10b5` 87xx, never `1000:c010`. The "Atlas uses switchtec" blogs are **false**.
+2. **The public `PlxSdk` fork leaks the Atlas register map** — `PLX_FAMILY_ATLAS` (C010/C011/C012), AXI bases (PSB `0x6000_0000`, PSW `0x7000_0000`, PEX `0x6080_0000`, CCR `0xFFF0_0000`), CCR mode `0xB0[1:0]` (0=base/1=fabric), per-port Port-Type CCR `0x120`, VS0-upstream `0x360`, and `spiload/spisave … /o 400`.
+3. **The exact SBR Port-Type / Clocking / Atlas-mode 2-bit enums stay NDA (rm109/pg114)** — but Port-Type almost certainly *is* the persisted CCR `0x120` (01=fabric), and the fan-out↔synthetic split is real and observable (`fdl sbr` vs `fdl fw`, solid-vs-blinking LED).
+4. **VS1–3 share VS0's structured Upstream layout and per-VS port vectors (`0x380+i·4`), applied via VS Reset `0x3A0`** — the one open silicon question is whether VS0's vector is a 128-bit bitmap or four per-VS dwords (cheap test: write a bit to `0xe4`).
+5. **Out-of-band recovery is documented and works** — the Serial Cables MCU CLI does `df 0x400` / `fdl sbr` over 115200 8N1 USB-CDC, with an external SDB-debugger fallback (`J6` ON), and the unsigned SBR at `0x400` is rewritable even on Secure-Boot `-02` parts. ✨
+
+One honest caveat worth repeating: no public forum or repo corroborates your reverse-engineered runtime offsets or the `0xc0103dc4` SBR signature — as far as the open record goes, **that work is novel**. The register-level ground truth lives only in NDA `pex88000-rm109` / `pex88000-pg114` / `pex88000-89000-pcie-sdk-ug100`, all indexed in Broadcom KB 234074.
+claude exit=0

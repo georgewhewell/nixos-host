@@ -252,11 +252,16 @@ in {
     };
   };
 
-  # Kimi Code web UI (`kimi web`). Bound to the LAN address only, so it is
-  # reachable from the LAN and from WG clients (the router terminates WG and
-  # routes 192.168.24.0/24 into the LAN) but not via the public IPv6 or any
-  # other interface. Bearer-token auth stays on; the token is printed to the
-  # journal at startup and lives in ~grw/.kimi-code/server.token.
+  # Kimi Code web UI (`kimi web`). Bound to 127.0.0.1 and published only through
+  # the TLS vhost in services/nginx.nix, which restricts access to the LAN and
+  # WG clients (the router terminates WG and routes 192.168.24.0/24 into the
+  # LAN). Bearer-token auth stays on; the token is printed to the journal at
+  # startup and lives in ~grw/.kimi-code/server.token.
+  #
+  # 2026-07-30: this had been changed to bind the LAN address directly with
+  # trex's own hostnames as --allowed-host, which bypassed the vhost and its
+  # TLS entirely. That was my regression -- I rsynced a stale working tree over
+  # this repo -- and is restored here from the deployed generation 45.
   systemd.services.kimi-server = {
     description = "Kimi Code server (REST + WebSocket + web UI)";
     after = ["network-online.target"];
@@ -272,10 +277,8 @@ in {
         kimi-code = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.kimi-code;
       in
         "${kimi-code}/bin/kimi web --no-open --log-level info --port 58627 "
-        + "--host ${network.primaryIp self} "
-        + "--allowed-host trex "
-        + "--allowed-host ${network.fqdn "trex"} "
-        + "--allowed-host ${network.publicFqdn "trex"}";
+        + "--host 127.0.0.1 "
+        + "--allowed-host ${network.fqdn "kimi"}";
       Restart = "on-failure";
       RestartSec = "10s";
     };
@@ -854,6 +857,12 @@ in {
   environment.persistence."/persist".directories = [
     # infrastructure
     "/var/lib/acme"
+    # Self-signed cert for the kimi vhost. Without this the impermanent root
+    # discards it on every boot, so the fingerprint changes under the browser
+    # each time; kimi-selfsigned-cert would regenerate it, but stability is
+    # nicer. Added 2026-07-30 -- it was previously created by hand and not
+    # persisted at all, which would have stopped nginx starting after a reboot.
+    "/var/lib/kimi-certs"
     "/var/lib/samba"
     "/var/lib/nfs"
     {

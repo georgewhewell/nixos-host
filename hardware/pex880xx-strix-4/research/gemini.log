@@ -1,0 +1,8 @@
+The research report has been written to [/mnt/Home/src/nixos-config/hardware/pex880xx-strix-4/research/gemini.md](file:///mnt/Home/src/nixos-config/hardware/pex880xx-strix-4/research/gemini.md). Below is the 5-line summary of key findings:
+
+1. **PSB SBR Persistence**: Pre-System Boot (PSB) records at SPI offset `0x400` map directly to 20-bit runtime CSR offsets (`0x358` VS Enable, `0x360` VS0 Upstream, `0x380` Port Vector), allowing static multi-host configs to be baked into SBR without software.
+2. **Multi-Host Bring-Up Sequence**: The switch delays link training until management software or PSB writes `1` to `Config Release` bit 0 (`0x3ac` / dword `0xeb`), requiring **SRIS/SRNS** clocking across separate host clock domains.
+3. **No Mainline Atlas NTB Driver**: Linux `ntb_hw_plx` only supports PLX Gen3 (PEX 87xx); PEX88000 Atlas (`1000:c010`) NTB is non-existent in mainline kernel and requires Broadcom's proprietary SDK `pex_ntb` module or custom driver code.
+4. **Documentation Gating**: Manuals (RM109, UG100) and datasheets remain strictly NDA-gated on Broadcom's portal with no public mirrors available; legacy PEX87xx EEPROM hacks (e.g. `0xA30`) do not apply to PEX88000's ARM Cortex-R4 architecture.
+5. **Cross-Family Parity**: PEX89000 (Capella Gen5) shares identical ExpressFabric / Virtual Switch abstraction models, HAL diagnostic routines, and SDK APIs with PEX88000 (Atlas Gen4).
+agy exit=0

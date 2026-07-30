@@ -18,6 +18,15 @@ See [`ATLAS-VS-REGISTERS.md`](ATLAS-VS-REGISTERS.md) for the decoded
 virtual-switch (multi-host), NT, management, and port-control runtime
 register map, and for the single-host upstream-port configuration boundary.
 
+See [`ATLAS-RUNTIME-MODEL.md`](ATLAS-RUNTIME-MODEL.md) for the consolidated
+runtime model: switch operating modes (standard vs fabric), the CCR and
+IDX_AXI access paths, port-type semantics from vendor SDK source, the
+VS-block Atlas-vs-legacy resolution, NT/DMA/TWC, the no-firmware flash
+finding, and out-of-band interfaces.
+
+The `research/` directory holds the 2026-07-29 multi-agent research brief
+and the Gemini/Grok/Claude/Kimi reports it produced.
+
 ## Safety rules
 
 - Capture the current state before and after any configuration change.

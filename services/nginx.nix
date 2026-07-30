@@ -235,6 +235,65 @@ in {
     };
   };
 
+  # Kimi Code web UI. Self-signed TLS rather than ACME: this name has no public
+  # DNS record, so DNS-01 would be the only issuance path and a publicly
+  # CT-logged certificate buys nothing for a LAN-only host. kimi-server itself
+  # binds 127.0.0.1, so this vhost is the only way in.
+  services.nginx.virtualHosts.${network.fqdn "kimi"} = {
+    forceSSL = true;
+    sslCertificate = "/var/lib/kimi-certs/cert.pem";
+    sslCertificateKey = "/var/lib/kimi-certs/key.pem";
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:58627";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_buffering off;
+        # Agent sessions stream for minutes over REST/WS; don't reap idle sockets.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        ${lanOnly}
+      '';
+    };
+  };
+
+  # Generate the self-signed pair if it is absent.
+  #
+  # This unit did not exist before 2026-07-30. The certificate had been created
+  # by hand, and trex's root is an impermanent tmpfs with /var/lib/kimi-certs
+  # absent from the persistence list -- so the first reboot would have left
+  # nginx unable to start at all on a missing ssl_certificate, taking jellyfin,
+  # grafana, radarr, sonarr, autobrr, open-webui, cache and the Strix netboot
+  # server down with it. Generate on demand, and persist the result (see
+  # environment.persistence in machines/x86/trex/default.nix) so the fingerprint
+  # is stable across reboots instead of changing under the browser every time.
+  systemd.services.kimi-selfsigned-cert = {
+    description = "Generate the self-signed certificate for the kimi web UI";
+    wantedBy = ["multi-user.target"];
+    before = ["nginx.service"];
+    requiredBy = ["nginx.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -euo pipefail
+      d=/var/lib/kimi-certs
+      ${pkgs.coreutils}/bin/install -d -m 0750 -o nginx -g nginx "$d"
+      if [ -s "$d/cert.pem" ] && [ -s "$d/key.pem" ]; then
+        echo "keeping the existing certificate in $d"
+        exit 0
+      fi
+      ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
+        -nodes -keyout "$d/key.pem" -out "$d/cert.pem" \
+        -subj "/CN=${network.fqdn "kimi"}" \
+        -addext "subjectAltName=DNS:${network.fqdn "kimi"}"
+      ${pkgs.coreutils}/bin/chown nginx:nginx "$d/cert.pem" "$d/key.pem"
+      ${pkgs.coreutils}/bin/chmod 0644 "$d/cert.pem"
+      ${pkgs.coreutils}/bin/chmod 0640 "$d/key.pem"
+      echo "generated a new self-signed certificate for ${network.fqdn "kimi"}"
+    '';
+  };
+
   services.prometheus.exporters = {
     nginx = {
       enable = true;

@@ -140,12 +140,20 @@ policy. The numeric enum meanings are not established.
 All 196 decoded values are zero in both the live all-x16 PEX88096 image and
 Broadcom's Base RDK96 fan-out image, and also in the vendor `AtlasSBR.db`
 template defaults. They therefore do not distinguish the two known station
-layouts, and no write path is exposed. The complete vendor template was
-audited beyond these tables: no other SoC field encodes virtual switches,
-per-VS upstream ports, port membership vectors, or NT ports; multi-host and
-NT configuration exist only as runtime registers (see the Strix-4
-[`ATLAS-VS-REGISTERS.md`](../../hardware/pex880xx-strix-4/ATLAS-VS-REGISTERS.md)
-dossier).
+layouts, and no write path is exposed.
+
+Vendor SDK 8.23 source (`Windows_Api/PlxApiDirect.{c,h}`) establishes the
+runtime counterparts: switch mode in CCR `0xB0[1:0]` (`0` standard fan-out,
+`1` fabric/synthetic), and a per-port two-bit port type in CCR `0x120` with
+identical 2-bit/16-per-dword packing, where value `1` marks a fabric port
+(read only in fabric mode). The SBR tables are presumed to be the boot-time
+copies; values `2`–`3` and every Clocking-mode value remain unknown, and
+Broadcom confirms common-clock/SRIS/SRNS support without publishing the
+encoding. The complete vendor template was audited beyond these tables: no
+other SoC field encodes virtual switches, per-VS upstream ports, port
+membership vectors, or NT ports; the runtime model is documented in the
+Strix-4 [`ATLAS-RUNTIME-MODEL.md`](../../hardware/pex880xx-strix-4/ATLAS-RUNTIME-MODEL.md)
+dossier.
 
 ## First SoC dword
 
