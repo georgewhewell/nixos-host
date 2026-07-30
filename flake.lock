@@ -1242,8 +1242,8 @@
         "xrt-src": "xrt-src"
       },
       "locked": {
-        "lastModified": 1785179563,
-        "narHash": "sha256-nDu5QzsM6KV3Hl3L8rCe0pU70XQDj1PkIITENlWq4SQ=",
+        "lastModified": 1785451618,
+        "narHash": "sha256-epEMIuZ49FPFH5/nXJaTqOxUZupWdI7a+grChwfT1v0=",
         "path": "/mnt/Home/src/nix-strix-halo",
         "type": "path"
       },
@@ -2569,17 +2569,17 @@
     "vllm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1783899612,
-        "narHash": "sha256-a2OoTfQOJyB8iKBfkfCC23MMBMOHEBjAZ0WGag8hcTQ=",
+        "lastModified": 1785170764,
+        "narHash": "sha256-0vHaJUBe/ru8126tPwWXeefQ10jsnBLOeQ/gAGXqPI0=",
         "owner": "vllm-project",
         "repo": "vllm",
-        "rev": "752a3a504485790a2e8491cacbb35c137339ad34",
+        "rev": "658f2f56e557e8141f8726b4626c51496d78d914",
         "type": "github"
       },
       "original": {
         "owner": "vllm-project",
-        "ref": "v0.25.1",
         "repo": "vllm",
+        "rev": "658f2f56e557e8141f8726b4626c51496d78d914",
         "type": "github"
       }
     },
