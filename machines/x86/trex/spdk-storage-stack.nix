@@ -352,21 +352,65 @@
           any(.[]; .nqn == $nqn and
             any(.namespaces[]?; .bdev_name == $uuid))
         ' <<<"$subsystems")
-      if [ "$selected_present" != true ]; then
-        rpc nvmf_subsystem_add_ns ${lib.escapeShellArg modelsNqn} "$snapshot" >/dev/null
-      fi
 
-      # Add first, remove second: clients never see an empty subsystem during
-      # an ordinary boot-time move from an older snapshot to the newest one.
-      subsystems=$(rpc nvmf_get_subsystems)
-      mapfile -t stale_nsids < <(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} \
+      # THE DRAIN GUARD. SPDK 26.01's spdk_tgt SEGVs in libspdk_bdev_lvol when
+      # namespaces are swapped while controllers are connected or connecting --
+      # reproduced twice on 2026-07-31 (00:04 and 00:30, the second taking the
+      # whole host down via hung_task_panic). Steady-state serving and
+      # client-initiated disconnects are fine; only the live swap kills it. So:
+      # never touch namespaces while anyone is connected. If a swap is pending
+      # and controllers exist, drop the listener (blocks reconnects), say so,
+      # and let the retry timer finish the swap once the last controller is
+      # gone. Operators bounce the clients (reboot the strix fleet / restart
+      # nvme-trex-models); convergence is automatic within a minute of the
+      # drain. George's call (2026-07-31): a deliberate client bounce per pin
+      # bump beats crashing weirdly.
+      needs_swap=false
+      [ "$selected_present" != true ] && needs_swap=true
+      stale_count=$(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} \
         --arg uuid "$snapshot_uuid" '
-          .[] | select(.nqn == $nqn) | .namespaces[]?
-          | select(.bdev_name != $uuid) | .nsid
+          [.[] | select(.nqn == $nqn) | .namespaces[]?
+           | select(.bdev_name != $uuid)] | length
         ' <<<"$subsystems")
-      for nsid in "''${stale_nsids[@]}"; do
-        rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
-      done
+      [ "$stale_count" -gt 0 ] && needs_swap=true
+
+      if [ "$needs_swap" = true ]; then
+        controllers=$(rpc nvmf_subsystem_get_controllers ${lib.escapeShellArg modelsNqn} \
+          | jq -r "length")
+        if [ "$controllers" -gt 0 ]; then
+          rpc nvmf_subsystem_remove_listener ${lib.escapeShellArg modelsNqn} \
+            -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null 2>&1 || true
+          echo "spdk-export: namespace swap pending but $controllers controller(s) are connected." >&2
+          echo "spdk-export: listener removed to block reconnects; bounce the clients" >&2
+          echo "spdk-export: (reboot strix / restart nvme-trex-models) and the retry timer" >&2
+          echo "spdk-export: will complete the swap and re-listen once the count reaches zero." >&2
+          exit 0
+        fi
+        if [ "$selected_present" != true ]; then
+          rpc nvmf_subsystem_add_ns ${lib.escapeShellArg modelsNqn} "$snapshot" >/dev/null
+        fi
+        subsystems=$(rpc nvmf_get_subsystems)
+        mapfile -t stale_nsids < <(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} \
+          --arg uuid "$snapshot_uuid" '
+            .[] | select(.nqn == $nqn) | .namespaces[]?
+            | select(.bdev_name != $uuid) | .nsid
+          ' <<<"$subsystems")
+        for nsid in "''${stale_nsids[@]}"; do
+          rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
+        done
+        # The pending-swap path above may have removed the listener on an
+        # earlier run; the listener-ensure block earlier in this script only
+        # runs before the swap check, so re-add it now that the swap is done.
+        subsystems=$(rpc nvmf_get_subsystems)
+        if ! jq -e --arg nqn ${lib.escapeShellArg modelsNqn} \
+          --arg address ${lib.escapeShellArg rdmaAddress} '
+            any(.[]; .nqn == $nqn and
+              any(.listen_addresses[]?; .traddr == $address and .trsvcid == "4420"))
+          ' <<<"$subsystems" >/dev/null; then
+          rpc nvmf_subsystem_add_listener ${lib.escapeShellArg modelsNqn} \
+            -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null
+        fi
+      fi
 
       echo "spdk-export: LISTEN ${rdmaAddress}:4420; exporting read-only snapshot $snapshot"
     '';
