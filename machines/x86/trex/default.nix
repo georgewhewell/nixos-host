@@ -763,6 +763,40 @@ in {
 
   networking.useDHCP = false;
 
+  # Hardware-offload the switchdev datapath.
+  #
+  # Without this, OVS switches every frame from the mlx5 VFs in software: the
+  # eswitch receives no TC fast-path entries, so all traffic is punted to the
+  # representors and forwarded by the host CPU. Measured 2026-07-30: NVMe-oF
+  # sequential reads plateaued at 2.87 GB/s (~24 Gb/s) from two *different*
+  # clients with different NICs (strix-3 via a BlueField-2 ConnectX-6,
+  # strix-4 via a plain ConnectX-5) over a 100G link, while trex's SPDK target
+  # sat at 0.64% reactor-busy and the array serves 13.0 GiB/s locally. The
+  # giveaway was `tc filter show dev mlxlan0r1 ingress` reporting zero in_hw
+  # rules with the eswitch already in switchdev mode.
+  #
+  # ovs-vswitchd reads other_config once at startup, so this has to land in the
+  # database after ovsdb is up and BEFORE vswitchd starts. --no-wait is
+  # required for exactly that reason: without it ovs-vsctl blocks waiting for a
+  # vswitchd that is not running yet.
+  systemd.services.ovs-hw-offload = {
+    description = "Enable OVS hardware offload before ovs-vswitchd starts";
+    after = ["ovsdb.service"];
+    requires = ["ovsdb.service"];
+    before = ["ovs-vswitchd.service"];
+    requiredBy = ["ovs-vswitchd.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.openvswitch}/bin/ovs-vsctl --no-wait \
+        set Open_vSwitch . other_config:hw-offload=true
+      echo "hw-offload=$(${pkgs.openvswitch}/bin/ovs-vsctl --no-wait \
+        get Open_vSwitch . other_config:hw-offload)"
+    '';
+  };
+
   # Set jumbo MTU on OVS internal port (must be done via ovs-vsctl)
   systemd.services.ovs-host-mtu = {
     description = "Set OVS ovs-host interface MTU to 9000";
