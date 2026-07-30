@@ -250,7 +250,7 @@ lib: rec {
         lan = 8;
         fabric = 8;
       };
-      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" "cache"];
+      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" "cache" "kimi"];
     };
     # Trex's RoCE endpoint: a ConnectX-4 SR-IOV VF in the host namespace
     # (mlxlan0v1 / mlx5_1). The OVS internal port ovs-host cannot serve RDMA

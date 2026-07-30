@@ -767,6 +767,10 @@ in
 
   users.users.grw.extraGroups = [ "networkmanager" ];
 
+  # Console autologin on every getty (incl. tty0/HDMI): these are headless
+  # compute nodes debugged at the bench with a screen and keyboard.
+  services.getty.autologinUser = "grw";
+
   systemd.network =
     let
       thunderboltIp = "10.0.${toString (index + 3)}.2/24";
