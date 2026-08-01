@@ -73,8 +73,11 @@
     };
 
     nanokvm = {
-      url = "path:/mnt/Home/src/nixos-nanokvm";
-      inputs.nixpkgs.follows = "nixpkgs";
+      # Keep .git, ignored captures, and local Wi-Fi credentials out of the
+      # flake source. Keep NanoKVM's tested nixpkgs pin as well: following the
+      # Strix pin invalidates the cached RISC-V cross closure and rebuilds the
+      # toolchain without changing the host integration contract.
+      url = "git+file:///mnt/Home/src/nixos-nanokvm?shallow=1";
       inputs.disko.follows = "disko";
     };
 
