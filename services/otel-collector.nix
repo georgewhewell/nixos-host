@@ -16,9 +16,14 @@
         http.endpoint = "0.0.0.0:4318";
       };
 
-      processors.batch = {
-        send_batch_size = 1024;
-        timeout = "10s";
+      processors = {
+        batch = {
+          send_batch_size = 1024;
+          timeout = "10s";
+        };
+        # claude-code (and possibly others) default to delta temporality,
+        # which the prometheus remote-write path cannot represent — convert.
+        deltatocumulative = { };
       };
 
       exporters = {
@@ -46,7 +51,7 @@
       service.pipelines = {
         metrics = {
           receivers = [ "otlp" ];
-          processors = [ "batch" ];
+          processors = [ "deltatocumulative" "batch" ];
           exporters = [ "prometheusremotewrite" "otlphttp/ax102" ];
         };
         logs = {

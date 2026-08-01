@@ -891,7 +891,7 @@
         "h": 7,
         "w": 16,
         "x": 0,
-        "y": 23
+        "y": 31
       },
       "datasource": {
         "type": "prometheus",
@@ -1039,7 +1039,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 31
       },
       "datasource": {
         "type": "prometheus",
@@ -1093,6 +1093,185 @@
           }
         },
         "overrides": []
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Tokens by model",
+      "id": 13,
+      "description": "Sum of per-session token totals over the dashboard range (all token types)",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 23
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])))",
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "namePlacement": "top",
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-BlPu"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Session tokens by model",
+      "id": 14,
+      "description": "Per-session token totals in a trailing 30 m window \u2014 bursts show tool activity",
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 8,
+        "y": 23
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[30m]))",
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 35,
+            "gradientMode": "opacity",
+            "stacking": {
+              "mode": "normal"
+            },
+            "showPoints": "never",
+            "spanNulls": 900000
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost & sessions (claude)",
+      "id": 15,
+      "description": "Estimated API-equivalent cost and session count over the range",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 23
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "legendFormat": "cost",
+          "expr": "sum(last_over_time(claude_code_cost_usage_USD_total[$__range]))"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "legendFormat": "sessions",
+          "expr": "sum(last_over_time(claude_code_session_count_total[$__range]))"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cost"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sessions"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
       }
     }
   ]

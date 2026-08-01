@@ -20,6 +20,7 @@ let
         --set OTEL_LOGS_EXPORTER "otlp" \
         --set OTEL_EXPORTER_OTLP_ENDPOINT "${otelEndpoint}" \
         --set OTEL_EXPORTER_OTLP_PROTOCOL "http/protobuf" \
+        --set OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE "cumulative" \
         --set OTEL_SERVICE_NAME "grok-cli" \
         --set OTEL_LOG_USER_PROMPTS "false" \
         --set OTEL_LOG_TOOL_DETAILS "false"
@@ -85,6 +86,8 @@ in
         OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf";
         OTEL_EXPORTER_OTLP_ENDPOINT = "http://trex:4318";
         OTEL_METRIC_EXPORT_INTERVAL = "60000";
+        # Prometheus-backed store: delta (the default) would be dropped.
+        OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = "cumulative";
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
         CLAUDE_CODE_DISABLE_TERMINAL_TITLE = "1";
         DISABLE_AUTOUPDATER = "1";
