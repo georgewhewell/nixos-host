@@ -35,6 +35,12 @@
           "expr": "sort_desc(llm_quota_utilization_ratio{scope=\"all\"})",
           "instant": true,
           "legendFormat": "{{provider}} \u00b7 {{window}}"
+        },
+        {
+          "refId": "B",
+          "expr": "llm_quota_utilization_ratio{provider=\"gemini\",window=\"bucket\"}",
+          "instant": true,
+          "legendFormat": "gemini \u00b7 {{scope}}"
         }
       ],
       "options": {
