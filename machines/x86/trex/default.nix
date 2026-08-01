@@ -333,27 +333,6 @@ in {
   # ECC does NOT cover. `ras-mc-ctl --summary` / `--error-count` to read.
   hardware.rasdaemon.enable = true;
 
-  # Trex is the sole writer for the Strix model tree. The Strix machines mount
-  # this cache read-only, which avoids cross-node Hub/file-lock races during
-  # distributed vLLM startup.
-  systemd.services.strix-model-qwen3-0-6b = {
-    description = "Pre-stage Qwen3-0.6B for the Strix vLLM cluster";
-    wants = ["network-online.target"];
-    after = ["network-online.target" "models.mount"];
-    wantedBy = ["multi-user.target"];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "grw";
-      Group = "users";
-      RemainAfterExit = true;
-      Environment = [
-        "HF_HOME=/models/.cache/huggingface"
-        "HF_HUB_DISABLE_TELEMETRY=1"
-      ];
-      ExecStart = "${pkgs.python312Packages.huggingface-hub}/bin/hf download Qwen/Qwen3-0.6B --revision c1899de289a04d12100db370d81485cdf75e47ca --cache-dir /models/.cache/huggingface/hub";
-    };
-  };
-
   nix.settings.build-cores = lib.mkDefault 48;
   nix.settings.max-jobs = lib.mkDefault 4;
 
@@ -391,6 +370,7 @@ in {
     ../../../services/nginx.nix
     ../../../services/grafana.nix
     ../../../services/victoriametrics.nix
+    ../../../services/otel-collector.nix
     ../../../services/jellyfin.nix
     ../../../services/p2pool.nix
     ../../../services/p2pool-exporter.nix
@@ -501,12 +481,10 @@ in {
   # bpool/trex/downloads/incomplete retired 2026-07-29 (was empty).
 
   # /models moved off bpool/trex/models (2026-07-30): the model set now lives on
-  # the SPDK Optane volume, and this bind is what the NFS export
-  # (/export/strix-models in profiles/netboot-server.nix) chains from, so the
-  # Strix fleet transparently reads Optane instead of six seeking HDDs. The
-  # bpool dataset was migrated (verified byte-exact, .cache deliberately left
-  # behind to be re-fetched on demand) and then destroyed. Local writes land
-  # here rw; clients get ro NFS or, preferably, the pinned snapshot over RDMA.
+  # the SPDK Optane volume. The bpool dataset was migrated (verified byte-exact,
+  # .cache deliberately left behind to be re-fetched on demand) and then
+  # destroyed. Local writes land here rw. Strix clients consume only the pinned
+  # snapshot over NVMe/RDMA; the remaining NFS export serves non-Strix clients.
   fileSystems."/models" = {
     device = "/mnt/optane/models";
     fsType = "none";

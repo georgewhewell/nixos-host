@@ -6,6 +6,9 @@
 }:
 let
   grokPackage = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.grok;
+  # All AI CLIs ship content-free OTel metrics to the collector on trex
+  # (services/otel-collector.nix), which writes them into victoriametrics.
+  otelEndpoint = "http://trex:4318";
   grokWithPrivateOtel = pkgs.symlinkJoin {
     name = "grok-private-otel";
     paths = [ grokPackage ];
@@ -15,7 +18,7 @@ let
         --set GROK_EXTERNAL_OTEL "1" \
         --set OTEL_METRICS_EXPORTER "otlp" \
         --set OTEL_LOGS_EXPORTER "otlp" \
-        --set OTEL_EXPORTER_OTLP_ENDPOINT "http://10.101.0.2:4318" \
+        --set OTEL_EXPORTER_OTLP_ENDPOINT "${otelEndpoint}" \
         --set OTEL_EXPORTER_OTLP_PROTOCOL "http/protobuf" \
         --set OTEL_SERVICE_NAME "grok-cli" \
         --set OTEL_LOG_USER_PROMPTS "false" \
@@ -74,7 +77,14 @@ in
         pr = "";
       };
       env = {
-        CLAUDE_CODE_ENABLE_TELEMETRY = "0";
+        # OTel metrics (per-model tokens, cost, session counters) to the
+        # collector on trex. Vendor telemetry (Statsig/Sentry) stays disabled
+        # below — this stream is self-hosted and content-free (no prompts).
+        CLAUDE_CODE_ENABLE_TELEMETRY = "1";
+        OTEL_METRICS_EXPORTER = "otlp";
+        OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf";
+        OTEL_EXPORTER_OTLP_ENDPOINT = "http://trex:4318";
+        OTEL_METRIC_EXPORT_INTERVAL = "60000";
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
         CLAUDE_CODE_DISABLE_TERMINAL_TITLE = "1";
         DISABLE_AUTOUPDATER = "1";
