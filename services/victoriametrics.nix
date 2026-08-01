@@ -175,6 +175,14 @@
       ];
     }
     {
+      job_name = "llm-quota";
+      static_configs = [
+        {
+          targets = ["trex:9184"];
+        }
+      ];
+    }
+    {
       job_name = "home-assistant";
       metrics_path = "/api/prometheus";
       authorization = {

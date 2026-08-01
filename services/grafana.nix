@@ -27,6 +27,13 @@ in {
         jsonData.httpMethod = "POST";
       }
     ];
+    provision.dashboards.settings.providers = [
+      {
+        name = "nixos-config";
+        options.path = ./grafana-dashboards;
+        allowUiUpdates = true;
+      }
+    ];
     settings = {
       server = {
         inherit domain;

@@ -360,6 +360,10 @@ in {
   # Cluster-view dashboard for the strix nodes, provisioned into local grafana
   services.strix-halo.grafana-dashboards.enable = true;
 
+  # LLM subscription quota metrics from ~grw CLI credentials,
+  # scraped into local victoriametrics (services/victoriametrics.nix)
+  services.llm-quota-exporter.enable = true;
+
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
 

@@ -111,6 +111,7 @@ self: super: {
   #   config.boot.kernelPackages.callPackage ../packages/beegfs/client-module.nix { }
 
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
+  llm-quota-exporter = super.callPackage ../packages/llm-quota-exporter {};
   bios-setup-var = super.callPackage ../packages/bios-setup-var {};
   pexctl = super.callPackage ../packages/pexctl {};
   mlnx-mft = super.callPackage ../packages/mlnx-mft {};
