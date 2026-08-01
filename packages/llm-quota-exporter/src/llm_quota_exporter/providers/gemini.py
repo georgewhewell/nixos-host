@@ -46,6 +46,7 @@ class GeminiProvider(Provider):
     _access_token_expiry: float = 0.0
     _project: str | None = None
     _tier: str | None = None
+    _summary_unavailable: bool = False
 
     def credential_path(self) -> Path:
         return self._home / ".gemini" / "oauth_creds.json"
@@ -56,11 +57,14 @@ class GeminiProvider(Provider):
             self._load_code_assist(token)
 
         samples: tuple[QuotaSample, ...] = ()
-        try:
-            summary = self._post(token, "retrieveUserQuotaSummary", {"project": self._project or ""})
-            samples = tuple(_parse_summary(summary))
-        except ProviderError as exc:
-            log.debug("gemini: quota summary unavailable (%s), falling back", exc)
+        if not self._summary_unavailable:
+            try:
+                summary = self._post(token, "retrieveUserQuotaSummary", {"project": self._project or ""})
+                samples = tuple(_parse_summary(summary))
+            except ProviderError as exc:
+                # This tier doesn't serve the summary; don't keep asking.
+                self._summary_unavailable = True
+                log.info("gemini: quota summary unavailable (%s), using plain quota from now on", exc)
         if not samples:
             # Some tiers only serve the plainer per-model bucket list.
             quota = self._post(token, "retrieveUserQuota", {"project": self._project or ""})

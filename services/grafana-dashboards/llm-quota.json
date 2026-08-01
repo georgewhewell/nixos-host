@@ -16,12 +16,12 @@
   "schemaVersion": 39,
   "panels": [
     {
-      "type": "bargauge",
-      "title": "Utilization now",
-      "description": "Fraction of each quota window consumed. 1.0 = limit reached.",
+      "type": "stat",
+      "title": "anthropic",
+      "id": 1,
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 5,
+        "w": 4,
         "x": 0,
         "y": 0
       },
@@ -32,29 +32,556 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sort_desc(llm_quota_utilization_ratio{scope=\"all\"})",
-          "instant": true,
-          "legendFormat": "{{provider}} \u00b7 {{window}}"
-        },
-        {
-          "refId": "B",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"gemini\",window=\"bucket\"})",
-          "instant": true,
-          "legendFormat": "gemini \u00b7 buckets (max)"
+          "expr": "max(llm_quota_utilization_ratio{provider=\"anthropic\"})",
+          "legendFormat": "max"
         }
       ],
       "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
         },
-        "showUnfilled": true,
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
+      "title": "openai",
+      "id": 2,
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"openai\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
+      "title": "gemini",
+      "id": 3,
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"gemini\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
+      "title": "grok",
+      "id": 4,
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"grok\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
+      "title": "kimi",
+      "id": 5,
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"kimi\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
+      "title": "next reset",
+      "id": 6,
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "min(clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\"} - time(), 0))"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "description": "Soonest quota window reset"
+    },
+    {
+      "type": "table",
+      "title": "Quota windows",
+      "id": 7,
+      "gridPos": {
+        "h": 9,
+        "w": 14,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "llm_quota_utilization_ratio{scope=\"all\"}"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "expr": "clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\"} - time(), 0)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "scope": true
+            },
+            "renameByName": {
+              "llm_quota_utilization_ratio": "used",
+              "Value #A": "used",
+              "Value": "resets in",
+              "Value #B": "resets in"
+            },
+            "indexByName": {
+              "provider": 0,
+              "window": 1,
+              "used": 2,
+              "resets in": 3
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "used",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "#eda100",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.9
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient",
+                  "valueDisplayMode": "color"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "resets in"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dtdurations"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "provider"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "window"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Per model / feature",
+      "id": 8,
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sort_desc(llm_quota_utilization_ratio{scope!=\"all\"})",
+          "legendFormat": "{{provider}} \u00b7 {{scope}}"
+        }
+      ],
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
         "valueMode": "color",
-        "namePlacement": "top"
+        "showUnfilled": true,
+        "namePlacement": "top",
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
       },
       "fieldConfig": {
         "defaults": {
@@ -81,114 +608,18 @@
           }
         },
         "overrides": []
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Window resets in",
-      "description": "Time until each quota window resets.",
-      "gridPos": {
-        "h": 9,
-        "w": 8,
-        "x": 12,
-        "y": 0
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "feit1tygbp81sc"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\"} - time(), 0)",
-          "instant": true,
-          "legendFormat": "{{provider}} \u00b7 {{window}}"
-        }
-      ],
-      "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        },
-        "textMode": "value_and_name"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "dtdurations",
-          "decimals": 1
-        },
-        "overrides": []
-      }
-    },
-    {
-      "type": "table",
-      "title": "Plans",
-      "gridPos": {
-        "h": 9,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "feit1tygbp81sc"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "llm_provider_info",
-          "instant": true
-        }
-      ],
-      "options": {
-        "showHeader": true
-      },
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {}
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true,
-              "__name__": true,
-              "job": true,
-              "instance": true
-            },
-            "indexByName": {
-              "provider": 0,
-              "plan": 1,
-              "tier": 2
-            }
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
+      "description": "Model-scoped weekly caps and feature quotas"
     },
     {
       "type": "timeseries",
       "title": "Session window (5h)",
+      "id": 9,
       "gridPos": {
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 14
       },
       "datasource": {
         "type": "prometheus",
@@ -217,14 +648,15 @@
         "defaults": {
           "unit": "percentunit",
           "min": 0,
-          "max": 1,
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 0,
-            "pointSize": 4,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
-            "spanNulls": 3600000
+            "pointSize": 4,
+            "spanNulls": 3600000,
+            "axisSoftMax": 1
           }
         },
         "overrides": [
@@ -309,11 +741,12 @@
     {
       "type": "timeseries",
       "title": "Weekly / monthly windows",
+      "id": 10,
       "gridPos": {
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 14
       },
       "datasource": {
         "type": "prometheus",
@@ -342,14 +775,15 @@
         "defaults": {
           "unit": "percentunit",
           "min": 0,
-          "max": 1,
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 0,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
             "showPoints": "auto",
+            "pointSize": 4,
             "spanNulls": 3600000,
-            "pointSize": 4
+            "axisSoftMax": 1
           }
         },
         "overrides": [
@@ -450,124 +884,146 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Model-scoped windows",
-      "description": "Per-model weekly caps (Anthropic) and per-model buckets (Gemini).",
+      "type": "table",
+      "title": "Exporter",
+      "id": 11,
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 7,
+        "w": 16,
         "x": 0,
-        "y": 18
+        "y": 23
       },
       "datasource": {
         "type": "prometheus",
         "uid": "feit1tygbp81sc"
       },
-      "interval": "5m",
       "targets": [
         {
           "refId": "A",
-          "expr": "llm_quota_utilization_ratio{scope!=\"all\"}",
-          "legendFormat": "{{provider}} \u00b7 {{scope}}"
+          "instant": true,
+          "expr": "llm_quota_scrape_success"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "expr": "time() - llm_quota_last_success_timestamp_seconds"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "llm_quota_scrape_success": "status",
+              "Value #A": "status",
+              "Value": "data age",
+              "Value #B": "data age"
+            },
+            "indexByName": {
+              "provider": 0,
+              "status": 1,
+              "data age": 2
+            }
+          }
         }
       ],
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "showHeader": true
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1,
           "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 0,
-            "showPoints": "auto",
-            "spanNulls": 3600000,
-            "pointSize": 4
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
           }
         },
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "anthropic.*"
+              "id": "byName",
+              "options": "status"
             },
             "properties": [
               {
-                "id": "color",
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u2717 failing",
+                        "color": "red"
+                      },
+                      "1": {
+                        "text": "\u2713 ok",
+                        "color": "green"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#3987e5"
+                  "type": "color-text"
                 }
               }
             ]
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "gemini.*"
+              "id": "byName",
+              "options": "data age"
             },
             "properties": [
               {
-                "id": "color",
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d95926"
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "#eda100",
+                      "value": 900
+                    },
+                    {
+                      "color": "red",
+                      "value": 3600
+                    }
+                  ]
                 }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "grok.*"
-            },
-            "properties": [
+              },
               {
-                "id": "color",
+                "id": "custom.cellOptions",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#199e70"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "kimi.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#c98500"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "openai.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d55181"
+                  "type": "color-text"
                 }
               }
             ]
@@ -576,14 +1032,14 @@
       }
     },
     {
-      "type": "stat",
-      "title": "Exporter health",
-      "description": "1 = last poll of this provider succeeded.",
+      "type": "table",
+      "title": "Plans",
+      "id": 12,
       "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 12,
-        "y": 18
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 23
       },
       "datasource": {
         "type": "prometheus",
@@ -592,107 +1048,48 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "llm_quota_scrape_success",
           "instant": true,
-          "legendFormat": "{{provider}}"
+          "expr": "llm_provider_info"
         }
       ],
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
         },
-        "textMode": "value_and_name"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "\u2717 failing",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "\u2713 ok",
-                  "color": "green"
-                }
-              }
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "Value": true,
+              "llm_provider_info": true
+            },
+            "indexByName": {
+              "provider": 0,
+              "plan": 1,
+              "tier": 2
             }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              }
-            ]
           }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Data age",
-      "description": "Time since the last successful poll per provider.",
-      "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 18,
-        "y": 18
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "feit1tygbp81sc"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "time() - llm_quota_last_success_timestamp_seconds",
-          "instant": true,
-          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        },
-        "textMode": "value_and_name"
+        "showHeader": true
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#eda100",
-                "value": 900
-              },
-              {
-                "color": "red",
-                "value": 3600
-              }
-            ]
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
           }
         },
         "overrides": []

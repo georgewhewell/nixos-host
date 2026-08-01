@@ -213,6 +213,8 @@ def _sample(detail: dict[str, Any], window: str) -> QuotaSample | None:
         scope="all",
         utilization=used / limit,
         resets_at=parse_iso8601(detail.get("resetTime")),
+        used=used,
+        limit=limit,
     )
 
 

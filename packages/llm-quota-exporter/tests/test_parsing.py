@@ -3,10 +3,12 @@
 import pytest
 
 from llm_quota_exporter._time import parse_iso8601
+from llm_quota_exporter.providers.anthropic import _parse_spend
 from llm_quota_exporter.providers.anthropic import _parse_usage as parse_anthropic
 from llm_quota_exporter.providers.gemini import _parse_buckets, _parse_summary
 from llm_quota_exporter.providers.grok import _parse_monthly, _parse_weekly
 from llm_quota_exporter.providers.kimi import _parse_usages
+from llm_quota_exporter.providers.openai_codex import _parse_credits
 from llm_quota_exporter.providers.openai_codex import _parse_usage as parse_codex
 
 
@@ -70,6 +72,28 @@ class TestAnthropic:
     def test_empty_response(self):
         assert parse_anthropic({}) == []
 
+    def test_scopeless_weekly_limit_skipped(self):
+        # limits[] entries without model scope duplicate the seven_day_* keys.
+        usage = {
+            "seven_day": {"utilization": 59.0, "resets_at": None},
+            "limits": [
+                {"kind": "weekly_scoped", "percent": 77, "scope": None},
+                {"kind": "session", "group": "session", "percent": 30},
+            ],
+        }
+        samples = by_key(parse_anthropic(usage))
+        assert list(samples) == [("seven_day", "all")]
+
+    def test_extra_usage_utilization(self):
+        usage = {"extra_usage": {"is_enabled": True, "utilization": 40.0}}
+        (sample,) = parse_anthropic(usage)
+        assert (sample.window, sample.utilization) == ("extra_usage", pytest.approx(0.40))
+
+    def test_spend(self):
+        assert _parse_spend({"spend": {"used": {"amount_minor": 1234, "exponent": 2}}}) == pytest.approx(12.34)
+        assert _parse_spend({"spend": {"used": None}}) is None
+        assert _parse_spend({}) is None
+
 
 class TestCodex:
     def test_primary_and_secondary_windows(self):
@@ -110,6 +134,30 @@ class TestCodex:
         }
         (sample,) = parse_codex(payload)
         assert sample.window == "1h"
+
+    def test_code_review_and_additional_limits(self):
+        payload = {
+            "code_review_rate_limit": {
+                "primary_window": {"used_percent": 5, "limit_window_seconds": 604800, "reset_at": 1}
+            },
+            "additional_rate_limits": [
+                {
+                    "limit_name": "GPT-5.3-Codex-Spark",
+                    "rate_limit": {
+                        "primary_window": {"used_percent": 0, "limit_window_seconds": 604800, "reset_at": 2},
+                        "secondary_window": None,
+                    },
+                }
+            ],
+        }
+        samples = by_key(parse_codex(payload))
+        assert samples[("seven_day", "code_review")].utilization == pytest.approx(0.05)
+        assert samples[("seven_day", "gpt_5_3_codex_spark")].utilization == 0.0
+
+    def test_credits(self):
+        assert _parse_credits({"credits": {"balance": "12.5"}}) == pytest.approx(12.5)
+        assert _parse_credits({"credits": {"balance": None}}) is None
+        assert _parse_credits({}) is None
 
 
 class TestGrok:

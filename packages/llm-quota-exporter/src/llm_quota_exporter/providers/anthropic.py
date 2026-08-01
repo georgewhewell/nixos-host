@@ -66,7 +66,7 @@ class AnthropicProvider(Provider):
             info["plan"] = str(subscription)
         if tier := creds.get("rateLimitTier"):
             info["tier"] = str(tier)
-        return ProviderSnapshot(samples=samples, info=info)
+        return ProviderSnapshot(samples=samples, info=info, spend_usd=_parse_spend(usage))
 
     def _read_credentials(self) -> dict[str, Any]:
         try:
@@ -147,7 +147,10 @@ def _parse_usage(usage: dict[str, Any]) -> list[QuotaSample]:
         if not isinstance(percent, (int, float)):
             continue
         model = (entry.get("scope") or {}).get("model") or {}
-        scope = _slugify(model.get("display_name") or "unknown")
+        display_name = model.get("display_name")
+        if not display_name:
+            continue  # scope-less entries duplicate the seven_day_<model> keys
+        scope = _slugify(display_name)
         if any(s.window == "seven_day" and s.scope == scope for s in samples):
             continue  # already reported as a seven_day_<model> object
         samples.append(
@@ -158,7 +161,24 @@ def _parse_usage(usage: dict[str, Any]) -> list[QuotaSample]:
                 resets_at=parse_iso8601(entry.get("resets_at")),
             )
         )
+    extra = usage.get("extra_usage")
+    if isinstance(extra, dict) and isinstance(extra.get("utilization"), (int, float)):
+        samples.append(
+            QuotaSample(window="extra_usage", scope="all", utilization=extra["utilization"] / 100.0)
+        )
     return samples
+
+
+def _parse_spend(usage: dict[str, Any]) -> float | None:
+    """Extra-usage credit spend in USD: spend.used.amount_minor / 10^exponent."""
+    used = (usage.get("spend") or {}).get("used")
+    if not isinstance(used, dict):
+        return None
+    amount_minor = used.get("amount_minor")
+    if not isinstance(amount_minor, (int, float)):
+        return None
+    exponent = used.get("exponent")
+    return amount_minor / (10 ** exponent if isinstance(exponent, int) else 100)
 
 
 def _split_window(key: str) -> tuple[str, str]:

@@ -25,18 +25,26 @@ class QuotaSample:
 
     utilization is a ratio in [0, 1] (1.0 = limit exhausted); resets_at is a
     unix timestamp in seconds, or None when the provider does not report one.
+    used/limit are absolute values in provider-native units (credits,
+    requests, ...) for the providers that report them.
     """
 
     window: str
     scope: str
     utilization: float
     resets_at: float | None = None
+    used: float | None = None
+    limit: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ProviderSnapshot:
     samples: tuple[QuotaSample, ...]
     info: Mapping[str, str] = field(default_factory=dict)
+    # Extra-usage / pay-as-you-go spend in USD, where the provider reports it.
+    spend_usd: float | None = None
+    # Remaining prepaid credits in provider-native units.
+    credits_balance: float | None = None
 
 
 class Provider(abc.ABC):

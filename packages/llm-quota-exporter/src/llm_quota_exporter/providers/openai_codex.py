@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -72,7 +73,7 @@ class OpenAICodexProvider(Provider):
         info = {}
         if plan := payload.get("plan_type"):
             info["plan"] = str(plan)
-        return ProviderSnapshot(samples=samples, info=info)
+        return ProviderSnapshot(samples=samples, info=info, credits_balance=_parse_credits(payload))
 
     def _read_tokens(self) -> dict[str, Any]:
         try:
@@ -87,9 +88,8 @@ class OpenAICodexProvider(Provider):
         return tokens
 
 
-def _parse_usage(payload: dict[str, Any]) -> list[QuotaSample]:
+def _parse_rate_limit(rate_limit: Any, scope: str) -> list[QuotaSample]:
     samples: list[QuotaSample] = []
-    rate_limit = payload.get("rate_limit")
     if not isinstance(rate_limit, dict):
         return samples
     for key, window_name in _WINDOW_NAMES.items():
@@ -102,12 +102,35 @@ def _parse_usage(payload: dict[str, Any]) -> list[QuotaSample]:
         samples.append(
             QuotaSample(
                 window=_describe_window(window, window_name),
-                scope="all",
+                scope=scope,
                 utilization=used_percent / 100.0,
                 resets_at=float(reset_at) if isinstance(reset_at := window.get("reset_at"), (int, float)) else None,
             )
         )
     return samples
+
+
+def _parse_usage(payload: dict[str, Any]) -> list[QuotaSample]:
+    samples = _parse_rate_limit(payload.get("rate_limit"), "all")
+    samples += _parse_rate_limit(payload.get("code_review_rate_limit"), "code_review")
+    for entry in payload.get("additional_rate_limits") or []:
+        if not isinstance(entry, dict):
+            continue
+        scope = _slugify(str(entry.get("limit_name") or entry.get("metered_feature") or "additional"))
+        samples += _parse_rate_limit(entry.get("rate_limit"), scope)
+    return samples
+
+
+def _parse_credits(payload: dict[str, Any]) -> float | None:
+    balance = (payload.get("credits") or {}).get("balance")
+    try:
+        return float(balance)
+    except (TypeError, ValueError):
+        return None
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
 def _describe_window(window: dict[str, Any], fallback: str) -> str:

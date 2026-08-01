@@ -172,6 +172,8 @@ def _parse_monthly(payload: dict[str, Any]) -> list[QuotaSample]:
             scope="all",
             utilization=used / limit,
             resets_at=parse_iso8601(config.get("billingPeriodEnd")),
+            used=used,
+            limit=limit,
         )
     ]
 
