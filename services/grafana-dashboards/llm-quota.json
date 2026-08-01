@@ -549,7 +549,7 @@
     },
     {
       "type": "bargauge",
-      "title": "Per model / feature",
+      "title": "Model caps",
       "id": 8,
       "gridPos": {
         "h": 9,
@@ -612,283 +612,11 @@
       "description": "Model-scoped weekly caps and feature quotas"
     },
     {
-      "type": "timeseries",
-      "title": "Session window (5h)",
-      "id": 9,
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "feit1tygbp81sc"
-      },
-      "interval": "5m",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "llm_quota_utilization_ratio{window=\"five_hour\",scope=\"all\"}",
-          "legendFormat": "{{provider}}"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "gradientMode": "opacity",
-            "showPoints": "auto",
-            "pointSize": 4,
-            "spanNulls": 3600000,
-            "axisSoftMax": 1
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "anthropic"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#3987e5"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "gemini"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d95926"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "grok"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#199e70"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "kimi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#c98500"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "openai"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d55181"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Weekly / monthly windows",
-      "id": 10,
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "feit1tygbp81sc"
-      },
-      "interval": "5m",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "llm_quota_utilization_ratio{window=~\"seven_day|monthly\",scope=\"all\"}",
-          "legendFormat": "{{provider}} \u00b7 {{window}}"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "gradientMode": "opacity",
-            "showPoints": "auto",
-            "pointSize": 4,
-            "spanNulls": 3600000,
-            "axisSoftMax": 1
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "anthropic.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#3987e5"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "gemini.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d95926"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "grok.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#199e70"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "kimi.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#c98500"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "openai.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#d55181"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*monthly"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    6
-                  ],
-                  "fill": "dash"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
       "type": "table",
       "title": "Exporter",
       "id": 11,
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 16,
         "x": 0,
         "y": 31
@@ -1036,7 +764,7 @@
       "title": "Plans",
       "id": 12,
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 8,
         "x": 16,
         "y": 31
@@ -1096,7 +824,7 @@
       }
     },
     {
-      "type": "bargauge",
+      "type": "table",
       "title": "Tokens by model",
       "id": 13,
       "description": "Sum of per-session token totals over the dashboard range (all token types)",
@@ -1114,34 +842,90 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])))",
-          "legendFormat": "{{model}}"
+          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])))"
         }
       ],
       "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "valueMode": "color",
-        "showUnfilled": true,
-        "namePlacement": "top",
-        "sizing": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        }
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "tokens",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "continuous-BlPu"
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
           }
         },
-        "overrides": []
-      }
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "tokens",
+              "Value #A": "tokens"
+            },
+            "indexByName": {
+              "model": 0,
+              "tokens": 1
+            }
+          }
+        }
+      ]
     },
     {
       "type": "timeseries",
@@ -1252,6 +1036,10 @@
               {
                 "id": "unit",
                 "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
               }
             ]
           },
@@ -1268,6 +1056,174 @@
               {
                 "id": "decimals",
                 "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Quota history",
+      "id": 16,
+      "description": "All windows, scope=all. Solid = weekly, dashed = monthly, dotted = 5-hour.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "interval": "5m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "llm_quota_utilization_ratio{scope=\"all\"}",
+          "legendFormat": "{{provider}} \u00b7 {{window}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "gradientMode": "opacity",
+            "showPoints": "auto",
+            "pointSize": 3,
+            "spanNulls": 3600000,
+            "axisSoftMax": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^anthropic.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^gemini.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^grok.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^kimi.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^openai.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*monthly"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*five_hour"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    3,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
               }
             ]
           }

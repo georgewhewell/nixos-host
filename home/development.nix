@@ -17,7 +17,7 @@ let
       wrapProgram $out/bin/grok \
         --set GROK_EXTERNAL_OTEL "1" \
         --set OTEL_METRICS_EXPORTER "otlp" \
-        --set OTEL_LOGS_EXPORTER "otlp" \
+        --set OTEL_LOGS_EXPORTER "none" \
         --set OTEL_EXPORTER_OTLP_ENDPOINT "${otelEndpoint}" \
         --set OTEL_EXPORTER_OTLP_PROTOCOL "http/protobuf" \
         --set OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE "cumulative" \
