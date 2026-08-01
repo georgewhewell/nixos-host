@@ -38,9 +38,9 @@
         },
         {
           "refId": "B",
-          "expr": "llm_quota_utilization_ratio{provider=\"gemini\",window=\"bucket\"}",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"gemini\",window=\"bucket\"})",
           "instant": true,
-          "legendFormat": "gemini \u00b7 {{scope}}"
+          "legendFormat": "gemini \u00b7 buckets (max)"
         }
       ],
       "options": {
