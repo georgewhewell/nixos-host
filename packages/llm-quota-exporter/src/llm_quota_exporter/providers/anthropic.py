@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -38,21 +41,17 @@ _NON_WINDOW_KEYS = {"limits", "extra_usage"}
 class AnthropicProvider(Provider):
     name = "anthropic"
 
-    _refreshed_token: str | None = None
-
     def credential_path(self) -> Path:
         return self._home / ".claude" / ".credentials.json"
 
     def fetch(self) -> ProviderSnapshot:
         creds = self._read_credentials()
-        token = self._refreshed_token or creds.get("accessToken")
-        if not token:
-            raise CredentialsUnavailable("no accessToken in ~/.claude/.credentials.json")
-
+        token = self._current_token(creds)
         response = self._usage_request(token)
         if response.status_code == 401:
-            token = self._refresh(creds)
-            response = self._usage_request(token)
+            # A fresh-looking token that 401s means Claude Code owns a newer
+            # one (or the session was revoked); never refresh in that case.
+            raise ProviderError("HTTP 401 with an unexpired token; leaving auth to the claude CLI")
         if response.status_code != 200:
             raise ProviderError(f"usage endpoint returned HTTP {response.status_code}")
 
@@ -93,21 +92,31 @@ class AnthropicProvider(Provider):
         except httpx.HTTPError as exc:
             raise ProviderError(f"usage request failed: {exc}") from exc
 
-    def _refresh(self, creds: dict[str, Any]) -> str:
-        """Exchange the refresh token for a fresh access token, kept in memory only.
+    def _current_token(self, creds: dict[str, Any]) -> str:
+        expires_at = creds.get("expiresAt")  # unix milliseconds
+        expired = isinstance(expires_at, (int, float)) and expires_at / 1000 < time.time() + 60
+        if not expired and (token := creds.get("accessToken")):
+            return str(token)
+        if creds.get("refreshToken"):
+            return self._refresh(creds)
+        raise CredentialsUnavailable("no usable accessToken/refreshToken in credentials file")
 
-        The credential file is deliberately never rewritten: Claude Code owns it
-        and refreshes it on its own schedule.
+    def _refresh(self, creds: dict[str, Any]) -> str:
+        """Refresh the expired token and persist the rotated pair.
+
+        Anthropic rotates refresh tokens: an in-memory-only refresh strands
+        Claude Code on a consumed token and its next refresh trips reuse
+        detection, revoking the whole session (observed as forced re-logins).
+        We only get here when the on-disk token has already expired — i.e. no
+        running claude session is managing the file — and the rotated pair is
+        written back atomically, preserving the rest of the file (mcpOAuth...).
         """
-        refresh_token = creds.get("refreshToken")
-        if not refresh_token:
-            raise CredentialsUnavailable("access token expired and no refreshToken present")
         try:
             response = self._client.post(
                 TOKEN_URL,
                 json={
                     "grant_type": "refresh_token",
-                    "refresh_token": refresh_token,
+                    "refresh_token": creds["refreshToken"],
                     "client_id": CLIENT_ID,
                 },
             )
@@ -115,12 +124,32 @@ class AnthropicProvider(Provider):
             raise ProviderError(f"token refresh failed: {exc}") from exc
         if response.status_code != 200:
             raise ProviderError(f"token refresh returned HTTP {response.status_code}")
-        token = response.json().get("access_token")
+        payload = response.json()
+        token = payload.get("access_token")
         if not token:
             raise ProviderError("token refresh response had no access_token")
-        log.info("anthropic: refreshed access token in memory")
-        self._refreshed_token = token
-        return token
+
+        path = self.credential_path()
+        try:
+            raw = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ProviderError(f"refreshed but could not re-read credentials file: {exc}") from exc
+        oauth = dict(raw.get("claudeAiOauth") or {})
+        oauth["accessToken"] = token
+        oauth["refreshToken"] = payload.get("refresh_token", creds["refreshToken"])
+        if expires_in := payload.get("expires_in"):
+            oauth["expiresAt"] = int((time.time() + float(expires_in)) * 1000)
+        raw["claudeAiOauth"] = oauth
+        try:
+            fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+            with os.fdopen(fd, "w") as handle:
+                json.dump(raw, handle)
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, path)
+        except OSError as exc:
+            raise ProviderError(f"refreshed but could not persist rotated tokens: {exc}") from exc
+        log.info("anthropic: refreshed access token and persisted rotated pair")
+        return str(token)
 
 
 def _parse_usage(usage: dict[str, Any]) -> list[QuotaSample]:

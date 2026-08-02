@@ -37,7 +37,16 @@ class Poller:
 
     def poll_once(self) -> None:
         for state in self.states:
+            if self._in_backoff(state):
+                continue
             self._poll_provider(state)
+
+    def _in_backoff(self, state: ProviderState) -> bool:
+        """Exponential backoff after consecutive failures (max 8x interval)."""
+        if state.consecutive_failures == 0 or state.last_attempt is None:
+            return False
+        wait = self.interval * min(2 ** (state.consecutive_failures - 1), 8)
+        return time.time() - state.last_attempt < wait
 
     def run_forever(self) -> None:
         while not self._stop.is_set():
