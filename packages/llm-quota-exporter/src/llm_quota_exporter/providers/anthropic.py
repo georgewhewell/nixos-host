@@ -24,7 +24,14 @@ from typing import Any
 import httpx
 
 from .._time import parse_iso8601
-from .base import CredentialsUnavailable, Provider, ProviderError, ProviderSnapshot, QuotaSample
+from .base import (
+    CredentialsUnavailable,
+    Provider,
+    ProviderError,
+    ProviderSnapshot,
+    QuotaSample,
+    json_object,
+)
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 OAUTH_BETA_HEADER = "oauth-2025-04-20"
@@ -50,7 +57,7 @@ class AnthropicProvider(Provider):
         if response.status_code != 200:
             raise ProviderError(f"usage endpoint returned HTTP {response.status_code}")
 
-        usage = response.json()
+        usage = json_object(response, "usage endpoint")
         samples = tuple(_parse_usage(usage))
         if not samples:
             raise ProviderError(f"no quota windows in usage response: {list(usage)}")
@@ -69,7 +76,7 @@ class AnthropicProvider(Provider):
             raise CredentialsUnavailable(str(exc)) from exc
         except (OSError, json.JSONDecodeError) as exc:
             raise ProviderError(f"unreadable credentials file: {exc}") from exc
-        oauth = raw.get("claudeAiOauth")
+        oauth = raw.get("claudeAiOauth") if isinstance(raw, dict) else None
         if not isinstance(oauth, dict):
             raise CredentialsUnavailable("claudeAiOauth section missing from credentials file")
         return oauth
@@ -91,11 +98,11 @@ class AnthropicProvider(Provider):
         """Strictly read-only auth: this provider must NEVER refresh.
 
         Anthropic rotates refresh tokens with reuse detection, and claude
-        sessions run for days holding their tokens in memory — any rotation
-        from outside the CLI strands a live session and gets the whole token
-        family revoked (observed twice as forced re-logins). Claude Code
-        rewrites the credentials file whenever it runs; an expired on-disk
-        token just means a data gap until then.
+        sessions can run for days holding their tokens in memory — any
+        rotation from outside the CLI strands a live session and gets the
+        whole token family revoked (observed in practice as forced
+        re-logins). Claude Code rewrites the credentials file whenever it
+        runs; an expired on-disk token just means a data gap until then.
         """
         expires_at = creds.get("expiresAt")  # unix milliseconds
         if isinstance(expires_at, (int, float)) and expires_at / 1000 < time.time() + 60:

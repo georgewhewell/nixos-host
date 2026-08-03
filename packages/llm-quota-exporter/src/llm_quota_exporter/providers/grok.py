@@ -23,7 +23,7 @@ import logging
 import os
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +37,7 @@ from .base import (
     ProviderSnapshot,
     QuotaSample,
     assert_writable,
+    json_object,
 )
 
 log = logging.getLogger(__name__)
@@ -76,26 +77,32 @@ class GrokProvider(Provider):
             raise ProviderError(f"unreadable auth.json: {exc}") from exc
         if not isinstance(raw, dict):
             raise CredentialsUnavailable("auth.json is not an object")
+        expired_without_refresh = False
         for key, entry in raw.items():
             if not isinstance(entry, dict):
                 continue
-            token = entry.get("key") or entry.get("access_token")
-            if not token:
+            token_field = "key" if entry.get("key") else "access_token" if entry.get("access_token") else None
+            if token_field is None:
                 continue
             expires_at = parse_iso8601(entry.get("expires_at"))
             if expires_at is not None and expires_at < time.time() + 30:
                 if entry.get("refresh_token"):
-                    return self._refresh(path, raw, key, entry)
-                raise ProviderError("access token expired and no refresh_token present")
-            return str(token)
+                    return self._refresh(path, raw, key, entry, token_field)
+                expired_without_refresh = True
+                continue
+            return str(entry[token_field])
+        if expired_without_refresh:
+            raise ProviderError("access token expired and no refresh_token present")
         raise CredentialsUnavailable("no credential entry with a token in auth.json")
 
-    def _refresh(self, path: Path, raw: dict[str, Any], key: str, entry: dict[str, Any]) -> str:
+    def _refresh(self, path: Path, raw: dict[str, Any], key: str, entry: dict[str, Any], token_field: str) -> str:
         """Refresh the expired token and persist the rotated pair.
 
         xAI rotates refresh tokens, so the new pair must be written back or the
         CLI would be stranded on a consumed token. We only get here when the
         token has already expired, i.e. no running CLI is managing the file.
+        The new access token is written to whichever field held the old one
+        (``key`` or ``access_token``) so the CLI reads the fresh value.
         """
         assert_writable(path)
         try:
@@ -111,17 +118,17 @@ class GrokProvider(Provider):
             raise ProviderError(f"token refresh failed: {exc}") from exc
         if response.status_code != 200:
             raise ProviderError(f"token refresh returned HTTP {response.status_code}")
-        payload = response.json()
+        payload = json_object(response, "token refresh")
         token = payload.get("access_token")
         if not token:
             raise ProviderError("token refresh response had no access_token")
 
         expires_in = float(payload.get("expires_in") or 21600)
         updated_entry = dict(entry)
-        updated_entry["key"] = token
+        updated_entry[token_field] = token
         updated_entry["refresh_token"] = payload.get("refresh_token", entry["refresh_token"])
         updated_entry["expires_at"] = (
-            datetime.fromtimestamp(time.time() + expires_in, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f000Z")
+            datetime.fromtimestamp(time.time() + expires_in, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f000Z")
         )
         updated = dict(raw)
         updated[key] = updated_entry

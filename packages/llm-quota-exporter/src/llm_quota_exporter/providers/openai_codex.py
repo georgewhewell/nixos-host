@@ -24,7 +24,14 @@ from typing import Any
 
 import httpx
 
-from .base import CredentialsUnavailable, Provider, ProviderError, ProviderSnapshot, QuotaSample
+from .base import (
+    CredentialsUnavailable,
+    Provider,
+    ProviderError,
+    ProviderSnapshot,
+    QuotaSample,
+    json_object,
+)
 
 USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 USER_AGENT = "codex-cli"
@@ -65,7 +72,7 @@ class OpenAICodexProvider(Provider):
         if response.status_code != 200:
             raise ProviderError(f"usage endpoint returned HTTP {response.status_code}")
 
-        payload = response.json()
+        payload = json_object(response, "usage endpoint")
         samples = tuple(_parse_usage(payload))
         if not samples:
             raise ProviderError("no rate-limit windows in usage response")

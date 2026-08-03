@@ -64,7 +64,7 @@ def select_providers(spec: str) -> list[str]:
     unknown = sorted(set(names) - set(PROVIDERS))
     if unknown:
         raise SystemExit(f"unknown providers: {', '.join(unknown)} (available: {', '.join(sorted(PROVIDERS))})")
-    return names
+    return list(dict.fromkeys(names))  # de-dupe, preserve order
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,36 +74,36 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    client = httpx.Client(
+    with httpx.Client(
         timeout=httpx.Timeout(30.0),
         headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
-    )
-    states = [
-        ProviderState(provider=PROVIDERS[name](home=args.home, client=client))
-        for name in select_providers(args.providers)
-    ]
-    poller = Poller(states=states, interval=args.interval)
+    ) as client:
+        states = [
+            ProviderState(provider=PROVIDERS[name](home=args.home, client=client))
+            for name in select_providers(args.providers)
+        ]
+        poller = Poller(states=states, interval=args.interval)
 
-    registry = CollectorRegistry()
-    registry.register(QuotaCollector(poller))
+        registry = CollectorRegistry()
+        registry.register(QuotaCollector(poller))
 
-    if args.once:
-        poller.poll_once()
-        sys.stdout.write(generate_latest(registry).decode())
-        return 0 if any(state.snapshot for state in states) else 1
+        if args.once:
+            poller.poll_once()
+            sys.stdout.write(generate_latest(registry).decode())
+            return 0 if any(state.snapshot for state in states) else 1
 
-    start_http_server(args.port, addr=args.listen_address, registry=registry)
-    log.info(
-        "listening on %s:%d, polling %s every %.0fs",
-        args.listen_address,
-        args.port,
-        ", ".join(state.provider.name for state in states),
-        args.interval,
-    )
-    signal.signal(signal.SIGTERM, lambda *_: poller.stop())
-    signal.signal(signal.SIGINT, lambda *_: poller.stop())
-    poller.run_forever()
+        start_http_server(args.port, addr=args.listen_address, registry=registry)
+        log.info(
+            "listening on %s:%d, polling %s every %.0fs",
+            args.listen_address,
+            args.port,
+            ", ".join(state.provider.name for state in states),
+            args.interval,
+        )
+        signal.signal(signal.SIGTERM, lambda *_: poller.stop())
+        signal.signal(signal.SIGINT, lambda *_: poller.stop())
+        poller.run_forever()
     return 0
 
 

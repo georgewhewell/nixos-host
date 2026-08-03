@@ -14,7 +14,16 @@ import httpx
 
 
 class ProviderError(RuntimeError):
-    """A provider failed to produce a snapshot this cycle."""
+    """A provider failed to produce a snapshot this cycle.
+
+    ``status_code`` carries the upstream HTTP status when the failure came from
+    a response, so callers can distinguish definitive errors (403/404) from
+    transient ones (5xx, network) without string-matching the message.
+    """
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class CredentialsUnavailable(ProviderError):
@@ -49,13 +58,30 @@ class ProviderSnapshot:
     credits_balance: float | None = None
 
 
+def json_object(response: httpx.Response, context: str) -> dict:
+    """Decode an httpx response body as a JSON object, or raise a clear error.
+
+    Guards against non-JSON bodies (JSONDecodeError) and JSON that isn't an
+    object (a bare array/number would break the ``.get``/``.items`` that
+    parsers rely on), turning both into a legible ProviderError rather than an
+    ``AttributeError`` buried in the poller's catch-all.
+    """
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise ProviderError(f"{context}: response was not valid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ProviderError(f"{context}: expected a JSON object, got {type(payload).__name__}")
+    return payload
+
+
 def assert_writable(path: Path) -> None:
     """Prove a credential file is writable BEFORE consuming a refresh token.
 
     Providers with rotating refresh tokens must call this first: refreshing
-    consumes the old token, so failing to persist afterwards strands the CLI
-    and gets the token family revoked (this exact failure broke the Claude
-    login when ~/.claude wasn't in the unit's ReadWritePaths).
+    consumes the old token, so failing to persist afterwards (e.g. under a
+    sandboxed service without a write path for the credential directory)
+    strands the CLI on a consumed token and gets the token family revoked.
     """
     try:
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.wtest.")

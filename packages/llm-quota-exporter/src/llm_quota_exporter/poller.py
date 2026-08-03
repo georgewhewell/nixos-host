@@ -37,6 +37,10 @@ class Poller:
 
     def poll_once(self) -> None:
         for state in self.states:
+            # Bail promptly on shutdown: a full cycle can otherwise run several
+            # providers x the HTTP timeout, overrunning systemd's stop timeout.
+            if self._stop.is_set():
+                return
             if self._in_backoff(state):
                 continue
             self._poll_provider(state)

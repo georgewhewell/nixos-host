@@ -28,6 +28,11 @@ class TestParseIso8601:
         assert parse_iso8601("") is None
         assert parse_iso8601("soon") is None
 
+    def test_non_string_input(self):
+        # grok feeds raw JSON values; a numeric epoch must not raise.
+        assert parse_iso8601(1785585600) is None
+        assert parse_iso8601({"seconds": 1}) is None
+
 
 class TestAnthropic:
     def test_windows_and_scoped_limits(self):
@@ -286,3 +291,64 @@ class TestGemini:
     def test_empty(self):
         assert _parse_summary({}) == []
         assert _parse_buckets([]) == []
+
+
+class TestJsonObject:
+    """The json_object helper turns bad response bodies into clean errors."""
+
+    def _resp(self, body, *, raises=False):
+        class _R:
+            def json(self_inner):
+                if raises:
+                    raise ValueError("not json")
+                return body
+
+        return _R()
+
+    def test_non_object_rejected(self):
+        from llm_quota_exporter.providers.base import ProviderError, json_object
+
+        with pytest.raises(ProviderError):
+            json_object(self._resp([1, 2, 3]), "ctx")
+        with pytest.raises(ProviderError):
+            json_object(self._resp(42), "ctx")
+
+    def test_invalid_json_rejected(self):
+        from llm_quota_exporter.providers.base import ProviderError, json_object
+
+        with pytest.raises(ProviderError):
+            json_object(self._resp(None, raises=True), "ctx")
+
+    def test_object_passes(self):
+        from llm_quota_exporter.providers.base import json_object
+
+        assert json_object(self._resp({"a": 1}), "ctx") == {"a": 1}
+
+
+class TestCollectorDedup:
+    """Colliding (window, scope) tuples must not produce duplicate series."""
+
+    def test_duplicate_samples_deduped(self):
+        from llm_quota_exporter.metrics import QuotaCollector
+        from llm_quota_exporter.poller import Poller, ProviderState
+        from llm_quota_exporter.providers.base import ProviderSnapshot, QuotaSample
+
+        class _FakeProvider:
+            name = "fake"
+
+        snap = ProviderSnapshot(samples=(
+            QuotaSample(window="seven_day", scope="all", utilization=0.5),
+            QuotaSample(window="seven_day", scope="all", utilization=0.9),  # collision
+            QuotaSample(window="five_hour", scope="all", utilization=0.1),
+        ))
+        state = ProviderState(provider=_FakeProvider(), snapshot=snap, last_attempt=1.0, last_success=1.0)
+        poller = Poller(states=[state], interval=300)
+
+        families = {f.name: f for f in QuotaCollector(poller).collect()}
+        util = families["llm_quota_utilization_ratio"]
+        keys = [(s.labels["window"], s.labels["scope"]) for s in util.samples]
+        assert keys.count(("seven_day", "all")) == 1
+        assert ("five_hour", "all") in keys
+        # first value wins
+        first = next(s for s in util.samples if s.labels["window"] == "seven_day")
+        assert first.value == pytest.approx(0.5)

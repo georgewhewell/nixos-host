@@ -40,6 +40,7 @@ from .base import (
     ProviderSnapshot,
     QuotaSample,
     assert_writable,
+    json_object,
 )
 
 log = logging.getLogger(__name__)
@@ -81,9 +82,7 @@ class KimiProvider(Provider):
         if response.status_code != 200:
             raise ProviderError(f"usages endpoint returned HTTP {response.status_code}")
 
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise ProviderError("usages endpoint returned non-object JSON")
+        payload = json_object(response, "usages endpoint")
         samples = tuple(_parse_usages(payload))
         if not samples:
             raise ProviderError("no usage windows in usages response")
@@ -100,6 +99,8 @@ class KimiProvider(Provider):
                 creds = json.loads(path.read_text())
             except (OSError, json.JSONDecodeError) as exc:
                 raise ProviderError(f"unreadable {path.name}: {exc}") from exc
+            if not isinstance(creds, dict):
+                raise ProviderError(f"{path.name} is not a JSON object")
             expires_at = creds.get("expires_at")
             expired = isinstance(expires_at, (int, float)) and expires_at < time.time() + 30
             if not expired and (token := creds.get("access_token")):
@@ -133,7 +134,7 @@ class KimiProvider(Provider):
             raise ProviderError(f"token refresh failed: {exc}") from exc
         if response.status_code != 200:
             raise ProviderError(f"token refresh returned HTTP {response.status_code}")
-        payload = response.json()
+        payload = json_object(response, "token refresh")
         if not payload.get("access_token"):
             raise ProviderError("token refresh response had no access_token")
 
@@ -228,18 +229,15 @@ def _sample(detail: dict[str, Any], window: str) -> QuotaSample | None:
 
 def _parse_usages(payload: dict[str, Any]) -> list[QuotaSample]:
     samples: list[QuotaSample] = []
-    if isinstance(weekly := payload.get("usage"), dict):
-        if sample := _sample(weekly, "seven_day"):
-            samples.append(sample)
+    if isinstance(weekly := payload.get("usage"), dict) and (sample := _sample(weekly, "seven_day")):
+        samples.append(sample)
     for entry in payload.get("limits") or []:
         if not isinstance(entry, dict):
             continue
         detail = entry.get("detail")
         window = entry.get("window")
-        if isinstance(detail, dict) and isinstance(window, dict):
-            if sample := _sample(detail, _window_name(window)):
-                samples.append(sample)
-    if isinstance(monthly := payload.get("totalQuota"), dict):
-        if sample := _sample(monthly, "monthly"):
+        if isinstance(detail, dict) and isinstance(window, dict) and (sample := _sample(detail, _window_name(window))):
             samples.append(sample)
+    if isinstance(monthly := payload.get("totalQuota"), dict) and (sample := _sample(monthly, "monthly")):
+        samples.append(sample)
     return samples

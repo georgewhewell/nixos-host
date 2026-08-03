@@ -26,7 +26,14 @@ from typing import Any
 import httpx
 
 from .._time import parse_iso8601
-from .base import CredentialsUnavailable, Provider, ProviderError, ProviderSnapshot, QuotaSample
+from .base import (
+    CredentialsUnavailable,
+    Provider,
+    ProviderError,
+    ProviderSnapshot,
+    QuotaSample,
+    json_object,
+)
 
 log = logging.getLogger(__name__)
 
@@ -62,9 +69,14 @@ class GeminiProvider(Provider):
                 summary = self._post(token, "retrieveUserQuotaSummary", {"project": self._project or ""})
                 samples = tuple(_parse_summary(summary))
             except ProviderError as exc:
-                # This tier doesn't serve the summary; don't keep asking.
-                self._summary_unavailable = True
-                log.info("gemini: quota summary unavailable (%s), using plain quota from now on", exc)
+                # Latch off only on a definitive "not available on this tier"
+                # (403/404); transient 5xx/network errors fail the cycle so a
+                # single blip doesn't permanently downgrade to the plain list.
+                if exc.status_code in (403, 404):
+                    self._summary_unavailable = True
+                    log.info("gemini: quota summary unavailable (%s), using plain quota from now on", exc)
+                else:
+                    raise
         if not samples:
             # Some tiers only serve the plainer per-model bucket list.
             quota = self._post(token, "retrieveUserQuota", {"project": self._project or ""})
@@ -115,7 +127,7 @@ class GeminiProvider(Provider):
             raise ProviderError(f"token refresh failed: {exc}") from exc
         if response.status_code != 200:
             raise ProviderError(f"token refresh returned HTTP {response.status_code}")
-        payload = response.json()
+        payload = json_object(response, "token refresh")
         token = payload.get("access_token")
         if not token:
             raise ProviderError("token refresh response had no access_token")
@@ -143,13 +155,12 @@ class GeminiProvider(Provider):
         if response.status_code == 401:
             # Drop the cached token; next cycle re-reads the file and refreshes.
             self._access_token = None
-            raise ProviderError(f"{method} returned HTTP 401 (token rejected)")
+            raise ProviderError(f"{method} returned HTTP 401 (token rejected)", status_code=401)
         if response.status_code != 200:
-            raise ProviderError(f"{method} returned HTTP {response.status_code}")
-        payload = response.json()
-        if not isinstance(payload, dict):
-            raise ProviderError(f"{method} returned non-object JSON")
-        return payload
+            raise ProviderError(
+                f"{method} returned HTTP {response.status_code}", status_code=response.status_code
+            )
+        return json_object(response, method)
 
 
 def _parse_summary(summary: dict[str, Any]) -> list[QuotaSample]:

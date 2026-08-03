@@ -85,7 +85,15 @@ class QuotaCollector(Collector):
                     spend.add_metric([name], snapshot.spend_usd)
                 if snapshot.credits_balance is not None:
                     credits.add_metric([name], snapshot.credits_balance)
+                # Guard against colliding (window, scope) tuples from a
+                # provider: a duplicate series makes Prometheus reject the
+                # whole scrape, which would take down every other metric too.
+                seen: set[tuple[str, str]] = set()
                 for sample in snapshot.samples:
+                    key = (sample.window, sample.scope)
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     labels = [name, sample.window, sample.scope]
                     utilization.add_metric(labels, sample.utilization)
                     if sample.resets_at is not None:
