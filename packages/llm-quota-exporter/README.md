@@ -41,17 +41,19 @@ Polling is decoupled from scraping: upstream APIs are hit once per
 
 Refresh policy is per provider, driven by each vendor's token semantics:
 
-- **Anthropic, Grok, Kimi** — rotating refresh tokens: refresh happens only
-  once the on-disk token has already expired (meaning no running CLI is
-  managing the file), and the rotated pair is persisted back atomically in
-  the CLI's own format. Keeping a rotated pair in memory strands the CLI on
-  a consumed token and trips reuse detection, revoking the whole session
-  (observed with Anthropic as forced re-logins before this was fixed).
+- **Anthropic, OpenAI** — never refreshed, strictly read-only. Both rotate
+  refresh tokens with reuse detection, and their CLIs hold tokens in memory
+  across long-lived sessions, so any rotation from outside the CLI revokes
+  the session (observed with Anthropic as forced re-logins). An expired
+  on-disk token is a data gap until the CLI next runs, not an error to fix.
+- **Grok, Kimi** — rotating refresh tokens, but short access tokens (6 h /
+  15 min) make read-only impractical: refresh happens only once the on-disk
+  token has already expired (no running CLI is managing the file), after
+  proving the credential file is writable (consuming a token and then
+  failing to persist its replacement is the catastrophic case), and the
+  rotated pair is persisted atomically in the CLI's own format.
 - **Gemini** — non-rotating refresh token, public installed-app client id:
   refreshed in memory only; the credential file is never rewritten.
-- **OpenAI** — rotating refresh tokens but long-lived access tokens: no
-  refresh is attempted; a stale token reports as a failed poll until the
-  `codex` CLI next refreshes it.
 
 Failed providers back off exponentially (up to 8x the poll interval).
 

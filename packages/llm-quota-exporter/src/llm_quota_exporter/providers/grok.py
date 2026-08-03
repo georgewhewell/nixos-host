@@ -30,7 +30,14 @@ from typing import Any
 import httpx
 
 from .._time import parse_iso8601
-from .base import CredentialsUnavailable, Provider, ProviderError, ProviderSnapshot, QuotaSample
+from .base import (
+    CredentialsUnavailable,
+    Provider,
+    ProviderError,
+    ProviderSnapshot,
+    QuotaSample,
+    assert_writable,
+)
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +97,7 @@ class GrokProvider(Provider):
         CLI would be stranded on a consumed token. We only get here when the
         token has already expired, i.e. no running CLI is managing the file.
         """
+        assert_writable(path)
         try:
             response = self._client.post(
                 TOKEN_URL,

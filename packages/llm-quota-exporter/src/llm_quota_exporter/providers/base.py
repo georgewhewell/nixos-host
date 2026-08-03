@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import abc
+import os
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -45,6 +47,22 @@ class ProviderSnapshot:
     spend_usd: float | None = None
     # Remaining prepaid credits in provider-native units.
     credits_balance: float | None = None
+
+
+def assert_writable(path: Path) -> None:
+    """Prove a credential file is writable BEFORE consuming a refresh token.
+
+    Providers with rotating refresh tokens must call this first: refreshing
+    consumes the old token, so failing to persist afterwards strands the CLI
+    and gets the token family revoked (this exact failure broke the Claude
+    login when ~/.claude wasn't in the unit's ReadWritePaths).
+    """
+    try:
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.wtest.")
+        os.close(fd)
+        os.unlink(tmp)
+    except OSError as exc:
+        raise ProviderError(f"credential dir not writable, refusing to refresh: {exc}") from exc
 
 
 class Provider(abc.ABC):

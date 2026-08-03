@@ -33,7 +33,14 @@ from typing import Any
 import httpx
 
 from .._time import parse_iso8601
-from .base import CredentialsUnavailable, Provider, ProviderError, ProviderSnapshot, QuotaSample
+from .base import (
+    CredentialsUnavailable,
+    Provider,
+    ProviderError,
+    ProviderSnapshot,
+    QuotaSample,
+    assert_writable,
+)
 
 log = logging.getLogger(__name__)
 
@@ -112,6 +119,7 @@ class KimiProvider(Provider):
         we only get here when the on-disk token has already expired, i.e. the
         CLI is not running and not racing us.
         """
+        assert_writable(path)
         try:
             response = self._client.post(
                 TOKEN_URL,
