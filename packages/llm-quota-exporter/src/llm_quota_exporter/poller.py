@@ -74,12 +74,16 @@ class Poller:
         try:
             snapshot = provider.fetch()
         except CredentialsUnavailable as exc:
+            # An expected, self-healing gap (e.g. an expired token waiting for
+            # the CLI to refresh it): record it, but don't treat it as a
+            # failure — escalating backoff here would delay recovery long after
+            # the credential became usable again.
             with self.lock:
                 state.last_attempt = started
                 state.last_duration = time.time() - started
                 state.last_error = str(exc)
-                state.consecutive_failures += 1
-            log.warning("%s: credentials unusable: %s", provider.name, exc)
+                state.consecutive_failures = 0
+            log.info("%s: credentials not currently usable: %s", provider.name, exc)
         except Exception as exc:  # noqa: BLE001 - one provider must never kill the loop
             with self.lock:
                 state.last_attempt = started

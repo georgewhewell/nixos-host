@@ -66,7 +66,9 @@ class OpenAICodexProvider(Provider):
         except httpx.HTTPError as exc:
             raise ProviderError(f"usage request failed: {exc}") from exc
         if response.status_code in (401, 403):
-            raise ProviderError(
+            # Read-only provider: a stale token is an expected gap that the
+            # codex CLI heals on its next run — not a backoff-worthy failure.
+            raise CredentialsUnavailable(
                 f"HTTP {response.status_code}: access token stale; will recover after the codex CLI refreshes it"
             )
         if response.status_code != 200:

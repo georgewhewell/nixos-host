@@ -106,7 +106,10 @@ class AnthropicProvider(Provider):
         """
         expires_at = creds.get("expiresAt")  # unix milliseconds
         if isinstance(expires_at, (int, float)) and expires_at / 1000 < time.time() + 60:
-            raise ProviderError("on-disk token expired; will recover when claude next runs")
+            # Expected, self-healing: the next claude run rewrites the file.
+            # Raised as CredentialsUnavailable so the poller treats it as a gap
+            # (poll again next interval) rather than a backoff-worthy failure.
+            raise CredentialsUnavailable("on-disk token expired; will recover when claude next runs")
         if token := creds.get("accessToken"):
             return str(token)
         raise CredentialsUnavailable("no accessToken in credentials file")
