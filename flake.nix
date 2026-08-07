@@ -3,6 +3,14 @@
 
   inputs = {
     nixpkgs.follows = "nix-strix-halo/nixpkgs";
+
+    # ESPHome only. The fleet nixpkgs (via nix-strix-halo) carries esphome
+    # 2026.6.2, which predates the mipi_spi board presets we want for the
+    # Waveshare AMOLED panels. Bumping the whole fleet for a devShell tool is
+    # not worth a world rebuild, so track a separate unstable purely for
+    # `pkgs.esphome`; nothing else consumes this input.
+    nixpkgs-esphome.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -619,6 +627,10 @@
         default =
           let
             pkgs = pkgsFor system;
+            esphomePkgs = import inputs.nixpkgs-esphome {
+              inherit system;
+              config = baseConfig;
+            };
             load-mcp-tokens = pkgs.writeShellScriptBin "load-mcp-tokens" ''
               # Outputs export statements - use with: eval "$(load-mcp-tokens)"
               if ! command -v pass &>/dev/null; then
@@ -642,7 +654,7 @@
               pkgs.ssh-to-age
               pkgs.uv
               pkgs.mcp-grafana
-              pkgs.esphome
+              esphomePkgs.esphome
               load-mcp-tokens
             ];
             shellHook = ''

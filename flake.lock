@@ -1306,6 +1306,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-esphome": {
+      "locked": {
+        "lastModified": 1785967620,
+        "narHash": "sha256-IItrdb7Puk05RqOBWZYFC5X6Wl1sJmCfh5MWVHw5iMM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b7c2ada94fe99c15b0dbcf4d11fd7850b957a436",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-lib": {
       "locked": {
         "lastModified": 1765674936,
@@ -1601,6 +1617,7 @@
           "nix-strix-halo",
           "nixpkgs"
         ],
+        "nixpkgs-esphome": "nixpkgs-esphome",
         "openwrt-imagebuilder": "openwrt-imagebuilder",
         "openzfs": "openzfs",
         "p2pool-exporter": "p2pool-exporter",
