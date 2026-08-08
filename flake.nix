@@ -58,7 +58,10 @@
     openwrt-imagebuilder.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-strix-halo = {
-      url = "path:/mnt/Home/src/nix-strix-halo";
+      # Keep ignored benchmark artifacts out of the flake source. A raw path
+      # input hashed the multi-gigabyte .bench-artifacts tree and invalidated
+      # every fleet evaluation whenever a run appended a log.
+      url = "git+file:///mnt/Home/src/nix-strix-halo?shallow=1";
       inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel";
     };
 

@@ -723,10 +723,10 @@
         ]
       },
       "locked": {
-        "dirtyRev": "e70fc28cab72ebf03c34119a89d5639f4477c346-dirty",
-        "dirtyShortRev": "e70fc28-dirty",
-        "lastModified": 1784646625,
+        "lastModified": 1786208660,
         "narHash": "sha256-XzltBhx9HeiXsj6Hjks3GhKY5wGGCEuhBQSD+6LPhy8=",
+        "ref": "refs/heads/model-materialization",
+        "rev": "9c84f64c9ef7060c5b8b5da41e4989b6c1fda04a",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas"
@@ -1244,14 +1244,18 @@
         "xrt-src": "xrt-src"
       },
       "locked": {
-        "lastModified": 1785451618,
-        "narHash": "sha256-epEMIuZ49FPFH5/nXJaTqOxUZupWdI7a+grChwfT1v0=",
-        "path": "/mnt/Home/src/nix-strix-halo",
-        "type": "path"
+        "lastModified": 1786208535,
+        "narHash": "sha256-ZiaUqsZYFM2QW+H2zUjRr4P59u6WyhwjZzuLC0mDQv0=",
+        "ref": "refs/heads/feat/glm52-int4-kernel-quant",
+        "rev": "649645e226d1a520ffceaebd855e44af1cad4eff",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
       },
       "original": {
-        "path": "/mnt/Home/src/nix-strix-halo",
-        "type": "path"
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
       }
     },
     "nixos-hardware": {
