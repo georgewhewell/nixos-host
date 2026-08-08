@@ -422,11 +422,20 @@ lib: rec {
     "strix-2" = {
       # Burned-in eno1 MAC observed from the firmware HTTPClient.
       mac = "84:47:09:68:79:a6";
-      extraMacs = [
-        "1c:34:da:61:12:99"
-        "1c:34:da:61:12:9c"
-        "1c:34:da:61:12:9d"
-      ];
+      # extraMacs REMOVED 2026-08-08. It listed 1c:34:da:61:12:99/:9c/:9d,
+      # which `ethtool -P` proved are in *strix-1's* chassis (this host holds
+      # :b0/:b1 and :b4/:b5 -- two independent CX5 ASICs, confirmed live
+      # 2026-08-08 19:39). Keeping them here had one real, non-theoretical
+      # effect: the router emitted
+      #   dhcp-host=84:47:09:68:79:a6,1c:34:da:61:12:99,:9c,:9d,192.168.23.192
+      # so strix-1's CX5 ports took strix-2's LAN address on any DHCP they did.
+      #
+      # The prior comment justified leaving them by saying the side effect was
+      # that "strix-1's fabric card is netboot-tagged as strix-2". That is not
+      # what happens: profiles/router/services.nix builds netbootMacs only over
+      # `netbootHosts`, which filters on `netboot`, and this host is
+      # `netboot = false` -- so no set:netboot tag was ever emitted for them.
+      # The static lease was the whole of it, and it is worth removing.
       addresses = {
         lan = 192;
         fabric = 102;
@@ -444,15 +453,29 @@ lib: rec {
       # never tagged strix-2, PXE never matched, and the firmware fell through
       # to the local disk. The flag described an intent, not reality.
       #
-      # They are still left untouched rather than repointed at this host's own
-      # Realtek: nothing now depends on them, and rewriting a PXE identity that
-      # the firmware may also consult is not worth the risk for a host that
-      # boots fine from disk. Note the side effect that strix-1's fabric card
-      # is netboot-tagged as strix-2, contradicting strix-1's own comment that
-      # it deliberately cannot PXE from the CX5.
-      netboot = false;
-      netbootMac = "1c:34:da:61:12:9d";
-      netbootLinuxMac = "1c:34:da:61:12:99";
+      # Diskless, like every other strix (2026-08-08). The strix hosts are
+      # ALWAYS netbooted; there is no local-disk variant of this machine class.
+      #
+      # This host is the awkward one only because its *firmware* PXE is broken
+      # -- it never emits a DHCP request from eno1 -- so it cannot start the
+      # chain by itself. That is a bootstrap problem, not a config-shape
+      # problem, and it is solved on the USB stick rather than here: the stick
+      # carries a full `ipxe.efi` (NOT the router's `snponly.efi`, which relies
+      # on the firmware SNP/UNDI that is precisely what is broken) as its EFI
+      # boot entry. iPXE brings up the Realtek with its own driver, DHCPs, gets
+      # set:netboot from the router, and chains to the identical
+      # http://192.168.23.1/strix-netboot/... script the other three use. From
+      # that point this host is byte-identical to strix-1/3/4.
+      #
+      # Previously `netboot = false`, with netbootMac/netbootLinuxMac naming
+      # strix-1's :9d/:99 -- a leftover of the 2026-07-30 transposition fix,
+      # which corrected cx5FabricMac and netboot but not these.
+      netboot = true;
+      # THIS chassis's Realtek. strix-2's CX5 identities are :b0/:b1 and
+      # :b4/:b5 (two independent ASICs, confirmed live 2026-08-08 19:39) and
+      # are deliberately absent, exactly as on strix-1: the firmware must not
+      # be able to PXE from a fabric card.
+      netbootMac = "84:47:09:68:79:a6";
       # netbootSharesFabric dropped (2026-07-30): it put the fabric address on
       # eno1, and eno1 here is the 2.5G Realtek, so the RoCE address landed on
       # the slow NIC with no verbs device -- NVMe-oF could never bind it. With
