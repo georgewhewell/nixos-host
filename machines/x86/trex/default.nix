@@ -103,6 +103,13 @@ in {
   */
   sconfig = {
     profile = "desktop";
+    # Host half of the CRS804's lossless RoCE policy: without this every RoCE
+    # packet leaves on priority 0 and the switch's PFC/ECN policy on TC3 is
+    # inert. See modules/roce-qos.nix.
+    roceQos = {
+      enable = true;
+      interface = mlxPfName;
+    };
     # Ephemeral tmpfs root (2026-07-24); explicit persistence list below.
     # sops/ssh host identity moves to /persist/etc/ssh via profiles/sops.nix.
     impermanence.enable = true;

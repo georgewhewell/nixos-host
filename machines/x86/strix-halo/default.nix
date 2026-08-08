@@ -91,6 +91,11 @@ in
 
   sconfig = {
     profile = "server";
+    # Host half of the CRS804's lossless RoCE policy (modules/roce-qos.nix).
+    roceQos = lib.mkIf enableCx5Fabric {
+      enable = true;
+      interface = vllmFabricInterface;
+    };
     home-manager = {
       enable = true;
       enableDevelopment = true;
