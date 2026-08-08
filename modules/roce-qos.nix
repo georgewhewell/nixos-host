@@ -54,6 +54,24 @@ in {
       '';
     };
 
+    globalPause = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Whether to leave 802.3x global pause enabled on this NIC as well.
+
+        Normally false: pause stops the entire link rather than one priority,
+        causing head-of-line blocking, and it is redundant once PFC covers the
+        RoCE priority. Measured worse for raw RDMA here, 5.90 vs 7.69 Gb/s.
+
+        True only where the peer switch cannot do PFC. trex hangs off the
+        CRS510, which has none (machines/routeros/crs510/config.rsc says so
+        outright), and that switch actively pauses trex's port -- tx-pause was
+        2543 on qsfp28-2-1. Turning pause off on that leg would make trex
+        ignore those frames and the switch would drop instead.
+      '';
+    };
+
     priority = lib.mkOption {
       type = lib.types.int;
       default = 3;
@@ -70,7 +88,7 @@ in {
       # Re-applied whenever the link reappears: dcb state is per-netdev and is
       # lost if the driver reloads or the interface is recreated.
       partOf = ["sys-subsystem-net-devices-${cfg.interface}.device"];
-      path = [pkgs.iproute2];
+      path = [pkgs.iproute2 pkgs.ethtool];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -80,10 +98,27 @@ in {
         # Egress classification: packets marked DSCP ${toString cfg.dscp} leave on
         # priority ${toString cfg.priority}, which is the switch's lossless class.
         dcb app add dev ${cfg.interface} dscp-prio ${toString cfg.dscp}:${toString cfg.priority}
-        # PFC on that priority only. Global 802.3x pause is deliberately NOT set
-        # here: it pauses the whole link and causes head-of-line blocking, and
-        # measurement showed it made raw RDMA worse, not better.
-        dcb pfc set dev ${cfg.interface} prio-pfc ${toString cfg.priority}:on
+        # PFC and 802.3x global pause are MUTUALLY EXCLUSIVE on mlx5: enabling
+        # pause silently clears the PFC configuration. Discovered the hard way
+        # on 2026-08-09 -- the unit reported success while `dcb pfc show` came
+        # back 3:off, because the ethtool call at the end undid the dcb call
+        # before it. So this is strictly one or the other.
+        ${
+          if cfg.globalPause
+          then ''
+            # This NIC's peer switch cannot do PFC, so global pause is the only
+            # backpressure available and PFC would be meaningless anyway -- the
+            # switch would never send a priority pause frame.
+            dcb pfc set dev ${cfg.interface} prio-pfc ${toString cfg.priority}:off || true
+            ethtool -A ${cfg.interface} rx on tx on || true
+          ''
+          else ''
+            # Peer switch speaks PFC: use it, and drop global pause so it
+            # cannot clear the PFC state or block the whole link.
+            ethtool -A ${cfg.interface} rx off tx off || true
+            dcb pfc set dev ${cfg.interface} prio-pfc ${toString cfg.priority}:on
+          ''
+        }
       '';
       preStop = ''
         ${pkgs.iproute2}/bin/dcb pfc set dev ${cfg.interface} prio-pfc ${toString cfg.priority}:off || true

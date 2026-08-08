@@ -109,6 +109,11 @@ in {
     roceQos = {
       enable = true;
       interface = mlxPfName;
+      # trex faces the CRS510, which has no PFC at all, so 802.3x pause is the
+      # only backpressure available on this leg -- that switch is already
+      # pausing this port. The strix nodes face the PFC-capable CRS804 and
+      # deliberately leave it off.
+      globalPause = true;
     };
     # Ephemeral tmpfs root (2026-07-24); explicit persistence list below.
     # sops/ssh host identity moves to /persist/etc/ssh via profiles/sops.nix.
