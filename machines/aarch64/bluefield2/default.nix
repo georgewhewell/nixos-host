@@ -89,15 +89,15 @@ in {
 
   # BeeGFS is retired (2026-07-30). mgmtd ran here as the always-on
   # coordinator, but the meta and storage daemons on the Strix nodes were
-  # commented out, so it had been coordinating an empty cluster: clients found
+  # never enabled, so it had been coordinating an empty cluster: clients found
   # no storage targets and mnt-beegfs.mount simply failed. Models are served
   # from trex over NVMe-oF/RDMA instead -- see machines/x86/trex/
   # spdk-models-snapshot.nix and machines/x86/fuckup/nvme-models.nix.
   #
-  # modules/beegfs.nix, modules/mounts-beeg.nix, packages/beegfs/ and
-  # tests/beegfs.nix are all left intact, as is the per-node
-  # beegfsDiskSerial/beegfsFsUUID inventory in network.nix, so this can be
-  # revived without rediscovering any of it.
+  # The dead per-machine config was deleted on 2026-08-09. modules/beegfs.nix,
+  # modules/mounts-beeg.nix, packages/beegfs/ and tests/beegfs.nix are left
+  # intact, as is the per-node beegfsDiskSerial/beegfsFsUUID inventory in
+  # network.nix, so this can be revived without rediscovering any of it.
 
   systemd.network = {
     enable = true;

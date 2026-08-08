@@ -13,10 +13,8 @@ let
   # flag lives in network.nix so the router (DHCP/TFTP) and trex
   # (exports/boot files) stay in sync with the machine config.
   netboot = self.netboot or false;
-  # Per-host hardware facts (BeeGFS disk serial, CX5 port ownership, power
-  # limits) live in the network.nix host record — the single inventory.
-  beegfsDisk = "/dev/disk/by-id/nvme-Corsair_MP600_CORE_XT_${self.strix.beegfsDiskSerial}";
-  beegfsMountPoint = "/srv/beegfs";
+  # Per-host hardware facts (CX5 port ownership, power limits) live in the
+  # network.nix host record — the single inventory.
   enableUsb4Rdma = builtins.elem index [ 1 2 3 4 ];
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
@@ -39,6 +37,7 @@ let
   # trex's models export. The constants file is the single pin shared by the
   # target and every client; see machines/x86/trex/spdk-storage-constants.nix.
   modelsStorage = import ../trex/spdk-storage-constants.nix;
+  modelsDevice = "/dev/disk/by-id/nvme-uuid.${modelsStorage.modelsSnapshot.uuid}";
   modelsTargetAddress =
     network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
   # Deterministic per-host NVMe host ID in UUID form. hashString gives 64 hex
@@ -57,9 +56,22 @@ let
     if enableCx5Fabric
     then network.ipOf "fabric" self.addresses.fabric
     else "10.5.0.${toString index}";
-  beegfsFabricInterfaces = pkgs.writeText
-    "beegfs-fabric-interfaces-${hostName}"
-    "* ${vllmHostIp} 4\n";
+  # The NVMe-oF paths the connector must establish. A list of one today.
+  #
+  # A second path over the node's other ConnectX-5 was built on 2026-08-08 and
+  # then withdrawn: measurement showed the fabric delivers 28.2 Gb/s over TCP
+  # but only ~7.7 Gb/s over raw RDMA on the identical path, so RoCE is running
+  # at a quarter of what the wire and PCIe allow. Doubling the paths would
+  # double nothing until that is understood. The machinery below stays because
+  # it is strictly better than what it replaced -- it tracks each path by
+  # (traddr, host_traddr) rather than by "is this NQN connected at all", which
+  # is what a second path would silently trip over -- and because it makes
+  # adding the second rail a one-entry change once RoCE is fixed.
+  modelsPaths = lib.optionals enableCx5Fabric [{
+    interface = vllmFabricInterface;
+    hostIp = vllmHostIp;
+    target = modelsTargetAddress;
+  }];
 
   linuxPackagesThunderbolt =
     (pkgs.linuxPackagesFor tbvPackages.linux-thunderbolt).extend (_: super: {
@@ -153,72 +165,6 @@ in
     mode = "0400";
   };
 
-  # Each Strix node contributes the large XFS partition of its dedicated
-  # NVMe as one BeeGFS storage target. Restrict the daemon to the selected
-  # ConnectX-5 fabric address so data connections use RoCE rather than
-  # falling back to the ordinary LAN. Filtering by inventory-derived address
-  # avoids coupling BeeGFS to PCI-enumeration-dependent Linux interface names.
-  # services.beegfs-cluster = {
-  #   meta = lib.mkIf (index == 1) {
-  #     enable = true;
-  #     # The metadata set is tiny for this cluster. Co-locate it on strix-1's
-  #     # NVMe-backed XFS target rather than putting latency-sensitive metadata
-  #     # on the BlueField's eMMC.
-  #     directory = "${beegfsMountPoint}/metadata";
-  #     allowFirstRunInit = false;
-  #     settings = {
-  #       connInterfacesFile = "${beegfsFabricInterfaces}";
-  #       connRestrictOutboundInterfaces = true;
-  #       storeFsUUID = self.strix.beegfsFsUUID;
-  #     };
-  #   };
-  #   storage = {
-  #     enable = true;
-  #     directories = [ beegfsMountPoint ];
-  #     # All four targets have been initialized and registered. Refuse to
-  #     # manufacture a new target if this directory is ever unexpectedly empty.
-  #     allowFirstRunInit = false;
-  #     settings = {
-  #       connInterfacesFile = "${beegfsFabricInterfaces}";
-  #       connRestrictOutboundInterfaces = true;
-  #       # Match the 4 MiB filesystem stripe chunks with 4.5 MiB of RDMA
-  #       # buffers per connection.  The BeeGFS defaults total only 560 KiB
-  #       # and force large transfers through repeated protocol rounds.  The
-  #       # userspace storage daemon does not accept the client-only
-  #       # connRDMAFragmentSize setting in BeeGFS 8.4.
-  #       connRDMABufSize = 131072;
-  #       connRDMABufNum = 36;
-  #       storeFsUUID = self.strix.beegfsFsUUID;
-  #     };
-  #   };
-  # };
-
-  # sconfig.mounts.beegfs = {
-  #   enable = true;
-  #   clientAddresses = [ vllmHostIp ];
-  # };
-
-  # systemd.services.beegfs-root-layout = lib.mkIf (index == 1) {
-  #   description = "Set the BeeGFS root stripe layout";
-  #   requires = [ "mnt-beegfs.mount" ];
-  #   after = [ "mnt-beegfs.mount" ];
-  #   wantedBy = [ "multi-user.target" ];
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #     RemainAfterExit = true;
-  #   };
-  #   script = ''
-  #     exec ${config.services.beegfs-cluster.ctlPackage}/bin/beegfs \
-  #       entry set /mnt/beegfs \
-  #       --pattern raid0 \
-  #       --num-targets 4 \
-  #       --chunk-size 4Mi \
-  #       --mgmtd-addr ${config.services.beegfs-cluster.mgmtdHost}:${toString config.services.beegfs-cluster.mgmtd.grpcPort} \
-  #       --tls-disable \
-  #       --auth-file ${config.sops.secrets.beegfs-conn-auth.path}
-  #   '';
-  # };
-  #
   hardware.strixHalo = {
     enable = true;
     # Efficient-but-boostable: DPM idles the GPU clocks (sclk rests ~600 MHz)
@@ -354,84 +300,20 @@ in
   # not run during nixos-rebuild: it only makes the destructive provisioning
   # operation explicit and repeatable when invoked deliberately.
   #
-  # Netboot nodes mount only the BeeGFS partition. Turning netboot off makes
-  # the already-provisioned root and ESP become an ordinary local NixOS boot
-  # disk without repartitioning or sacrificing the storage target.
-  # disko.devices.disk.beegfs = {
-  #   type = "disk";
-  #   device = beegfsDisk;
-  #   content = {
-  #     type = "gpt";
-  #     partitions = {
-  #       ESP = {
-  #         label = "${hostName}-ESP";
-  #         size = "1G";
-  #         type = "EF00";
-  #         content = {
-  #           type = "filesystem";
-  #           format = "vfat";
-  #           extraArgs = [ "-F" "32" "-n" "STRIX${toString index}ESP" ];
-  #           mountpoint = if netboot then null else "/boot";
-  #           mountOptions = [ "umask=0077" ];
-  #         };
-  #       };
-  #       root = {
-  #         label = "${hostName}-root";
-  #         size = "128G";
-  #         type = "8304";
-  #         content = {
-  #           type = "btrfs";
-  #           extraArgs = [ "-L" "${hostName}-root" ];
-  #           subvolumes."@root" = {
-  #             mountpoint = if netboot then null else "/";
-  #           } // lib.optionalAttrs (!netboot) {
-  #             mountOptions = [
-  #               "compress=zstd:1"
-  #               "discard=async"
-  #               "noatime"
-  #             ];
-  #           };
-  #         };
-  #       };
-  #       beegfs = {
-  #         label = "${hostName}-beegfs";
-  #         size = "100%";
-  #         type = "8300";
-  #         content = {
-  #           type = "filesystem";
-  #           format = "xfs";
-  #           # XFS filesystem labels are limited to 12 characters.
-  #           extraArgs = [ "-L" "STRIX${toString index}BEEGFS" ];
-  #           mountpoint = beegfsMountPoint;
-  #           mountOptions = [ "noatime" ];
-  #         };
-  #       };
-  #     };
-  #   };
-  # };
-
-  # Mount by GPT partition label instead of the provisioning disk's by-id path:
-  # the layout must boot identically whether the drive hangs off M.2 or a USB
-  # enclosure (whose enclosure-level by-id replaces the NVMe one). mkForce wins
-  # over the device references disko generates from `beegfsDisk`.
+  # Locally-booting nodes own their disk: the root and ESP partitions provisioned
+  # by disko. mkForce overrides the device references the netboot profile would
+  # otherwise supply. Netboot nodes skip both and run from trex's NFS store.
   fileSystems."/" = lib.mkIf (!netboot) (lib.mkForce {
     device = "/dev/disk/by-partlabel/${hostName}-root";
     fsType = "btrfs";
     options = [ "subvol=@root" "compress=zstd:1" "discard=async" "noatime" ];
     neededForBoot = true;
   });
-
   fileSystems."/boot" = lib.mkIf (!netboot) (lib.mkForce {
     device = "/dev/disk/by-partlabel/${hostName}-ESP";
     fsType = "vfat";
     options = [ "umask=0077" ];
   });
-
-  # fileSystems.${beegfsMountPoint} = lib.mkForce {
-  #   device = "/dev/disk/by-partlabel/${hostName}-beegfs";
-  #   fsType = "xfs";
-  #   options = [ "noatime" "nofail" ];
-  # };
 
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
@@ -592,7 +474,7 @@ in
       "/sys/dev"
       "/proc"
 
-      # and our nfs /models
+      # and the pinned NVMe/RDMA models snapshot
       "/models"
     ];
   };
@@ -656,40 +538,12 @@ in
     };
   };
 
-  # disko-install seeds the persistent host keys by copying a directory onto
-  # /etc/ssh. Keep that directory traversable so sshd can read per-user
-  # authorized_keys after dropping privileges from root.
-  #
-  # Keep model storage independent of the boot path. Netboot hosts get this
-  # mount from profiles/netboot-client.nix; locally booted hosts must consume
-  # the same read-only Trex export rather than silently falling back to their
-  # root filesystem.
-  fileSystems."/models" = lib.mkIf (!netboot) {
-    device = "${network.primaryIp network.hosts.trex}:/strix-models";
-    fsType = "nfs";
-    options = [
-      "nfsvers=4.2"
-      "ro"
-      "nofail"
-      "_netdev"
-      "x-systemd.automount"
-      "rsize=1048576"
-      "wsize=1048576"
-      "nconnect=8"
-    ];
-  };
-
   # trex's pinned read-only models snapshot over NVMe-oF/RDMA, bound explicitly
   # to ${vllmFabricInterface}. RDMA needs a verbs device, so this can never
   # silently fall back to the 2.5G Realtek — if the fabric address is not on the
   # ConnectX, the connection simply does not happen.
-  #
-  # Mounted alongside /models rather than replacing it, for now. /models is in
-  # the nix builders' extra-sandbox-paths, so an absent /models fails every
-  # build on the host; until the pinned snapshot actually contains the models it
-  # must not become /models. See profiles/netboot-client.nix.
-  fileSystems."/mnt/trex-models" = lib.mkIf enableCx5Fabric {
-    device = "/dev/disk/by-id/nvme-uuid.${modelsStorage.modelsSnapshot.uuid}";
+  fileSystems."/models" = lib.mkIf enableCx5Fabric {
+    device = modelsDevice;
     fsType = "xfs";
     options = [
       "ro"
@@ -699,7 +553,6 @@ in
       "norecovery"
       "nofail"
       "_netdev"
-      "x-systemd.automount"
       "x-systemd.requires=nvme-trex-models.service"
       "x-systemd.after=nvme-trex-models.service"
       "x-systemd.device-timeout=30s"
@@ -739,51 +592,181 @@ in
     script = ''
       set -euo pipefail
 
-      # Idempotent: never create a second controller for the same subsystem.
-      if grep -Fxq ${modelsStorage.modelsNqn} \
-        /sys/class/nvme-subsystem/*/subsysnqn 2>/dev/null; then
-        echo "already connected to ${modelsStorage.modelsNqn}"
-        exit 0
-      fi
-
-      for _ in $(seq 1 100); do
-        if ip -4 -o address show dev ${vllmFabricInterface} 2>/dev/null |
-          grep -Fq "inet ${vllmHostIp}/"; then
-          break
-        fi
-        sleep 0.1
-      done
-      ip -4 -o address show dev ${vllmFabricInterface} 2>/dev/null |
-        grep -Fq "inet ${vllmHostIp}/" || {
-          echo "fabric address ${vllmHostIp} is not on ${vllmFabricInterface};" >&2
-          echo "refusing to reach the target over any other interface" >&2
-          exit 1
-        }
-
       modprobe nvme-rdma
-      nvme connect \
-        --transport=rdma \
-        --traddr=${modelsTargetAddress} \
-        --trsvcid=4420 \
-        --nqn=${modelsStorage.modelsNqn} \
-        --host-traddr=${vllmHostIp}
+
+      # Multipath, not failover. Each path rides a different ConnectX-5 on its
+      # own PCIe Gen3 x4 root port, so together they lift the ceiling from
+      # ~3.5 GB/s to ~7 GB/s. Both controllers share a subsystem NQN and
+      # namespace UUID, so the kernel merges them into one block device and
+      # /models never sees the difference.
+      #
+      # The old idempotence check tested only "is this NQN connected at all",
+      # which would have found path 1 and silently skipped path 2. Match on the
+      # (traddr, host_traddr) pair instead, so each rail is tracked separately.
+      path_connected() {
+        target=$1
+        host=$2
+        for controller in /sys/class/nvme/nvme*; do
+          [ -r "$controller/subsysnqn" ] || continue
+          read -r controller_nqn <"$controller/subsysnqn"
+          [ "$controller_nqn" = ${lib.escapeShellArg modelsStorage.modelsNqn} ] || continue
+          [ -r "$controller/address" ] || continue
+          read -r controller_address <"$controller/address"
+          case "$controller_address" in
+            *"traddr=$target"*"host_traddr=$host"*) return 0 ;;
+          esac
+        done
+        return 1
+      }
+
+      # RDMA needs a verbs device, so a path can never silently fall back to the
+      # 2.5G Realtek: if the rail's address is not on its own ConnectX port, that
+      # path simply does not happen.
+      connect_path() {
+        interface=$1
+        host=$2
+        target=$3
+
+        if path_connected "$target" "$host"; then
+          echo "path $host -> $target already connected"
+          return 0
+        fi
+
+        for _ in $(seq 1 100); do
+          if ip -4 -o address show dev "$interface" 2>/dev/null |
+            grep -Fq "inet $host/"; then
+            break
+          fi
+          sleep 0.1
+        done
+        ip -4 -o address show dev "$interface" 2>/dev/null |
+          grep -Fq "inet $host/" || {
+            echo "fabric address $host is not on $interface;" >&2
+            echo "refusing to reach the target over any other interface" >&2
+            return 1
+          }
+
+        nvme connect \
+          --transport=rdma \
+          --traddr="$target" \
+          --trsvcid=4420 \
+          --nqn=${lib.escapeShellArg modelsStorage.modelsNqn} \
+          --host-traddr="$host"
+      }
+
+      # Path 1 is required; the rest are additive, so losing the second rail
+      # costs bandwidth rather than /models itself.
+      ${lib.concatStringsSep "\n      " (lib.imap1 (i: path:
+        if i == 1
+        then "connect_path ${path.interface} ${path.hostIp} ${path.target}"
+        else "connect_path ${path.interface} ${path.hostIp} ${path.target} \\\n        || echo \"second rail unavailable; continuing degraded\" >&2"
+      ) modelsPaths)}
+
+      # Spread I/O across every live path. The default policy is "numa", which
+      # on these single-socket boxes pins all traffic to one controller and
+      # leaves the second card completely idle -- the whole point, undone.
+      for subsystem in /sys/class/nvme-subsystem/*; do
+        [ -r "$subsystem/subsysnqn" ] || continue
+        read -r subsystem_nqn <"$subsystem/subsysnqn"
+        [ "$subsystem_nqn" = ${lib.escapeShellArg modelsStorage.modelsNqn} ] || continue
+        [ -w "$subsystem/iopolicy" ] || continue
+        echo round-robin >"$subsystem/iopolicy"
+      done
     '';
     preStop = ''
       nvme disconnect --nqn=${modelsStorage.modelsNqn} || true
     '';
   };
 
-  # On every Strix host the server side owns model directory creation (chown
-  # from an all_squash client fails). The local mountpoint itself is enough.
+  # A successful oneshot cannot notice that the kernel later removed its
+  # controller. Reconcile both the NQN and pinned block device, and replay the
+  # connection plus mount transaction when either disappears.
+  systemd.services.nvme-trex-models-reconcile = lib.mkIf enableCx5Fabric {
+    description = "Reconcile trex models NVMe/RDMA connection";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    path = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.systemd
+    ];
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig.Type = "oneshot";
+    script = ''
+      set -euo pipefail
+
+      # Count live controllers rather than answering "any?": with two rails a
+      # single live path keeps /models served, so the old boolean could not tell
+      # "healthy" from "degraded, running at half bandwidth".
+      live_path_count() {
+        count=0
+        for subsystem in /sys/class/nvme-subsystem/*; do
+          [ -r "$subsystem/subsysnqn" ] || continue
+          read -r subsystem_nqn <"$subsystem/subsysnqn"
+          [ "$subsystem_nqn" = ${lib.escapeShellArg modelsStorage.modelsNqn} ] || continue
+          for controller in "$subsystem"/nvme*; do
+            [ -r "$controller/state" ] || continue
+            read -r controller_state <"$controller/state"
+            if [ "$controller_state" = live ]; then
+              count=$((count + 1))
+            fi
+          done
+        done
+        printf '%s\n' "$count"
+      }
+
+      expected_paths=${toString (builtins.length modelsPaths)}
+
+      state=$(systemctl show --property=ActiveState --value nvme-trex-models.service)
+      [ "$state" = activating ] && exit 0
+
+      live_paths=$(live_path_count)
+
+      if [ "$state" = active ] \
+        && [ -b ${lib.escapeShellArg modelsDevice} ] \
+        && [ "$live_paths" -ge 1 ]; then
+        if ! systemctl is-active --quiet models.mount; then
+          echo "models controller is live but models.mount is not; remounting" >&2
+          systemctl restart models.mount
+          exit 0
+        fi
+        # Degraded but serving: the data is still reachable over the surviving
+        # rail, so do not touch the mount. Re-running the connector is enough --
+        # it adds only the missing path and leaves the live one untouched.
+        if [ "$live_paths" -lt "$expected_paths" ]; then
+          echo "only $live_paths of $expected_paths NVMe paths live; restoring the missing rail" >&2
+          systemctl restart nvme-trex-models.service
+        fi
+        exit 0
+      fi
+
+      echo "models connector, live controller, or pinned block device is absent; reconnecting" >&2
+      systemctl restart nvme-trex-models.service
+      systemctl restart models.mount
+    '';
+  };
+
+  systemd.timers.nvme-trex-models-reconcile = lib.mkIf enableCx5Fabric {
+    description = "Retry stale trex models NVMe/RDMA clients";
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnBootSec = "30s";
+      OnUnitInactiveSec = "1min";
+      AccuracySec = "1s";
+      Unit = "nvme-trex-models-reconcile.service";
+    };
+  };
+
+  # disko-install seeds the persistent host keys by copying a directory onto
+  # /etc/ssh. Keep that directory traversable so sshd can read per-user
+  # authorized_keys after dropping privileges from root.
   systemd.tmpfiles.rules = [
     "d /etc/ssh 0755 root root -"
-  ] ++ lib.optionals (!netboot) [
-    "d /models 0755 root root -"
   ];
 
   # Point all HuggingFace tooling at the read-only /models snapshot and keep
   # compute nodes strictly offline w.r.t. the Hub — model acquisition belongs
-  # to trex (which serves /strix-models). Setting these globally means
+  # to trex, which publishes the pinned snapshot. Setting these globally means
   # interactive ssh sessions and the hellas-ai-video runners don't need to set
   # HF_HOME.
   environment.variables = {

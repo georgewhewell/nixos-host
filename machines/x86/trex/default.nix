@@ -8,8 +8,10 @@
   ...
 }: let
   self = network.hosts.trex;
-  beegfsMgmtd = network.hosts.bluefield2;
-  beegfsMgmtdLanIp = network.ipOf "lan" beegfsMgmtd.addresses.lan;
+  # The BlueField's LAN address, used only as the gateway to its private DPU
+  # address below. Was named beegfsMgmtd* when that host ran BeeGFS mgmtd;
+  # BeeGFS is retired and the route has nothing to do with it.
+  bluefield2LanIp = network.ipOf "lan" network.hosts.bluefield2.addresses.lan;
 
   # ConnectX-4, plain (legacy) mode. Pin the PF name to its permanent MAC so it
   # survives PCIe re-enumeration -- the card's bus number moves whenever the
@@ -1111,7 +1113,7 @@ in {
           # still needs the BlueField LAN side as a gateway.
           {
             Destination = "192.168.100.2/32";
-            Gateway = beegfsMgmtdLanIp;
+            Gateway = bluefield2LanIp;
           }
         ];
         networkConfig = {
