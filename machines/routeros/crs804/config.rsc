@@ -36,10 +36,12 @@
 
 # Physical topology:
 #   cage 1: 400G -> 2x200G, primary interfaces -1 and -5 (four lanes each)
-#   cage 2: 400G -> 4x100G to strix-1..4, primaries -1/-3/-5/-7
-#            (two lanes each)
-#   cage 3: QSFP-to-SFP28 adapter, 25G untagged router LAN uplink
-#   cage 4: QSFP-to-SFP28 adapter, 25G untagged uplink to the CRS504/Trex
+#   cage 2: 400G -> 4x100G to strix-1..4 first ports, primaries -1/-3/-5/-7
+#   cage 3: 400G -> 4x100G to strix-1/2/4 second ports, primaries -1/-3/-5/-7
+#           (formerly a QSFP-to-SFP28 25G router LAN uplink; re-cabled
+#           2026-08-08 as the second fabric splitter)
+#   cage 4: 100G FR optic (Cisco-Innolight TR-FC13T-NCI, LC/1301nm), untagged
+#           uplink to the CRS510 "mikrotik-100g" (Trex + fuckup behind it)
 #
 # First remove every QSFP lane from any old bridge membership. This prevents
 # stale primaries from surviving a breakout-mode change. Member lanes remain
@@ -78,24 +80,40 @@
     /interface ethernet set [find where name=$p] disabled=no
 }
 
-# Cages 3 and 4: ordinary 25G optical access ports in fabric VLAN 25. The
-# router and CRS504 continue to see untagged Ethernet; tagged WiFi VLAN 50
-# also rides these two links (hence frame-types=admit-all). Both known peers use
-# forced 25G with RS-FEC; matching that here avoids the failed autonegotiation
-# seen when the cage-4 peer does not advertise.
-:foreach p in={"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
-    /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=fec91 speed=25G-baseSR-LR
-    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-all
+# Cages 3 and 4: untagged access uplinks in fabric VLAN 25. Cage 3 is a
+# 400G -> 4x100G fabric splitter (strix-1/2/4 second NIC ports) and uses
+# forced 100G CR2 like cage 2. Cage 4 is a single 100G FR uplink to the
+# CRS510 that also carries tagged WiFi VLAN 50 (hence frame-types=admit-all).
+# Both links use forced speed; matching the peer avoids the failed
+# autonegotiation seen when a peer does not advertise. The forced speed MUST
+# match the installed module: the 2026-08-06 LAN outage was this file's old
+# forced-25G value surviving a cage-4 optic swap to 100G FR (symptom: good
+# RX light, status no-link — looks exactly like a crashed peer switch).
+#
+# Cage 3: 4x100G fabric splitter (re-cabled 2026-08-08; remove any stale
+# 25G/SFP membership first so a breakout-mode change cannot strand ports).
+:foreach p in={"qsfp56-dd-3-1";"qsfp56-dd-3-3";"qsfp56-dd-3-5";"qsfp56-dd-3-7"} do={
+    /interface ethernet set [find where name=$p] disabled=no auto-negotiation=no fec-mode=auto speed=100G-baseCR2
+    /interface bridge port add bridge="bridge-fabric" interface=$p hw=yes pvid=25 ingress-filtering=yes frame-types=admit-only-untagged-and-priority-tagged
     /interface ethernet switch port set [find where name=$p] l3-hw-offloading=no
 }
+:foreach lane in={2;4;6;8} do={
+    :local p ("qsfp56-dd-3-" . $lane)
+    /interface ethernet set [find where name=$p] disabled=yes
+}
+# Cage 4: 100G FR to the CRS510 (upgraded 2026-08-06); peer side is
+# qsfp28-1-1 on the CRS510, forced 100G/fec91 there as well.
+/interface ethernet set [find where name="qsfp56-dd-4-1"] disabled=no auto-negotiation=no fec-mode=fec91 speed=100G-baseSR4-LR4
+/interface bridge port add bridge="bridge-fabric" interface="qsfp56-dd-4-1" hw=yes pvid=25 ingress-filtering=yes frame-types=admit-all
+/interface ethernet switch port set [find where name="qsfp56-dd-4-1"] l3-hw-offloading=no
 
 # Reconcile only the VLAN rows owned by this file.
 /interface bridge vlan remove [find where comment="nixos-config: fabric VLAN 25"]
 /interface bridge vlan remove [find where comment="nixos-config: router transit VLAN 26"]
-/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-2-3,qsfp56-dd-2-5,qsfp56-dd-2-7,qsfp56-dd-3-1,qsfp56-dd-4-1,ether1,ether2 comment="nixos-config: fabric VLAN 25"
+/interface bridge vlan add bridge="bridge-fabric" vlan-ids=25 tagged="bridge-fabric" untagged=qsfp56-dd-1-1,qsfp56-dd-1-5,qsfp56-dd-2-1,qsfp56-dd-2-3,qsfp56-dd-2-5,qsfp56-dd-2-7,qsfp56-dd-3-1,qsfp56-dd-3-3,qsfp56-dd-3-5,qsfp56-dd-3-7,qsfp56-dd-4-1,ether1,ether2 comment="nixos-config: fabric VLAN 25"
 /interface bridge vlan remove [find where comment="nixos-config: WiFi VLAN 50"]
 /interface bridge vlan remove [find where comment~"WiFi VLAN 50 - added 2026-07-29"]
-/interface bridge vlan add bridge="bridge-fabric" vlan-ids=50 tagged=qsfp56-dd-3-1,qsfp56-dd-4-1 comment="nixos-config: WiFi VLAN 50"
+/interface bridge vlan add bridge="bridge-fabric" vlan-ids=50 tagged=qsfp56-dd-4-1 comment="nixos-config: WiFi VLAN 50"
 
 :if ([:len [/interface vlan find where name="vlan25-fabric"]] = 0) do={
     /interface vlan add name=vlan25-fabric interface="bridge-fabric" vlan-id=25 mtu=9000 comment="nixos-config: fabric SVI"
@@ -143,7 +161,7 @@
 # link retraining: the bridge reports learning+forwarding and H, but frames
 # reach only the switch CPU. Rebinding each active cage once repairs the group;
 # the final and persistent state remains hardware-offloaded.
-:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-2-3";"qsfp56-dd-2-5";"qsfp56-dd-2-7";"qsfp56-dd-3-1";"qsfp56-dd-4-1"} do={
+:foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5";"qsfp56-dd-2-1";"qsfp56-dd-2-3";"qsfp56-dd-2-5";"qsfp56-dd-2-7";"qsfp56-dd-3-1";"qsfp56-dd-3-3";"qsfp56-dd-3-5";"qsfp56-dd-3-7";"qsfp56-dd-4-1"} do={
     :local bp [/interface bridge port find where interface=$p]
     /interface bridge port set $bp hw=no
     :delay 100ms
@@ -177,11 +195,14 @@
 :foreach p in={"qsfp56-dd-1-1";"qsfp56-dd-1-5"} do={
     /interface ethernet switch qos port set [find where name=$p] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=200G
 }
-# Cage 3 carries ordinary routed LAN traffic; explicitly clear the stale PFC
-# profile left by its former 100G fabric role. Cage 4 carries Trex/RDMA traffic
-# and therefore participates in the lossless TC3 policy at its 25G line rate.
-/interface ethernet switch qos port set [find where name="qsfp56-dd-3-1"] trust-l3=keep pfc=disabled egress-rate-queue3=25G
-/interface ethernet switch qos port set [find where name="qsfp56-dd-4-1"] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=25G
+# Cage 3 is fabric (strix-1/2/4 second ports) and participates in the lossless
+# TC3 policy at 100G like cage 2. Cage 4 carries Trex/RDMA traffic and also
+# participates in the lossless TC3 policy at its 100G line rate (upgraded
+# from 25G on 2026-08-06).
+:foreach p in={"qsfp56-dd-3-1";"qsfp56-dd-3-3";"qsfp56-dd-3-5";"qsfp56-dd-3-7"} do={
+    /interface ethernet switch qos port set [find where name=$p] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=100G
+}
+/interface ethernet switch qos port set [find where name="qsfp56-dd-4-1"] trust-l3=keep pfc="nixos-pfc-tc3" egress-rate-queue3=100G
 # The 98DX7335 always enables QoS offload on current RouterOS, but retain the
 # explicit setting so the desired state remains clear across upgrades.
 /interface ethernet switch set [find where name="switch1"] qos-hw-offloading=yes
