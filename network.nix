@@ -393,17 +393,37 @@ lib: rec {
       };
       # Diskless: firmware UEFI HTTP -> iPXE -> trex HTTP/NFS.
       netboot = true;
-      # Netboot is via the onboard 2.5G Realtek ONLY (proven working
-      # 2026-07-29). The ConnectX-5 identities are deliberately absent from
-      # extraMacs so the firmware cannot PXE from the fabric card; the CX5 is
-      # the RoCE fabric port and nothing else.
-      #
-      # 2026-07-30: this comment previously described the CX5 as "PXE
-      # 1c:34:da:61:12:b4, permanent :b1, aux :b5". That is strix-2's card.
-      # `ethtool -P` on the running host reports this chassis holds
-      # 1c:34:da:61:12:98 (f0np0) and :99 (f1np1); the :b0/:b1 pair is in
-      # strix-2. The strix-1 and strix-2 CX5 identities were transposed.
       netbootMac = "84:47:09:68:82:b1";
+      # The ConnectX-5 identities are deliberately NOT in extraMacs. Netboot is
+      # Realtek-only, and 2026-08-08 produced hard evidence for why -- read this
+      # before ever adding them back.
+      #
+      # THE REWIRE PROBLEM. Cabling the aux card into the second M.2 added a
+      # second PCIe endpoint with two more PXE-capable functions, and those
+      # entries now sit AHEAD of the Realtek in the firmware boot order. At
+      # 20:45-20:50 the router logged 27 PXEClient DISCOVERs from
+      # 1c:34:da:61:12:98/:99/:9c/:9d and ZERO from eno1: the host cycles the
+      # fabric NICs and never reaches the Realtek.
+      #
+      # WHY TAGGING THEM DOES NOT FIX IT (tried, 2026-08-08 21:01). With the
+      # CX5 MACs tagged, firmware PXE happily DHCPs, resolves to this host's own
+      # static lease, and pulls snponly.efi over TFTP -- exactly once, cleanly.
+      # And then nothing: the router saw NO conntrack entry and NO established
+      # :80 connection from 192.168.23.136/.25/.26, and trex served 862 kB total
+      # (one initrd is 68 MB). iPXE's embedded script is `dhcp || exit` followed
+      # by three `chain` attempts, so zero TCP SYNs means its OWN dhcp failed
+      # and it exited before attempting the chain.
+      #
+      # The fabric NIC works for the FIRMWARE's PXE stack but not for a driver
+      # layered on top of it. The same shape killed a kexec into the netboot
+      # kernel on strix-2 the same evening: mlx5_core came up with every module
+      # present (verified by nix eval, not guesswork) and never reached DHCP.
+      # Note also that iPXE has no usable ConnectX-5 native driver, so the
+      # full-ipxe.efi workaround cannot rescue a CX5-only path either.
+      #
+      # Tagging them is therefore worse than useless: it hands the firmware a
+      # boot file it cannot follow, burning the attempt that might otherwise
+      # have fallen through to the Realtek.
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
@@ -504,11 +524,18 @@ lib: rec {
         fabric = 103;
       };
       netboot = true;
-      # Realtek-only netboot (proven working 2026-07-29). Neither the
-      # multi-host CX5 functions (b8:59:9f:54:db:e8/:e9) nor the DPU PXE
-      # identity (b8:ce:f6:f8:d7:aa) are netboot-tagged; the DPU's ARM
-      # fetches its own leases instead of the host booting through it.
       netbootMac = "84:47:09:80:64:50";
+      # BlueField identities are NOT netboot-tagged. Tagging b8:ce:f6:f8:d7:aa
+      # was tried on 2026-08-08 and failed the same way as strix-1's CX5: the
+      # DPU PXEs, fetches snponly.efi once, and iPXE then exits without ever
+      # opening a TCP connection. See the long note on strix-1.
+      #
+      # Correcting an older comment here: it claimed b8:59:9f:54:db:e8/:e9 were
+      # "multi-host CX5 functions" belonging to this host. They are NOT. The
+      # CRS804 learned-MAC table (2026-08-08 20:46) puts :e4/:e8 on lane 3-7 and
+      # :e5/:e9 on 2-7 -- both strix-4's lanes. This host has no ConnectX-5 at
+      # all; its only fabric NIC is the BlueField-2's ConnectX-6 on cage 1-1 at
+      # 200G, and it shares nothing with strix-4.
       strix = {
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
@@ -543,9 +570,16 @@ lib: rec {
         fabric = 104;
       };
       netboot = true;
-      # Realtek-only netboot (proven working 2026-07-29); the CX5
-      # multi-host functions (b8:59:9f:54:db:e4/:e5) stay off the PXE list.
       netbootMac = "84:47:09:81:22:35";
+      # CX5 identities are NOT netboot-tagged; tagging them was tried on
+      # 2026-08-08 and failed identically to strix-1 (iPXE loads, then exits
+      # without a single TCP SYN). See the long note on strix-1.
+      #
+      # Ownership, from the CRS804 learned-MAC table (2026-08-08 20:46):
+      # :e5/:e9 are on lane 2-7 and :e4/:e8 on lane 3-7 -- all four are THIS
+      # host's, two SharedIO PFs per physical port on one ASIC. The old comment
+      # calling them functions "shared with strix-3" was wrong; strix-3 has no
+      # ConnectX-5 and is the BlueField on cage 1-1.
       strix = {
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
