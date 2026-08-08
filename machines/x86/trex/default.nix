@@ -813,9 +813,11 @@ in {
       group = "postgres";
       mode = "0755";
     }
+    # /var/lib/systemd/linger was here until 2026-08-09. It is declarative:
+    # profiles/users.nix sets `linger = true` for grw and the users module
+    # recreates the marker at activation, so persisting it was redundant.
     "/var/lib/OpenRGB"
     "/var/lib/qui"
-    "/var/lib/systemd/linger"
     # services
     {
       directory = "/var/lib/jellyfin";
