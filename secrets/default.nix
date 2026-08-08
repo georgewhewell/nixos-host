@@ -66,10 +66,11 @@
   qui-session = {
     sopsFile = ./media.yaml;
     key = "qui-session";
-    path = "/run/secrets/qui-session";
-    owner = "qui";
-    group = "qui";
-    mode = "0400";
+    # Bind-mounted into the arr-servers container, which owns qui now. The
+    # host has no qui user any more, so it cannot be the owner; follow the
+    # autobrr precedent above and make it world-readable in /run instead.
+    path = "/run/qui-session.secret";
+    mode = "0444";
   };
 
   # ACME DNS-01 credentials (trex)

@@ -37,6 +37,30 @@ in {
         hostPath = "/mnt/Media";
         isReadOnly = false;
       };
+      # 25G of library database and scraped metadata. Lives on trexroot and is
+      # still covered by the host's impermanence persistence list.
+      "/var/lib/jellyfin" = {
+        hostPath = "/var/lib/jellyfin";
+        isReadOnly = false;
+      };
+      # MUST be listed explicitly. nspawn resolves bind mounts at container
+      # start and does NOT carry nested mounts, so binding the /var/lib/
+      # qbittorrent parent alone would leave this an empty directory on the ZFS
+      # dataset -- qBittorrent would write every partial torrent to the HDD
+      # pool instead of the SPDK Optane volume, silently and with no error.
+      "/var/lib/qbittorrent/incomplete" = {
+        hostPath = "/var/lib/qbittorrent/incomplete";
+        isReadOnly = false;
+      };
+      # qui's database: instance connections, settings, 78 migrations' worth of
+      # schema. Missed on the first pass, and the failure was silent -- qui
+      # simply created a fresh empty db inside the container rootfs and logged
+      # "Applied 78 migrations successfully" as though all was well.
+      "/var/lib/qui" = {
+        hostPath = "/var/lib/qui";
+        isReadOnly = false;
+      };
+      "/run/qui-session.secret".hostPath = "/run/qui-session.secret";
     };
 
     config = {
@@ -59,6 +83,63 @@ in {
           };
         };
       };
+
+      # Media services moved off the host (2026-08-09) so everything media
+      # shares one sandbox with its own address and firewall, reaching nothing
+      # of trex's filesystem beyond the bindMounts above.
+      #
+      # These three UIDs/GIDs are PINNED to the host's allocations. radarr and
+      # sonarr work across the boundary for free because nixpkgs gives them
+      # static ids; jellyfin, qbittorrent and qui get *dynamically* allocated
+      # ones, so the container would otherwise invent different numbers and be
+      # unable to read its own bind-mounted state (/var/lib/jellyfin is uid 979
+      # on disk, /var/lib/qbittorrent is uid 888). This container shares the
+      # host's user namespace, so the numbers must agree exactly.
+      users.users.jellyfin = { uid = 979; group = "jellyfin"; isSystemUser = true; };
+      users.groups.jellyfin.gid = 975;
+      users.users.qbittorrent = { uid = 888; group = "qbittorrent"; isSystemUser = true; home = "/var/lib/qbittorrent"; };
+      users.groups.qbittorrent.gid = 888;
+      users.users.qui = { uid = 968; group = "qui"; isSystemUser = true; };
+      users.groups.qui.gid = 963;
+
+      services.jellyfin = {
+        enable = true;
+        openFirewall = true;
+      };
+      # No /dev/dri passthrough: trex has only card0 (the ASPEED BMC
+      # framebuffer) and no renderD128, so there is no render node and jellyfin
+      # has always transcoded on CPU here. The old video/render group
+      # membership on the host was aspirational.
+      systemd.services.jellyfin = {
+        unitConfig.RequiresMountsFor = ["/mnt/Media" "/var/lib/jellyfin"];
+        serviceConfig.MemoryDenyWriteExecute = false;
+      };
+
+      services.qbittorrent = {
+        enable = true;
+        profileDir = "/var/lib/qbittorrent";
+        webuiPort = 8080;
+        torrentingPort = 17026;
+        openFirewall = true;
+      };
+      systemd.services.qbittorrent.unitConfig.RequiresMountsFor = [
+        "/var/lib/qbittorrent"
+        "/var/lib/qbittorrent/incomplete"
+        "/mnt/Media"
+      ];
+
+      services.qui = {
+        enable = true;
+        openFirewall = true;
+        secretFile = "/run/qui-session.secret";
+        settings = {
+          host = "0.0.0.0";
+          port = 7476;
+        };
+      };
+      # qui is only a UI over qBittorrent's API; starting it first just makes
+      # it show errors until qBittorrent is up.
+      systemd.services.qui.after = ["qbittorrent.service"];
 
       users.users.radarr.extraGroups = ["qbittorrent"];
       users.users.sonarr.extraGroups = ["qbittorrent"];

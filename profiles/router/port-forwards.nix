@@ -35,6 +35,21 @@ network: {
     ];
   };
 
+  # Media services live in the arr-servers container on trex, with their own
+  # VF and their own address (2026-08-09). qBittorrent's listen port must be
+  # forwarded there, not to trex -- otherwise inbound peer connections just
+  # stop arriving, silently, and the only symptom is a worse swarm.
+  arr-servers = {
+    ip = network.ipOf "lan" network.hosts."arr-servers".addresses.lan;
+    forwards = [
+      {
+        port = 17026;
+        proto = "both";
+        comment = "qBittorrent";
+      }
+    ];
+  };
+
   # router external access
   router-wan = {
     ip = network.routerIp;
@@ -65,11 +80,6 @@ network: {
         port = 443;
         proto = "tcp";
         comment = "nginx";
-      }
-      {
-        port = 17026;
-        proto = "both";
-        comment = "qBittorrent";
       }
       {
         port = 18080;
