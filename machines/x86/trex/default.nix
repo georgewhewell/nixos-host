@@ -11,27 +11,36 @@
   beegfsMgmtd = network.hosts.bluefield2;
   beegfsMgmtdLanIp = network.ipOf "lan" beegfsMgmtd.addresses.lan;
 
-  # ConnectX-4 switchdev: pin interface names to the ASIC's phys_switch_id so
-  # they survive PCIe re-enumeration. The card's bus number moves whenever the
+  # ConnectX-4, plain (legacy) mode. Pin the PF name to its permanent MAC so it
+  # survives PCIe re-enumeration -- the card's bus number moves whenever the
   # PCIe tree is re-walked (e.g. toggling the BMC's shared-NIC mode), and with
-  # `pci=realloc=off` the kernel-assigned enpXsY names move with it. Anchoring
-  # on the switch id (stable, ASIC-derived) instead of the bus keeps OVS,
-  # sriov-init and networkd matching the right device every boot.
-  mlxSwitchId = "86240d00034b6b50";
+  # `pci=realloc=off` kernel-assigned enpXsY names move with it.
+  #
+  # 2026-08-08: switchdev + SR-IOV + OVS removed entirely. The eswitch had 7
+  # VFs and 7 representors, of which exactly one VF was in use -- and that one
+  # existed only to give *this host* an RDMA endpoint, because an OVS internal
+  # port has no verbs device. In switchdev mode the PF itself has no verbs
+  # device either, so the VF was a workaround for damage the eswitch caused.
+  # Nothing else consumed a VF; the two i40e ports OVS also bridged are
+  # unplugged (carrier=0, zero bytes). With the eswitch gone the PF carries
+  # trex's addresses directly and serves RoCE natively, which removes the
+  # hardware/software split-forwarding path -- the leading suspect for the
+  # RoCE packet reordering (huge out_of_sequence with zero switch drops) that
+  # pinned NVMe-oF throughput near 300 MiB/s on a 100G fabric.
   mlxPfMac = "50:6b:4b:0d:24:86";
   mlxPfName = "mlxlan0";
-  # VF7 currently enumerates as 0000:aa:01.0 and times out in mlx5_core
-  # ENABLE_HCA, adding about a minute to initrd. Use the seven working VFs.
-  mlxVfCount = 7;
-  # Representor names, index-aligned with phys_port_name pf0vf0..pf0vf{N-1}.
-  mlxRepNames = lib.genList (i: "${mlxPfName}r${toString i}") mlxVfCount;
-  # i40e ports also move when the PCIe tree is re-walked. Keep OVS pointed at
-  # MAC-pinned names instead of enpXsY names.
-  i40ePorts = {
-    i40e0 = "9c:6b:00:57:30:60";
-    i40e1 = "9c:6b:00:57:30:61";
-  };
-  i40eNames = builtins.attrNames i40ePorts;
+  # SR-IOV in LEGACY mode (2026-08-09). VFs are what gives a container its own
+  # identity on the wire -- and, unlike switchdev, legacy mode keeps a verbs
+  # device on both the PF and every VF, so containers can do RDMA and the host
+  # still serves RoCE natively. The NIC's embedded switch does MAC-based L2
+  # forwarding in hardware: no representors, no OVS, no software datapath.
+  # Four VFs, not seven: only one is consumed today, and the old VF7 timed out
+  # in mlx5_core ENABLE_HCA and cost a minute of boot.
+  mlxVfCount = 4;
+  # VFs carry no phys_switch_id, so derive mlxlan0vN from the PF's virtfnN
+  # symlinks. Without this they take PCI-enumeration names and the container's
+  # `interfaces = ["mlxlan0v0"]` would bind whichever VF happened to enumerate
+  # first.
   mlxVfName = pkgs.writeShellScript "mlx-vf-name" ''
     set -eu
 
@@ -57,18 +66,26 @@
     exit 1
   '';
   mlxUdevRules = pkgs.writeTextFile {
-    name = "75-mlx-switchdev-names";
-    destination = "/etc/udev/rules.d/75-mlx-switchdev-names.rules";
-    text =
-      ''
-        SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="p0", NAME="${mlxPfName}"
-        SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTRS{vendor}=="0x15b3", ATTRS{device}=="0x1014", PROGRAM="${mlxVfName} %p", NAME="%c"
-      ''
-      + lib.concatStrings (lib.genList
-        (i: ''
-          SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}=="${mlxSwitchId}", ATTR{phys_port_name}=="pf0vf${toString i}", NAME="${mlxPfName}r${toString i}"
-        '')
-        mlxVfCount);
+    name = "75-mlx-vf-names";
+    destination = "/etc/udev/rules.d/75-mlx-vf-names.rules";
+    text = ''
+      SUBSYSTEM=="net", ACTION=="add", DRIVERS=="mlx5_core", ATTRS{vendor}=="0x15b3", ATTRS{device}=="0x1014", PROGRAM="${mlxVfName} %p", NAME="%c"
+    '';
+  };
+  # Pinned VF MACs. VF0 takes the arr-servers inventory identity; the driver
+  # otherwise randomises every VF MAC on each boot, which is why that container
+  # never actually had a stable identity on the network.
+  mlxVfMacs = [
+    network.hosts."arr-servers".mac
+    "52:6b:4b:0d:24:e1"
+    "52:6b:4b:0d:24:e2"
+    "52:6b:4b:0d:24:e3"
+  ];
+
+  # 10G Intel ports, MAC-pinned for the same reason. Currently unplugged.
+  i40ePorts = {
+    i40e0 = "9c:6b:00:57:30:60";
+    i40e1 = "9c:6b:00:57:30:61";
   };
 in {
   /*
@@ -353,6 +370,13 @@ in {
 
     inputs.hellas.nixosModules.default
 
+    # Parked 2026-08-08 for the switchdev -> legacy migration: this container
+    # takes SR-IOV VF mlxlan0v0 into its namespace (its whole point -- its own
+    # identity on the wire), and the migration temporarily removes SR-IOV so
+    # the PF can be brought up clean and the RoCE ceiling measured without the
+    # eswitch in the path. Restore together with legacy-mode VFs, and pin the
+    # VF MAC at the same time: it is randomised on every boot today, so this
+    # container's network identity was never actually stable.
     ../../../containers/arr-servers.nix
     # ../../../containers/gh-runner-grw.nix
 
@@ -392,7 +416,6 @@ in {
     ./spdk-storage-stack.nix
     # ConnectX-4 VF in the host namespace, so RDMA consumers have a verbs
     # device to bind on the fabric.
-    ./fabric-rdma-vf.nix
     # Safe read-only publication of the models volume (frozen snapshots, never
     # the live mount).
     ./spdk-models-snapshot.nix
@@ -441,33 +464,10 @@ in {
     mode = "0400";
   };
 
-  services.qui = {
-    enable = true;
-    openFirewall = true;
-    secretFile = "/run/secrets/qui-session";
-    settings = {
-      host = "0.0.0.0";
-      port = 7476;
-    };
-  };
-
-  # Ensure qbittorrent waits for bpool media mount
-  systemd.services.qbittorrent = {
-    bindsTo = ["mnt-Media.mount"];
-    after = ["mnt-Media.mount"];
-    unitConfig.RequiresMountsFor = ["/var/lib/qbittorrent/incomplete"];
-  };
-
-  services.qbittorrent = {
-    enable = true;
-    # Use the profile root at /var/lib/qbittorrent so qBittorrent
-    # places config under /var/lib/qbittorrent/qBittorrent/config
-    # and data under /var/lib/qbittorrent/data (avoids double-nesting).
-    profileDir = "/var/lib/qbittorrent";
-    webuiPort = 8080;
-    torrentingPort = 17026;
-    openFirewall = true;
-  };
+  # qBittorrent, qui and jellyfin moved into the arr-servers container
+  # (2026-08-09) so all media services share one sandbox. The filesystems
+  # below stay on the host: they are the bind-mount *sources* the container
+  # consumes, and the container cannot mount them itself.
 
   fileSystems."/var/lib/qbittorrent" = {
     device = "bpool/trex/downloads";
@@ -617,200 +617,59 @@ in {
       "zswap.compressor=zstd"
       "zswap.max_pool_percent=20"
     ];
+    # No switchdev/SR-IOV setup here any more: the initrd used to flip the
+    # eswitch and spawn 7 VFs before switch-root, which cost about a minute of
+    # boot (VF7 timed out in ENABLE_HCA) and existed only to serve an eswitch
+    # nothing used. Legacy mode needs nothing beyond the driver.
     initrd = {
       kernelModules = ["mlx5_core" "lm92"];
-      services.udev.packages = [mlxUdevRules];
-      systemd = {
-        storePaths = [
-          "${pkgs.iproute2}/bin/devlink"
-          "${pkgs.ethtool}/bin/ethtool"
-          "${mlxVfName}"
-        ];
-        services.mlx5-switchdev = {
-          description = "Configure Mellanox switchdev and SR-IOV in initrd";
-          wantedBy = ["initrd.target"];
-          before = ["initrd-switch-root.target"];
-          after = ["systemd-udev-trigger.service" "systemd-udevd.service"];
-          wants = ["systemd-udev-trigger.service" "systemd-udevd.service"];
-          serviceConfig = {
-            Type = "oneshot";
-            RemainAfterExit = true;
-          };
-          path = [
-            pkgs.coreutils
-            pkgs.ethtool
-            pkgs.gnugrep
-            pkgs.iproute2
-            config.boot.initrd.systemd.package
-          ];
-          script = ''
-            set -eu
-
-            PF_MAC=${mlxPfMac}
-            VF_COUNT=${toString mlxVfCount}
-            COMBINED_CHANNELS=32
-
-            find_pf() {
-              for netdev in /sys/class/net/*; do
-                [ -e "$netdev/address" ] || continue
-                [ "$(cat "$netdev/address")" = "$PF_MAC" ] || continue
-                basename "$netdev"
-                return 0
-              done
-              return 1
-            }
-
-            PF=""
-            for _ in 1 2 3 4 5 6 7 8 9 10; do
-              if PF="$(find_pf)"; then
-                break
-              fi
-              udevadm settle --timeout=2 || true
-              sleep 1
-            done
-
-            if [ -z "$PF" ]; then
-              echo "Mellanox PF with MAC $PF_MAC not found"
-              exit 1
-            fi
-
-            PCI_BDF="$(basename "$(readlink -f "/sys/class/net/$PF/device")")"
-            PCI_SYS="/sys/bus/pci/devices/$PCI_BDF"
-            PCI_DEV="pci/$PCI_BDF"
-
-            echo 0 > "$PCI_SYS/sriov_numvfs" || true
-            sleep 1
-
-            devlink dev eswitch set "$PCI_DEV" mode legacy || true
-            sleep 1
-
-            if PF="$(find_pf)"; then
-              ethtool -L "$PF" combined "$COMBINED_CHANNELS" || true
-            fi
-
-            devlink dev eswitch set "$PCI_DEV" mode switchdev
-            sleep 2
-
-            echo "$VF_COUNT" > "$PCI_SYS/sriov_numvfs"
-
-            for _ in $(seq 1 10); do
-              udevadm settle --timeout=1 || true
-
-              rep_count=0
-              for rep in /sys/class/net/${mlxPfName}r*; do
-                [ -e "$rep" ] || continue
-                rep_count=$((rep_count + 1))
-              done
-
-              vf_count=0
-              for vf in /sys/class/net/${mlxPfName}v*; do
-                [ -e "$vf" ] || continue
-                vf_count=$((vf_count + 1))
-              done
-
-              [ "$rep_count" -ge "$VF_COUNT" ] && [ "$vf_count" -ge "$VF_COUNT" ] && break
-              sleep 1
-            done
-
-            echo "Mellanox switchdev initialized on $PCI_DEV with $VF_COUNT VFs"
-          '';
-        };
-      };
     };
     blacklistedKernelModules = ["nouveau" "i915"];
   };
 
-  # Stable names for the ConnectX-4 PF and its switchdev VF representors.
-  # Keyed on phys_switch_id (ASIC-stable) so they don't follow the PCIe bus.
-  # Numbered 75- so it runs before 80-net-setup-link.rules, whose predictable
-  # naming only fires when NAME is still empty. VFs have no phys_switch_id, so a
-  # helper derives their mlxlan0vN names from the PF virtfnN symlinks.
   services.udev.packages = [mlxUdevRules];
+
+  # Legacy-mode SR-IOV needs no eswitch flip -- just the VF count and stable
+  # MACs. Ordered before network-pre so networkd and the container see named,
+  # correctly-addressed VFs.
+  systemd.services.mlx-sriov = {
+    description = "Create ConnectX-4 VFs (legacy mode) and pin their MACs";
+    wantedBy = ["multi-user.target"];
+    before = ["network-pre.target" "container@arr-servers.service"];
+    wants = ["network-pre.target"];
+    after = ["sys-subsystem-net-devices-${mlxPfName}.device"];
+    bindsTo = ["sys-subsystem-net-devices-${mlxPfName}.device"];
+    path = [pkgs.iproute2 pkgs.coreutils];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -eu
+      pf=/sys/class/net/${mlxPfName}/device
+
+      current=$(cat "$pf/sriov_numvfs")
+      if [ "$current" != "${toString mlxVfCount}" ]; then
+        echo 0 >"$pf/sriov_numvfs"
+        echo ${toString mlxVfCount} >"$pf/sriov_numvfs"
+        udevadm settle --timeout=10 || true
+      fi
+
+      ${lib.concatStrings (lib.imap0 (i: mac: ''
+        ip link set ${mlxPfName} vf ${toString i} mac ${mac}
+      '') mlxVfMacs)}
+    '';
+  };
+
+  # The PF and the i40e ports are named by systemd.network links (below),
+  # matched on permanent MAC -- no udev naming helper is needed without
+  # representors and VFs to name.
   services.udev.extraRules = ''
     # Auto-authorize IOCREST 40Gbps Thunderbolt NIC on plug-in
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{unique_id}=="c8010000-00b1-bd08-2230-ad1cc6200123", ATTR{authorized}="1"
   '';
 
-  # OVS for Mellanox switchdev mode
-  virtualisation.vswitch.enable = true;
-
-  networking.vswitches.ovs-mlx = {
-    interfaces =
-      {
-        # Uplink (PF) + VF representors — stable switchdev names (see mlx* lets).
-        ${mlxPfName} = {};
-      }
-      // lib.genAttrs mlxRepNames (_: {})
-      // lib.genAttrs i40eNames (_: {})
-      // {
-        # Internal port for host
-        ovs-host = {
-          type = "internal";
-        };
-      };
-  };
-
   networking.useDHCP = false;
-
-  # Hardware-offload the switchdev datapath.
-  #
-  # Without this, OVS switches every frame from the mlx5 VFs in software: the
-  # eswitch receives no TC fast-path entries, so all traffic is punted to the
-  # representors and forwarded by the host CPU. Measured 2026-07-30: NVMe-oF
-  # sequential reads plateaued at 2.87 GB/s (~24 Gb/s) from two *different*
-  # clients with different NICs (strix-3 via a BlueField-2 ConnectX-6,
-  # strix-4 via a plain ConnectX-5) over a 100G link, while trex's SPDK target
-  # sat at 0.64% reactor-busy and the array serves 13.0 GiB/s locally. The
-  # giveaway was `tc filter show dev mlxlan0r1 ingress` reporting zero in_hw
-  # rules with the eswitch already in switchdev mode.
-  #
-  # ovs-vswitchd reads other_config once at startup, so this has to land in the
-  # database after ovsdb is up and BEFORE vswitchd starts. --no-wait is
-  # required for exactly that reason: without it ovs-vsctl blocks waiting for a
-  # vswitchd that is not running yet.
-  systemd.services.ovs-hw-offload = {
-    description = "Enable OVS hardware offload before ovs-vswitchd starts";
-    after = ["ovsdb.service"];
-    requires = ["ovsdb.service"];
-    before = ["ovs-vswitchd.service"];
-    requiredBy = ["ovs-vswitchd.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      ${pkgs.openvswitch}/bin/ovs-vsctl --no-wait \
-        set Open_vSwitch . other_config:hw-offload=true
-      echo "hw-offload=$(${pkgs.openvswitch}/bin/ovs-vsctl --no-wait \
-        get Open_vSwitch . other_config:hw-offload)"
-    '';
-  };
-
-  # Set jumbo MTU on OVS internal port (must be done via ovs-vsctl)
-  systemd.services.ovs-host-mtu = {
-    description = "Set OVS ovs-host interface MTU to 9000";
-    after = ["ovsdb-server.service" "ovs-vswitchd.service" "ovs-mlx-netdev.service"];
-    requires = ["ovs-vswitchd.service" "ovs-mlx-netdev.service"];
-    wantedBy = ["multi-user.target"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      # Wait for interface to appear in OVS (max 30 seconds)
-      for i in $(seq 1 30); do
-        if ${pkgs.openvswitch}/bin/ovs-vsctl list interface ovs-host >/dev/null 2>&1; then
-          ${pkgs.openvswitch}/bin/ovs-vsctl set interface ovs-host mtu_request=9000
-          echo "Set ovs-host MTU to 9000"
-          exit 0
-        fi
-        echo "Waiting for ovs-host interface... ($i/30)"
-        sleep 1
-      done
-      echo "ERROR: ovs-host interface not found after 30 seconds"
-      exit 1
-    '';
-  };
 
   boot.binfmt.emulatedSystems = [
     "aarch64-linux"
@@ -830,8 +689,24 @@ in {
     options = ["mode=755" "size=16G"];
   };
 
+  # The Nix store lives on `nand4` -- the 4x Corsair MP600 array -- not on the
+  # Optane pair (2026-08-08). 212G of P1600X was simply too small: this box is
+  # the fleet's netboot server, so /nix/store is also exported to every
+  # diskless strix node (/export/nix-store in profiles/netboot-server.nix) and
+  # therefore grows with the fleet, not with trex. It shares a filesystem with
+  # /mnt/Home because the four Corsairs are whole-disk btrfs members with no
+  # partition table, so a separate root filesystem there is not possible
+  # without destroying Home.
+  #
+  # /persist stays on the Optanes, where ~10us random reads actually buy
+  # something for postgres, docker and the journal -- and with the store gone
+  # it has ~180G of headroom instead of 30G.
+  #
+  # nand4 is data raid0 across four drives with no redundancy, the same posture
+  # as the Optane pair it replaces. The store is reproducible; note that
+  # /persist is NOT covered by the syncoid jobs below, which replicate bpool.
   fileSystems."/nix" = {
-    device = "/dev/disk/by-label/trexroot";
+    device = "/dev/disk/by-label/nand4";
     fsType = "btrfs";
     neededForBoot = true;
     options = ["subvol=/nix" "compress=zstd" "noatime" "flushoncommit"];
@@ -865,9 +740,18 @@ in {
 
   # Do not let services fall through to the disposable tmpfs root if their
   # bpool datasets fail to mount.
+  # Every bindMounts source in containers/arr-servers.nix must appear here.
+  # nspawn resolves bind mounts once, at container start: if a source is not
+  # mounted yet it binds whatever empty directory sits underneath, and the
+  # container then runs happily against the wrong storage. /var/lib/jellyfin
+  # and /var/lib/radarr|sonarr|autobrr are impermanence binds; /var/lib/
+  # qbittorrent is ZFS; incomplete is the SPDK Optane volume.
   systemd.services."container@arr-servers".unitConfig.RequiresMountsFor = [
     "/var/lib/nixos-containers"
+    "/var/lib/qbittorrent"
     "/var/lib/qbittorrent/incomplete"
+    "/var/lib/jellyfin"
+    "/mnt/Media"
   ];
   systemd.services.libvirtd.unitConfig.RequiresMountsFor = ["/var/lib/libvirt"];
   systemd.services.victoriametrics.unitConfig.RequiresMountsFor = [
@@ -1203,41 +1087,22 @@ in {
         linkConfig.RequiredForOnline = "no";
       };
 
-      # Mellanox PF (100G): bring up for OVS with jumbo MTU
+      # The 100G PF carries trex's addresses directly (2026-08-08). Previously
+      # these lived on the OVS internal port ovs-host, which forced RDMA onto a
+      # separate VF; on a real netdev the verbs device comes for free and RoCE
+      # runs natively. The lan and fabric subnets deliberately share this one
+      # L2 domain, as they did on ovs-host.
+      #
+      # 192.168.25.208 is the RDMA endpoint (network.hosts."trex-rdma"). It is
+      # kept as a distinct address so every client's NVMe-oF target address is
+      # unchanged by this rework -- important because the strix nodes netboot
+      # from this host and cannot be updated in lockstep.
       "10-lan-100g" = {
         matchConfig.Name = mlxPfName;
-        linkConfig = {
-          ActivationPolicy = "up";
-          RequiredForOnline = "no";
-          MTUBytes = "9000";
-        };
-      };
-      # VFs: don't configure (will be passed to containers). They carry no
-      # phys_switch_id so they keep their enpXsYvZ names.
-      "10-mlx5-vf" = {
-        matchConfig = {
-          Driver = "mlx5_core";
-          Name = "${mlxPfName}v*";
-        };
-        linkConfig.Unmanaged = "yes";
-      };
-      # VF representors: bring up for OVS
-      "10-mlx5-rep" = {
-        matchConfig.Name = "${mlxPfName}r*";
-        linkConfig = {
-          ActivationPolicy = "up";
-          RequiredForOnline = "no";
-        };
-      };
-      # OVS internal port for host connectivity
-      "10-ovs-host" = {
-        matchConfig.Name = "ovs-host";
-        # The existing 100G LAN attachment also receives the fabric subnet
-        # through the CRS804 cage-4 10G access uplink. Two subnets share this
-        # L2 domain deliberately; fabric peers then use the direct ASIC path.
         address = [
           (network.cidrOf "lan" self.addresses.lan)
           (network.cidrOf "fabric" self.addresses.fabric)
+          (network.cidrOf "fabric" network.hosts."trex-rdma".addresses.fabric)
         ];
         routes = [
           {Gateway = network.routerIp;}
@@ -1256,13 +1121,26 @@ in {
         # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
         # other devices on the LAN (e.g. Apple devices acting as Tailscale
         # subnet routers) advertise ULA prefixes that briefly get autoconfigured
-        # and then trigger ICMPv6 "advertised our address" dmesg spam when the
-        # host's own NAs are reflected back through OVS/the Mellanox eswitch.
+        # and then trigger ICMPv6 "advertised our address" dmesg spam.
         ipv6AcceptRAConfig = {
           PrefixAllowList = "2a02:168:58b4::/64";
         };
-        linkConfig.RequiredForOnline = "routable";
+        linkConfig = {
+          ActivationPolicy = "up";
+          RequiredForOnline = "routable";
+          MTUBytes = "9000";
+        };
       };
+
+      # 10G Intel ports: plain DHCP clients, not bridged to anything. Both are
+      # unplugged today (carrier=0, zero bytes); they used to be OVS ports for
+      # no reason anyone could name.
+      "30-i40e" = {
+        matchConfig.Name = "i40e*";
+        networkConfig.DHCP = "yes";
+        linkConfig.RequiredForOnline = "no";
+      };
+
       # IOCREST 40Gbps TB NIC (AQC113, tunneled PCIe via Thunderbolt): bridge to LAN
       "30-aqc-bridge" = {
         matchConfig.Driver = "atlantic";
