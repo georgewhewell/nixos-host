@@ -63,11 +63,18 @@
   # remains the hard backstop. Note ublk does NOT propagate a live lvol
   # resize: growing requires umount + ublk stop/start + xfs_growfs.
   modelsSnapshot = {
-    name = "models-20260731-002801";
-    uuid = "fdbc2781-0dc3-4338-8b14-177e5a85d8ca";
+    name = "models-20260731-172720";
+    uuid = "29e791a0-26e8-43a3-a0d3-5743d79c9a8f";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.
   # The default 8192 leaves only eight buffers, while a new channel needs 128.
   iobufSmallPoolCount = 16384;
+
+  # SPDK 26.05 also accounts the large-buffer caches strictly. The 1024
+  # default cannot create the namespace channel at all. At 4096, the live
+  # topology's cache capacities total 2848 entries (accel 272, bdev 272,
+  # ublk 256, NVMf/RDMA 2048), leaving 1248 entries beyond those caches.
+  # At 132 KiB each the full pool is ~528 MiB, inside the 6 GiB DPDK arena.
+  iobufLargePoolCount = 4096;
 }

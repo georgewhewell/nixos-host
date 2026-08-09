@@ -259,7 +259,10 @@ lib: rec {
     # Traffic leaves via the VF's switchdev representor into the ovs-mlx bridge.
     # MAC last octet 0xd0 == 208 to mirror the host octet.
     "trex-rdma" = {
-      mac = "52:6b:4b:0d:24:d0";
+      # Now simply a second fabric address on trex's ConnectX-4 PF, not an
+      # SR-IOV VF (2026-08-08 -- switchdev/OVS removed). Kept as a distinct
+      # host record so every client's NVMe-oF target address is unchanged.
+      mac = "50:6b:4b:0d:24:86";
       addresses = {fabric = 208;};
     };
     # fuckup's RoCE endpoint: VF 0 on the live ConnectX-4 Lx port. The PF

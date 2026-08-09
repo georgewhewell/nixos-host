@@ -67,7 +67,12 @@
     # Never let systemd remove /run/spdk (and the RPC socket) out from
     # under the surviving daemon.
     RuntimeDirectoryPreserve = true;
-    Restart = "no";
+    # A crashed target used to remain dead indefinitely while the successful
+    # oneshot assembly/export units continued to advertise stale state. Restart
+    # the empty --wait-for-rpc daemon; BindsTo edges in spdk-storage-stack.nix
+    # tear down and then retry the stateful assembly/export transaction.
+    Restart = "on-failure";
+    RestartSec = "5s";
     TimeoutStartSec = "120s";
     OOMScoreAdjust = -1000;
   };
@@ -118,7 +123,7 @@ in {
     wantedBy = ["initrd.target"];
     after = ["systemd-modules-load.service" "dev-hugepages1G.mount"];
     requires = ["dev-hugepages1G.mount"];
-    unitConfig = survivalUnitConfig;
+    unitConfig = survivalUnitConfig // {StartLimitIntervalSec = 0;};
     inherit environment serviceConfig;
   };
 
@@ -133,6 +138,7 @@ in {
       // {
         # If a future generation drops this unit, leave the daemon running.
         X-StopOnRemoval = false;
+        StartLimitIntervalSec = 0;
       };
     inherit environment serviceConfig;
     # The canonical pairing (plymouth precedent): nixos-rebuild must never

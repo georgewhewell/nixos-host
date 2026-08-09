@@ -7,6 +7,7 @@
   storage = import ./spdk-storage-constants.nix;
   inherit
     (storage)
+    iobufLargePoolCount
     iobufSmallPoolCount
     incompleteLvol
     incompleteMount
@@ -24,8 +25,16 @@
 
   rdma = network.hosts."trex-rdma";
   rdmaAddress = network.ipOf "fabric" rdma.addresses.fabric;
-  rdmaInterface = "mlxlan0v1";
-  rdmaVerbsDevice = "mlx5_1";
+  # The PF itself (2026-08-08). Was the SR-IOV VF mlxlan0v1, which existed only
+  # because an OVS internal port has no verbs device and the switchdev PF had
+  # none either. With the eswitch gone the PF is a normal netdev with a normal
+  # verbs device, and RoCE no longer traverses a representor.
+  rdmaInterface = "mlxlan0";
+  # The verbs device name (mlx5_N) is handed out in mlx5 probe order, not
+  # derived from any hardware-stable id, so unlike mlxlan0v1 it can shift when
+  # the card is re-seated or the PCIe tree is re-walked. Derive it from the
+  # VF's own sysfs node at runtime instead of pinning "mlx5_1" here — see
+  # machines/x86/trex/default.nix for the same rule applied to netdev names.
 
   modelsMountUnit = "mnt-optane-models.mount";
   incompleteMountUnit = "var-lib-qbittorrent-incomplete.mount";
@@ -63,8 +72,10 @@
       # member UUIDs cannot match on the next boot.
       methods=$(rpc rpc_get_methods --current)
       if jq -e 'index("framework_start_init") != null' <<<"$methods" >/dev/null; then
-        echo "spdk-storage: sizing the iobuf small pool before framework init"
-        rpc iobuf_set_options --small-pool-count ${toString iobufSmallPoolCount} >/dev/null
+        echo "spdk-storage: sizing the iobuf pools before framework init"
+        rpc iobuf_set_options \
+          --small-pool-count ${toString iobufSmallPoolCount} \
+          --large-pool-count ${toString iobufLargePoolCount} >/dev/null
         echo "spdk-storage: enabling deterministic NVMe UUID generation before framework init"
         rpc bdev_nvme_set_options --generate-uuids >/dev/null
         rpc framework_start_init >/dev/null
@@ -240,14 +251,26 @@
         timeout 15s spdk-rpc -s ${rpcSocket} "$@"
       }
 
-      # RDMA transports enumerate verbs devices exactly once. Do not create
-      # the transport until the dedicated VF has both its address and mlx5_1.
-      echo "spdk-export: waiting at most 30 seconds for ${rdmaInterface}, ${rdmaAddress}, and ${rdmaVerbsDevice}"
+      # Name of the verbs device backing the VF, or failure if it has not
+      # registered with the RDMA stack yet.
+      verbs_device_of_vf() {
+        for ibdev in /sys/class/net/${rdmaInterface}/device/infiniband/*; do
+          [ -e "$ibdev" ] || continue
+          basename "$ibdev"
+          return 0
+        done
+        return 1
+      }
+
+      # RDMA transports enumerate verbs devices exactly once. Do not create the
+      # transport until the dedicated VF has both its address and a verbs device.
+      echo "spdk-export: waiting at most 30 seconds for ${rdmaInterface}, ${rdmaAddress}, and its verbs device"
       fabric_ready=false
+      verbs_device=""
       for _ in $(seq 1 30); do
         if ip -4 -o address show dev ${rdmaInterface} |
           awk '{print $4}' | grep -qx '${rdmaAddress}/24' \
-          && [ -e /sys/class/infiniband/${rdmaVerbsDevice}/device/net/${rdmaInterface} ]; then
+          && verbs_device="$(verbs_device_of_vf)"; then
           fabric_ready=true
           break
         fi
@@ -257,6 +280,7 @@
         echo "spdk-export: RDMA VF is not ready; transport was deliberately not created" >&2
         exit 1
       }
+      echo "spdk-export: ${rdmaInterface} is up on verbs device $verbs_device"
 
       transports=$(rpc nvmf_get_transports)
       if jq -e 'any(.[]; .trtype == "RDMA")' <<<"$transports" >/dev/null; then
@@ -271,21 +295,75 @@
         'any(.[]; .nqn == $nqn)' <<<"$subsystems" >/dev/null; then
         rpc nvmf_create_subsystem ${lib.escapeShellArg modelsNqn} \
           -s ${lib.escapeShellArg modelsSerial} -a >/dev/null
-        subsystems=$(rpc nvmf_get_subsystems)
       fi
 
-      if ! jq -e --arg nqn ${lib.escapeShellArg modelsNqn} \
-        --arg address ${lib.escapeShellArg rdmaAddress} '
-          any(.[]; .nqn == $nqn and
-            any(.listen_addresses[]?;
-              .trtype == "RDMA"
-              and .adrfam == "IPv4"
-              and .traddr == $address
-              and .trsvcid == "4420"))
-        ' <<<"$subsystems" >/dev/null; then
-        rpc nvmf_subsystem_add_listener ${lib.escapeShellArg modelsNqn} \
-          -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null
-      fi
+      listener_present() {
+        listener_address=$1
+        listener_subsystems=$(rpc nvmf_get_subsystems) || return $?
+        if jq -e --arg nqn ${lib.escapeShellArg modelsNqn} \
+          --arg address "$listener_address" '
+            any(.[]; .nqn == $nqn and
+              any(.listen_addresses[]?;
+                .trtype == "RDMA"
+                and .adrfam == "IPv4"
+                and .traddr == $address
+                and .trsvcid == "4420"))
+          ' <<<"$listener_subsystems" >/dev/null; then
+          return 0
+        else
+          listener_rc=$?
+          # jq -e uses 1 for a valid false result. Parse/RPC failures are not
+          # evidence that the listener is absent and must propagate.
+          [ "$listener_rc" -eq 1 ] && return 1
+          return "$listener_rc"
+        fi
+      }
+
+      remove_listener_address() {
+        remove_address=$1
+        if listener_present "$remove_address"; then
+          rpc nvmf_subsystem_remove_listener ${lib.escapeShellArg modelsNqn} \
+            -t rdma -f ipv4 -a "$remove_address" -s 4420 >/dev/null
+        else
+          listener_rc=$?
+          [ "$listener_rc" -eq 1 ] || return "$listener_rc"
+        fi
+      }
+
+      ensure_listener_address() {
+        ensure_address=$1
+        if listener_present "$ensure_address"; then
+          return 0
+        else
+          listener_rc=$?
+          [ "$listener_rc" -eq 1 ] || return "$listener_rc"
+          rpc nvmf_subsystem_add_listener ${lib.escapeShellArg modelsNqn} \
+            -t rdma -f ipv4 -a "$ensure_address" -s 4420 >/dev/null
+        fi
+      }
+
+      remove_listener() { remove_listener_address ${lib.escapeShellArg rdmaAddress}; }
+      ensure_listener() { ensure_listener_address ${lib.escapeShellArg rdmaAddress}; }
+
+      # Close the listener before observing controller state. This order is the
+      # lock: once removal completes no new controller can race a zero count
+      # and enter while namespaces are being changed. Two zero observations
+      # also catch a connection handshake which was already in flight.
+      quiesce_namespaces() {
+        reason=$1
+        remove_listener
+        for _ in 1 2; do
+          controllers=$(rpc nvmf_subsystem_get_controllers ${lib.escapeShellArg modelsNqn} \
+            | jq -r "length")
+          if [ "$controllers" -gt 0 ]; then
+            echo "spdk-export: $reason pending but $controllers controller(s) are connected." >&2
+            echo "spdk-export: listener is closed; bounce the clients and the retry timer" >&2
+            echo "spdk-export: will continue once the controller count reaches zero." >&2
+            exit 1
+          fi
+          sleep 1
+        done
+      }
 
       # Export the PINNED snapshot from spdk-storage-constants.nix, not simply
       # the newest one. Clients mount /dev/disk/by-id/nvme-uuid.<uuid>, so what
@@ -309,25 +387,20 @@
       fi
 
       subsystems=$(rpc nvmf_get_subsystems)
-      mapfile -t current_nsids < <(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} '
-          .[] | select(.nqn == $nqn) | .namespaces[]?.nsid
-        ' <<<"$subsystems")
 
       if [ -z "$snapshot" ]; then
-        for nsid in "''${current_nsids[@]}"; do
-          rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
-        done
-        echo "spdk-export: WARNING: no existing models snapshot found; ${modelsNqn} has zero namespaces" >&2
-        exit 0
+        remove_listener
+        echo "spdk-export: WARNING: no existing models snapshot found; listener is closed" >&2
+        echo "spdk-export: preserving the last-known namespace without mutation" >&2
+        exit 1
       fi
 
       snapshot_bdev=$(rpc bdev_get_bdevs -b "$snapshot")
       if ! jq -e '.[0].supported_io_types.write == false' \
         <<<"$snapshot_bdev" >/dev/null; then
-        for nsid in "''${current_nsids[@]}"; do
-          rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
-        done
-        echo "spdk-export: refusing writable bdev $snapshot; subsystem was left with zero namespaces" >&2
+        remove_listener
+        echo "spdk-export: refusing writable bdev $snapshot; listener is closed" >&2
+        echo "spdk-export: preserving the last-known namespace without mutation" >&2
         exit 1
       fi
       snapshot_uuid=$(jq -er '.[0].uuid' <<<"$snapshot_bdev")
@@ -337,13 +410,12 @@
       # is not there, and the failure would appear on the clients rather than
       # here. Refuse instead, and say exactly what to correct.
       if [ "$snapshot_uuid" != ${lib.escapeShellArg modelsSnapshot.uuid} ]; then
-        for nsid in "''${current_nsids[@]}"; do
-          rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
-        done
+        remove_listener
         echo "spdk-export: pin mismatch in spdk-storage-constants.nix." >&2
         echo "spdk-export:   modelsSnapshot.name = ${modelsSnapshot.name}" >&2
         echo "spdk-export:   modelsSnapshot.uuid = ${modelsSnapshot.uuid}" >&2
         echo "spdk-export:   that snapshot's real uuid = $snapshot_uuid" >&2
+        echo "spdk-export: listener closed; preserving the last-known namespace" >&2
         exit 1
       fi
 
@@ -353,18 +425,18 @@
             any(.namespaces[]?; .bdev_name == $uuid))
         ' <<<"$subsystems")
 
-      # THE DRAIN GUARD. SPDK 26.01's spdk_tgt SEGVs in libspdk_bdev_lvol when
-      # namespaces are swapped while controllers are connected or connecting --
-      # reproduced twice on 2026-07-31 (00:04 and 00:30, the second taking the
-      # whole host down via hung_task_panic). Steady-state serving and
-      # client-initiated disconnects are fine; only the live swap kills it. So:
+      # THE DRAIN GUARD. The deployed SPDK 26.01 spdk_tgt SEGV'd in
+      # libspdk_bdev_lvol when namespaces were swapped while controllers were
+      # connected or connecting -- reproduced twice on 2026-07-31 (00:04 and
+      # 00:30, the second taking the whole host down via hung_task_panic).
+      # Upgrading to 26.05 does not erase that operational evidence. So:
       # never touch namespaces while anyone is connected. If a swap is pending
-      # and controllers exist, drop the listener (blocks reconnects), say so,
-      # and let the retry timer finish the swap once the last controller is
-      # gone. Operators bounce the clients (reboot the strix fleet / restart
-      # nvme-trex-models); convergence is automatic within a minute of the
-      # drain. George's call (2026-07-31): a deliberate client bounce per pin
-      # bump beats crashing weirdly.
+      # close the listener first (blocks reconnects), then observe the
+      # controller count, and let the retry timer finish the swap once the last
+      # controller is gone. Operators bounce the clients (reboot the strix
+      # fleet / restart nvme-trex-models); convergence is automatic within a
+      # few retry intervals. George's call (2026-07-31): a deliberate client
+      # bounce per pin bump beats crashing weirdly.
       needs_swap=false
       [ "$selected_present" != true ] && needs_swap=true
       stale_count=$(jq -r --arg nqn ${lib.escapeShellArg modelsNqn} \
@@ -375,17 +447,7 @@
       [ "$stale_count" -gt 0 ] && needs_swap=true
 
       if [ "$needs_swap" = true ]; then
-        controllers=$(rpc nvmf_subsystem_get_controllers ${lib.escapeShellArg modelsNqn} \
-          | jq -r "length")
-        if [ "$controllers" -gt 0 ]; then
-          rpc nvmf_subsystem_remove_listener ${lib.escapeShellArg modelsNqn} \
-            -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null 2>&1 || true
-          echo "spdk-export: namespace swap pending but $controllers controller(s) are connected." >&2
-          echo "spdk-export: listener removed to block reconnects; bounce the clients" >&2
-          echo "spdk-export: (reboot strix / restart nvme-trex-models) and the retry timer" >&2
-          echo "spdk-export: will complete the swap and re-listen once the count reaches zero." >&2
-          exit 0
-        fi
+        quiesce_namespaces "namespace swap"
         if [ "$selected_present" != true ]; then
           rpc nvmf_subsystem_add_ns ${lib.escapeShellArg modelsNqn} "$snapshot" >/dev/null
         fi
@@ -398,20 +460,9 @@
         for nsid in "''${stale_nsids[@]}"; do
           rpc nvmf_subsystem_remove_ns ${lib.escapeShellArg modelsNqn} "$nsid" >/dev/null
         done
-        # The pending-swap path above may have removed the listener on an
-        # earlier run; the listener-ensure block earlier in this script only
-        # runs before the swap check, so re-add it now that the swap is done.
-        subsystems=$(rpc nvmf_get_subsystems)
-        if ! jq -e --arg nqn ${lib.escapeShellArg modelsNqn} \
-          --arg address ${lib.escapeShellArg rdmaAddress} '
-            any(.[]; .nqn == $nqn and
-              any(.listen_addresses[]?; .traddr == $address and .trsvcid == "4420"))
-          ' <<<"$subsystems" >/dev/null; then
-          rpc nvmf_subsystem_add_listener ${lib.escapeShellArg modelsNqn} \
-            -t rdma -f ipv4 -a ${lib.escapeShellArg rdmaAddress} -s 4420 >/dev/null
-        fi
       fi
 
+      ensure_listener
       echo "spdk-export: LISTEN ${rdmaAddress}:4420; exporting read-only snapshot $snapshot"
     '';
   };
@@ -450,7 +501,10 @@ in {
   systemd.services.spdk-storage-assemble = {
     description = "Assemble SPDK Optane RAID, lvstore, and ublk disks";
     after = ["spdk-tgt.service"];
-    requires = ["spdk-tgt.service"];
+    # Unlike Requires, BindsTo also deactivates this successful oneshot when
+    # the target disappears. Its timer can then replay the assembly transaction
+    # after spdk-tgt restarts instead of leaving stale active/exited state.
+    bindsTo = ["spdk-tgt.service"];
     unitConfig = {
       OnSuccess = [
         modelsMountUnit
@@ -479,7 +533,7 @@ in {
     wantedBy = ["timers.target"];
     timerConfig = {
       OnBootSec = "2s";
-      OnUnitInactiveSec = "1min";
+      OnUnitInactiveSec = "10s";
       AccuracySec = "1s";
       Unit = "spdk-storage-assemble.service";
     };
@@ -516,7 +570,9 @@ in {
       "systemd-networkd.service"
       "sys-subsystem-net-devices-${rdmaInterface}.device"
     ];
-    requires = ["spdk-storage-assemble.service"];
+    # Follow assembly down so a target crash cannot leave a stale successful
+    # export unit which its OnUnitInactiveSec timer will never retry.
+    bindsTo = ["spdk-storage-assemble.service"];
     unitConfig.StartLimitIntervalSec = 0;
     serviceConfig = {
       Type = "oneshot";
@@ -531,7 +587,7 @@ in {
     wantedBy = ["timers.target"];
     timerConfig = {
       OnBootSec = "5s";
-      OnUnitInactiveSec = "1min";
+      OnUnitInactiveSec = "10s";
       AccuracySec = "1s";
       Unit = "spdk-models-export.service";
     };
@@ -540,18 +596,13 @@ in {
   # These consumers retain RequiresMountsFor, but they are timer-started rather
   # than members of a boot target. Missing Optane storage makes the service
   # fail and retry without ever making multi-user.target wait.
-  systemd.services.qbittorrent.wantedBy = lib.mkForce [];
-  systemd.timers.qbittorrent-storage = {
-    description = "Start qBittorrent when its Optane incomplete mount is available";
-    wantedBy = ["timers.target"];
-    timerConfig = {
-      OnBootSec = "15s";
-      OnUnitInactiveSec = "1min";
-      AccuracySec = "1s";
-      Unit = "qbittorrent.service";
-    };
-  };
-
+  #
+  # qBittorrent's own service/timer pair was removed here on 2026-08-09: it now
+  # runs inside the arr-servers container, and merely *declaring*
+  # systemd.services.qbittorrent on the host instantiated a unit for a service
+  # that no longer exists there. The container timer below already gates on the
+  # same Optane mount, and the container's own systemd starts qBittorrent once
+  # nspawn has bound /var/lib/qbittorrent/incomplete into it.
   systemd.services."container@arr-servers".wantedBy = lib.mkForce [];
   systemd.timers.arr-servers-storage = {
     description = "Start arr-servers when its Optane incomplete mount is available";

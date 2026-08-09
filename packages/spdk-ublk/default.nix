@@ -1,5 +1,7 @@
 {
   dpdk,
+  fetchFromGitHub,
+  help2man,
   lib,
   liburing,
   meson,
@@ -19,12 +21,20 @@
   });
 in
 
-# nixpkgs' SPDK 26.01 package currently links against a newer external DPDK
-# than SPDK accepts at runtime.  Use the DPDK revision vendored and tested by
-# the SPDK release, and enable the ublk target needed to put kernel XFS above
-# an SPDK bdev.
+# SPDK 26.05 and nixpkgs both use a DPDK 26.03 base, but SPDK's vendored fork
+# carries its release-tested fixes. Use that fork, and enable the ublk target
+# needed to put kernel XFS above an SPDK bdev.
 spdk.overrideAttrs (old: {
   pname = "spdk-ublk";
+  version = "26.05";
+
+  src = fetchFromGitHub {
+    owner = "spdk";
+    repo = "spdk";
+    tag = "v26.05";
+    hash = "sha256-cTferOD+UW/t6ClrgmKdHKpfYc3iWwE31WedD3LsWoY=";
+    fetchSubmodules = true;
+  };
 
   patches =
     (old.patches or [ ])
@@ -35,13 +45,24 @@ spdk.overrideAttrs (old: {
       ./initrd-compat.patch
     ];
 
-  # Fail loudly if the patch above was silently skipped.
-  postPatch =
-    (old.postPatch or "")
-    + ''
-      grep -q cpu_lock_dir lib/event/app.c
-      grep -q initrd-release lib/event/app.c
-    '';
+  # nixpkgs 26.01's postPatch matches the old uv command. SPDK 26.05 added
+  # USE_SYSTEM_PYTHON and DESTDIR; replace that whole uv prefix so `--system`
+  # cannot leak into pip while retaining staged-install path semantics.
+  postPatch = ''
+    patchShebangs .
+    substituteInPlace python/Makefile \
+      --replace-fail "uv pip install \$(USE_SYSTEM_PYTHON) --prefix=\$(DESTDIR)\$(CONFIG_PREFIX)" \
+                     "python3 -m pip install --no-deps --no-build-isolation --prefix=\$(DESTDIR)\$(CONFIG_PREFIX)"
+
+    # Fail loudly if the initrd compatibility patch was silently skipped.
+    grep -q cpu_lock_dir lib/event/app.c
+    grep -q initrd-release lib/event/app.c
+  '';
+
+  # The 26.01 expression forced AS=nasm, while stdenv otherwise exports AS=as.
+  # ISA-L 2.32 treats either as a user-supplied assembler and uses the wrong
+  # feature probe. Unset it so native NASM detection uses the correct syntax.
+  preConfigure = "unset AS";
 
   buildInputs =
     builtins.filter (input: input != dpdk) (old.buildInputs or [ ])
@@ -56,7 +77,10 @@ spdk.overrideAttrs (old: {
       meson
       ninja
       procps
+      help2man
+      python3.pkgs.jinja2
       python3.pkgs.pyelftools
+      python3.pkgs.tabulate
     ];
 
   # Meson/Ninja are tools for the vendored DPDK sub-build.  SPDK itself uses
