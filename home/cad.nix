@@ -62,6 +62,11 @@ in {
     freecad-wayland
     openscad-unstable
 
+    # 3D printing: slicer for the Bambu printer (from nixpkgs; the
+    # proprietary networking plugin is not shipped — open-bamboo-networking
+    # is a possible follow-up if cloud/LAN connectivity is needed).
+    bambu-studio
+
     # FreeCAD <-> AI via the Robust MCP bridge. Provides the `freecad-mcp`
     # server; install the matching "Robust MCP Bridge" workbench inside
     # FreeCAD via Tools -> Addon Manager.

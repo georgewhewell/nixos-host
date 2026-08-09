@@ -107,6 +107,11 @@ in
     ".codex/AGENTS.md".source = ./ai-agent-instructions.md;
     ".claude/CLAUDE.md".source = ./ai-agent-instructions.md;
     ".pi/agent/AGENTS.md".source = ./ai-agent-instructions.md;
+    # agy (Google antigravity-cli) and opencode read their own conventional
+    # paths, so the same file has to be linked there too or those two agents
+    # start with no environment guidance at all.
+    ".gemini/GEMINI.md".source = ./ai-agent-instructions.md;
+    ".config/opencode/AGENTS.md".source = ./ai-agent-instructions.md;
 
     # pi-coding-agent global settings. No home-manager module exists yet, so
     # manage the JSON directly. Note: the store symlink is read-only, so pi's
