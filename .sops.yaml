@@ -8,10 +8,10 @@ keys:
   - &trex age1zzzz6c85g7p2r57k0hkejs6097k8thqajt42pmj5xnp8l2h0v9qs7f5qsy      # trex (192.168.23.8)
   - &bluefield2 age1pk6nzayec4qlrgl4c9ppq5scnfxqvkuyq67f3wzupe40euzmsc0sqv3yge # bluefield2 (192.168.23.22)
   - &fuckup age1ykqrhesjvasdz8hr2yguveevh5prdt2hxfchsa8d29np9zc5udfqmt8gln   # fuckup
-  # strix keys are TPM-sealed netboot identities (profiles/netboot-host-keys/),
-  # enrolled 2026-07-17; re-enroll + updatekeys if an fTPM gets cleared.
-  - &strix-1 age1ywqwxaujjs923c0lsj35x4dd8f2e7rqce4cad2zckg5j8cfknvus822wgt  # strix-1
-  - &strix-2 age1zzhcnnvkxp2e3uu7ee5hgxjpvz2djk77sfpmq3p5h5um76cawf8qul36ga  # strix-2
+  # strix keys are TPM-sealed netboot identities (profiles/netboot-host-keys/).
+  # strix-1/2 rotated 2026-07-31; re-enroll + updatekeys if an fTPM gets cleared.
+  - &strix-1 age1gnp3jhva7gv0dqdame33fvpeam9lt47rj3nqgujgynh3m7k6lyxqvdmzq0  # strix-1
+  - &strix-2 age18jjkq5kttpy9dhvn64s9ht7e0vndqx6glx43uc3xsd9q0ard5ffqta0jvn  # strix-2
   - &strix-3 age1edvqxtg7a28w3sjvl2g59cz9sh2l9n5zsl8ad0x20cdqvqnyg9aqc970x6  # strix-3
   - &strix-4 age1xn4v4pxxvs2mtphvd0wy95qde0q7cuvj4nht8gt7y7wnmhd2nusss7h9en  # strix-4
   - &rock-5b age10zjqq6aevnwg9xkmpeq40u9utx8k09gw5r4qkrkvrc9hmjdv8szqre99zq  # rock-5b (192.168.23.18)
