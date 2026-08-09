@@ -82,7 +82,7 @@ EOF
 
       ${pkgs.gnused}/bin/sed -i \
         -e 's|url = "git+file:///mnt/Home/src/node?shallow=1";|url = "path:/tmp/strix-install-stubs/hellas";|' \
-        -e 's|url = "path:/mnt/Home/src/nixos-nanokvm";|url = "path:/tmp/strix-install-stubs/nanokvm";|' \
+        -e 's|url = "git+file:///mnt/Home/src/nixos-nanokvm?shallow=1";|url = "path:/tmp/strix-install-stubs/nanokvm";|' \
         "$staged/flake.nix"
 
       (

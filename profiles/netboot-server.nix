@@ -97,9 +97,10 @@ let
   '';
 in
 {
-  # Serves diskless strix machines: read-only /nix/store and model trees over
-  # NFSv4.2, plus the iPXE boot files over HTTP. Model acquisition happens on
-  # trex against /models; compute clients never mutate the cache.
+  # Serves diskless strix machines: read-only /nix/store over NFSv4.2 plus the
+  # iPXE boot files over HTTP. Strix model storage is separate and travels only
+  # over the pinned NVMe/RDMA path configured by the machine module. The model
+  # export below remains for non-Strix LAN clients.
 
   fileSystems."/export/nix-store" = {
     device = "/nix/store";
@@ -122,8 +123,6 @@ in
 
   systemd.tmpfiles.rules = [
     "d /models 0755 root root -"
-    "d /models/.cache 0775 grw users -"
-    "d /models/.cache/huggingface 0775 grw users -"
     "L+ ${stateDir}/picoclaw-usb-live - - - - ${picoclawUsbLive}"
   ] ++ lib.mapAttrsToList
     (name: image: "L+ ${stateDir}/${name} - - - - ${image}")

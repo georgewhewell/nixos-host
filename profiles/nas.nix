@@ -1,5 +1,9 @@
 {pkgs, network, ...}: let
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+  # Point-to-point USB gadget network used by SG2002 development boards.
+  # NFSv4 clients must be allowed through the fsid=0 pseudo-root as well
+  # as the individual /export/nix-store export in netboot-server.nix.
+  nanokvmUsbCidr = "10.55.0.0/24";
 in {
   fileSystems."/mnt/Media" = {
     device = "bpool/root/Media";
@@ -64,7 +68,7 @@ in {
     server = {
       enable = true;
       exports = ''
-        /export                ${lanCidr}(rw,all_squash,fsid=0,no_subtree_check)
+        /export                ${lanCidr}(rw,all_squash,fsid=0,no_subtree_check) ${nanokvmUsbCidr}(ro,all_squash,fsid=0,no_subtree_check)
         /export/media          ${lanCidr}(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
         /export/home           ${lanCidr}(rw,nohide,all_squash,anonuid=1000,anongid=1000,insecure,no_subtree_check)
       '';
