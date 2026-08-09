@@ -73,6 +73,74 @@ in {
     '';
   };
 
+  # RemainAfterExit records a successful connect, not the continued existence
+  # of its controller. Reconcile the NQN and pinned namespace so target loss
+  # cannot leave a permanently stale active/exited client unit.
+  systemd.services.nvme-trex-models-reconcile = {
+    description = "Reconcile trex models NVMe/RDMA connection";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    path = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.systemd
+    ];
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig.Type = "oneshot";
+    script = ''
+      set -euo pipefail
+
+      nqn_controller_live() {
+        for subsystem in /sys/class/nvme-subsystem/*; do
+          [ -r "$subsystem/subsysnqn" ] || continue
+          read -r subsystem_nqn <"$subsystem/subsysnqn"
+          [ "$subsystem_nqn" = ${nqn} ] || continue
+          for controller in "$subsystem"/nvme*; do
+            [ -r "$controller/state" ] || continue
+            read -r controller_state <"$controller/state"
+            [ "$controller_state" = live ] && return 0
+          done
+        done
+        return 1
+      }
+
+      state=$(systemctl show --property=ActiveState --value nvme-trex-models.service)
+      [ "$state" = activating ] && exit 0
+
+      mount_was_active=false
+      systemctl is-active --quiet 'mnt-trex\x2dmodels.mount' \
+        && mount_was_active=true
+
+      if [ "$state" = active ] && [ -b ${device} ] && nqn_controller_live; then
+        if [ "$mount_was_active" = false ] \
+          && ! systemctl is-active --quiet 'mnt-trex\x2dmodels.automount'; then
+          echo "models connection is live but its lazy automount is not; restarting it" >&2
+          systemctl restart 'mnt-trex\x2dmodels.automount'
+        fi
+        exit 0
+      fi
+
+      echo "models connector, live controller, or pinned block device is absent; reconnecting" >&2
+      systemctl restart nvme-trex-models.service
+      if [ "$mount_was_active" = true ]; then
+        systemctl restart 'mnt-trex\x2dmodels.mount'
+      else
+        systemctl start 'mnt-trex\x2dmodels.automount'
+      fi
+    '';
+  };
+
+  systemd.timers.nvme-trex-models-reconcile = {
+    description = "Retry stale trex models NVMe/RDMA clients";
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnBootSec = "30s";
+      OnUnitInactiveSec = "1min";
+      AccuracySec = "1s";
+      Unit = "nvme-trex-models-reconcile.service";
+    };
+  };
+
   fileSystems."/mnt/trex-models" = {
     inherit device;
     fsType = "xfs";

@@ -82,9 +82,9 @@ in
 
   programs.gpu-screen-recorder.enable = true;
 
-  # Shared read-only model cache served by trex (same /models the strix
-  # netboot nodes mount), so GPU jobs here consume the same snapshot instead
-  # of a local HF cache. trex exports /export/strix-models to the LAN.
+  # Shared read-only model cache served by trex instead of a local HF cache.
+  # Strix nodes do not use this NFS path; they mount the pinned NVMe/RDMA
+  # snapshot directly.
   fileSystems."/models" = {
     device = "${network.primaryIp network.hosts.trex}:/strix-models";
     fsType = "nfs";
