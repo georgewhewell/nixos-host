@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${MIKROTIK_100G_HOST:-192.168.23.9}"
+user="${MIKROTIK_100G_USER:-admin}"
+expected_fingerprint="SHA256:Aaiw03D1EKCVo903WYxe/XUg2wodIWKqJLonyYAVGN8"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+config="${repo_root}/machines/routeros/crs510/config.rsc"
+remote_config="crs510-nixos-config.rsc"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/mikrotik-100g-apply-config [--dry-run|--apply]
+
+Authenticates with the SSH agent (the CRS510 is key-auth only).
+EOF
+}
+
+mode="${1:---dry-run}"
+case "${mode}" in
+  --dry-run|--apply) ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+for command in ssh ssh-keyscan ssh-keygen scp; do
+  if ! command -v "${command}" >/dev/null 2>&1; then
+    echo "Missing required command: ${command}" >&2
+    exit 1
+  fi
+done
+
+known_hosts="$(mktemp)"
+trap 'rm -f "${known_hosts}"' EXIT
+ssh-keyscan -T 5 "${host}" >"${known_hosts}" 2>/dev/null
+actual_fingerprint="$(ssh-keygen -lf "${known_hosts}" -E sha256 | awk 'NR == 1 { print $2 }')"
+if [[ "${actual_fingerprint}" != "${expected_fingerprint}" ]]; then
+  echo "Refusing connection: unexpected CRS510 SSH host-key fingerprint" >&2
+  echo "Expected: ${expected_fingerprint}" >&2
+  echo "Received: ${actual_fingerprint:-none}" >&2
+  exit 1
+fi
+
+ssh_opts=(
+  -o StrictHostKeyChecking=yes
+  -o UserKnownHostsFile="${known_hosts}"
+  -o ConnectTimeout=10
+)
+
+scp -O "${ssh_opts[@]}" "${config}" "${user}@${host}:${remote_config}"
+
+if [[ "${mode}" == "--dry-run" ]]; then
+  ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/import file-name=${remote_config} verbose=yes dry-run"
+else
+  ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/export file=crs510-before-nixos-config"
+  ssh -n "${ssh_opts[@]}" "${user}@${host}" \
+    "/import file-name=${remote_config} verbose=yes"
+fi
