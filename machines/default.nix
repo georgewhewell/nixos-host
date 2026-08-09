@@ -1,4 +1,4 @@
-nixosModule: inputs: mkSecret: network: pkgsFns:
+nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns:
 let
   inherit (inputs.nixpkgs) lib;
   inherit (pkgsFns) pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays;
@@ -123,11 +123,11 @@ let
   # lightweight `profiles/fleet-core.nix` rather than common.nix —
   # 256 MB has no room for enableAllFirmware and friends.
   sysRiscvNanokvm = machine:
-    lib.nixosSystem {
+    inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
         { _module.args = inputs; }
         inputs.nanokvm.nixosModules.boards.pcie.mainline.sd
-        nixosModule
+        nixosModuleNanokvm
         machine
       ];
       extraModules = [

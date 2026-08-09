@@ -11,12 +11,19 @@
   inputs,
   lib,
   network,
-  pkgs,
   ...
 }: let
   ethHost = network.hosts.nanokvm.addresses.lan;
   wifiHost = network.hosts."nanokvm-wifi".addresses.wifi;
 in {
+  # Colmena reconstructs nodes through eval-config.nix and therefore does not
+  # inherit the nested nixpkgs flake's source metadata automatically. Pin it
+  # explicitly so the standalone and hive evaluations are byte-identical.
+  system.nixos.revision = lib.mkForce inputs.nanokvm.inputs.nixpkgs.rev;
+  system.nixos.versionSuffix = lib.mkForce ".${
+    builtins.substring 0 8 inputs.nanokvm.inputs.nixpkgs.lastModifiedDate
+  }.${inputs.nanokvm.inputs.nixpkgs.shortRev}";
+
   imports = [
     inputs.nanokvm.nixosModules.extlinuxTryBoot
     # Fleet identity: grw + sudo, ssh, zsh, /etc/hosts, locale.
@@ -36,7 +43,10 @@ in {
   # Keep WiFi available as a backup path, but prefer the wired OOB
   # route via the lower metric configured below.
   sg2002.wifi.enable = true;
-  nanokvm.oled.enable = lib.mkForce false;
+
+  # The standalone SD image permits password login for first-boot recovery.
+  # A fleet-managed host instead uses the shared grw authorized keys.
+  services.openssh.settings.PasswordAuthentication = lib.mkForce false;
 
   # U-Boot/extlinux has no systemd-boot-style automatic boot assessment.
   # This arms a new extlinux DEFAULT as a try-boot after Colmena rewrites
@@ -113,29 +123,11 @@ in {
     server.enable = lib.mkForce false;
     usbGadget.enable = lib.mkForce false;
   };
-  # Normal SD boots are currently failing before stage 2 can persist a
-  # journal or bring up wired networking. Keep the SD image debuggable
-  # without swapping cards: expose the same USB ECM address used by the
-  # rescue image, plus a BusyBox shell in the initrd.
-  sg2002.usbGadget.initrd.network.enable = lib.mkForce true;
-  boot.initrd.systemd.network.enable = true;
-  boot.initrd.systemd.services.usb-debug-shell = {
-    description = "NanoKVM initrd debug shell over USB ECM";
-    wantedBy = ["initrd.target"];
-    after = [
-      "usb-gadget.service"
-      "systemd-networkd.service"
-    ];
-    wants = [
-      "usb-gadget.service"
-      "systemd-networkd.service"
-    ];
-    unitConfig.DefaultDependencies = false;
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.busybox}/bin/telnetd -F -b 10.55.0.1:2323 -l ${pkgs.busybox}/bin/sh";
-    };
-  };
+  # Keep the SD profile's ECM+ACM gadget continuously bound across
+  # switch-root. The NanoKVM compatibility module otherwise defaults to a
+  # legacy /boot control file and a second re-enumeration when enabled.
+  sg2002.usbGadget.network.controlFile = lib.mkForce null;
+  sg2002.usbGadget.stage2.reenumerateAfterBoot.enable = lib.mkForce false;
   systemd.network.wait-online.enable = lib.mkForce false;
   systemd.network.networks = {
     "20-eth0" = {
@@ -182,17 +174,10 @@ in {
   # resizing, loading SDIO WiFi firmware, and settling udev on 256 MB
   # RAM; panic-on-stall paths make that indistinguishable from a real
   # watchdog reset.
-  boot.kernelParams = lib.mkForce [
-    "root=/dev/disk/by-label/NIXOS_SD"
-    "rootwait"
-    "rw"
-    "rootfstype=ext4"
-    "console=ttyS0,115200"
-    "earlycon=sbi"
-    "ignore_loglevel"
-    "riscv.fwsz=0x80000"
-    "console=ttyGS0,115200"
-    "loglevel=4"
+  # The board module owns root filesystem and console parameters. Keep only
+  # the fleet's temporary bring-up policy here so storage changes (Btrfs in
+  # particular) cannot drift between the image and later Colmena closures.
+  boot.kernelParams = lib.mkAfter [
     "panic=10"
     "panic_on_oops=0"
     "softlockup_panic=0"
@@ -240,28 +225,10 @@ in {
   # Cross-compiled on the x86_64 builder, so push the closure rather
   # than building on the 256 MB target.
   deployment = {
-    # WiFi may live on the isolated VLAN; keep Colmena on the wired OOB
-    # address and avoid depending on router DNS while debugging the router.
+    # WiFi may live on the isolated VLAN. Deploy over the wired OOB address
+    # as the regular fleet user; wheel's passwordless sudo performs activation.
     targetHost = lib.mkDefault (network.ipOf "lan" ethHost);
-    targetUser = "root";
-    sshOptions = [
-      "-S"
-      "none"
-      "-o"
-      "ControlMaster=no"
-      "-o"
-      "ControlPath=none"
-      "-o"
-      "IdentityAgent=none"
-      "-o"
-      "IdentitiesOnly=yes"
-      "-i"
-      "/home/grw/.ssh/id_rsa"
-      "-o"
-      "StrictHostKeyChecking=no"
-      "-o"
-      "UserKnownHostsFile=/dev/null"
-    ];
+    targetUser = "grw";
     buildOnTarget = false;
   };
 }

@@ -90,6 +90,7 @@
       # toolchain without changing the host integration contract.
       url = "git+file:///mnt/Home/src/nixos-nanokvm?shallow=1";
       inputs.disko.follows = "disko";
+      inputs.impermanence.follows = "impermanence";
     };
 
     p2pool-exporter = {
@@ -393,6 +394,14 @@
           config = baseConfig;
         });
 
+      # Colmena needs the same raw cross package set that the self-contained
+      # NanoKVM board gets from its own tested nixpkgs input. The board module
+      # applies its SG2002 overlay and unfree policy during module evaluation.
+      pkgsForNanokvm = import inputs.nanokvm.inputs.nixpkgs {
+        localSystem = "x86_64-linux";
+        crossSystem = "riscv64-linux";
+      };
+
       # CUDA-enabled pkgs for NVIDIA machines
       pkgsForCuda = memoizePerSystem (system:
         import nixpkgs {
@@ -488,9 +497,23 @@
           ];
       };
 
+      # The NanoKVM board module is deliberately self-contained: it brings
+      # the disko and impermanence option providers needed by its SD image.
+      # Keep the rest of the fleet module stack, but do not import those two
+      # providers a second time when Colmena reconstructs the node.
+      nixosModuleNanokvm = {
+        imports =
+          builtins.attrValues nixosModules
+          ++ [
+            inputs.sops-nix.nixosModules.sops
+            ./profiles/sops.nix
+          ];
+      };
+
       nixosConfigurations =
         import ./machines
           nixosModule
+          nixosModuleNanokvm
           inputs
           mkSecret
           network
@@ -523,6 +546,7 @@
             # double-applying its overrides and drifting every derivation the
             # overlay touches away from the standalone configuration.
             nodeNixpkgs = {
+              nanokvm = pkgsForNanokvm;
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
               strix-2 = pkgsForRocmStrixHalo "x86_64-linux";
@@ -558,6 +582,7 @@
         network
         nixosModules
         nixosModule
+        nixosModuleNanokvm
         nixosConfigurations
         imageOnlyNixosConfigurations
         deployableNixosConfigurations

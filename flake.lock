@@ -757,56 +757,12 @@
         "type": "github"
       }
     },
-    "home-manager_2": {
-      "inputs": {
-        "nixpkgs": [
-          "nanokvm",
-          "impermanence",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1768598210,
-        "narHash": "sha256-kkgA32s/f4jaa4UG+2f8C225Qvclxnqs76mf8zvTVPg=",
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "rev": "c47b2cc64a629f8e075de52e4742de688f930dc6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "type": "github"
-      }
-    },
     "impermanence": {
       "inputs": {
         "home-manager": [
           "home-manager"
         ],
         "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1769548169,
-        "narHash": "sha256-03+JxvzmfwRu+5JafM0DLbxgHttOQZkUtDWBmeUkN8Y=",
-        "owner": "nix-community",
-        "repo": "impermanence",
-        "rev": "7b1d382faf603b6d264f58627330f9faa5cba149",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "impermanence",
-        "type": "github"
-      }
-    },
-    "impermanence_2": {
-      "inputs": {
-        "home-manager": "home-manager_2",
-        "nixpkgs": [
-          "nanokvm",
           "nixpkgs"
         ]
       },
@@ -1018,17 +974,19 @@
         "disko": [
           "disko"
         ],
-        "impermanence": "impermanence_2",
+        "impermanence": [
+          "impermanence"
+        ],
         "licheerv-nano-build": "licheerv-nano-build",
         "nanokvm-src": "nanokvm-src",
         "nixpkgs": "nixpkgs_4",
         "sophgo-fiptool": "sophgo-fiptool"
       },
       "locked": {
-        "lastModified": 1786285924,
-        "narHash": "sha256-cAzokG5MedUpGuFbU55/AYVItYm412KCj9yIhPekbWs=",
+        "lastModified": 1786308676,
+        "narHash": "sha256-i+j1AUyjWx3BQqNjwExNsnWzilH6Qgxg0YhOVamM+a4=",
         "ref": "refs/heads/cleanup-mainline-nanokvm-20260701",
-        "rev": "652f47dc2845f0133e20580bdd3a4bdb9041f250",
+        "rev": "0148baaf0bc1d244ca2b54cc39fe87a093b17c33",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nixos-nanokvm"
