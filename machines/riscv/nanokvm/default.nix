@@ -147,13 +147,13 @@ in {
     wantedBy = ["multi-user.target"];
     after = ["mediamtx.service"];
     serviceConfig = {
-      # --io dmabuf needs the dma-heap kernel; --format nv12 additionally
-      # needs the fixed direct-input path. Until that kernel is deployed,
-      # nv21 stages through the driver and still works.
+      # --io dmabuf: raw frames in cached dma-heap buffers imported by the
+      # encoder (single SYNC ioctl per frame). --format nv12: the fixed
+      # direct input path (0041 linear GDI map) — no kernel staging copy.
       ExecStart = ''
         ${pkgs.sg2002-h264-bridge}/bin/sg2002-h264-bridge \
           /dev/video0 /dev/video1 \
-          --size full --io dmabuf --format nv21 \
+          --size full --io dmabuf --format nv12 \
           --bitrate 4000000 --gop 30 \
           --rtsp rtsp://127.0.0.1:8554/hdmi
       '';
