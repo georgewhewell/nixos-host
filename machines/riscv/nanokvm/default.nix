@@ -156,6 +156,7 @@ in {
   systemd.services.mediamtx.wantedBy = lib.mkForce [];
   systemd.services.kvm-video = {
     description = "KVM HDMI bridge (capture -> Coda980 H.264 -> mediamtx)";
+    # No wantedBy: started by kvm-stack-start once the boot is blessed.
     serviceConfig = {
       # --io dmabuf: raw frames in cached dma-heap buffers imported by the
       # encoder (single SYNC ioctl per frame). --format nv12: the fixed
@@ -179,13 +180,16 @@ in {
   };
   systemd.services.kvm-stack-start = {
     description = "Start the KVM video stack once the boot is blessed";
-    wantedBy = ["multi-user.target"];
+    # Pulled in by the bless unit's wants= below; NOT wantedBy
+    # multi-user.target (that plus after=bless forms an ordering cycle:
+    # bless itself runs after multi-user).
     after = ["extlinux-try-boot-bless.service"];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.systemd}/bin/systemctl start mediamtx.service kvm-video.service";
     };
   };
+  systemd.services.extlinux-try-boot-bless.wants = ["kvm-stack-start.service"];
   # (bless window + network-tolerant successCommand live in the
   # boot.extlinuxTryBoot block above)
 
