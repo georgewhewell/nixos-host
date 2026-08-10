@@ -25,7 +25,7 @@ in {
     ../../../profiles/wireless.nix
     ../../../profiles/router/ap.nix
     ../../../services/buildfarm-slave.nix
-    # ../../../services/kvm.nix
+    ../../../services/kvm.nix
   ];
 
   deployment.targetHost = network.primaryIp self;

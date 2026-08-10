@@ -23,16 +23,23 @@
     hardwareVersion = "pcie";
   };
 
-  # Stable symlinks for RK3588 video devices and group access for the MPP
-  # encoder service node (used by ffmpeg-rockchip).
+  # Stable symlinks for RK3588 video devices (mainline drivers).
+  # ATTR{name} values verified against the live v4l2 device names:
+  # /dev/video5 name is "stream_hdmirx" (snps_hdmirx is the platform
+  # driver name, not the v4l2 name); /dev/video3 is the hantro-driven
+  # VEPU121 encoder node (JPEG only in mainline — kept for future use).
   services.udev.extraRules = ''
     SUBSYSTEM=="video4linux", ATTR{name}=="stream_hdmirx", SYMLINK+="hdmi-rx"
     SUBSYSTEM=="video4linux", ATTR{name}=="rockchip,rk3588-vepu121-enc", SYMLINK+="video-enc"
-    KERNEL=="mpp_service", MODE="0660", GROUP="video"
   '';
 
-  # HDMI-in capture → RTSP/WebRTC stream via mediamtx (on-demand,
-  # hardware-encoded H.264 via h264_rkmpp).
+  # HDMI-in capture → RTSP/WebRTC stream via mediamtx (on-demand).
+  # Mainline-only path: snps_hdmirx gives BGR24 multiplanar at the
+  # source's native DV timings (4K30 currently); the VEPU121 encoder
+  # node is JPEG-only under mainline hantro, so H.264 is libx264
+  # software encode. User-authorized fallback: downscale to 1080p
+  # (4K ultrafast measured ~22fps on ~6 of 8 cores — antisocial on
+  # this buildfarm slave; 1080p costs ~1-2 cores at full rate).
   services.mediamtx = {
     enable = true;
     allowVideoAccess = true;
@@ -42,10 +49,13 @@
           source = "publisher";
           runOnDemand = "${pkgs.writeShellScript "kvm-hdmi-capture" ''
             ${pkgs.v4l-utils}/bin/v4l2-ctl -d /dev/hdmi-rx --set-dv-bt-timings query
-            exec ${pkgs.ffmpeg-rockchip}/bin/ffmpeg \
-              -use_libv4l2 1 -f v4l2 -i /dev/hdmi-rx \
-              -c:v h264_rkmpp -b:v 3M \
-              -f rtsp rtsp://localhost:8554/hdmi
+            exec ${pkgs.ffmpeg-headless}/bin/ffmpeg \
+              -hide_banner -loglevel warning \
+              -f v4l2 -input_format bgr24 -i /dev/hdmi-rx \
+              -vf scale=1920:1080,format=nv12 \
+              -c:v libx264 -preset ultrafast -tune zerolatency \
+              -b:v 4M -maxrate 6M -bufsize 8M -g 60 \
+              -an -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:8554/hdmi
           ''}";
           runOnDemandCloseAfter = "5s";
         };
