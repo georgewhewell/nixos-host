@@ -983,10 +983,10 @@
         "sophgo-fiptool": "sophgo-fiptool"
       },
       "locked": {
-        "lastModified": 1786355112,
-        "narHash": "sha256-G1prqAUgfTBmoOS+aCjaHCmbJI3G8nPp7qRU/sfdSxM=",
+        "lastModified": 1786361906,
+        "narHash": "sha256-FFREBCxBje39xu/923zvGT20K1buYAop/pJRL7RWqW4=",
         "ref": "refs/heads/cleanup-mainline-nanokvm-20260701",
-        "rev": "58ec65690cb26ed97c995aa2796ef6b7f3ad3ce4",
+        "rev": "6a274b5eeff5906941a19f3eae25f166459113a6",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nixos-nanokvm"
