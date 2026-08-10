@@ -19,12 +19,23 @@ displays. They can change or break at any time. Not affiliated with any provider
 |-----------|-------------------------------|----------|
 | anthropic | `~/.claude/.credentials.json` | `api.anthropic.com/api/oauth/usage` |
 | openai    | `~/.codex/auth.json`          | `chatgpt.com/backend-api/wham/usage` |
-| gemini    | `~/.gemini/oauth_creds.json`  | `cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
+| gemini    | `~/.gemini/antigravity-cli/antigravity-oauth-token`, `~/.gemini/oauth_creds.json` | `cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` |
 | grok      | `~/.grok/auth.json`           | `cli-chat-proxy.grok.com/v1/billing` |
 | kimi      | `~/.kimi-code/credentials/…`  | `api.kimi.com/coding/v1/usages` |
+| openrouter| `$OPENROUTER_API_KEY`, `~/.pi/agent/auth.json`, opencode config, `~/.config/openrouter/key` | `openrouter.ai/api/v1/{credits,key}` |
 
 Providers whose credentials are absent are skipped; a failing provider keeps
 its last snapshot with `llm_quota_scrape_success` 0 and backs off.
+
+gemini follows the Antigravity CLI (`agy`): it sends that CLI's User-Agent,
+without which the quota endpoint answers 403. It reports one `five_hour` and
+one `seven_day` window per model group (`gemini_models`,
+`claude_and_gpt_models`) and never falls back to the older
+`retrieveUserQuota`, whose buckets are frozen at 0% used for migrated accounts.
+
+OpenRouter is prepaid rather than a subscription, so it reports two windows:
+`credits` (share of purchased credits spent) and the key's own cap under its
+`limit_reset` window (`daily`/`weekly`/`monthly`), plus `llm_credits_balance`.
 
 ## Run
 
@@ -50,7 +61,8 @@ Tokens are only read, never logged or transmitted anywhere but the provider's
 own endpoint. anthropic/openai are strictly read-only (they rotate refresh
 tokens with reuse detection, so an outside refresh can revoke a live CLI
 session); grok/kimi refresh only once the on-disk token has expired and persist
-the rotated pair; gemini refreshes in memory.
+the rotated pair; gemini refreshes in memory. openrouter uses a plain API key
+and never refreshes anything.
 
 A Grafana dashboard is in [`dashboards/`](dashboards/); the token/cost panels
 need the CLIs' OpenTelemetry metrics in the same store (optional).

@@ -85,6 +85,26 @@ in {
     useDHCP = false;
     useNetworkd = true;
     firewall.enable = true;
+    # node_exporter runs here but the firewall opened no ports, so trex's
+    # scrape had always failed. ICMP too, which is why the host looked dead.
+    firewall.allowedTCPPorts = [9100];
+    firewall.allowPing = true;
+  };
+
+  # This DPU holds the lan address on enamlnxbf17i0 and the fabric address on
+  # br-fabric, and lan and fabric deliberately share one L2 domain. With
+  # Linux's default weak-host ARP both interfaces answered for BOTH addresses,
+  # so peers learned 192.168.23.22 behind br-fabric's MAC and sent LAN traffic
+  # to the wrong interface -- which is why this host was reachable from
+  # strix-3 (directly attached) but appeared dead from trex, even though port
+  # 22 was open the whole time. Same fix as the strix nodes: answer only on
+  # the interface owning the target address, and never source an ARP from
+  # another interface's address.
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.all.arp_ignore" = 1;
+    "net.ipv4.conf.default.arp_ignore" = 1;
+    "net.ipv4.conf.all.arp_announce" = 2;
+    "net.ipv4.conf.default.arp_announce" = 2;
   };
 
   # BeeGFS is retired (2026-07-30). mgmtd ran here as the always-on
@@ -216,6 +236,14 @@ in {
       };
     });
 
+    # NB (2026-08-10): with hostPf = false this bridge is never created, and
+    # the fabric address belongs on enp3s0np0 via 90-bluefield-data-ports
+    # below. A br-fabric left over from an earlier hostPf = true generation
+    # survived here for months -- networkd does not delete netdevs it no
+    # longer manages -- holding 192.168.25.22 with a randomly generated MAC
+    # and shadowing the intended config. That, plus weak-host ARP, is why this
+    # host looked dead from trex while being perfectly healthy. If you ever
+    # flip hostPf back on, give this bridge an explicit MACAddress.
     netdevs = lib.optionalAttrs hostPf {
       "90-br-fabric" = {
         netdevConfig = {

@@ -1,15 +1,24 @@
 """Parser tests using response fixtures shaped like the real provider APIs."""
 
+import time
+
 import pytest
 
 from llm_quota_exporter._time import parse_iso8601
 from llm_quota_exporter.providers.anthropic import _parse_spend
 from llm_quota_exporter.providers.anthropic import _parse_usage as parse_anthropic
-from llm_quota_exporter.providers.gemini import _parse_buckets, _parse_summary
+from llm_quota_exporter.providers.gemini import (
+    Credentials,
+    _parse_antigravity_credentials,
+    _parse_legacy_credentials,
+    _parse_summary,
+)
 from llm_quota_exporter.providers.grok import _parse_monthly, _parse_weekly
 from llm_quota_exporter.providers.kimi import _parse_usages
 from llm_quota_exporter.providers.openai_codex import _parse_credits
 from llm_quota_exporter.providers.openai_codex import _parse_usage as parse_codex
+from llm_quota_exporter.providers.openrouter import _parse_credits as parse_or_credits
+from llm_quota_exporter.providers.openrouter import _parse_key as parse_or_key
 
 
 def by_key(samples):
@@ -205,6 +214,51 @@ class TestGrok:
         assert _parse_weekly({}) == []
 
 
+class TestOpenRouter:
+    def test_credits(self):
+        (sample,) = parse_or_credits({"data": {"total_credits": 50, "total_usage": 32.761063713}})
+        assert (sample.window, sample.scope) == ("credits", "all")
+        assert sample.utilization == pytest.approx(0.65522, abs=1e-5)
+        assert sample.used == pytest.approx(32.761063713)
+        assert sample.limit == 50
+
+    def test_credits_absent_or_unpurchased(self):
+        assert parse_or_credits({}) == []
+        assert parse_or_credits({"data": {"total_credits": 0, "total_usage": 0}}) == []
+
+    def test_key_limit_is_scoped_to_its_reset_window(self):
+        # `usage` is lifetime spend; charging it against a daily `limit` would
+        # read 73% instead of the true 10%.
+        payload = {
+            "data": {
+                "limit": 45,
+                "limit_reset": "daily",
+                "limit_remaining": 40.626385146,
+                "usage": 32.687121783,
+                "usage_daily": 4.373614854,
+            }
+        }
+        (sample,) = parse_or_key(payload)
+        assert sample.window == "daily"
+        assert sample.used == pytest.approx(4.373614854)
+        assert sample.utilization == pytest.approx(0.09719, abs=1e-5)
+
+    def test_key_falls_back_to_period_usage(self):
+        payload = {"data": {"limit": 20, "limit_reset": "weekly", "usage_weekly": 5, "usage": 99}}
+        (sample,) = parse_or_key(payload)
+        assert sample.window == "weekly"
+        assert sample.utilization == pytest.approx(0.25)
+
+    def test_key_lifetime_cap(self):
+        (sample,) = parse_or_key({"data": {"limit": 100, "usage": 25}})
+        assert sample.window == "key"
+        assert sample.utilization == pytest.approx(0.25)
+
+    def test_uncapped_key_emits_nothing(self):
+        assert parse_or_key({"data": {"limit": None, "usage": 10}}) == []
+        assert parse_or_key({}) == []
+
+
 class TestKimi:
     def test_full_response(self):
         payload = {
@@ -251,46 +305,137 @@ class TestKimi:
 
 
 class TestGemini:
+    # Verbatim body of a real POST /v1internal:retrieveUserQuotaSummary, sent
+    # with the Antigravity CLI's User-Agent (without it the call 403s).
+    SUMMARY = {
+        "groups": [
+            {
+                "buckets": [
+                    {
+                        "bucketId": "gemini-weekly",
+                        "displayName": "Weekly Limit Remaining",
+                        "window": "weekly",
+                        "resetTime": "2026-08-14T18:11:20Z",
+                        "description": "You have used some of your weekly limit, "
+                        "it will fully refresh in 5 days, 6 hours.",
+                        "remainingFraction": 0.84875935,
+                    },
+                    {
+                        "bucketId": "gemini-5h",
+                        "displayName": "Five Hour Limit Remaining",
+                        "window": "5h",
+                        "resetTime": "2026-08-09T17:07:39Z",
+                        "description": "You have used some of your 5-hour limit, "
+                        "it will fully refresh in 4 hours, 58 minutes.",
+                        "remainingFraction": 0.9978525,
+                    },
+                ],
+                "displayName": "Gemini Models",
+                "description": "Models within this group: Gemini Flash, Gemini Pro",
+            },
+            {
+                "buckets": [
+                    {
+                        "bucketId": "3p-weekly",
+                        "displayName": "Weekly Limit Remaining",
+                        "window": "weekly",
+                        "resetTime": "2026-08-16T12:10:35Z",
+                        "remainingFraction": 1,
+                    },
+                    {
+                        "bucketId": "3p-5h",
+                        "displayName": "Five Hour Limit Remaining",
+                        "window": "5h",
+                        "resetTime": "2026-08-09T17:10:35Z",
+                        "remainingFraction": 1,
+                    },
+                ],
+                "displayName": "Claude and GPT models",
+                "description": "Models within this group: Claude Opus, Claude Sonnet, GPT-OSS",
+            },
+        ],
+        "description": "Within each group, models share a weekly limit and a 5-hour limit.",
+    }
+
     def test_summary_groups(self):
+        samples = by_key(_parse_summary(self.SUMMARY))
+        assert len(samples) == 4
+        assert samples[("seven_day", "gemini_models")].utilization == pytest.approx(0.15124065)
+        assert samples[("seven_day", "gemini_models")].resets_at == pytest.approx(1786731080.0)
+        assert samples[("five_hour", "gemini_models")].utilization == pytest.approx(0.0021475)
+        # remainingFraction 1 is a bare int in the real body, not a float.
+        assert samples[("seven_day", "claude_and_gpt_models")].utilization == pytest.approx(0.0)
+        assert samples[("five_hour", "claude_and_gpt_models")].utilization == pytest.approx(0.0)
+        # The endpoint reports fractions only; there are no absolute counters.
+        assert all(s.used is None and s.limit is None for s in samples.values())
+
+    def test_unknown_window_and_bad_values_skipped(self):
         summary = {
             "groups": [
                 {
-                    "displayName": "Gemini 3 Pro",
+                    "displayName": "Gemini Models",
                     "buckets": [
-                        {
-                            "bucketId": "gemini-pro-5h",
-                            "window": "5h",
-                            "remainingFraction": 0.75,
-                            "resetTime": "2026-08-01T15:00:00Z",
-                        },
-                        {
-                            "bucketId": "gemini-pro-weekly",
-                            "window": "weekly",
-                            "remainingFraction": 0.9,
-                            "resetTime": "2026-08-04T00:00:00Z",
-                        },
+                        {"window": "monthly", "remainingFraction": 0.5},
+                        {"window": "5h", "remainingFraction": "not-a-number"},
+                        {"window": "5h", "remainingFraction": True},
+                        "not-a-dict",
                     ],
-                }
+                },
+                "not-a-dict",
             ]
         }
         samples = by_key(_parse_summary(summary))
-        assert samples[("five_hour", "gemini_3_pro")].utilization == pytest.approx(0.25)
-        assert samples[("seven_day", "gemini_3_pro")].utilization == pytest.approx(0.10)
-
-    def test_plain_buckets_fallback(self):
-        quota = [
-            {"modelId": "gemini-3-flash", "remainingFraction": 0.5, "resetTime": None},
-            {"tokenType": "TOKENS", "remainingFraction": 1.0},
-            {"remainingFraction": "not-a-number"},
-        ]
-        samples = by_key(_parse_buckets(quota))
-        assert samples[("bucket", "gemini_3_flash")].utilization == pytest.approx(0.5)
-        assert samples[("bucket", "tokens")].utilization == pytest.approx(0.0)
-        assert len(samples) == 2
+        assert list(samples) == [("monthly", "gemini_models")]
 
     def test_empty(self):
         assert _parse_summary({}) == []
-        assert _parse_buckets([]) == []
+        assert _parse_summary({"groups": []}) == []
+
+
+class TestGeminiCredentials:
+    def test_antigravity_token_file(self):
+        # Shape written by `agy`: nested token object, ISO-8601 expiry.
+        creds = _parse_antigravity_credentials(
+            {
+                "auth_method": "consumer",
+                "id_token": "eyJhbGc...",
+                "token": {
+                    "access_token": "ya29.a0-access",
+                    "refresh_token": "1//0g-refresh",
+                    "token_type": "Bearer",
+                    "expiry": "2026-08-09T10:44:26.956653288+02:00",
+                },
+            }
+        )
+        assert creds.access_token == "ya29.a0-access"
+        assert creds.refresh_token == "1//0g-refresh"
+        assert creds.expires_at == pytest.approx(1786265066.956653)
+        assert creds.client_id.startswith("1071006060591-")
+
+    def test_legacy_oauth_creds_file(self):
+        creds = _parse_legacy_credentials(
+            {"access_token": "ya29.legacy", "refresh_token": "1//legacy", "expiry_date": 1786646666000}
+        )
+        assert creds.expires_at == pytest.approx(1786646666.0)
+        assert creds.client_id.startswith("681255809395-")
+
+    def test_missing_and_malformed_fields(self):
+        empty = _parse_antigravity_credentials({})
+        assert empty.access_token is None and empty.refresh_token is None and empty.expires_at is None
+        assert _parse_antigravity_credentials({"token": "not-a-dict"}).access_token is None
+        assert _parse_legacy_credentials({"expiry_date": "soon"}).expires_at is None
+        # bool is an int subclass; it must not become an epoch.
+        assert _parse_legacy_credentials({"expiry_date": True}).expires_at is None
+
+    def test_usable_access_token_respects_expiry(self):
+        fresh = Credentials("tok", time.time() + 3600, "r", "cid", "sec")
+        assert fresh.usable_access_token() == "tok"
+        # The on-disk token is routinely stale; that must force a refresh
+        # rather than a doomed 401.
+        stale = Credentials("tok", time.time() - 1, "r", "cid", "sec")
+        assert stale.usable_access_token() is None
+        assert Credentials("tok", None, "r", "cid", "sec").usable_access_token() is None
+        assert Credentials(None, time.time() + 3600, "r", "cid", "sec").usable_access_token() is None
 
 
 class TestJsonObject:

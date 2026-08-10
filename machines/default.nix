@@ -50,7 +50,27 @@ let
         {
           nixpkgs.buildPlatform = "x86_64-linux";
           nixpkgs.hostPlatform = "aarch64-linux";
-          nixpkgs.overlays = allOverlays;
+          # systemd's BPF objects do not cross-compile: the `clang -target bpf`
+          # step is invoked without the cross target's kernel/libc include
+          # paths, so src/bpf/*.bpf.c fail with "'linux/types.h' file not
+          # found" and "'errno.h' file not found" (nixpkgs cross gap, hit on
+          # 2026-08-10 building bluefield2). The framework only backs
+          # RestrictFilesystems=, RestrictNetworkInterfaces= and socket bind
+          # filtering, none of which these boards use, so drop it rather than
+          # fall back to emulated aarch64 builds that take hours.
+          nixpkgs.overlays = allOverlays ++ [
+            (_final: prev: {
+              # Nulling bpftools/libbpf is not enough -- meson still requires
+              # the dependency -- so turn the feature off at the meson level.
+              systemd = prev.systemd.overrideAttrs (old: {
+                mesonFlags =
+                  (builtins.filter
+                    (f: !(lib.hasPrefix "-Dbpf-framework=" f))
+                    (old.mesonFlags or []))
+                  ++ ["-Dbpf-framework=disabled"];
+              });
+            })
+          ];
           nixpkgs.config = {
             allowUnfree = true;
             allowBroken = true;

@@ -21,7 +21,7 @@
       "id": 1,
       "gridPos": {
         "h": 5,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 0
       },
@@ -83,8 +83,8 @@
       "id": 2,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 4,
+        "w": 3,
+        "x": 3,
         "y": 0
       },
       "datasource": {
@@ -145,8 +145,8 @@
       "id": 3,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 8,
+        "w": 3,
+        "x": 6,
         "y": 0
       },
       "datasource": {
@@ -207,8 +207,8 @@
       "id": 4,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 9,
         "y": 0
       },
       "datasource": {
@@ -269,8 +269,8 @@
       "id": 5,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 12,
         "y": 0
       },
       "datasource": {
@@ -327,12 +327,74 @@
     },
     {
       "type": "stat",
+      "title": "openrouter",
+      "id": 17,
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 15,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(llm_quota_utilization_ratio{provider=\"openrouter\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#eda100",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Worst window utilization"
+    },
+    {
+      "type": "stat",
       "title": "next reset",
       "id": 6,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 20,
+        "w": 6,
+        "x": 18,
         "y": 0
       },
       "datasource": {
@@ -619,7 +681,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 31
+        "y": 37
       },
       "datasource": {
         "type": "prometheus",
@@ -767,7 +829,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 31
+        "y": 37
       },
       "datasource": {
         "type": "prometheus",
@@ -842,7 +904,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])))"
+          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[$__range])))"
         }
       ],
       "options": {
@@ -946,7 +1008,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[30m]))",
+          "expr": "sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[30m])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[30m]))",
           "legendFormat": "{{model}}"
         }
       ],
@@ -982,9 +1044,7 @@
     },
     {
       "type": "stat",
-      "title": "Cost & sessions (claude)",
-      "id": 15,
-      "description": "Estimated API-equivalent cost and session count over the range",
+      "title": "Claude effort & output",
       "gridPos": {
         "h": 8,
         "w": 6,
@@ -1005,12 +1065,36 @@
         {
           "refId": "B",
           "instant": true,
-          "legendFormat": "sessions",
-          "expr": "sum(last_over_time(claude_code_session_count_total[$__range]))"
+          "legendFormat": "active",
+          "expr": "sum(last_over_time(claude_code_active_time_seconds_total[$__range]))"
+        },
+        {
+          "refId": "C",
+          "instant": true,
+          "legendFormat": "lines +",
+          "expr": "sum(last_over_time(claude_code_lines_of_code_count_total{type=\"added\"}[$__range]))"
+        },
+        {
+          "refId": "D",
+          "instant": true,
+          "legendFormat": "lines -",
+          "expr": "sum(last_over_time(claude_code_lines_of_code_count_total{type=\"removed\"}[$__range]))"
+        },
+        {
+          "refId": "E",
+          "instant": true,
+          "legendFormat": "commits",
+          "expr": "sum(last_over_time(claude_code_commit_count_total[$__range]))"
+        },
+        {
+          "refId": "F",
+          "instant": true,
+          "legendFormat": "edits ok",
+          "expr": "sum(last_over_time(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[$__range]))"
         }
       ],
       "options": {
-        "colorMode": "none",
+        "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
@@ -1024,7 +1108,12 @@
       },
       "fieldConfig": {
         "defaults": {
-          "decimals": 1
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          }
         },
         "overrides": [
           {
@@ -1046,16 +1135,31 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "sessions"
+              "options": "active"
             },
             "properties": [
               {
                 "id": "unit",
-                "value": "short"
+                "value": "s"
               },
               {
                 "id": "decimals",
                 "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lines -"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a8a"
+                }
               }
             ]
           }
@@ -1224,6 +1328,185 @@
               {
                 "id": "custom.lineWidth",
                 "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^openrouter.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7d5bbe"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Sessions & turns by CLI",
+      "description": "Codex has no session counter; distinct session_source series stand in for it.",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "feit1tygbp81sc"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "legendFormat": "claude sessions",
+          "expr": "sum(last_over_time(claude_code_session_count_total[$__range]))"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "legendFormat": "codex sessions",
+          "expr": "count(count by (session_source) (last_over_time(codex_conversation_turn_count_total[$__range])))"
+        },
+        {
+          "refId": "C",
+          "instant": true,
+          "legendFormat": "codex turns",
+          "expr": "sum(last_over_time(codex_conversation_turn_count_total[$__range]))"
+        },
+        {
+          "refId": "D",
+          "instant": true,
+          "legendFormat": "grok sessions",
+          "expr": "sum(last_over_time(grok_code_session_count_total[$__range]))"
+        },
+        {
+          "refId": "E",
+          "instant": true,
+          "legendFormat": "grok turns",
+          "expr": "sum(last_over_time(grok_code_turn_count_total{outcome=\"completed\"}[$__range]))"
+        },
+        {
+          "refId": "F",
+          "instant": true,
+          "legendFormat": "grok errors",
+          "expr": "sum(last_over_time(grok_code_error_count_total[$__range]))"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "claude sessions"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "codex sessions"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "codex turns"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "grok sessions"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "grok turns"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "grok errors"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c4162a"
+                }
               }
             ]
           }

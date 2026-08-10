@@ -6,6 +6,7 @@ from .gemini import GeminiProvider
 from .grok import GrokProvider
 from .kimi import KimiProvider
 from .openai_codex import OpenAICodexProvider
+from .openrouter import OpenRouterProvider
 
 PROVIDERS: dict[str, type[Provider]] = {
     provider.name: provider
@@ -15,6 +16,7 @@ PROVIDERS: dict[str, type[Provider]] = {
         GeminiProvider,
         GrokProvider,
         KimiProvider,
+        OpenRouterProvider,
     )
 }
 
