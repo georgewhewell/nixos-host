@@ -164,7 +164,7 @@ in {
       ExecStart = ''
         ${pkgs.sg2002-h264-bridge}/bin/sg2002-h264-bridge \
           /dev/video0 /dev/video1 \
-          --size full --io dmabuf --format nv12 \
+          --size half --io dmabuf --format nv12 \
           --bitrate 4000000 --gop 30 \
           --rtsp rtsp://127.0.0.1:8554/hdmi
       '';
