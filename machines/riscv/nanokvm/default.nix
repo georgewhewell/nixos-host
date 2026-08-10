@@ -164,7 +164,7 @@ in {
       ExecStart = ''
         ${pkgs.sg2002-h264-bridge}/bin/sg2002-h264-bridge \
           /dev/video0 /dev/video1 \
-          --size half --io dmabuf --format nv12 \
+          --size full --io dmabuf --format nv12 \
           --bitrate 4000000 --gop 30 \
           --rtsp rtsp://127.0.0.1:8554/hdmi
       '';
@@ -207,6 +207,13 @@ in {
   # legacy /boot control file and a second re-enumeration when enabled.
   sg2002.usbGadget.network.controlFile = lib.mkForce null;
   sg2002.usbGadget.stage2.reenumerateAfterBoot.enable = lib.mkForce false;
+  # Do NOT preserve the initrd across switch-root on this fleet node:
+  # preservation keeps the stage-2 gadget process (and with it the whole
+  # ~88 MiB initramfs ramfs) pinned as unevictable for the boot's
+  # lifetime — a third of the board's RAM, and the single biggest line in
+  # the 256 MiB memory budget. The gadget is disabled on this node
+  # anyway, so let switch_root kill it and free the pages.
+  sg2002.usbGadget.stage2.preserveInitrd = lib.mkForce false;
   systemd.network.wait-online.enable = lib.mkForce false;
   systemd.network.networks = {
     "20-eth0" = {
