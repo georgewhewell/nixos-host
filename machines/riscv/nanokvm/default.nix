@@ -142,10 +142,14 @@ in {
   };
   networking.firewall.allowedTCPPorts = [8554 8889];
   networking.firewall.allowedUDPPorts = [8189];
+  # Memory discipline for the 256 MiB board: the video stack stays out of
+  # the boot critical path so the try-boot bless window looks exactly like
+  # the previous generation's boot. A first deploy with the stack in the
+  # boot path never survived to bless (watchdog reset under the spike) and
+  # rolled back every time.
+  systemd.services.mediamtx.wantedBy = lib.mkForce [];
   systemd.services.kvm-video = {
     description = "KVM HDMI bridge (capture -> Coda980 H.264 -> mediamtx)";
-    wantedBy = ["multi-user.target"];
-    after = ["mediamtx.service"];
     serviceConfig = {
       # --io dmabuf: raw frames in cached dma-heap buffers imported by the
       # encoder (single SYNC ioctl per frame). --format nv12: the fixed
@@ -167,6 +171,19 @@ in {
       PrivateTmp = true;
     };
   };
+  systemd.services.kvm-stack-start = {
+    description = "Start the KVM video stack once the boot is blessed";
+    wantedBy = ["multi-user.target"];
+    after = ["extlinux-try-boot-bless.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.systemd}/bin/systemctl start mediamtx.service kvm-video.service";
+    };
+  };
+  # The bless health window must stay short on this board: the hardware
+  # watchdog ceiling is 85 s, so a 10-minute default window turns any
+  # boot-time memory spike into a rollback loop.
+  boot.extlinuxTryBoot.timeoutSec = lib.mkForce 180;
 
   # Keep the SD profile's ECM+ACM gadget continuously bound across
   # switch-root. The NanoKVM compatibility module otherwise defaults to a
