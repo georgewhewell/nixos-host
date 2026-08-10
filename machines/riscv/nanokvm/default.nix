@@ -52,15 +52,21 @@ in {
   # U-Boot/extlinux has no systemd-boot-style automatic boot assessment.
   # This arms a new extlinux DEFAULT as a try-boot after Colmena rewrites
   # extlinux.conf, then blesses it only after the boot survives long enough
-  # to be reachable on the wired OOB path.
+  # to be reachable on a management path. The wired OOB segment is
+  # currently down network-wide, so accept either wired or WiFi reachability;
+  # restore the eth0-only check when the segment is back. The window is
+  # short because the 85 s hardware watchdog punishes long unsettled boots.
   boot.extlinuxTryBoot = {
     enable = true;
-    timeoutSec = 10 * 60;
+    timeoutSec = 180;
     successCommand = ''
       systemctl is-active --quiet sshd.service
-      test "$(cat /sys/class/net/eth0/carrier 2>/dev/null || echo 0)" = 1
-      ip -4 addr show dev eth0 | grep -Fq " ${network.ipOf "lan" ethHost}/"
-      ip -4 route get ${network.gatewayIp "lan"} >/dev/null
+      if test "$(cat /sys/class/net/eth0/carrier 2>/dev/null || echo 0)" = 1; then
+        ip -4 addr show dev eth0 | grep -Fq " ${network.cidrOf "lan" ethHost}"
+        ip -4 route get ${network.gatewayIp "lan"} >/dev/null
+      else
+        ip -4 addr show dev wlan0 | grep -Fq " ${network.cidrOf "wifi" wifiHost}"
+      fi
     '';
   };
 
@@ -180,10 +186,8 @@ in {
       ExecStart = "${pkgs.systemd}/bin/systemctl start mediamtx.service kvm-video.service";
     };
   };
-  # The bless health window must stay short on this board: the hardware
-  # watchdog ceiling is 85 s, so a 10-minute default window turns any
-  # boot-time memory spike into a rollback loop.
-  boot.extlinuxTryBoot.timeoutSec = lib.mkForce 180;
+  # (bless window + network-tolerant successCommand live in the
+  # boot.extlinuxTryBoot block above)
 
   # Keep the SD profile's ECM+ACM gadget continuously bound across
   # switch-root. The NanoKVM compatibility module otherwise defaults to a
