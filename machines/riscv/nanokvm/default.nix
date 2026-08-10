@@ -171,7 +171,16 @@ in {
       Restart = "always";
       RestartSec = "2s";
       SupplementaryGroups = ["video"];
-      DeviceAllow = ["/dev/video0 rw" "/dev/video1 rw"];
+      # DeviceAllow turns on the devices cgroup allowlist: the dma-heap
+      # nodes must be listed or the dmabuf import path is silently
+      # filtered out (EACCES -> mmap fallback -> CMA ENOMEM at 1080p).
+      DeviceAllow = [
+        "/dev/video0 rw"
+        "/dev/video1 rw"
+        "/dev/dma_heap/default_cma_region rw"
+        "/dev/dma_heap/linux,cma rw"
+        "/dev/dma_heap/system rw"
+      ];
       NoNewPrivileges = true;
       ProtectSystem = "strict";
       ProtectHome = true;
