@@ -11,6 +11,7 @@
   inputs,
   lib,
   network,
+  pkgs,
   ...
 }: let
   ethHost = network.hosts.nanokvm.addresses.lan;
@@ -123,6 +124,50 @@ in {
     server.enable = lib.mkForce false;
     usbGadget.enable = lib.mkForce false;
   };
+
+  # KVM video path: HDMI capture -> Coda980 H.264 -> mediamtx, sharing the
+  # fleet-wide interface contract with rock-5b (RTSP :8554/hdmi, WebRTC
+  # :8889/hdmi). The bridge publishes over loopback RTSP; mediamtx serves
+  # clients. No transcoding anywhere, so this fits in the RAM the Go
+  # server is too big for.
+  services.mediamtx = {
+    enable = true;
+    settings = {
+      paths = {
+        hdmi = {
+          source = "publisher";
+        };
+      };
+    };
+  };
+  networking.firewall.allowedTCPPorts = [8554 8889];
+  networking.firewall.allowedUDPPorts = [8189];
+  systemd.services.kvm-video = {
+    description = "KVM HDMI bridge (capture -> Coda980 H.264 -> mediamtx)";
+    wantedBy = ["multi-user.target"];
+    after = ["mediamtx.service"];
+    serviceConfig = {
+      # --io dmabuf needs the dma-heap kernel; --format nv12 additionally
+      # needs the fixed direct-input path. Until that kernel is deployed,
+      # nv21 stages through the driver and still works.
+      ExecStart = ''
+        ${pkgs.sg2002-h264-bridge}/bin/sg2002-h264-bridge \
+          /dev/video0 /dev/video1 \
+          --size full --io dmabuf --format nv21 \
+          --bitrate 4000000 --gop 30 \
+          --rtsp rtsp://127.0.0.1:8554/hdmi
+      '';
+      Restart = "always";
+      RestartSec = "2s";
+      SupplementaryGroups = ["video"];
+      DeviceAllow = ["/dev/video0 rw" "/dev/video1 rw"];
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+    };
+  };
+
   # Keep the SD profile's ECM+ACM gadget continuously bound across
   # switch-root. The NanoKVM compatibility module otherwise defaults to a
   # legacy /boot control file and a second re-enumeration when enabled.
