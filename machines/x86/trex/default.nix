@@ -140,14 +140,11 @@ in {
     };
   };
 
-  # Chain services parked during the pool3d retirement (2026-07-24): their
-  # random-IO workloads don't belong on bpool's HDDs, and the chains can
-  # re-sync ("catch up") once they get a fast home again. Data sits dormant
-  # at bpool/trex/{monero,tari,p2pool}.
-  services.monero.enable = lib.mkForce false;
-  services.tari.enable = lib.mkForce false;
-  services.p2pool.enable = lib.mkForce false;
-  services.p2pool-exporter.enable = lib.mkForce false;
+  # Chain services un-parked 2026-08-11. They were stopped during the pool3d
+  # retirement because their random-IO workloads did not belong on bpool's HDD
+  # stripe; they now live on dedicated btrfs subvolumes on the nand4 NVMe
+  # array (chains/{monero,tari,p2pool}), with the ~416G of dormant state
+  # copied across rather than re-synced from the network.
 
   # services/p2pool.nix still declares the encrypted merge-mining environment
   # while the daemon is parked. Retain its account so sops can install that
@@ -254,34 +251,10 @@ in {
     };
   };
 
-  services.hermes-agent = {
-    enable = true;
-    package = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
-    user = "grw";
-    group = "users";
-    createUser = false;
-    createGroup = false;
-    stateDir = "/home/grw/.hermes";
-    homeDir = "/home/grw";
-  };
-
-  # Signal transport for hermes-gateway. signal-cli runs as an HTTP daemon
-  # that the gateway polls; account state lives in ~grw/.local/share/signal-cli
-  # (link once with `signal-cli link -n HermesAgent`). 8080 is qBittorrent,
-  # so the daemon listens on 8082 (8083 is the hellas gateway).
-  systemd.services.signal-cli-daemon = {
-    description = "signal-cli HTTP daemon for Hermes gateway";
-    after = ["network-online.target"];
-    wants = ["network-online.target"];
-    wantedBy = ["multi-user.target"];
-    serviceConfig = {
-      User = "grw";
-      Group = "users";
-      ExecStart = "${pkgs.signal-cli}/bin/signal-cli daemon --http 127.0.0.1:8082";
-      Restart = "on-failure";
-      RestartSec = "10s";
-    };
-  };
+  # Hermes and its Signal transport are intentionally disabled. OMP is the
+  # orchestrator used on trex; retaining the unused gateway would keep an
+  # unrelated Python agent in every system and Home Manager closure.
+  services.hermes-agent.enable = false;
 
   # Kimi Code web UI (`kimi web`). Bound to 127.0.0.1 and published only through
   # the TLS vhost in services/nginx.nix, which restricts access to the LAN and

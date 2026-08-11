@@ -55,7 +55,10 @@ in {
 
     image = mkOption {
       type = types.str;
-      default = "quay.io/tarilabs/minotari_node:v5.2.1-mainnet";
+      # Bumped v5.2.1 -> v5.6.0 on 2026-08-11. The node had been parked since
+      # 2026-07-24 and Tari ships consensus-affecting releases often, so an
+      # image five minors behind would not have synced mainnet.
+      default = "quay.io/tarilabs/minotari_node:v5.6.0-mainnet";
       description = "Docker image to use for Tari node";
     };
 

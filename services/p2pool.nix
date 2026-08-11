@@ -3,9 +3,11 @@
 
   # ZFS filesystem for p2pool data
   fileSystems."/var/lib/p2pool" = {
-    device = "bpool/trex/p2pool";
-    fsType = "zfs";
-    options = ["nofail" "sync=disabled"];
+    # Moved off bpool's HDD stripe onto the nand4 NVMe array (2026-08-11).
+    # These are random-IO chain databases; the HDDs are why they were parked.
+    device = "/dev/disk/by-label/nand4";
+    fsType = "btrfs";
+    options = ["subvol=/chains/p2pool" "compress=zstd" "noatime" "nofail"];
   };
 
   # Create data-api directory
