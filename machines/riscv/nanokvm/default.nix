@@ -208,6 +208,13 @@ in {
   sg2002.usbGadget.network.controlFile = lib.mkForce null;
   sg2002.usbGadget.stage2.reenumerateAfterBoot.enable = lib.mkForce false;
   systemd.network.wait-online.enable = lib.mkForce false;
+  # The VPSS scaler driver probes and registers, but any access to the
+  # block (or even module removal) silently wedges the SoC on this board
+  # — reads work (TOP_CFG0=0x8, IMG_CFG sane), writes/rmmod stall the bus
+  # with zero console output and the 85 s watchdog resets. Keep it
+  # blacklisted until the access wedge is root-caused (needs ramoops or a
+  # UART console; repro tooling in nixos-nanokvm-artifacts/vpss-driver-*).
+  boot.blacklistedKernelModules = ["sg2002-vpss"];
   systemd.network.networks = {
     "20-eth0" = {
       address = [
