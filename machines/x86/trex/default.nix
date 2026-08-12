@@ -1113,6 +1113,24 @@ in {
         networkConfig = {
           DNS = network.routerIp;
           MulticastDNS = "yes";
+          # This host publishes AAAA records (home.satanic.link and the other
+          # sconfig.gcp-ddns names in services/nginx.nix), so it must have a
+          # STABLE IPv6 address. Privacy extensions are for clients that want
+          # their outbound address to be unlinkable; on a server they are
+          # actively harmful.
+          #
+          # Without this the default is use_tempaddr=2, which makes the kernel
+          # prefer a temporary address for outbound connections. gcp-ddns
+          # learns "our" address by asking api6.ipify.org what source it sees,
+          # so it published that temporary address -- and temporary addresses
+          # rotate (temp_prefered_lft, 24h here) while the ddns timer only runs
+          # every 24h. The AAAA therefore drifts onto an address that is
+          # deprecated and eventually removed, and clients that cached it hang
+          # instead of failing over, while IPv4 keeps working. That asymmetry
+          # is what "works on mobile data, spins forever on the LAN" looks like.
+          #
+          # The router already does this (machines/x86/router/default.nix:147).
+          IPv6PrivacyExtensions = false;
         };
         # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
         # other devices on the LAN (e.g. Apple devices acting as Tailscale
