@@ -1,3 +1,27 @@
+# A long-parked node comes back with a poisoned peer database.
+#
+# After this node sat stopped from 2026-07-24 to 2026-08-11, it started, logged
+# "Connectivity is OFFLINE" once a second for nine hours, and never connected.
+# The symptoms were misleading in both directions:
+#
+#   - It looked like a network fault, but was not. DNS resolved, the DNS TXT
+#     seeds returned live peers, and the container could open TCP to those seeds
+#     on 18189. tcpdump on the podman bridge showed no dial traffic at all,
+#     because the node had already given up retrying.
+#   - It looked like a tor problem, but was not. config.toml leaves
+#     transport.type commented out (upstream default "tor"), but the container
+#     is launched with -p base_node.p2p.transport.type=tcp, which wins.
+#
+# The real cause was in mainnet/log/base_node/network.log: a 572 MB peer_db
+# holding 231193 peers, most long dead. Dials failed with "Connection refused"
+# or "Dial timeout after 60.00s" against addresses tagged `source: Config`
+# from the Feb-2026 seed list, while `#dialing_now = 93` burned a 60s timeout
+# apiece. The node never reached a live peer before declaring itself offline.
+#
+# Fix: stop the unit, move mainnet/peer_db aside, start. It re-bootstraps from
+# the DNS seeds. Within 90s: 269 successful outbound connections, peer_list
+# down to 798, header sync running. peer_db is pure cache -- the node identity
+# lives in mainnet/config/base_node_id.json and the chain in mainnet/data.
 {
   config,
   lib,

@@ -917,8 +917,15 @@ in {
         weekly = 0;
         monthly = 0;
       };
+      # Chain data: public, bulk, high-churn and fully re-downloadable, so it is
+      # worth neither snapshots nor replication. monero, tari and p2pool moved
+      # to btrfs subvolumes on nand4 on 2026-08-11 and these datasets were
+      # destroyed on 2026-08-12; the entries stay as a guard in case a dataset
+      # by one of these names is ever recreated. p2pool was the one that had
+      # been missed, so it was snapshotted and replicated to fuckup for months.
       datasets."bpool/trex/tari" = excluded;
       datasets."bpool/trex/monero" = excluded;
+      datasets."bpool/trex/p2pool" = excluded;
       # re-downloadable model weights — no snapshots (churn is large, value is zero)
       datasets."bpool/trex/models" = excluded;
       # Partial torrents are disposable and high-churn.
@@ -929,7 +936,7 @@ in {
     # pre-migration snapshot history, including partial torrent payloads that
     # predate the excluded downloads/incomplete child dataset.
     syncoid = let
-      excludedDatasets = ["tari" "monero" "models" "bitcoind" "downloads/incomplete"];
+      excludedDatasets = ["tari" "monero" "p2pool" "models" "bitcoind" "downloads/incomplete"];
       exclusions = lib.concatMap (d: ["--exclude-datasets" d]) excludedDatasets;
     in {
       enable = true;
