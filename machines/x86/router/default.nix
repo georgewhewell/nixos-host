@@ -281,6 +281,45 @@
     '';
   };
 
+  # Safety net for the same PCIe/rename flakiness. On the 2026-08-10 boot the
+  # kernel name flapped (lan10g -> eth1 -> lan10g) while systemd-networkd was
+  # enumerating; networkd then marked the link *unmanaged* for the rest of the
+  # boot, so 20-lan-10g-realtek.network never applied. The port stayed down and
+  # unenslaved, which silently cut off everything behind the 10G switch — the
+  # PoE switch, the Zigbee coordinator, and every Zigbee light with it. Neither
+  # `networkctl reconfigure` nor a udev re-add persuades networkd to adopt the
+  # link once it has done this; only a full networkd restart does, which is not
+  # something to do unattended on the router.
+  #
+  # So reconcile the end state directly: idempotent, and a no-op on every boot
+  # where networkd behaved.
+  systemd.services.lan10g-bridge-reconcile = {
+    description = "Enslave lan10g to the LAN bridge if networkd left it unmanaged";
+    after = [ "systemd-networkd.service" "sys-subsystem-net-devices-lan10g.device" ];
+    wants = [ "sys-subsystem-net-devices-lan10g.device" ];
+    wantedBy = [ "multi-user.target" ];
+    path = [ pkgs.iproute2 ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      if [ ! -e /sys/class/net/lan10g ]; then
+        echo "lan10g absent (NIC missing from the PCIe bus this boot); nothing to do"
+        exit 0
+      fi
+      master=$(sed -n 's/^INTERFACE=//p' /sys/class/net/lan10g/master/uevent 2>/dev/null || true)
+      if [ "$master" = "${network.ports.router.lanBridge}" ]; then
+        echo "lan10g already enslaved to ${network.ports.router.lanBridge}; nothing to do"
+        exit 0
+      fi
+      echo "lan10g not enslaved (master=$master); reconciling"
+      ip link set lan10g mtu ${toString network.vlans.lan.mtu}
+      ip link set lan10g up
+      ip link set lan10g master ${network.ports.router.lanBridge}
+    '';
+  };
+
   networking.hosts = {
     "127.0.0.1" = [
       "localhost"
