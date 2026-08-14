@@ -78,6 +78,9 @@
     # UniFi controller removed 2026-06-14 — the last UniFi device (AC-Pro) now
     # runs OpenWrt, so the controller is no longer needed.
     ../../../services/home-assistant/default.nix
+    ../../../services/go2rtc.nix
+    # Frigate (recording/detection) is still parked pending a decision on which
+    # host should own it — go2rtc above is what HA needs for live camera views.
     # ../../../services/frigate.nix
   ];
 

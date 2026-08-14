@@ -1,27 +1,7 @@
+# Frigate only. The go2rtc half now lives in ./go2rtc.nix — Frigate consumes
+# its streams over 127.0.0.1:1984, so importing this file also requires
+# importing ./go2rtc.nix, but not the other way round.
 {config, network, ...}: {
-  services.go2rtc = {
-    enable = true;
-    settings = {
-      homekit = {
-        esp32-s3-eth-01 = [];
-        esp32-s3-eth-02 = [];
-        esp32-p4-wifi = [];
-        esp32-p4-eth-01 = [];
-      };
-      streams = {
-        esp32-s3-eth-01 = [
-          "http://${network.fqdn "esp32-s3-eth-01"}:8080"
-        ];
-        esp32-p4-wifi = [
-          "http://${network.fqdn "esp32-p4-wifi"}:8080"
-        ];
-        esp32-p4-eth-01 = [
-          "http://${network.fqdn "esp32-p4-eth-01"}:8080"
-        ];
-      };
-    };
-  };
-
   services.nginx.virtualHosts.${config.services.frigate.hostname} = {
     listen = [
       {

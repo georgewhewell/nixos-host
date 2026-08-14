@@ -8,6 +8,9 @@ let
     { directory = "/var/lib/fail2ban"; mode = "0750"; }
     { directory = "/var/lib/frigate"; user = "frigate"; group = "frigate"; mode = "0750"; }
     { directory = "/var/cache/frigate"; user = "frigate"; group = "frigate"; mode = "0750"; }
+    # go2rtc's HomeKit pairings are written into /var/lib/go2rtc/go2rtc.yaml;
+    # without this they would not survive a reboot of this tmpfs-root router.
+    { directory = "/var/lib/go2rtc"; user = "go2rtc"; group = "go2rtc"; mode = "0750"; }
     "/var/lib/fwupd"
     { directory = "/var/lib/hass"; user = "hass"; group = "hass"; mode = "0700"; }
     { directory = "/var/lib/mosquitto"; user = "mosquitto"; group = "mosquitto"; mode = "0700"; }

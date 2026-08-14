@@ -25,27 +25,14 @@
       horizontal_mirror = false;
     };
 
-    external_components = [
-      {
-        source = "github://oxan/esphome-stream-server";
-        components = ["stream_server"];
-      }
-    ];
-
-    uart = [
-      {
-        id = "gps_uart";
-        tx_pin = "GPIO33";
-        rx_pin = "GPIO34";
-        baud_rate = 115200;
-      }
-    ];
-
-    stream_server = [
-      {
-        uart_id = "gps_uart";
-        port = 8888;
-      }
-    ];
+    # The GPS receiver this board bridged — UART on GPIO33/34, re-served as raw
+    # NMEA over TCP:8888 by oxan/esphome-stream-server — is gone, so the uart,
+    # stream_server and its external_components entry go with it.
+    #
+    # Worth remembering if a UART is ever added back here: GPIO33/34 are the
+    # wrong pins on this board. It is an ESP32-S3 with *octal* PSRAM
+    # (CONFIG_SPIRAM_MODE_OCT, set via memory_type qio_opi in
+    # modules/hardware/waveshare-esp32-s3-cam.nix), and octal PSRAM claims
+    # GPIO33-37. ESPHome warns about exactly this at compile time.
   };
 }

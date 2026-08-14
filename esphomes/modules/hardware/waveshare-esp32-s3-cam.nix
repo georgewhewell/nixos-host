@@ -43,8 +43,15 @@
     ];
 
     esp32_camera = {
+      # Not internal: this is how the camera reaches Home Assistant, as a
+      # native ESPHome camera entity — the same way the P4 boards' `camera:`
+      # component does (modules/hardware/esp32-p4-evboard.nix). An internal
+      # entity is never advertised over the API, so HA never sees it.
+      #
+      # This does not compete with go2rtc/Frigate: those pull MJPEG from
+      # esp32_camera_web_server on :8080 (modules/camera.nix), a separate path
+      # from the API. `name: None` takes the device friendly_name.
       name = "None";
-      internal = true;
       external_clock = {
         pin = "GPIO3";
         frequency = "20MHz";
