@@ -16,9 +16,10 @@
     esp32_ble_tracker.scan_parameters.active = false;
 
     esp32_camera = {
+      # Already at the esp32_camera maximum; drop the framerate to match eth-01.
       resolution = "2560x1920";
       jpeg_quality = 10;
-      max_framerate = "5fps";
+      max_framerate = "1fps";
       idle_framerate = "0.1fps";
       frame_buffer_count = 2;
       vertical_flip = false;

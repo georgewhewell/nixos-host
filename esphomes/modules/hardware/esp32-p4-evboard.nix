@@ -51,10 +51,23 @@
     ];
 
     # MIPI CSI camera pipeline
-    camera.name = "Camera";
+    camera = {
+      name = "Camera";
+      # Milliseconds between frames while streaming (camera_impl.cpp:119 does
+      # next_update_ = now + max_update_interval_), NOT a framerate. Default is
+      # 100 (10fps); 1000 gives ~1fps, which is the trade for running the
+      # sensor at its highest resolution.
+      max_update_interval = 1000;
+    };
 
     camera_sensor = {
       type = "mipi_csi";
+      # Known-good mode. espressif__esp_cam_sensor 1.5.1 also offers
+      # RAW10_1920x1080_30fps and RAW10_1280x960_binning_45fps, but 1080p RAW10
+      # was tried on 2026-08-14 and the camera came up "marked FAILED" on all
+      # three boards with "STREAM: failed to acquire frame" — the sensor/ISP
+      # init fails before the API is up, so the reason is only visible on the
+      # serial console. Do not raise this again without a console attached.
       mode = "MIPI_2lane_24Minput_RAW8_800x800_50fps";
     };
 

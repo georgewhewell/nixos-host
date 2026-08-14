@@ -39,7 +39,7 @@ void CameraImpl::setup() {
   }
 
   if (!this->task_->init())
-    this->mark_failed("Insufficient resources to initialize Task.");
+    this->mark_failed(LOG_STR("Insufficient resources to initialize Task."));
 }
 
 void CameraImpl::loop() {
