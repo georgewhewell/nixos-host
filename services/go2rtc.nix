@@ -82,6 +82,13 @@ in {
       rock-5b-hdmi = [
         "rtsp://${network.fqdn "rock-5b"}:8554/hdmi"
       ];
+      # Same fleet-wide KVM interface contract as rock-5b: the NanoKVM's
+      # HDMI capture goes through the Coda980 H.264 encoder into mediamtx,
+      # which serves RTSP :8554/hdmi (machines/riscv/nanokvm/default.nix).
+      # Already H.264 (960x540), so go2rtc passes it through untranscoded.
+      nanokvm-hdmi = [
+        "rtsp://${network.fqdn "nanokvm"}:8554/hdmi"
+      ];
     };
   };
 
