@@ -71,6 +71,13 @@
       inputs.linux-src.follows = "linux-src";
     };
 
+    atlas = {
+      # Consume the reviewed Atlas package flake. The lock file fixes the exact
+      # commit and content hash; source is no longer copied into this repo.
+      url = "git+file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok?ref=lane/20260813/f15-omp-grok&dir=packages/pexctl&shallow=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # NOTE: this flake pins its own nixpkgs fork (vitis-ai branch) because
     # xrt / xrt-plugin-amdxdna / xrt-amdxdna live there; do not add
     # `inputs.nixpkgs.follows = "nixpkgs"`.
@@ -178,6 +185,9 @@
       # Unified overlay list - applied consistently across all outputs
       allOverlays = [
         (composeManyExtensions localOverlays)
+        (final: _prev: {
+          pexctl = inputs.atlas.packages.${final.stdenv.hostPlatform.system}.pexctl;
+        })
         inputs.rust-overlay.overlays.default
         inputs.hellas.overlays.default
         # Experimental NVIDIA DOCA-OFED packages. Keep the overlay before the
@@ -595,6 +605,8 @@
         in
         (import ./packages pkgs)
         // {
+          # Stable package output backed by the pinned Atlas input.
+          pexctl = inputs.atlas.packages.${system}.pexctl;
           # Keep `nix run .#colmena` on the same Colmena input that provides
           # `colmenaHive`; nixpkgs currently carries an older 0.4 CLI.
           colmena = inputs.colmena.packages.${system}.colmena;

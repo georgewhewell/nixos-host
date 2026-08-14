@@ -52,6 +52,30 @@
         "url": "https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git"
       }
     },
+    "atlas": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "dir": "packages/pexctl",
+        "lastModified": 1786696216,
+        "narHash": "sha256-RsDwuPx4YvYxtx/m+DbKTujfyC4++/6ohFLIiPq+qFU=",
+        "ref": "lane/20260813/f15-omp-grok",
+        "rev": "68aed4bb9ce93beb98592a6269ecd8ea32c5593e",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok"
+      },
+      "original": {
+        "dir": "packages/pexctl",
+        "ref": "lane/20260813/f15-omp-grok",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok"
+      }
+    },
     "blueprint": {
       "inputs": {
         "nixpkgs": [
@@ -1553,6 +1577,7 @@
     "root": {
       "inputs": {
         "ath-kernel": "ath-kernel",
+        "atlas": "atlas",
         "btop-src": "btop-src",
         "colmena": "colmena",
         "darwin": "darwin",

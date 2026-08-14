@@ -1,9 +1,0 @@
-{
-  "schema": "pexctl.atlas-config.v1",
-  "stations": [
-    {
-      "station": 4,
-      "layout": "x4x4x4x4"
-    }
-  ]
-}
