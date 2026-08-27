@@ -557,6 +557,7 @@
             # overlay touches away from the standalone configuration.
             nodeNixpkgs = {
               nanokvm = pkgsForNanokvm;
+              claw = pkgsForNanokvm;
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
               strix-2 = pkgsForRocmStrixHalo "x86_64-linux";

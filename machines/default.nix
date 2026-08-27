@@ -158,6 +158,27 @@ let
       };
     };
 
+  # LicheeRV-Nano "RV Claw" (SG2002 + PicoClaw LCD expansion). Same cross
+  # pattern as licheerv, but the board module is the PicoClaw USB-NFS live
+  # variant with the ST7789 screen self-test: no SD, no LAN — every boot
+  # is pushed from fuckup over USB and the store mounts from fuckup's end
+  # of the gadget link.
+  sysRiscvClaw = machine:
+    inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
+      modules = [
+        { _module.args = inputs; }
+        inputs.nanokvm.nixosModules.boards.picoclaw.mainline.live."usb-lcd"
+        nixosModuleNanokvm
+        machine
+      ];
+      extraModules = [
+        inputs.colmena.nixosModules.deploymentOptions
+      ];
+      specialArgs = {
+        inherit inputs mkSecret network;
+      };
+    };
+
   # RISC-V SpacemiT K3 Pico-ITX. The reusable board support, kernel,
   # firmware, and cross-platform setup come from the nanokvm flake; this
   # builder adds the fleet base and disko module.
@@ -229,6 +250,7 @@ in
 
   # RISC-V (cross-built on x86_64)
   nanokvm = sysRiscvNanokvm ./riscv/nanokvm;
+  claw = sysRiscvClaw ./riscv/claw;
   k3 = sysRiscvK3 ./riscv/k3;
   k3Installer = sysRiscvK3 ./riscv/k3/kexec-installer.nix;
   k3InitrdRescue = sysRiscvK3 ./riscv/k3/initrd-rescue.nix;

@@ -197,6 +197,7 @@ in
 
     ./fabric-rdma-vf.nix
     ./nvme-models.nix
+    ./claw-usb-live.nix
   ];
 
   benchmark.runners.cuda-rtx4090 = {
