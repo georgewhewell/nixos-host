@@ -111,7 +111,11 @@ in
     # next board reset is caught without manual intervention.
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${clawUsbLive}/bin/usb-boot --rom-dl-verbose";
+      # This host's full-speed ROM path can spend ~25 seconds waiting for the
+      # next enumeration and another ~45 seconds draining the multi-stage FIP
+      # transfer. Ten 90-second attempts keep misses bounded without killing a
+      # real upload halfway through.
+      ExecStart = "${clawUsbLive}/bin/usb-boot --rom-dl-verbose --rom-dl-timeout 900 --attempts 10";
       Environment = [
         "NANOKVM_ATTACH=none"
       ];
