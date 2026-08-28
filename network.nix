@@ -324,6 +324,16 @@ lib: rec {
       mac = "02:4b:56:4d:00:17";
       addresses = {lan = 17;};
     };
+    licheerv = {
+      # LicheeRV-Nano-W (SG2002) on trex's USB port: USB fastboot boot,
+      # NFS root from trex. Same no-fused-MAC
+      # situation as nanokvm; pinned locally-administered "LRV" + .29
+      # in the machine config. WiFi stays off — its AIC8800 ships the
+      # same burned-in default MAC as nanokvm's (38:7a:cc:40:41:e3),
+      # so both on the wifi VLAN would collide.
+      mac = "02:4c:52:56:00:29";
+      addresses = {lan = 29;};
+    };
     "rock-5b" = {
       mac = "00:e0:4c:68:02:e7";
       addresses = {lan = 18;};
