@@ -158,6 +158,26 @@ let
       };
     };
 
+  # LicheeRV-Nano-W (SG2002). Same cross pattern as nanokvm, but the
+  # board module is the camera-enabled USB-fastboot + NFS-root live
+  # variant: no SD card, no bootloader state — every boot is pushed from
+  # trex over USB and stage 2 runs from trex's NFS export.
+  sysRiscvLicheerv = machine:
+    inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
+      modules = [
+        { _module.args = inputs; }
+        inputs.nanokvm.nixosModules.boards.licheerv.mainline.live."usb-nfs-cam"
+        nixosModuleNanokvm
+        machine
+      ];
+      extraModules = [
+        inputs.colmena.nixosModules.deploymentOptions
+      ];
+      specialArgs = {
+        inherit inputs mkSecret network;
+      };
+    };
+
   # LicheeRV-Nano "RV Claw" (SG2002 + PicoClaw LCD expansion). Same cross
   # pattern as licheerv, but the board module is the PicoClaw USB-NFS live
   # variant with the ST7789 screen self-test: no SD, no LAN — every boot
@@ -250,6 +270,7 @@ in
 
   # RISC-V (cross-built on x86_64)
   nanokvm = sysRiscvNanokvm ./riscv/nanokvm;
+  licheerv = sysRiscvLicheerv ./riscv/licheerv;
   claw = sysRiscvClaw ./riscv/claw;
   k3 = sysRiscvK3 ./riscv/k3;
   k3Installer = sysRiscvK3 ./riscv/k3/kexec-installer.nix;

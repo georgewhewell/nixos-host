@@ -92,12 +92,18 @@ in
   # ~9 s USB-DL cycle, so a plugged-but-unbooted claw re-triggers the
   # rule until the service catches it; SYSTEMD_WANTS on an already-run
   # service is a no-op, so the ROM loop cannot stack instances.
+  # ID_MM_DEVICE_IGNORE keeps ModemManager from probing the ROM's
+  # CDC-ACM "USB Com Port" on every cycle.  Keep cdc_acm bound:
+  # cv181x-rom-dl talks to the BootROM through the ttyACM device that
+  # this driver creates.  Unbinding it removes the uploader's transport
+  # and leaves every attempt stuck at "Connecting to ROM".
   services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="3346", ATTR{idProduct}=="1000", TAG+="systemd", ENV{SYSTEMD_WANTS}="claw-usb-boot.service"
+    ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="3346", ATTR{idProduct}=="1000", TAG+="systemd", ENV{SYSTEMD_WANTS}="claw-usb-boot.service", ENV{ID_MM_DEVICE_IGNORE}="1"
   '';
 
   systemd.services.claw-usb-boot = {
     description = "USB-boot the claw (LicheeRV-Nano PicoClaw) into its NFS live system";
+    wantedBy = [ "multi-user.target" ];
     # udev-triggered only; starting it manually is fine too. A
     # successful pass (FIP pushed, FIT booted, SSH answered) exits 0 and
     # the board then keeps running off the kernel nfsd — nothing to
@@ -108,12 +114,6 @@ in
       ExecStart = "${clawUsbLive}/bin/usb-boot --rom-dl-verbose";
       Environment = [
         "NANOKVM_ATTACH=none"
-        # mkNfsUsbBootRunner's exportfs preflight pipes through awk, but
-        # gawk is missing from the runner's runtimeInputs — a latent
-        # upstream gap that only shows under systemd's clean PATH (an
-        # interactive shell masks it). The runner prepends its own
-        # runtimeInputs to $PATH, so this entry survives.
-        "PATH=${pkgs.gawk}/bin"
       ];
       Restart = "on-failure";
       RestartSec = "15s";

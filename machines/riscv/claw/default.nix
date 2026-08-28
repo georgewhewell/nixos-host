@@ -20,7 +20,21 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+let
+  clawLcdStatus = pkgs.callPackage ../../../packages/claw-lcd-status { };
+  waitForSpi = pkgs.writeShellScript "claw-lcd-wait-for-spi" ''
+    for _ in $(${pkgs.coreutils}/bin/seq 1 100); do
+      if [ -c /dev/spidev1.0 ]; then
+        exit 0
+      fi
+      ${pkgs.coreutils}/bin/sleep 0.1
+    done
+    echo "claw LCD SPI device did not appear: /dev/spidev1.0" >&2
+    exit 1
+  '';
+in
+{
   # Colmena reconstructs nodes through eval-config.nix and therefore does not
   # inherit the nested nixpkgs flake's source metadata automatically. Pin it
   # explicitly so the standalone and hive evaluations are byte-identical.
@@ -41,25 +55,41 @@
 
   networking.hostName = "claw";
 
-  # Bring-up hardening over the full-speed USB store link (see
-  # machines/x86/fuckup/claw-usb-live.nix for the host side):
-  # - High-speed gadget DTB: the full-speed link stalls (dwc2 RX wedge)
-  #   ~8-10 min into every boot, mid-switch-root, and the guard's
-  #   re-probe kills the store. HS is the same transport U-Boot's
-  #   fastboot gadget already ran, and shortens every store read.
-  # - Prefetch stage-2 systemd's ELF deps in the initrd while the link
-  #   is healthy, so the switch-root handoff doesn't straddle the stall
-  #   window (same A/B the pcie NFS entry uses).
-  sg2002.fdt = lib.mkForce pkgs.sg2002-dtb-mainline-picoclaw-lcd-high-speed;
+  # Local display: replace the board module's ST7789 self-test with the
+  # fleet status dashboard — same spidev/GPIO interface, but LVGL renders
+  # partial (dirty-area) frames instead of one static full-screen push.
+  # The self-test holds the panel's GPIO lines exclusively, so it must
+  # not run alongside.
+  systemd.services.picoclaw-lcd-test.wantedBy = lib.mkForce [ ];
+  systemd.services.claw-lcd-status = {
+    description = "claw ST7789 LVGL status display";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStartPre = [ waitForSpi ];
+      ExecStart = "${clawLcdStatus}/bin/claw-lcd-status /dev/spidev1.0 /dev/gpiochip0";
+      Restart = "always";
+      RestartSec = "2s";
+    };
+  };
+
+  # Use the board module's full-speed LCD DTB. Both NCM and ECM on the
+  # experimental high-speed DWC2 path hit a host TX watchdog after about ten
+  # seconds and then failed to re-enumerate. The camera LicheeRV proves this
+  # simpler full-speed ECM path through switch-root, NFS and SSH.
+  sg2002.usbGadget.network.transport = lib.mkForce "ecm";
+  # Prefetch stage-2 systemd's ELF dependencies while still in the initrd so
+  # the switch-root transition needs less traffic from the USB-backed store.
   nanokvm.nfsLive.prefetchStage2Systemd = true;
 
   # Fleet hosts are key-only (fleet-core). The live profile's first-boot
   # password path stays as a local recovery fallback only.
   services.openssh.settings.PasswordAuthentication = lib.mkForce false;
 
-  # This is not a KVM: no nanokvm server, no HDMI pipeline. The ST7789
-  # self-test (nanokvm.picoclawLcd) stays enabled — it ships in the
-  # grafted board module and is the unit's only local display.
+  # This is not a KVM: no nanokvm server, no HDMI pipeline. The board
+  # module's picoclawLcd mixin stays enabled for the DTB/spidev wiring;
+  # the LVGL status service above is the panel's only userspace.
   services.nanokvm.enable = lib.mkForce false;
 
   # Lingering starts a per-user systemd manager at boot whether or not
