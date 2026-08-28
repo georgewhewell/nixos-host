@@ -377,6 +377,7 @@ in {
     ../../../profiles/netboot-server.nix
     ../../../profiles/crypto
     ../../../profiles/logserver.nix
+    ./licheerv-usb-live.nix
 
     ../../../services/nginx.nix
     ../../../services/grafana.nix

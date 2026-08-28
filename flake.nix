@@ -95,7 +95,7 @@
       # flake source. Keep NanoKVM's tested nixpkgs pin as well: following the
       # Strix pin invalidates the cached RISC-V cross closure and rebuilds the
       # toolchain without changing the host integration contract.
-      url = "git+file:///mnt/Home/src/nixos-nanokvm?shallow=1";
+      url = "git+file:///mnt/Home/src/nixos-nanokvm?ref=master&shallow=1";
       inputs.disko.follows = "disko";
       inputs.impermanence.follows = "impermanence";
     };
@@ -557,6 +557,7 @@
             # overlay touches away from the standalone configuration.
             nodeNixpkgs = {
               nanokvm = pkgsForNanokvm;
+              licheerv = pkgsForNanokvm;
               claw = pkgsForNanokvm;
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
