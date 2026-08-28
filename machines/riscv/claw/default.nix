@@ -74,11 +74,13 @@ in
     };
   };
 
-  # Use the board module's full-speed LCD DTB. Both NCM and ECM on the
-  # experimental high-speed DWC2 path hit a host TX watchdog after about ten
-  # seconds and then failed to re-enumerate. The camera LicheeRV proves this
-  # simpler full-speed ECM path through switch-root, NFS and SSH.
-  sg2002.usbGadget.network.transport = lib.mkForce "ecm";
+  # Use the board module's full-speed LCD DTB. The full-speed ECM function
+  # enumerates on fuckup but never completes a host-to-device bulk transfer:
+  # cdc_ether's TX queue times out before the initrd can mount NFS. NCM uses a
+  # different gadget/host framing path while retaining the conservative 12M
+  # PHY setting. The earlier failed NCM test used the experimental high-speed
+  # DWC2 path, so it did not exercise this combination.
+  sg2002.usbGadget.network.transport = lib.mkForce "ncm";
   # Prefetch stage-2 systemd's ELF dependencies while still in the initrd so
   # the switch-root transition needs less traffic from the USB-backed store.
   nanokvm.nfsLive.prefetchStage2Systemd = true;
