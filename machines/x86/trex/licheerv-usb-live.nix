@@ -42,7 +42,11 @@ let
       echo "[licheerv-usb-boot] target already reachable at 10.55.0.1"
       exit 0
     fi
-    exec ${licheervUsbLive}/bin/usb-boot --rom-dl-verbose
+    # A software reset can take more than one pyserial scan to shed the old
+    # gadget and expose the ROM ACM node. Give each attempt 90 seconds and
+    # keep retrying long enough for an unattended recovery.
+    exec ${licheervUsbLive}/bin/usb-boot \
+      --rom-dl-verbose --rom-dl-timeout 900 --attempts 10
   '';
 in
 {
