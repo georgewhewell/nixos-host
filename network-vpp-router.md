@@ -200,6 +200,17 @@ pairs. Routed round-trip latency averaged 0.102 ms for IPv4 NAT and 0.081 ms
 for IPv6. Restricted traffic arrived at WAN with CS1, and the generated MSS was
 1460.
 
+The real-WAN acceptance run on 2026-08-30 exposed what the aggregate test hid.
+One Trex IPv4 address reached only 13.26 Gbit/s because NAT44-ED selects the
+worker for every new session by source address; the same host reached 22.99
+Gbit/s over native IPv6, and three temporary IPv4 source addresses reached
+23.36 Gbit/s in aggregate. CNAT was then tested on the isolated 3901/3902 path:
+one source address was spread evenly over all six workers but stopped at 16.43
+Gbit/s, while routing with CNAT detached reached 48.83 Gbit/s on the identical
+path. CNAT 26.06 takes the shared timestamp reader lock on the packet hot path,
+so it is retained only as a diagnostic lab and is not a production NAT44
+replacement. Production was returned to its exact pre-test generation.
+
 The primary CRS812 endpoint is the live `sfp56-8` ISP cage; `sfp56-7` remains
 Rock-5B's live 25G link. The legacy-flat handoff is active: VLAN 100 contains
 only `sfp56-8` and BlueField, VLAN 50 follows the FDB-proved core path, all

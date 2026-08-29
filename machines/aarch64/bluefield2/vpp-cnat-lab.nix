@@ -12,35 +12,57 @@
     text = ''
       set -euo pipefail
 
-      if ! vppctl show interface bf0.3901 >/dev/null 2>&1; then
-        vppctl create sub-interfaces bf0 3901
+      # vppctl exits zero even when the CLI replies with "unknown input" or a
+      # parse error. Treat those replies as failures so systemd cannot report
+      # a configured lab when VPP rejected every command.
+      vppctl_checked() {
+        local output
+        if ! output=$(vppctl "$@" 2>&1); then
+          printf '%s\n' "$output" >&2
+          return 1
+        fi
+        case "$output" in
+          *"unknown input"*|*"unknown interface"*|*"parse error"*|*"failed"*|*"not found"*|*"no snat policy"*)
+            printf '%s\n' "$output" >&2
+            return 1
+            ;;
+        esac
+        if [ -n "$output" ]; then
+          printf '%s\n' "$output"
+        fi
+      }
+
+      if ! vppctl show interface | grep -Eq '^bf0\.3901[[:space:]]'; then
+        vppctl_checked create sub-interfaces bf0 3901
       fi
-      if ! vppctl show interface bf0.3902 >/dev/null 2>&1; then
-        vppctl create sub-interfaces bf0 3902
+      if ! vppctl show interface | grep -Eq '^bf0\.3902[[:space:]]'; then
+        vppctl_checked create sub-interfaces bf0 3902
       fi
 
-      vppctl set interface mtu packet 9000 bf0.3901
-      vppctl set interface mtu packet 1500 bf0.3902
-      vppctl set interface state bf0.3901 up
-      vppctl set interface state bf0.3902 up
+      vppctl_checked set interface mtu packet 9000 bf0.3901
+      vppctl_checked set interface mtu packet 1500 bf0.3902
+      vppctl_checked set interface state bf0.3901 up
+      vppctl_checked set interface state bf0.3902 up
 
       if ! vppctl show interface address bf0.3901 | grep -Fq '198.18.10.1/24'; then
-        vppctl set interface ip address bf0.3901 198.18.10.1/24
+        vppctl_checked set interface ip address bf0.3901 198.18.10.1/24
       fi
       if ! vppctl show interface address bf0.3902 | grep -Fq '203.0.113.2/24'; then
-        vppctl set interface ip address bf0.3902 203.0.113.2/24
+        vppctl_checked set interface ip address bf0.3902 203.0.113.2/24
       fi
 
       # CNAT stores sessions in a shared flow hash and therefore does not
       # funnel every flow from one client address through one handoff worker.
       # It is attached only to the documentation-prefix lab interface.
-      vppctl set cnat snat-policy addr bf0.3902
-      vppctl set cnat snat-policy if-pfx
-      vppctl set cnat snat-policy if table include-v4 bf0.3901
-      vppctl set cnat snat-policy prefix 198.18.0.0/15
-      vppctl set interface feature bf0.3901 cnat-snat-ip4 arc ip4-unicast
+      vppctl_checked set cnat snat-policy addr bf0.3902
+      vppctl_checked set cnat snat-policy if-pfx
+      vppctl_checked set cnat snat-policy if table include-v4 bf0.3901
+      vppctl_checked set cnat snat-policy prefix 198.18.0.0/15
+      vppctl_checked set interface feature bf0.3901 cnat-snat-ip4 arc ip4-unicast
 
-      vppctl show cnat snat-policy
+      vppctl_checked show cnat snat-policy
+      vppctl show interface address bf0.3901 | grep -Fq '198.18.10.1/24'
+      vppctl show interface address bf0.3902 | grep -Fq '203.0.113.2/24'
     '';
   };
   stopLab = pkgs.writeShellApplication {
