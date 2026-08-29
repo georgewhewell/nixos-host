@@ -1,5 +1,7 @@
-{lib, pkgs, network, ...}: let
+{config, lib, pkgs, network, ...}: let
   routerPorts = network.ports.router;
+  legacyPcieNetwork = config.router.legacyPcieNetwork.enable;
+  onboardLanPorts = routerPorts.onboardLan;
   wanPort = routerPorts.wan;
   lan25gPort = routerPorts.lan25g;
   lan10gPort = routerPorts.lan10g;
@@ -27,6 +29,28 @@
       RequiredForOnline = requiredForOnline;
     };
   };
+
+  onboardLanLinks = lib.listToAttrs (map (port: {
+    name = "10-router-${port.linuxName}";
+    value = {
+      matchConfig = {
+        Driver = "igc";
+        PermanentMACAddress = port.mac;
+      };
+      linkConfig = {
+        Name = port.linuxName;
+        MTUBytes = lanMtu;
+      };
+    };
+  }) onboardLanPorts);
+
+  onboardLanNetworks = lib.listToAttrs (map (port: {
+    name = "10-router-${port.linuxName}";
+    value = bridgeMemberNetwork {
+      Name = port.linuxName;
+      PermanentMACAddress = port.mac;
+    } "no";
+  }) onboardLanPorts);
 
   # Import shared port forward definitions
   portForwardHosts = import ./port-forwards.nix network;
@@ -143,7 +167,7 @@ in {
   # which we run as a single oneshot service. MikroTik side is force 25G:
   #   /interface ethernet set sfp28-1 \
   #     auto-negotiation=no speed=25G-baseSR-LR fec-mode=fec91
-  systemd.services.lan-25g-link-config = {
+  systemd.services.lan-25g-link-config = lib.mkIf legacyPcieNetwork {
     description = "Configure LAN 25G interface link (speed/autoneg/FEC)";
     after = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
     bindsTo = ["sys-subsystem-net-devices-${lan25gInterface}.device"];
@@ -189,7 +213,7 @@ in {
         vlanConfig.Id = wifiVlan.id;
       };
     };
-    links = {
+    links = onboardLanLinks // lib.optionalAttrs legacyPcieNetwork {
       "20-${wanInterface}" = {
         # Match the WAN port by MAC — switchdev recreates the netdev and the
         # default predictable-name rules don't re-fire, leaving it as `eth0`.
@@ -239,12 +263,17 @@ in {
         bridgeConfig = {};
         address = [
           (network.cidrOf "lan" network.vlans.lan.gatewayHost)
+          # Secondary service address for the VPP gateway handoff. It is
+          # brought up and tested while this host still owns .1; later .1
+          # moves to BlueField and DNS/DHCP/netboot remain reachable here.
+          (network.cidrOf "lan" network.routing.production.transition.controlPlane.targetHost)
+          "${network.routing.production.transition.controlPlane.targetIpv6}/64"
           "fdde:ad::1/64" # ULA for LAN
         ];
         routes = [
           {
             Destination = fabricCidr;
-            Gateway = network.primaryIp network.hosts."mikrotik-400g";
+            Gateway = network.primaryIp network.hosts."mikrotik-crs812";
           }
         ];
         networkConfig = {
@@ -300,10 +329,9 @@ in {
         };
       };
 
+    } // onboardLanNetworks // lib.optionalAttrs legacyPcieNetwork {
       "20-lan-25g" = bridgeMemberNetwork {Name = lan25gInterface;} "enslaved";
-
       "20-lan-10g" = bridgeMemberNetwork {Driver = "atlantic";} "no";
-      "20-lan-2-5g" = bridgeMemberNetwork {Driver = "igc";} "no";
       "20-lan-10g-realtek" = bridgeMemberNetwork {Driver = ["r8169" "r8127"];} "no";
       "20-thunderbolt-mlx5-0" = bridgeMemberNetwork {
         Driver = "mlx5_core";
@@ -336,6 +364,7 @@ in {
         # seconds, IPv6-PD often takes 30 s+. Saves boot time.
         linkConfig.RequiredFamilyForOnline = "ipv4";
       };
+    } // {
       # WireGuard tunnels don't need to be "online" for the router to be up.
       # Default is RequiredForOnline=yes, which makes wait-online block on
       # peer reachability.
@@ -344,10 +373,55 @@ in {
     };
   };
 
+  # A rename storm can make networkd permanently leave a port unmanaged for
+  # that boot (observed on all four I226-V ports on 2026-08-29). The .link and
+  # .network files above are the normal path; this idempotent MAC-based pass
+  # reconciles the desired bridge membership without depending on the name.
+  systemd.services.onboard-lan-bridge-reconcile = {
+    description = "Reconcile the on-board Intel LAN ports with the LAN bridge";
+    after = ["systemd-networkd.service"];
+    before = ["dnsmasq.service"];
+    wantedBy = ["multi-user.target"];
+    path = [pkgs.coreutils pkgs.iproute2];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      for attempt in $(seq 1 30); do
+        [ -e /sys/class/net/${lanBridge} ] && break
+        sleep 1
+      done
+      if [ ! -e /sys/class/net/${lanBridge} ]; then
+        echo "LAN bridge ${lanBridge} did not appear" >&2
+        exit 1
+      fi
+
+      ${lib.concatMapStringsSep "\n" (port: ''
+        found=""
+        for sys_path in /sys/class/net/*; do
+          [ -r "$sys_path/address" ] || continue
+          [ "$(tr '[:upper:]' '[:lower:]' < "$sys_path/address")" = "${port.mac}" ] || continue
+          interface="$(basename "$sys_path")"
+          ip link set dev "$interface" mtu ${lanMtu}
+          ip link set dev "$interface" up
+          ip link set dev "$interface" master ${lanBridge}
+          echo "${port.mac}: $interface joined ${lanBridge} (declared name ${port.linuxName})"
+          found=1
+          break
+        done
+        if [ -z "$found" ]; then
+          echo "Expected on-board LAN port ${port.mac} (${port.linuxName}) is absent" >&2
+          exit 1
+        fi
+      '') onboardLanPorts}
+    '';
+  };
+
 
   # Linux-specific networking (base.nix has common settings)
   networking = {
-    nameservers = [network.routerIp];
+    nameservers = [network.dnsIp];
 
     nat = {
       enable = true;

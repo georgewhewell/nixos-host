@@ -1,0 +1,31 @@
+unix {
+  nodaemon
+  log @RUN_DIR@/vpp.log
+  cli-listen @RUN_DIR@/cli.sock
+  runtime-dir @RUN_DIR@
+}
+api-segment {
+  prefix @API_PREFIX@
+}
+memory {
+  main-heap-size 512M
+}
+cnat {
+  session-db-buckets 1024
+  session-db-memory 1M
+  session-max-age 60
+  snat-db-buckets 1024
+  snat-db-memory 64M
+  tcp-max-age 3600
+  translation-db-buckets 1024
+  translation-db-memory 64K
+}
+plugins {
+  plugin default { disable }
+  plugin acl_plugin.so { enable }
+  plugin cnat_plugin.so { enable }
+  plugin dhcp_plugin.so { enable }
+  plugin nat_plugin.so { enable }
+  plugin ping_plugin.so { enable }
+  plugin urpf_plugin.so { enable }
+}

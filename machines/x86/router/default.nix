@@ -31,10 +31,10 @@
 
   # Realtek RTL8127 10GbE out-of-tree driver with RSS/multi-queue support
   # The in-kernel r8169 driver only has single-queue support for this chip
-  boot.extraModulePackages = [
+  boot.extraModulePackages = lib.mkIf config.router.legacyPcieNetwork.enable [
     (config.boot.kernelPackages.callPackage ../../../packages/r8127 { })
   ];
-  boot.blacklistedKernelModules = [ "r8169" ];
+  boot.blacklistedKernelModules = lib.mkIf config.router.legacyPcieNetwork.enable [ "r8169" ];
 
   boot.kernelParams = [
     # "video=HDMI-A-1:1920x1080@60e" # 'e' forces enable even without EDID
@@ -63,6 +63,8 @@
     inputs.nix-strix-halo.nixosModules.ryzenadj
 
     ../../../profiles/headless.nix
+    ../../../profiles/bluefield-host.nix
+    ../../../profiles/bluefield-hostpf.nix
     ../../../profiles/uefi-boot.nix
     ../../../profiles/radeon.nix
     ../../../profiles/zfs.nix
@@ -91,17 +93,13 @@
   # br0.lan port). Domain security is "user" and boltd's authorization store
   # (/var/lib/boltd) doesn't survive impermanence, so without this the NIC
   # stays unauthorized after every boot/re-plug and its LAN segment goes dark.
-  services.udev.extraRules = ''
+  services.udev.extraRules = lib.mkIf config.router.legacyPcieNetwork.enable ''
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{unique_id}=="c8010000-00b1-bd08-2230-ad1cc6200123", ATTR{authorized}=="0", ATTR{authorized}="1"
   '';
 
-  environment.systemPackages = with pkgs; [
-    ryzenadj
-    mstflint
-    rdma-core
-    perftest
-    uhubctl
-  ];
+  environment.systemPackages = with pkgs;
+    [ryzenadj uhubctl]
+    ++ lib.optionals config.router.legacyPcieNetwork.enable [mstflint rdma-core perftest];
 
   # hardware."thunderbolt-ibverbs" = {
   #   blacklist.enable = true;
@@ -229,7 +227,7 @@
   # carrier yet — no bridge, no networkd — so the flap is invisible by the
   # time stage 2 starts. Wait on the PCI device unit, not the netdev name,
   # because switchdev destroys and recreates the netdev.
-  boot.initrd.systemd.services.mlx5-switchdev-wan = {
+  boot.initrd.systemd.services.mlx5-switchdev-wan = lib.mkIf config.router.legacyPcieNetwork.enable {
     description = "Enable switchdev mode on ConnectX-4 Lx WAN port";
     wantedBy = [ "initrd.target" ];
     before = [ "initrd-switch-root.target" ];
@@ -245,10 +243,10 @@
     };
   };
   # devlink is in iproute2 — pull it into the initrd image.
-  boot.initrd.systemd.storePaths = [ "${pkgs.iproute2}/bin/devlink" ];
+  boot.initrd.systemd.storePaths = lib.mkIf config.router.legacyPcieNetwork.enable [ "${pkgs.iproute2}/bin/devlink" ];
 
   # Configure 25G interfaces (ConnectX-4) - requires manual speed/FEC settings
-  systemd.services.ethtool-enp1s0f0np0 = {
+  systemd.services.ethtool-enp1s0f0np0 = lib.mkIf config.router.legacyPcieNetwork.enable {
     description = "Configure enp1s0f0np0 25G WAN link settings";
     after = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
     wants = [ "sys-subsystem-net-devices-enp1s0f0np0.device" ];
@@ -266,7 +264,7 @@
   # Realtek 10G tuning: GRO forwarding + RPS across all CPUs. The NIC is
   # renamed to lan10g by MAC (profiles/router/linux.nix) because its kernel
   # name flaps (enp2s0/enp7s0) when it drops off the PCIe bus across boots.
-  systemd.services.ethtool-lan10g = {
+  systemd.services.ethtool-lan10g = lib.mkIf config.router.legacyPcieNetwork.enable {
     description = "Configure lan10g Realtek 10G offload and RPS";
     after = [ "sys-subsystem-net-devices-lan10g.device" ];
     wants = [ "sys-subsystem-net-devices-lan10g.device" ];
@@ -296,7 +294,7 @@
   #
   # So reconcile the end state directly: idempotent, and a no-op on every boot
   # where networkd behaved.
-  systemd.services.lan10g-bridge-reconcile = {
+  systemd.services.lan10g-bridge-reconcile = lib.mkIf config.router.legacyPcieNetwork.enable {
     description = "Enslave lan10g to the LAN bridge if networkd left it unmanaged";
     after = [ "systemd-networkd.service" "sys-subsystem-net-devices-lan10g.device" ];
     wants = [ "sys-subsystem-net-devices-lan10g.device" ];
@@ -337,7 +335,7 @@
   # call depends on it. Everything else is fine to load in stage 2: the
   # smaller initrd udev queue means systemd-udevd drains faster on
   # initrd→stage-2 transition (saves ~20s of boot).
-  boot.initrd.kernelModules = [
+  boot.initrd.kernelModules = lib.mkIf config.router.legacyPcieNetwork.enable [
     "mlx5_core"
   ];
 
@@ -352,10 +350,75 @@
 
   # The board's IT8613E is compatible with the IT8620E register layout but is
   # not detected by the in-tree driver. This exact mapping was verified on the
-  # router: fan2_input tracks the system fan, and pwm2 controls it.
+  # router: this exposes the board's fan tachometers and PWM outputs.
+  #
   boot.extraModprobeConfig = ''
     options it87 force_id=0x8620
   '';
+
+  systemd.services.router-fans-full-speed = {
+    description = "Run the router system fans at full PWM duty";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -eu
+      controller=
+      for candidate in /sys/class/hwmon/hwmon*; do
+        if [ "$(${pkgs.coreutils}/bin/cat "$candidate/name" 2>/dev/null || true)" = it8620 ]; then
+          controller="$candidate"
+          break
+        fi
+      done
+
+      if [ -z "$controller" ]; then
+        echo "IT8620 fan controller not found" >&2
+        exit 1
+      fi
+
+      found=false
+      for pwm in "$controller"/pwm*; do
+        name="''${pwm##*/}"
+        case "$name" in
+          pwm[0-9]|pwm[0-9][0-9]) ;;
+          *) continue ;;
+        esac
+
+        # pwm*_enable=1 selects manual control; 255 is 100% duty.
+        enable="''${pwm}_enable"
+        if [ -e "$enable" ]; then
+          if ! printf '1\n' > "$enable" 2>/dev/null; then
+            echo "$name is firmware-locked; leaving it unchanged"
+            continue
+          fi
+          selected="$(${pkgs.coreutils}/bin/cat "$enable")"
+          if [ "$selected" != 1 ]; then
+            echo "$name remains in mode $selected; leaving it unchanged"
+            continue
+          fi
+        fi
+        if ! printf '255\n' > "$pwm" 2>/dev/null; then
+          echo "$name rejects manual duty control; leaving it unchanged"
+          continue
+        fi
+
+        actual="$(${pkgs.coreutils}/bin/cat "$pwm")"
+        if [ "$actual" != 255 ]; then
+          echo "$name readback is $actual, expected 255" >&2
+          exit 1
+        fi
+        found=true
+      done
+
+      if ! $found; then
+        echo "IT8620 exposes no PWM outputs" >&2
+        exit 1
+      fi
+    '';
+  };
 
   fileSystems."/" = {
     device = "zpool/root/nixos-router";

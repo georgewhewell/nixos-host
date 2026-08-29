@@ -1,0 +1,20 @@
+diff --git a/plugins/dpdk/device/init.c b/plugins/dpdk/device/init.c
+index 83674ce84..73f7be5d0 100644
+--- a/plugins/dpdk/device/init.c
++++ b/plugins/dpdk/device/init.c
+@@ -389 +389,14 @@ dpdk_lib_init (dpdk_main_t * dm)
+-	  xd->name = devconf->name;
++          /* A single mlx5 PCI allowlist entry can instantiate both the uplink
++           * and one or more representor ethdevs. They all share devconf, so
++           * assigning its explicit name verbatim creates a VPP name collision.
++           * Preserve the requested name for DPDK port zero and give subsequent
++           * switch ports a deterministic suffix that startup automation can
++           * discover without depending on PCI-derived interface names. */
++          xd->name = format (0, "%v", devconf->name);
++          if (port_id != 0 &&
++              di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID &&
++              di.switch_info.port_id != (uint16_t) -1)
++            {
++              xd->name = format (xd->name, "/%u", port_id);
++              dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_REPRESENTOR, 1);
++            }

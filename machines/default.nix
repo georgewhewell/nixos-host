@@ -223,7 +223,7 @@ let
 
 in
 {
-  router = sys "x86_64-linux" ./x86/router;
+  router = sys "x86_64-linux" ./x86/router/hostpf-system.nix;
   router-usb = sys "x86_64-linux" ./x86/router;
   n100 = sys "x86_64-linux" ./x86/n100;
 
@@ -259,14 +259,25 @@ in
   rock-5b = sys "aarch64-linux" ./aarch64/rock5b;
   prime = sys "aarch64-linux" ./aarch64/prime;
   neo2 = sys "aarch64-linux" ./aarch64/nanopi-neo2;
-  bluefield2 = sys "aarch64-linux" ./aarch64/bluefield2;
+  bluefield2 = sys "aarch64-linux" ./aarch64/bluefield2/hostpf-system.nix;
 
   # Cross-compiled aarch64 (built on x86_64)
   rock-5b-cross = sysCross ./aarch64/rock5b;
   prime-cross = sysCross ./aarch64/prime;
   neo2-cross = sysCross ./aarch64/nanopi-neo2;
-  bluefield2-cross = sysCross ./aarch64/bluefield2;
+  bluefield2-cross = sysCross ./aarch64/bluefield2/hostpf-system.nix;
+  # Guarded review closure for future host-PF/DPDK experiments.
+  bluefield2-hostpf-staged-cross = sysCross ./aarch64/bluefield2/hostpf-staged-system.nix;
+  # Explicit RDMA/no-host-PF rollback for the DPU dataplane.
+  bluefield2-transition-cross = sysCross ./aarch64/bluefield2/transition-system.nix;
   bluefield2-rescue = sysCross ./aarch64/bluefield2/rescue.nix;
+
+  # Old router with forwarding/WAN/gateway ownership removed, while
+  # DNS/DHCP/netboot/WireGuard remain on .31.
+  router-service-cutover = sys "x86_64-linux" ./x86/router/service-cutover-system.nix;
+  # Ordinary routing closure addressed through the persistent .31 service IP,
+  # so rollback does not depend on public DNS or a working BlueField WAN.
+  router-rollback = sys "x86_64-linux" ./x86/router/rollback-system.nix;
 
   # RISC-V (cross-built on x86_64)
   nanokvm = sysRiscvNanokvm ./riscv/nanokvm;

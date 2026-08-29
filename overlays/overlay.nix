@@ -1,4 +1,60 @@
 self: super: {
+  # DPDK 26.03 reads Meson's `host_machine.cpu()` as an ISA during cross
+  # builds.  nixpkgs' generic Meson cross file currently emits the Nix CPU
+  # name `aarch64`, which makes DPDK probe the invalid `-march=aarch64` and
+  # abort before configuring.  Supply the Arm spelling (`armv8-a`) and an
+  # explicit generic DPDK platform in a replacement cross file.  Keep this
+  # limited to AArch64 cross builds; native builds and other target CPUs must
+  # retain nixpkgs' normal file.
+  dpdk = super.dpdk.overrideAttrs (old:
+    let
+      target = self.stdenv.hostPlatform;
+      crossFile = super.writeText "dpdk-aarch64-cross-file.conf" ''
+        [properties]
+        bindgen_clang_arguments = ['-target', '${target.config}']
+        needs_exe_wrapper = ${
+          super.lib.boolToString (!self.stdenv.buildPlatform.canExecute target)
+        }
+        platform = 'generic'
+
+        [host_machine]
+        system = '${target.parsed.kernel.name}'
+        cpu_family = 'aarch64'
+        cpu = 'armv8-a'
+        endian = ${if target.isLittleEndian then "'little'" else "'big'"}
+
+        [binaries]
+        # DPDK's PMD metadata generator invokes the archiver by this name
+        # instead of inheriting Meson's compiler tool.  The generic Nix cross
+        # file omits it, leaving the literal `ar` unavailable in the sandbox.
+        ar = '${target.config}-ar'
+        strip = '${target.config}-strip'
+        nm = '${target.config}-nm'
+        llvm-config = 'llvm-config-native'
+        rust = ['rustc', '-C', 'target-feature=${
+          if target.isStatic then "+" else "-"
+        }crt-static', '--target', '${target.rust.rustcTargetSpec}']
+        # Meson refuses to consider CMake during cross compilation unless it
+        # is explicitly specified in the cross file.
+        cmake = 'cmake'
+      '';
+    in super.lib.optionalAttrs (self.stdenv.hostPlatform.isAarch64
+      && self.stdenv.hostPlatform != self.stdenv.buildPlatform) {
+        # The standard cross-file is injected by the Meson setup hook after
+        # `mesonFlags` are evaluated.  A second file is intentional: Meson
+        # merges cross files in order, so this one overrides its bad CPU and
+        # supplies DPDK's required external `platform` property.
+        mesonFlags = [ "--cross-file=${crossFile}" ] ++ (old.mesonFlags or [ ]);
+        # DPDK's gen-pmdinfo-cfile.py receives the literal `ar` command from
+        # its Meson file.  Cross stdenv exposes only the target-prefixed
+        # archiver, so provide that literal name in the native build PATH.
+        nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+          (super.writeShellScriptBin "ar" ''
+            exec ${self.stdenv.cc.bintools}/bin/${target.config}-ar "$@"
+          '')
+        ];
+      });
+
   # U-Boot for NanoPi NEO2 (Allwinner H5)
   ubootNanoPiNeo2 = super.ubootPine64.override {
     defconfig = "nanopi_neo2_defconfig";

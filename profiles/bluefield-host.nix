@@ -40,11 +40,26 @@
     exit 1
   '';
 
-  nicUnbind = pkgs.writeShellScript "bluefield-nic-unbind" ''
+  nicUnbind = pkgs.writeShellScript "bluefield-nic-unbind-if-shared" ''
     set -u
     ${findFunction "0xa2d6"}
-    if [ -n "$addr" ] && [ -e "/sys/bus/pci/devices/$addr/driver" ]; then
-      echo "$addr" > "/sys/bus/pci/devices/$addr/driver/unbind"
+    nic_addr="$addr"
+    ${findFunction "0xc2d3"}
+    rshim_addr="$addr"
+
+    if [ -z "$nic_addr" ] || [ -z "$rshim_addr" ]; then
+      exit 0
+    fi
+
+    nic_group="$(${pkgs.coreutils}/bin/readlink -f "/sys/bus/pci/devices/$nic_addr/iommu_group" 2>/dev/null || true)"
+    rshim_group="$(${pkgs.coreutils}/bin/readlink -f "/sys/bus/pci/devices/$rshim_addr/iommu_group" 2>/dev/null || true)"
+
+    # VFIO requires exclusive ownership of an IOMMU group.  Some hosts put
+    # both BlueField functions in one group; this router isolates them, so its
+    # mlx5 PF can remain bound while RShim owns only the management function.
+    if [ -n "$nic_group" ] && [ "$nic_group" = "$rshim_group" ] \
+       && [ -e "/sys/bus/pci/devices/$nic_addr/driver" ]; then
+      echo "$nic_addr" > "/sys/bus/pci/devices/$nic_addr/driver/unbind"
     fi
   '';
 in {
@@ -57,6 +72,7 @@ in {
   boot.kernelModules = [
     "mlx5_core"
     "mlx5_ib"
+    "vfio-pci"
   ];
 
   systemd.services.bluefield-nic-bind = {
@@ -74,13 +90,16 @@ in {
     };
   };
 
-  # Recovery console/boot channel to the DPU. Started manually: rshim's
-  # vfio backend claims the card's whole IOMMU group, which is mutually
-  # exclusive with mlx5 owning the NIC PF, so bringing this up takes the
-  # host NIC down and stopping it brings the NIC back.
+  # Recovery console/boot channel to the DPU. Started manually by default.
+  # When PCIe ACS gives the management function its own IOMMU group, RShim and
+  # mlx5 can coexist; otherwise ExecStartPre releases the NIC PF first.
   systemd.services.bluefield-rshim = {
-    description = "BlueField RShim management interface (displaces the host NIC)";
+    description = "BlueField RShim PCIe management interface";
     conflicts = ["bluefield-nic-bind.service"];
+    # The userspace backend invokes modprobe while selecting VFIO/UIO.  NixOS
+    # units have a minimal PATH, so expose kmod explicitly rather than silently
+    # falling back to direct BAR mapping.
+    path = [pkgs.kmod];
     serviceConfig = {
       Type = "simple";
       ExecStartPre = nicUnbind;

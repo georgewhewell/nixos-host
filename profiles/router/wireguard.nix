@@ -45,7 +45,7 @@ in
     listenPort = 51820;
     privateKeyFile = config.sops.secrets.wg-home-key.path; # populated by sops-nix
     endpoint = "${network.domains.public}:51820";
-    dns = [ network.routerIp ];
+    dns = [ network.dnsIp ];
 
     # AllowedIPs pushed to clients; add LAN segments you want reachable.
     clientRoutes = [

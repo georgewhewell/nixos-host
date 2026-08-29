@@ -45,7 +45,7 @@ in {
         address = [
           (network.cidrOf "lan" self.addresses.lan)
         ];
-        dns = [network.routerIp];
+        dns = [network.dnsIp];
         routes = [
           {
             Gateway = network.routerIp;

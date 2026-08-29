@@ -1,0 +1,135 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+artifact_root="$repo_root/artifacts/vpp-transition-validation"
+mkdir -p "$artifact_root"
+run_dir=$(mktemp -d -p "$artifact_root" run.XXXXXXXX)
+vpp_pid=""
+
+cleanup() {
+  if [ -n "$vpp_pid" ]; then
+    kill "$vpp_pid" 2>/dev/null || true
+    wait "$vpp_pid" 2>/dev/null || true
+  fi
+  case "$run_dir" in
+    "$artifact_root"/run.*) rm -rf -- "$run_dir" ;;
+    *) echo "refusing to remove unexpected validation directory: $run_dir" >&2 ;;
+  esac
+}
+trap cleanup EXIT INT TERM
+
+if [ "$#" -gt 0 ]; then
+  vpp_package=$1
+else
+  vpp_package=$(nix build --no-link --print-out-paths --impure --expr '
+    let
+      pkgs = import <nixpkgs> {
+        overlays = [ (import ./overlays/vpp-2606.nix) ];
+      };
+    in pkgs.vpp
+  ')
+fi
+
+case "$vpp_package" in
+  /nix/store/*-vpp-26.06*) ;;
+  *) echo "expected a VPP 26.06 store path, got: $vpp_package" >&2; exit 1 ;;
+esac
+
+cd "$repo_root"
+nix eval --raw --impure --expr '
+  let
+    pkgs = import <nixpkgs> {};
+    network = import ./network.nix pkgs.lib;
+    plan = import ./machines/aarch64/bluefield2/vpp-transition-plan.nix {
+      inherit (pkgs) lib;
+      inherit network;
+    };
+  in plan.startupConfig + "\n"
+' > "$run_dir/generated.conf"
+
+# The parser test uses VPP's isolated loop0 in place of physical bf0.  Every
+# subsequent command is otherwise a generated startup command verbatim; RDMA
+# creation and its MAC assignment cannot run on this non-BlueField host.
+awk '
+  /^create interface rdma host-if / { print "create loopback interface"; next }
+  /^set interface mac address bf0 / { next }
+  /^[[:space:]]*#/ { next }
+  /^[[:space:]]*$/ { next }
+  { sub(/^[[:space:]]+/, ""); gsub(/bf0/, "loop0"); print }
+' "$run_dir/generated.conf" > "$run_dir/commands.conf"
+
+api_prefix="transition-validate-$$"
+sed \
+  -e "s|@RUN_DIR@|$run_dir|g" \
+  -e "s|@API_PREFIX@|$api_prefix|g" \
+  "$repo_root/scripts/vpp-transition-validation.conf.in" > "$run_dir/vpp.conf"
+
+"$vpp_package/bin/vpp" -c "$run_dir/vpp.conf" > "$run_dir/process.log" 2>&1 &
+vpp_pid=$!
+
+attempt=0
+while [ ! -S "$run_dir/cli.sock" ]; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 100 ]; then
+    echo "VPP CLI did not appear" >&2
+    sed -n '1,200p' "$run_dir/process.log" >&2
+    exit 1
+  fi
+  sleep 0.05
+done
+
+command_number=0
+while IFS= read -r vpp_command; do
+  command_number=$((command_number + 1))
+  command_output=$("$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" "$vpp_command" 2>&1) || {
+    echo "command $command_number failed: $vpp_command" >&2
+    echo "$command_output" >&2
+    exit 1
+  }
+  case "$command_output" in
+    *"unknown input"*|*"parse error"*|*"failed"*|*"not found"*)
+      echo "command $command_number was rejected: $vpp_command" >&2
+      echo "$command_output" >&2
+      exit 1
+      ;;
+  esac
+done < "$run_dir/commands.conf"
+
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show interface
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show ip fib 192.168.24.0/24
+if grep -q '^ip route add 0\.0\.0\.0/0 via ' "$run_dir/commands.conf"; then
+  echo "transition plan must not contain a phone-backed default route" >&2
+  exit 1
+fi
+default_fib=$("$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show ip fib 0.0.0.0/0)
+printf '%s\n' "$default_fib"
+if printf '%s\n' "$default_fib" | grep -Fq "CLI refs:"; then
+  echo "transition plan installed an unexpected CLI default route" >&2
+  exit 1
+fi
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show nat44 static mappings
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show acl-plugin acl
+
+# Parse and exercise the opt-in CNAT lab against two additional loopback
+# subinterfaces. The candidate feature never touches the transition interfaces.
+for vpp_command in \
+  "create sub-interfaces loop0 3901" \
+  "create sub-interfaces loop0 3902" \
+  "set interface state loop0.3901 up" \
+  "set interface state loop0.3902 up" \
+  "set interface ip address loop0.3901 198.18.10.1/24" \
+  "set interface ip address loop0.3902 203.0.113.2/24" \
+  "set cnat snat-policy addr loop0.3902" \
+  "set cnat snat-policy if-pfx" \
+  "set cnat snat-policy if table include-v4 loop0.3901" \
+  "set cnat snat-policy prefix 198.18.0.0/15" \
+  "set interface feature loop0.3901 cnat-snat-ip4 arc ip4-unicast"
+do
+  "$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" "$vpp_command"
+done
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" show cnat snat-policy
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" set interface feature loop0.3901 cnat-snat-ip4 arc ip4-unicast disable
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" set cnat snat-policy if del table include-v4 loop0.3901
+"$vpp_package/bin/vppctl" -s "$run_dir/cli.sock" set cnat snat-policy prefix del 198.18.0.0/15
+echo "validated $command_number generated VPP 26.06 commands"

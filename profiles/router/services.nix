@@ -17,8 +17,9 @@
   netbootHosts = lib.filterAttrs (_: h: h.netboot or false) network.hosts;
   netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
   routerIp = network.routerIp;
+  serviceIp = network.controlPlaneIp;
   trexIp = network.primaryIp network.hosts.trex;
-  netbootBaseUrl = "http://${routerIp}/strix-netboot";
+  netbootBaseUrl = "http://${serviceIp}/strix-netboot";
   netbootIpxeUrl = "${netbootBaseUrl}/ipxe/snponly.efi";
 
   netbootIpxe = pkgs.ipxe.override {
@@ -113,8 +114,10 @@ in {
       ];
       "dhcp-option" = [
         "${lanName},3,${network.routerIp}"
+        "${lanName},6,${network.dnsIp}"
         "${lanName},option:domain-search,${network.domains.lan}"
         "${wifiName},3,${network.gatewayIp "wifi"}"
+        "${wifiName},6,${network.dnsIp}"
         "${wifiName},option:domain-search,${network.domains.lan}"
       ];
       # Netboot is restricted to the four tagged Strix MACs. Native UEFI HTTP
@@ -129,8 +132,8 @@ in {
       enable-tftp = true;
       tftp-root = "${netbootTftpRoot}";
       "dhcp-boot" = [
-        "tag:netboot,tag:httpboot,${netbootIpxeUrl},,${routerIp}"
-        "tag:netboot,tag:!httpboot,snponly.efi,,${routerIp}"
+        "tag:netboot,tag:httpboot,${netbootIpxeUrl},,${serviceIp}"
+        "tag:netboot,tag:!httpboot,snponly.efi,,${serviceIp}"
       ];
       "dhcp-option-force" = [ "tag:httpboot,60,HTTPClient" ];
       # Generated from network.nix hosts that have a MAC address.
@@ -150,10 +153,14 @@ in {
   services.nginx = {
     enable = true;
     virtualHosts."strix-netboot-router" = {
-      serverAliases = [ routerIp ];
+      serverAliases = [ routerIp serviceIp ];
       listen = [
         {
           addr = routerIp;
+          port = 80;
+        }
+        {
+          addr = serviceIp;
           port = 80;
         }
       ];
@@ -187,6 +194,9 @@ in {
       transparentProxy.enable = true;
       socksListenAddress = {
         IsolateDestAddr = true;
+        # Keep the legacy listener through the gateway handoff.  Unlike DNS
+        # and netboot, this service cannot be bound to both addresses through
+        # the NixOS client option, and its consumers move in a later deploy.
         addr = network.routerIp;
         port = 9050;
       };

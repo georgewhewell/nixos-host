@@ -67,19 +67,41 @@ network: {
     ];
   };
 
+  # The Linux router becomes an ordinary control-plane host during the VPP
+  # handoff. Preserve the home WireGuard endpoint without restoring direct
+  # WAN SSH or the old Tor relay publication.
+  router-control = {
+    ip = network.controlPlaneIp;
+    forwards = [
+      {
+        port = 51820;
+        proto = "udp";
+        comment = "Home WireGuard on the retired Linux router";
+      }
+    ];
+  };
+
   # trex
   trex = {
     ip = network.primaryIp network.hosts.trex;
+    ipv6 = {
+      # mlxlan0 uses stable SLAAC/EUI-64. The delegated prefix is deliberately
+      # absent here: VPP learns it at runtime and composes the exact /128.
+      interfaceMac = builtins.head network.hosts.trex.extraMacs;
+      subnetId = network.routing.production.transition.legacyInside.delegatedSubnetId;
+    };
     forwards = [
       {
         port = 80;
         proto = "tcp";
         comment = "nginx";
+        publishIpv6 = true;
       }
       {
         port = 443;
         proto = "tcp";
         comment = "nginx";
+        publishIpv6 = true;
       }
       {
         port = 18080;
@@ -109,5 +131,4 @@ network: {
       }
     ];
   };
-
 }

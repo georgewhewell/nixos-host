@@ -7,6 +7,7 @@
   ...
 }: let
   trexIp = network.primaryIp network.hosts.trex;
+  bluefield2Ip = network.primaryIp network.hosts.bluefield2;
   nodeHosts = [
     "router"
     "trex"
@@ -67,6 +68,26 @@
       static_configs = [
         {
           targets = map (host: "${host}:9100") nodeHosts;
+        }
+      ];
+    }
+    {
+      # BlueField VPP statseg telemetry. Keep this separate from node metrics
+      # so dashboard queries can select the dataplane without double-counting
+      # the bf0 parent and its VLAN subinterfaces.
+      job_name = "vpp";
+      scrape_interval = "15s";
+      scrape_timeout = "10s";
+      static_configs = [
+        {
+          # The BlueField hostname has LAN, fabric, and private-DPU records.
+          # Scrape the source-restricted LAN listener deterministically.
+          targets = ["${bluefield2Ip}:9482"];
+          labels = {
+            instance = "bluefield2";
+            site = "bluefield2";
+            dataplane = "vpp";
+          };
         }
       ];
     }

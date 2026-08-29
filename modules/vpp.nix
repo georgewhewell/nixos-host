@@ -5,6 +5,13 @@
   ...
 }: let
   cfg = config.services.vpp;
+  pluginSettings = cfg.settings.plugins.plugin or {};
+  defaultPluginsDisabled = pluginSettings.default.disable or false;
+  dpdkExplicitlyEnabled = pluginSettings."dpdk_plugin.so".enable or false;
+  dpdkExplicitlyDisabled = pluginSettings."dpdk_plugin.so".disable or false;
+  dpdkEnabled =
+    dpdkExplicitlyEnabled
+    || (!defaultPluginsDisabled && !dpdkExplicitlyDisabled);
 
   mapAttrsToLines = f: attrs:
     lib.concatStringsSep "\n" (
@@ -408,9 +415,12 @@ in {
       '';
 
     environment.systemPackages = [cfg.package]; # for the vppctl tool
-    boot.extraModulePackages = [
-      config.boot.kernelPackages.dpdk-kmods
-    ];
+    # The mlx5 RDMA plugin uses the normal kernel driver and needs no DPDK
+    # kernel modules.  Pulling dpdk-kmods unconditionally is particularly
+    # expensive for cross-built machines because it rebuilds their kernel even
+    # when dpdk_plugin.so is disabled explicitly or by the plugin default.
+    # An explicit enable still wins over a disabled default.
+    boot.extraModulePackages = lib.optional dpdkEnabled config.boot.kernelPackages.dpdk-kmods;
 
     users.groups.${cfg.group} = {};
 

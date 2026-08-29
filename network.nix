@@ -9,6 +9,11 @@ lib: rec {
   vlans = {
     lan = {
       id = null;
+      # The flat LAN remains untagged until its ports are inventoried.  The
+      # production router-on-a-stick design moves it to VLAN 10; keeping that
+      # target separate avoids changing the live broadcast domain merely by
+      # evaluating the staged VPP configuration.
+      targetId = 10;
       prefix = "192.168.23";
       cidr = 24;
       mtu = 9000;
@@ -20,7 +25,7 @@ lib: rec {
       };
       role = "trusted";
     };
-    # High-speed MLX5/BlueField fabric. Hosts use the CRS804 SVI as their
+    # High-speed MLX5/BlueField fabric. Hosts use the CRS812 SVI as their
     # gateway; traffic within the subnet stays in the Marvell switch ASIC.
     fabric = {
       id = 25;
@@ -30,12 +35,31 @@ lib: rec {
       gatewayHost = 1;
       role = "trusted";
     };
+    # Second host-facing CX5 rail. This is another IPv4 subnet on the existing
+    # untagged fabric VLAN-25 L2 domain, not an 802.1Q VLAN 26.
+    fabric2 = {
+      id = null;
+      prefix = "192.168.26";
+      cidr = 24;
+      mtu = 9000;
+      role = "trusted";
+    };
     # Reserved test subnet for the CX5 SharedIO VFs. MULTI_PORT_VHCA_EN gives
     # both VFs carrier, but this firmware does not forward frames between host
     # controllers, so production traffic uses the physical fabric instead.
     cx5Peer = {
       id = null;
       prefix = "192.168.27";
+      cidr = 30;
+      mtu = 9000;
+      role = "transit";
+    };
+    # Optional PCIe host-PF transit between the router and BlueField. This is
+    # deliberately a separate /30: it is never the LAN, DNS/DHCP, or default
+    # route, and it can disappear without affecting either machine's boot.
+    bluefieldHostPf = {
+      id = null;
+      prefix = "192.168.28";
       cidr = 30;
       mtu = 9000;
       role = "transit";
@@ -96,6 +120,38 @@ lib: rec {
       gatewayHost = 1;
       role = "vpn";
     };
+    # Control-only backup-WAN transit between rock-5b and the BlueField VPP
+    # router. The CRS812 carries this tag only between their two ports once
+    # bridge VLAN filtering is enabled.
+    wanBackup = {
+      id = 101;
+      prefix = "192.168.101";
+      # One transit VLAN, multiple replaceable edge uplinks: Rock's USB
+      # tether, BlueField's router port, and k3's WiFi tether. A /29 avoids
+      # inventing a second hardcoded point-to-point network for each handset.
+      cidr = 29;
+      mtu = 1500;
+      role = "transit";
+    };
+  };
+
+  policies.backupWan = {
+    # Explicit identities, not a LAN subnet: arr-servers/qBittorrent (.15) is
+    # deliberately absent and therefore cannot use the phone on any port.
+    allowedSourceHosts = [
+      "router"
+      "fuckup"
+      "trex"
+      "mbp"
+      "mikrotik-crs812"
+      "bluefield2"
+    ];
+    # The VPP lab's trusted peer lets us prove the complete Trex -> VPP ->
+    # Rock -> iPhone path before production VLANs replace documentation nets.
+    additionalSourceCidrs = ["198.18.10.2/32"];
+    vppTestReturnCidrs = ["198.18.10.0/24"];
+    tcpPorts = [22 53 80 443 853];
+    udpPorts = [53 123 443 35947 51820 51821];
   };
 
   benchmarkBuildHosts = let
@@ -210,9 +266,12 @@ lib: rec {
       };
       extraNames = ["frigate"];
     };
-    "mikrotik-10g" = {
+    # CRS210-8G-2S+. Named for the board like the other switches; the old
+    # link-speed name stays as an alias so existing references keep resolving.
+    "mikrotik-crs210" = {
       mac = "e4:8d:8c:a8:de:40";
       addresses = {lan = 2;};
+      extraNames = ["mikrotik-10g"];
     };
     "unifi-ac-pro" = {
       mac = "80:2a:a8:80:96:ef";
@@ -229,7 +288,11 @@ lib: rec {
     };
     vacuum = {
       mac = "78:11:dc:ec:86:ea";
-      addresses = {lan = 6;};
+      # Moved to the wifi VLAN when the SSID migrated, so the old untagged-LAN
+      # reservation stopped applying and it ran on a pool lease (.187), which
+      # is what made it hard to find. Host octet 6 is below the VLAN 50 pool
+      # (32-249), so it is a reservation rather than a contended address.
+      addresses = {wifi = 6;};
     };
     fuckup = {
       mac = "b8:6f:35:ab:31:89";
@@ -273,15 +336,30 @@ lib: rec {
       mac = "52:6f:35:ab:31:cf";
       addresses = {fabric = 207;};
     };
-    "mikrotik-100g" = {
+    # CRS510-8XS-2XQ. Same board-name convention; old alias retained.
+    "mikrotik-crs510" = {
       mac = "48:a9:8a:93:42:4c";
       addresses = {lan = 9;};
+      extraNames = ["mikrotik-100g"];
     };
-    "mikrotik-400g" = {
-      mac = "d0:ea:11:d1:9d:a5";
+    "mikrotik-crs812" = {
+      mac = "38:32:7a:14:ff:67";
       addresses = {
         lan = 27;
         fabric = 1;
+      };
+      # Preserve the old CRS804 DNS name while clients migrate.
+      extraNames = ["mikrotik-400g"];
+    };
+    # Reconnected 2026-08-15. It came back still holding .23.27/.25.1, which
+    # the CRS812 had taken over, so both switches were claiming the same two
+    # addresses on the fabric L2 domain. Renumbered here and in
+    # machines/routeros/crs804/config.rsc; the CRS812 keeps the gateway.
+    "mikrotik-crs804" = {
+      mac = "d0:ea:11:d1:9d:85";
+      addresses = {
+        lan = 28;
+        fabric = 2;
       };
     };
     trx90bmc = {
@@ -336,14 +414,20 @@ lib: rec {
     };
     "rock-5b" = {
       mac = "00:e0:4c:68:02:e7";
-      addresses = {lan = 18;};
+      addresses = {
+        lan = 18;
+        wanBackup = 1;
+      };
     };
     k3 = {
       mac = "50:0a:52:0b:e5:6f";
       extraMacs = [
         "50:0a:52:0b:81:20"
       ];
-      addresses = {lan = 19;};
+      addresses = {
+        lan = 19;
+        wanBackup = 3;
+      };
     };
     mbp = {
       mac = "c2:c5:7f:8c:7a:51";
@@ -374,12 +458,26 @@ lib: rec {
       addresses = {
         lan = 22;
         fabric = 22;
+        wanBackup = 2;
       };
+    };
+    # VPP's data-plane PF is distinct from BlueField Linux management. This
+    # temporary untagged address reaches k3 through its present switch path;
+    # remove it after k3 is moved onto the VLAN-aware CRS fabric.
+    "bluefield2-vpp-lan" = {
+      mac = "b8:ce:f6:f8:d7:ac";
+      addresses = {lan = 30;};
     };
     "nanokvm-wifi" = {
       # The AIC8800's burned-in MAC; wlan0 lives on the wifi VLAN.
       mac = "38:7a:cc:40:41:e3";
       addresses = {wifi = 17;};
+    };
+    "bambu-a1-mini" = {
+      # A1 mini, serial 0300DA651900919. Reserving its current pool lease only
+      # to give it a stable name: go2rtc dials the chamber camera by FQDN.
+      mac = "94:a9:90:df:c5:c4";
+      addresses = {wifi = 37;};
     };
     "strix-strip" = {
       # Tuya Local / Home Assistant power strip for the four Strix hosts.
@@ -441,10 +539,22 @@ lib: rec {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
         cx5Port = 1;
-        # Port f1np1 of this chassis's card, matching cx5Port = 1. Verified by
-        # ethtool -P on strix-1 (2026-07-30). Was :b1, which is in strix-2.
-        cx5FabricMac = "1c:34:da:61:12:99";
+        # The M.2-slot ConnectX-7 (MT2910, PCI c3:00.0; permanent MAC by
+        # ethtool -P, 2026-08-26), NOT the ConnectX-5. The CX5 (:b4/:b5,
+        # f1np1 primary since the 2026-08-14 PCIe rework) served the fabric
+        # until 2026-08-26: a pending mlxconfig LINK_TYPE=IB(1) on both its
+        # ports was activated by that day's reboot, its Ethernet netdevs
+        # became ibp196s0f0/f1, cx5fabric0 vanished, and /models failed by
+        # dependency. The CX7 is cabled to the second 200GbE leg of the
+        # Mikrotik 400G->2x200G breakout and already had carrier at 200G
+        # when adopted (enp195s0np0, LOWER_UP). If the CX5 is ever wanted
+        # back: mstconfig set LINK_TYPE_P1=2 LINK_TYPE_P2=2 (it sat at PCI
+        # c4:00.x this boot, but match by MAC/GUID, not BDF) plus a reset.
+        cx5FabricMac = "10:70:fd:91:c5:90";
         ryzenAdj = {
+          # stapm = 75000;
+          # fast = 75000;
+          # slow = 75000;
           stapm = 132000;
           fast = 176000;
           slow = 154000;
@@ -489,16 +599,12 @@ lib: rec {
       # Diskless, like every other strix (2026-08-08). The strix hosts are
       # ALWAYS netbooted; there is no local-disk variant of this machine class.
       #
-      # This host is the awkward one only because its *firmware* PXE is broken
-      # -- it never emits a DHCP request from eno1 -- so it cannot start the
-      # chain by itself. That is a bootstrap problem, not a config-shape
-      # problem, and it is solved on the USB stick rather than here: the stick
-      # carries a full `ipxe.efi` (NOT the router's `snponly.efi`, which relies
-      # on the firmware SNP/UNDI that is precisely what is broken) as its EFI
-      # boot entry. iPXE brings up the Realtek with its own driver, DHCPs, gets
-      # set:netboot from the router, and chains to the identical
-      # http://192.168.23.1/strix-netboot/... script the other three use. From
-      # that point this host is byte-identical to strix-1/3/4.
+      # Firmware PXE was recovered in Setup on 2026-08-15: enable the UEFI
+      # Network Stack and IPv4 PXE, put Network ahead of USB, and set both
+      # ConnectX-5 ports' Legacy Boot Protocol to None so they cannot intercept
+      # the attempt. A cold test from eno1 fetched snponly.efi, the per-MAC
+      # script, kernel, and complete initrd. The Rock-5B/full-ipxe USB gadget is
+      # therefore only a recovery KVM now, not part of this host's boot chain.
       #
       # Previously `netboot = false`, with netbootMac/netbootLinuxMac naming
       # strix-1's :9d/:99 -- a leftover of the 2026-07-30 transposition fix,
@@ -519,10 +625,22 @@ lib: rec {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
         cx5Port = 1;
-        # Port f1np1 of this chassis's card, matching cx5Port = 1. Verified by
-        # ethtool -P on strix-2 (2026-07-30). Was :99, which is in strix-1.
+        # The BlueField-2 that temporarily carried this identity was removed
+        # from the PEX88096 on 2026-08-28. Promote the remaining M.2-slot CX5's
+        # live, cabled f1np1 port to the primary fabric role: it trains at
+        # 100 Gb/s and was verified carrying 192.168.25.102 -> trex's
+        # 192.168.25.208 NVMe/RDMA export. Matching its permanent MAC keeps the
+        # cx5fabric0 name stable across PCI enumeration and future reboots.
         cx5FabricMac = "1c:34:da:61:12:b1";
+        # This netboot root is on eno1, so resetting the independent CX5 before
+        # network-online cannot strand NFS. The DAC path needs the explicit
+        # 100G force after PCI resets; it previously received that through the
+        # secondary-rail unit before this port became the primary.
+        forcePrimaryFabricLink = true;
         ryzenAdj = {
+          # stapm = 75000;
+          # fast = 75000;
+          # slow = 75000;
           stapm = 132000;
           fast = 176000;
           slow = 154000;
@@ -543,32 +661,24 @@ lib: rec {
       # DPU PXEs, fetches snponly.efi once, and iPXE then exits without ever
       # opening a TCP connection. See the long note on strix-1.
       #
-      # Correcting an older comment here: it claimed b8:59:9f:54:db:e8/:e9 were
-      # "multi-host CX5 functions" belonging to this host. They are NOT. The
-      # CRS804 learned-MAC table (2026-08-08 20:46) puts :e4/:e8 on lane 3-7 and
-      # :e5/:e9 on 2-7 -- both strix-4's lanes. This host has no ConnectX-5 at
-      # all; its only fabric NIC is the BlueField-2's ConnectX-6 on cage 1-1 at
-      # 200G, and it shares nothing with strix-4.
+      # Live host enumeration after the 2026-08-14 PCIe rework supersedes the
+      # earlier switch-table inference: :e8/:e9 are local ConnectX-5 ports on
+      # strix-3. The BlueField remains present but is not the host data path.
       strix = {
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
-        cx5Port = 0;
-        # strix-3 hosts the BlueField-2 DPU on its PEX880xx switch: its
-        # ConnectX-6 is the fabric NIC. The host PF only inits once the
-        # DPU ARM boots, so this host needs the bluefield-host profile
-        # (rshim + retrying nic-bind).
+        cx5Port = 1;
+        # The BlueField remains separately managed, but the host fabric seen
+        # after the 2026-08-14 PCIe rework is this dual-port ConnectX-5.
         bluefield = true;
-        # The DPU's ConnectX-6, which is what this host actually sees: the only
-        # mlx5 netdev present is b8:ce:f6:f8:d7:aa (ethtool -P, 2026-07-30).
-        # Was b8:59:9f:54:db:e9 -- a function of the multi-host CX5 shared with
-        # strix-4, which this host cannot enumerate, so the rename never
-        # matched and the fabric address was never assigned at all. Note this
-        # MAC is the same identity the comment above calls the "DPU PXE
-        # identity"; it is deliberately not netboot-tagged, and using it here
-        # only drives the cx5fabric0 rename and the fabric address.
-        cx5FabricMac = "b8:ce:f6:f8:d7:aa";
+        # Live permanent MACs, carrier, and LLDP verified 2026-08-14. As on
+        # the other nodes, f1np1 is the primary rail and f0np0 is rail 2.
+        cx5FabricMac = "b8:59:9f:54:db:e9";
         # Strix 3/4 currently clamp package requests to these values.
         ryzenAdj = {
+          # stapm = 75000;
+          # fast = 75000;
+          # slow = 75000;
           stapm = 120000;
           fast = 160000;
           slow = 140000;
@@ -588,17 +698,18 @@ lib: rec {
       # 2026-08-08 and failed identically to strix-1 (iPXE loads, then exits
       # without a single TCP SYN). See the long note on strix-1.
       #
-      # Ownership, from the CRS804 learned-MAC table (2026-08-08 20:46):
-      # :e5/:e9 are on lane 2-7 and :e4/:e8 on lane 3-7 -- all four are THIS
-      # host's, two SharedIO PFs per physical port on one ASIC. The old comment
-      # calling them functions "shared with strix-3" was wrong; strix-3 has no
-      # ConnectX-5 and is the BlueField on cage 1-1.
+      # Live 2026-08-14 enumeration shows this chassis owns :e4/:e5; the old
+      # switch-table inference that also assigned :e8/:e9 here was wrong.
       strix = {
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
         cx5Port = 1;
         cx5FabricMac = "b8:59:9f:54:db:e5";
+        # Live 2026-08-14: f0np0 is the second port of this chassis's card.
         ryzenAdj = {
+          # stapm = 75000;
+          # fast = 75000;
+          # slow = 75000;
           stapm = 120000;
           fast = 160000;
           slow = 140000;
@@ -613,6 +724,15 @@ lib: rec {
   ports = {
     router = {
       lanBridge = "br0.lan";
+      # Four on-board Intel I226-V ports. Match their permanent MACs rather
+      # than PCI-derived names: removing the CX4/RTL8127 changed enumeration,
+      # and networkd observed a second rename pass during the 2026-08-29 boot.
+      onboardLan = [
+        { linuxName = "lan0"; mac = "a8:b8:e0:04:19:4d"; }
+        { linuxName = "lan1"; mac = "a8:b8:e0:04:19:4e"; }
+        { linuxName = "lan2"; mac = "a8:b8:e0:04:19:4f"; }
+        { linuxName = "lan3"; mac = "a8:b8:e0:04:19:50"; }
+      ];
       wan = {
         linuxName = "enp1s0f0np0";
         mac = "50:6b:4b:03:04:ca";
@@ -634,10 +754,270 @@ lib: rec {
         linuxName = "enp2s0f0v0";
         mac = "02:00:00:00:00:01";
       };
+      bluefieldHostPf = {
+        # This is the BlueField host PF exposed by the router's PCIe slot;
+        # the address is matched by permanent MAC because switchdev can
+        # recreate the netdev name during firmware initialization.
+        linuxName = "enp1s0f0np0";
+        mac = "b8:ce:f6:f8:d7:aa";
+      };
     };
     n100.cx5Peer = {
       linuxName = "enp1s0f0v0";
       mac = "02:00:00:00:00:02";
+    };
+    bluefield2.vppData = {
+      linuxName = "enp3s0np0";
+      vppName = "bf0";
+      mac = "b8:ce:f6:f8:d7:ac";
+      pciAddress = "0000:03:00.0";
+      switch = {
+        host = "mikrotik-crs812";
+        port = "qsfp56-1-1";
+      };
+      link = {
+        # The installed HELLAS 200G-labelled cable actually identifies and
+        # trains as 100GBASE-CR4 on both ends.
+        speedMbps = 100000;
+        lanes = 4;
+        fec = "rs";
+      };
+    };
+    bluefield2.hostPf = {
+      representorName = "pf0hpf";
+      vppName = "host-pf0hpf";
+      vppMac = "02:00:00:28:00:02";
+      # NVIDIA's mlx5 devargs reserve 65535 for the host-PF representor; [0]
+      # is VF0. This is consumed only by the attended host-PF DPDK closure.
+      dpdkRepresentor = "[65535]";
+    };
+  };
+
+  # Host-PF acceleration is an optional routed shortcut. The global inventory
+  # mode stays off; machine closures select their endpoint independently.
+  routing.hostPf = {
+    mode = "off";
+    network = "bluefieldHostPf";
+    # This table is selected only by traffic explicitly bound to the router's
+    # /30 address.  The main table and copper default route remain untouched.
+    table = 1028;
+    rulePriority = 1028;
+    router = ports.router.bluefieldHostPf // { address = 1; };
+    dpu = ports.bluefield2.hostPf // { address = 2; };
+    routes = {
+      routerToDpu = [
+        "${vlans.fabric.prefix}.0/${toString vlans.fabric.cidr}"
+      ];
+      dpuToRouter = [
+        "${vlans.bluefieldHostPf.prefix}.0/${toString vlans.bluefieldHostPf.cidr}"
+      ];
+    };
+  };
+
+  # Inactive production data for the BlueField router migration.  Consumers
+  # render VPP and RouterOS plans from this value; `enable = false` is the
+  # hard cut-over gate, so adding facts here cannot take over the live WAN.
+  routing.production = {
+    enable = false;
+
+    switch = {
+      host = "mikrotik-crs812";
+      bridge = "bridge";
+      bluefieldTrunk = ports.bluefield2.vppData.switch.port;
+      # Proved from the live forwarding databases on both ends: this is the
+      # CRS812 <-> CRS804 link. CRS804 continues toward CRS510 on its
+      # qsfp56-dd-2-1, which CRS510 sees on qsfp28-1-1.
+      lanFabricTrunk = "qsfp56-dd-1-1";
+    };
+
+    wans = {
+      primary = {
+        vlanId = 100;
+        mtu = 1500;
+        switchAccessPort = "sfp56-8";
+        lineRateMbps = 25000;
+        # Match the live ISP-facing ConnectX-4 settings. sfp56-8 is the empty,
+        # reserved ISP cage; sfp56-7 is Rock-5B's live 25G DAC and must not be
+        # repurposed (verified on 2026-08-28).
+        ethernet = {
+          autoNegotiation = false;
+          speed = "25G-baseCR";
+          fecMode = "fec91";
+        };
+        ipv4 = {
+          method = "dhcp";
+          # Keep the old router MAC as an explicit rollback tool, not a hidden
+          # default.  Start with the BlueField MAC; clone only if the provider
+          # proves to bind the lease to the old client identity.
+          leaseCompatibilityMac = ports.router.wan.mac;
+          cloneMacAtCutover = false;
+        };
+        ipv6 = {
+          addressMethod = "dhcp6";
+          defaultRouteMethod = "router-advertisement";
+          prefixDelegation = true;
+          requestedPrefixLength = 56;
+          # The live provider returned a /48 despite the /56 hint.  Zone IDs
+          # remain below 256 so either a /48 or /56 can supply every /64.
+          observedPrefixLength = 48;
+          prefixGroup = "isp-primary";
+        };
+        healthTargets = [
+          "1.1.1.1"
+          "9.9.9.9"
+          "2606:4700:4700::1111"
+          "2620:fe::fe"
+        ];
+        qos = {
+          txManager = "nixos-wan";
+          # Bind the scheduler at cut-over, but set its actual egress rate only
+          # after measuring the provider policer.  Null prevents a guessed
+          # 24.x Gbit/s constant from becoming configuration.
+          egressRateMbps = null;
+        };
+      };
+      backup = {
+        vlanId = vlans.wanBackup.id;
+        mtu = vlans.wanBackup.mtu;
+        policy = "control-only";
+        installDefaultRoute = false;
+        # The live CRS812 FDB resolves both of k3's wired MACs behind sfp56-6;
+        # that is the management-switch downlink carrying tagged backup
+        # transit alongside untagged LAN.
+        switchTransit = {
+          enable = true;
+          edgePort = "sfp56-6";
+        };
+      };
+    };
+
+    zoneOrder = [
+      "lan"
+      "iot"
+      "fabric"
+      "guest"
+      "mgmt"
+      "wifi"
+    ];
+    zones = {
+      lan = {
+        network = "lan";
+        vlanId = vlans.lan.targetId;
+        ipv6SubnetId = "10";
+        security = "trusted";
+        qosClass = "bestEffort";
+      };
+      iot = {
+        network = "iot";
+        vlanId = vlans.iot.id;
+        ipv6SubnetId = "20";
+        security = "restricted";
+        qosClass = "bulk";
+      };
+      fabric = {
+        network = "fabric";
+        vlanId = vlans.fabric.id;
+        ipv6SubnetId = "25";
+        security = "trusted";
+        qosClass = "bestEffort";
+      };
+      guest = {
+        network = "guest";
+        vlanId = vlans.guest.id;
+        ipv6SubnetId = "30";
+        security = "isolated";
+        qosClass = "bulk";
+      };
+      mgmt = {
+        network = "mgmt";
+        vlanId = vlans.mgmt.id;
+        ipv6SubnetId = "40";
+        security = "management";
+        qosClass = "control";
+      };
+      wifi = {
+        network = "wifi";
+        vlanId = vlans.wifi.id;
+        ipv6SubnetId = "50";
+        security = "trusted";
+        qosClass = "bestEffort";
+      };
+    };
+
+    firewall = {
+      defaultInterZone = "deny";
+      trustedInitiatorZones = ["lan" "fabric" "mgmt" "wifi"];
+      # IPv6 remains default-deny. Only forwards explicitly carrying
+      # `publishIpv6 = true` are admitted, and the BlueField derives their
+      # exact /128s from the live DHCPv6-PD prefix plus each host's stable MAC.
+      publishIpv6Services = true;
+      strictSourceValidation = true;
+    };
+
+    nat44 = {
+      sessions = 131072;
+      frameQueueLength = 256;
+      insideZones = routing.production.zoneOrder;
+      outsideWan = "primary";
+      # Preserve declared application publications, but retire direct WAN SSH
+      # and Tor exposure on the former router itself.
+      publicationGroups = ["arr-servers" "router-control" "trex"];
+    };
+
+    qosClasses = {
+      bestEffort.dscp = 0;
+      bulk.dscp = 8;
+      streaming.dscp = 34;
+      interactive.dscp = 46;
+      control.dscp = 56;
+    };
+
+    # First production step: move routing without simultaneously splitting
+    # the organically-grown inside L2 domain. The BlueField parent remains
+    # the untagged LAN/fabric interface; only WiFi and the WANs are tagged.
+    # This is replaced by `zones` after the gateway handoff is accepted.
+    transition = {
+      enable = false;
+      mode = "legacy-flat";
+      legacyInside = {
+        networks = ["lan" "fabric"];
+        mtu = vlans.fabric.mtu;
+        ipv6SubnetId = "10";
+        # The pre-migration flat LAN already uses subnet zero of the ISP /48.
+        # Keep that GUA on the transition parent so existing addresses remain
+        # routable; VLAN 10 becomes the LAN GUA only in the final split design.
+        delegatedSubnetId = "0";
+      };
+      taggedZones = ["wifi"];
+      deferredFinalZones = ["lan" "iot" "fabric" "guest" "mgmt"];
+      switch = {
+        legacyPvid = 1;
+        bluefieldPortMode = "hybrid";
+        legacyUplink = routing.production.switch.lanFabricTrunk;
+        preserveLabVlans = true;
+      };
+      # K3 and its iPhone remain an out-of-band recovery endpoint. VPP never
+      # installs a default through k3; the phone is not a production WAN.
+      controlPlane = {
+        # Keep the old router as an ordinary service host. It first acquires
+        # this secondary address while still owning .1; DHCP then advertises
+        # .31 for DNS/netboot. Only after leases and static clients migrate
+        # does VPP take the .1 gateway addresses.
+        host = "router";
+        # Direct CRS812 RJ45 attachment after removing the intervening
+        # management switch from the service VLAN path (2026-08-29).
+        switchPort = "ether2";
+        targetHost = 31;
+        targetIp = ipOf "lan" routing.production.transition.controlPlane.targetHost;
+        targetIpv6 = "fdde:ad:10::31";
+        currentGatewayIp = gatewayIp "lan";
+        services = ["dns" "dhcp" "tftp" "netboot-http" "wireguard"];
+        routedIpv4 = [
+          "${vlans.wireguard.prefix}.0/${toString vlans.wireguard.cidr}"
+          hydraBuilders.subnet
+        ];
+        routedIpv6 = ["fdde:ad:24::/64"];
+      };
     };
   };
 
@@ -661,6 +1041,12 @@ lib: rec {
 
   # Convenient shortcut for the lan gateway (the universal "router").
   routerIp = gatewayIp "lan";
+  # Routing and local network services deliberately separate during the VPP
+  # handoff. `routerIp` remains the gateway; this address remains on the old
+  # router after it becomes an ordinary LAN service host.
+  controlPlaneIp = routing.production.transition.controlPlane.targetIp;
+  dnsIp = controlPlaneIp;
+  netbootIp = controlPlaneIp;
 
   # "lan" 14  ->  "192.168.23.14/24"
   cidrOf = vlanName: octet: "${ipOf vlanName octet}/${toString vlans.${vlanName}.cidr}";

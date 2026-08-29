@@ -11,6 +11,14 @@
       type = lib.types.str;
       description = "LAN interface for services (dnsmasq, etc.) to bind to";
     };
+    legacyPcieNetwork.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Keep the retired ConnectX-4, RTL8127, and external Thunderbolt LAN
+        configuration used by the rollback router closure.
+      '';
+    };
   };
 
   config = {
