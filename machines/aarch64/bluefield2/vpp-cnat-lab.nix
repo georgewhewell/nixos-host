@@ -82,10 +82,12 @@ in {
       cnat = {
         session-max-age = 60;
         tcp-max-age = 3600;
+        # VPP 26.06 sizes the shared session bihash from session-max.  The
+        # session-db-* knobs still shown in cnat.rst are no longer accepted by
+        # the startup parser (see src/plugins/cnat/cnat_types.c).
+        session-max = 1048576;
         translation-db-memory = "64M";
         translation-db-buckets = 65536;
-        session-db-memory = "512M";
-        session-db-buckets = 1048576;
         snat-db-memory = "64M";
         snat-db-buckets = 65536;
       };

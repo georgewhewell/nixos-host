@@ -11,9 +11,8 @@ memory {
   main-heap-size 512M
 }
 cnat {
-  session-db-buckets 1024
-  session-db-memory 1M
   session-max-age 60
+  session-max 1048576
   snat-db-buckets 1024
   snat-db-memory 64M
   tcp-max-age 3600
