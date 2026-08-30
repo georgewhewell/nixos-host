@@ -266,6 +266,13 @@ lib: rec {
       };
       extraNames = ["frigate"];
     };
+    # Spotifyd runs in a WiFi-only macvlan namespace on the router. Keep its
+    # address below the dynamic pool so libmdns sees and advertises exactly one
+    # client-reachable address instead of the router's host-PF/RShim links.
+    spotifyd = {
+      mac = "02:50:00:00:00:30";
+      addresses = {wifi = 30;};
+    };
     # CRS210-8G-2S+. Named for the board like the other switches; the old
     # link-speed name stays as an alias so existing references keep resolving.
     "mikrotik-crs210" = {

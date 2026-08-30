@@ -4,7 +4,16 @@
 , pkgs
 , network
 , ...
-}: {
+}: let
+  spotifydNetns = "spotifyd";
+  spotifydInterface = "spotifyd0";
+  spotifydHost = network.hosts.spotifyd;
+  spotifydWifiIp = network.primaryIp spotifydHost;
+  spotifydResolvConf = pkgs.writeText "spotifyd-resolv.conf" ''
+    nameserver 1.1.1.1
+    nameserver 2606:4700:4700::1111
+  '';
+in {
   /*
     router: cwwk 8845hs board
   */
@@ -21,9 +30,112 @@
   # 6052 globally, so leave it off and add a LAN-scoped rule instead.
   services.esphome-dashboard = {
     enable = true;
+    # Keep this on the legacy address until the application-service phase;
+    # the phase-one deploy only establishes .31 for DNS/DHCP/netboot.
     address = network.routerIp;
   };
-  networking.firewall.interfaces."br0.lan".allowedTCPPorts = [ 6052 ];
+  networking.firewall.interfaces."br0.lan".allowedTCPPorts = [
+    6052 # esphome-dashboard
+  ];
+  # Spotifyd's zeroconf listener lives only inside its WiFi macvlan namespace;
+  # it never binds a socket in the router's host namespace.
+
+  # Spotify Connect endpoint, moved off rock-5b 2026-08-20. Output is the
+  # board's ALC269VC analog jack (PCI c9:00.6), not the GPU's HDMI audio
+  # function (c9:00.1) — both are snd_hda_intel and both register as
+  # "Generic", so pin the card ids by probe order and address the DAC by
+  # name. profiles/headless.nix defaults hardware.alsa off; override it.
+  hardware.alsa = {
+    enable = true;
+    # The mixer state below is declarative; don't let a saved state file
+    # from /var/lib/alsa race the unmute service and win.
+    enablePersistence = false;
+    config = ''
+      pcm.analogout {
+        type plug
+        slave.pcm "hw:CARD=analog,DEV=0"
+      }
+    '';
+  };
+
+  services.spotifyd = {
+    enable = true;
+    settings.global = {
+      device_name = "HiFi";
+      device_type = "speaker";
+      use_mpris = false;
+      max_cache_size = 100000000; # ~100MB; the module pins /var/cache/spotifyd
+      # A fixed port makes the namespace boundary observable and testable.
+      # The host firewall does not expose it because the listener exists only
+      # on spotifyd0 inside the namespace.
+      zeroconf_port = 1234;
+      backend = "alsa";
+      device = "analogout";
+      volume_controller = "softvol";
+      initial_volume = 10;
+      audio_format = "S16";
+      bitrate = 320;
+    };
+  };
+
+  # libmdns has no interface selector and advertises every address visible to
+  # the process. On the multi-homed router that previously included public WAN,
+  # host-PF and RShim addresses, while the WiFi VLAN was absent. Put spotifyd
+  # in a namespace with one macvlan instead: discovery is emitted directly on
+  # VLAN 50 as 192.168.50.30, and Avahi remains the sole responder in the host
+  # namespace. The namespace uses public resolvers because a macvlan child
+  # cannot reach services bound to its host parent (192.168.50.31).
+  systemd.services.spotifyd-netns = {
+    description = "Create the WiFi-only spotifyd network namespace";
+    before = ["spotifyd.service"];
+    requiredBy = ["spotifyd.service"];
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    path = [pkgs.iproute2];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStop = "-${pkgs.iproute2}/bin/ip netns delete ${spotifydNetns}";
+    };
+    script = ''
+      ip netns delete ${spotifydNetns} 2>/dev/null || true
+      ip netns add ${spotifydNetns}
+
+      ip link add link br0.lan.50 name ${spotifydInterface} type macvlan mode bridge
+      ip link set dev ${spotifydInterface} address ${spotifydHost.mac}
+      ip link set dev ${spotifydInterface} netns ${spotifydNetns}
+
+      ip netns exec ${spotifydNetns} ip link set dev lo up
+      ip netns exec ${spotifydNetns} ip address add ${spotifydWifiIp}/${toString network.vlans.wifi.cidr} dev ${spotifydInterface}
+      ip netns exec ${spotifydNetns} ip link set dev ${spotifydInterface} up
+      ip netns exec ${spotifydNetns} ip route replace default via ${network.gatewayIp "wifi"}
+    '';
+  };
+
+  systemd.services.spotifyd = {
+    requires = ["spotifyd-netns.service"];
+    after = ["spotifyd-netns.service"];
+    serviceConfig = {
+      NetworkNamespacePath = "/run/netns/${spotifydNetns}";
+      BindReadOnlyPaths = ["${spotifydResolvConf}:/etc/resolv.conf"];
+    };
+  };
+
+  # The ALC269VC comes up with Master at 0/87 and muted, which is silence with
+  # no error anywhere. Pin it; spotifyd's softvol does the actual volume.
+  systemd.services.configure-alc269 = {
+    description = "Unmute and level the on-board ALC269VC analog output";
+    after = ["sound.target"];
+    wantedBy = ["multi-user.target"];
+    before = ["spotifyd.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = [
+        "-${pkgs.alsa-utils}/bin/amixer -c analog sset Master 80% unmute"
+      ];
+    };
+  };
 
   # Pin the router to the explicit RC package set instead of following
   # nixpkgs' moving linuxPackages_latest from profiles/uefi-boot.nix.
@@ -352,8 +464,14 @@
   # not detected by the in-tree driver. This exact mapping was verified on the
   # router: this exposes the board's fan tachometers and PWM outputs.
   #
+  # snd_hda_intel: the index/id arrays are indexed by probe order, which for
+  # two functions of the same PCI device is ascending function number —
+  # c9:00.1 (GPU HDMI) then c9:00.6 (ALC269VC). Naming them makes the
+  # spotifyd device string above stable regardless of what the ids would
+  # otherwise auto-suffix to ("Generic"/"Generic_1").
   boot.extraModprobeConfig = ''
     options it87 force_id=0x8620
+    options snd_hda_intel index=0,1 id=hdmi,analog
   '';
 
   systemd.services.router-fans-full-speed = {
