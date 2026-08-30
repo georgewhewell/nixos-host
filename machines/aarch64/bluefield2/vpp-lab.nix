@@ -442,7 +442,9 @@ in {
           ++ [
             ./patches/vpp-dhcpv6-pd-child-ra-lifetime.patch
             ./patches/vpp-dpdk-shared-pci-explicit-name.patch
-          ];
+          ]
+          ++ lib.optional config.bluefield2.vpp.nat44FlowWorkers.enable
+          ./patches/vpp-nat44-ed-flow-worker-hash.patch;
         cmakeFlags =
           map (
             flag:

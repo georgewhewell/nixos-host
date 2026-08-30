@@ -44,6 +44,10 @@ in
         starts.
       '';
     };
+
+    vpp.nat44FlowWorkers.enable = lib.mkEnableOption ''
+      experimental NAT44-ED full-flow worker selection for new dynamic sessions
+    '';
   };
 
   options.bluefieldHostPf.routerMode = lib.mkOption {

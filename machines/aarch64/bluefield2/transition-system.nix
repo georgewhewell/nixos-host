@@ -42,7 +42,21 @@ in {
     requires = ["vpp.service"];
     serviceConfig = {
       Type = "oneshot";
+      ExecStartPre = pkgs.writeShellScript "wait-for-vpp-cli" ''
+        for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
+          if ${config.services.vpp.package}/bin/vppctl \
+               -s /run/vpp/cli.sock show version >/dev/null 2>&1; then
+            exit 0
+          fi
+          ${pkgs.coreutils}/bin/sleep 1
+        done
+        echo "VPP CLI socket did not become ready after 30 seconds" >&2
+        exit 1
+      '';
       ExecStart = "${ipv6PublicationSync}/bin/vpp-ipv6-publication-sync --policy /etc/vpp/ipv6-publications.json --vppctl ${config.services.vpp.package}/bin/vppctl";
+      Restart = "on-failure";
+      RestartSec = "5s";
+      TimeoutStartSec = "40s";
       NoNewPrivileges = true;
       PrivateTmp = true;
       ProtectHome = true;

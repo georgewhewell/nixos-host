@@ -1,0 +1,394 @@
+From 4b89e1efff2255120107679b915ee55fc8b7d861 Mon Sep 17 00:00:00 2001
+From: nixos-config <noreply@localhost>
+Date: Sun, 30 Aug 2026 00:00:00 +0200
+Subject: [PATCH] nat44-ed: distribute new sessions by flow
+
+NAT44-ED's in2out handoff sends every new session from one inside address to
+the same worker. A single fast client therefore cannot use the other NAT
+workers even when its flows have different ports and remote endpoints.
+
+Keep the global flow-hash lookup as the authority for established sessions,
+but select a worker for a genuinely new packet-created session from the full
+ED key. Calls without a packet retain the source-address mapping used by
+static-mapping control-plane placement.
+
+Session deletion and original-destination lookup must use the worker recorded
+in the global flow hash once sessions no longer have source-only ownership.
+Likewise, user dumps and static/LB cleanup must inspect every per-thread pool.
+
+diff --git a/plugins/nat/nat44-ed/nat44_ed.c b/plugins/nat/nat44-ed/nat44_ed.c
+--- a/plugins/nat/nat44-ed/nat44_ed.c
++++ b/plugins/nat/nat44-ed/nat44_ed.c
+@@ -788,8 +788,6 @@
+       continue;
+     nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+     vec_add1 (indexes_to_free, s - tsm->sessions);
+-    if (!addr_only)
+-      break;
+   }
+   u32 *ses_index;
+   vec_foreach (ses_index, indexes_to_free)
+@@ -800,6 +798,39 @@
+   vec_free (indexes_to_free);
+ }
+ 
++static void
++nat_ed_lb_mapping_del_sessions (snat_main_t *sm, ip4_address_t l_addr,
++				u16 l_port, u32 fib_index)
++{
++  snat_main_per_thread_data_t *tsm;
++  snat_session_t *s;
++
++  vec_foreach (tsm, sm->per_thread_data)
++    {
++      u32 *indexes_to_free = NULL;
++
++      pool_foreach (s, tsm->sessions)
++	{
++	  if (!nat44_ed_is_lb_session (s) ||
++	      s->in2out.fib_index != fib_index ||
++	      s->in2out.addr.as_u32 != l_addr.as_u32 ||
++	      s->in2out.port != l_port)
++	    continue;
++
++	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
++	  vec_add1 (indexes_to_free, s - tsm->sessions);
++	}
++
++      u32 *ses_index;
++      vec_foreach (ses_index, indexes_to_free)
++	{
++	  s = pool_elt_at_index (tsm->sessions, *ses_index);
++	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
++	}
++      vec_free (indexes_to_free);
++    }
++}
++
+ static_always_inline snat_static_mapping_t *
+ nat44_ed_sm_lookup (snat_main_t *sm, clib_bihash_kv_16_8_t *kv)
+ {
+@@ -1224,19 +1255,13 @@
+     }
+ 
+   // delete sessions for static mapping
+-  if (sm->num_workers > 1)
+-    {
+-      tsm = vec_elt_at_index (sm->per_thread_data, m->workers[0]);
+-    }
+-  else
++  vec_foreach (tsm, sm->per_thread_data)
+     {
+-      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
++      nat_ed_static_mapping_del_sessions (
++	sm, tsm, m->local_addr, m->local_port, m->proto, fib_index,
++	is_sm_addr_only (flags), e_addr, e_port);
+     }
+ 
+-  nat_ed_static_mapping_del_sessions (sm, tsm, m->local_addr, m->local_port,
+-				      m->proto, fib_index,
+-				      is_sm_addr_only (flags), e_addr, e_port);
+-
+   fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+ 
+   if (!pool_elts (m->locals))
+@@ -1390,8 +1415,6 @@
+   snat_static_mapping_t *m;
+ 
+   nat44_lb_addr_port_t *local;
+-  snat_main_per_thread_data_t *tsm;
+-  snat_session_t *s;
+ 
+   if (!sm->enabled)
+     {
+@@ -1425,31 +1448,9 @@
+ 	    }
+ 	}
+ 
+-      if (sm->num_workers > 1)
+-	{
+-	  ip4_header_t ip = {
+-	    .src_address = local->addr,
+-	  };
+-	  tsm = vec_elt_at_index (
+-	    sm->per_thread_data,
+-	    nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index, 0));
+-	}
+-      else
+-	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+-
+       /* Delete sessions */
+-      pool_foreach (s, tsm->sessions)
+-	{
+-	  if (!(nat44_ed_is_lb_session (s)))
+-	    continue;
+-
+-	  if ((s->in2out.addr.as_u32 != local->addr.as_u32) ||
+-	      s->in2out.port != local->port)
+-	    continue;
+-
+-	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+-	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+-	}
++      nat_ed_lb_mapping_del_sessions (sm, local->addr, local->port,
++				  local->fib_index);
+     }
+ 
+   if (m->affinity)
+@@ -1474,8 +1475,6 @@
+   snat_main_t *sm = &snat_main;
+   snat_static_mapping_t *m = 0;
+   nat44_lb_addr_port_t *local, *prev_local, *match_local = 0;
+-  snat_main_per_thread_data_t *tsm;
+-  snat_session_t *s;
+   u32 *locals = 0;
+   uword *bitmap = 0;
+   int i;
+@@ -1553,30 +1552,10 @@
+ 	    nat_log_err ("sm i2o key del failed");
+ 	}
+ 
+-      if (sm->num_workers > 1)
+-	{
+-	  ip4_header_t ip = {
+-	    .src_address = local->addr,
+-	  };
+-	  tsm = vec_elt_at_index (
+-	    sm->per_thread_data,
+-	    nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index, 0));
+-	}
+-      else
+-	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+-
+       /* Delete sessions */
+-      pool_foreach (s, tsm->sessions) {
+-	  if (!(nat44_ed_is_lb_session (s)))
+-	    continue;
+-
+-	  if ((s->in2out.addr.as_u32 != match_local->addr.as_u32) ||
+-	      s->in2out.port != match_local->port)
+-	    continue;
+-
+-	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
+-	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+-      }
++      nat_ed_lb_mapping_del_sessions (sm, match_local->addr,
++				  match_local->port,
++				  match_local->fib_index);
+ 
+       pool_put (m->locals, match_local);
+     }
+@@ -2939,7 +2918,7 @@
+ {
+   snat_main_t *sm = &snat_main;
+   u32 next_worker_index = sm->first_worker_index;
+-  u32 hash;
++  u64 hash;
+ 
+   clib_bihash_kv_16_8_t kv16, value16;
+ 
+@@ -3034,10 +3013,21 @@
+ 	}
+     }
+ 
+-  hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +
+-	 (ip->src_address.as_u32 >> 16) + (ip->src_address.as_u32 >> 24) +
+-	 rx_fib_index + (rx_fib_index >> 8) + (rx_fib_index >> 16) +
+-	 (rx_fib_index >> 24);
++  if (b)
++    {
++      init_ed_k (&kv16, ip->src_address.as_u32,
++		 vnet_buffer (b)->ip.reass.l4_src_port,
++		 ip->dst_address.as_u32,
++		 vnet_buffer (b)->ip.reass.l4_dst_port, fib_index,
++		 ip->protocol);
++      hash = clib_bihash_hash_16_8 (&kv16);
++    }
++  else
++    hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +
++	   (ip->src_address.as_u32 >> 16) +
++	   (ip->src_address.as_u32 >> 24) + rx_fib_index +
++	   (rx_fib_index >> 8) + (rx_fib_index >> 16) +
++	   (rx_fib_index >> 24);
+ 
+   if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
+     next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
+@@ -3600,7 +3590,6 @@
+ 		      ip4_address_t *eh_addr, u16 eh_port, u8 proto,
+ 		      u32 vrf_id, int is_in)
+ {
+-  ip4_header_t ip;
+   clib_bihash_kv_16_8_t kv, value;
+   u32 fib_index;
+   snat_session_t *s;
+@@ -3612,14 +3601,6 @@
+     }
+ 
+   fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+-  ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
+-  if (sm->num_workers > 1)
+-    tsm = vec_elt_at_index (
+-      sm->per_thread_data,
+-      nat44_ed_get_in2out_worker_index (0, &ip, fib_index, 0));
+-  else
+-    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+-
+   init_ed_k (&kv, addr->as_u32, port, eh_addr->as_u32, eh_port, fib_index,
+ 	     proto);
+   if (clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
+@@ -3627,6 +3608,9 @@
+       return VNET_API_ERROR_NO_SUCH_ENTRY;
+     }
+ 
++  tsm = vec_elt_at_index (sm->per_thread_data,
++			  ed_value_get_thread_index (&value));
++
+   if (pool_is_free_index (tsm->sessions, ed_value_get_session_index (&value)))
+     return VNET_API_ERROR_UNSPECIFIED;
+   s = pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
+@@ -4101,31 +4085,21 @@
+   snat_main_t *sm = &snat_main;
+   u32 fib_index = 0;
+   snat_session_t *s;
+-  ip4_header_t ip;
+-
+-  ip.src_address.as_u32 = i2o_src->as_u32;
+   fib_index = fib_table_find (FIB_PROTOCOL_IP4, 0);
+ 
+-  if (sm->num_workers > 1)
+-    {
+-      tsm = vec_elt_at_index (
+-	sm->per_thread_data,
+-	nat44_ed_get_in2out_worker_index (0, &ip, fib_index, 0));
+-    }
+-  else
+-    {
+-      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+-    }
+-
+   /* query */
+   clib_bihash_kv_16_8_t kv = { 0 }, value;
+   init_ed_k (&kv, i2o_src->as_u32, i2o_src_port, i2o_dst->as_u32, i2o_dst_port,
+ 	     fib_index, proto);
+-  if (tsm->sessions == NULL ||
+-      clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
++  if (clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
+     {
+       return;
+     }
++
++  tsm = vec_elt_at_index (sm->per_thread_data,
++			  ed_value_get_thread_index (&value));
++  if (tsm->sessions == NULL)
++    return;
+   s = pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
+   if (s)
+     {
+
+diff --git a/plugins/nat/nat44-ed/nat44_ed_api.c b/plugins/nat/nat44-ed/nat44_ed_api.c
+--- a/plugins/nat/nat44-ed/nat44_ed_api.c
++++ b/plugins/nat/nat44-ed/nat44_ed_api.c
+@@ -1504,28 +1504,24 @@
+   vl_api_registration_t *reg;
+   snat_user_key_t ukey;
+   snat_session_t *s;
+-  ip4_header_t ip;
+ 
+   reg = vl_api_client_index_to_registration (mp->client_index);
+   if (!reg)
+     return;
+ 
+   clib_memcpy (&ukey.addr, mp->ip_address, 4);
+-  ip.src_address.as_u32 = ukey.addr.as_u32;
+   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
+-  if (sm->num_workers > 1)
+-    tsm = vec_elt_at_index (
+-      sm->per_thread_data,
+-      nat44_ed_get_in2out_worker_index (0, &ip, ukey.fib_index, 0));
+-  else
+-    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+ 
++  vec_foreach (tsm, sm->per_thread_data)
++    {
+       pool_foreach (s, tsm->sessions) {
+-        if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
++        if (s->in2out.addr.as_u32 == ukey.addr.as_u32 &&
++            s->in2out.fib_index == ukey.fib_index)
+           {
+             send_nat44_user_session_details (s, reg, mp->context);
+           }
+       }
++    }
+ }
+ 
+ static void
+@@ -1630,27 +1626,23 @@
+   vl_api_registration_t *reg;
+   snat_user_key_t ukey;
+   snat_session_t *s;
+-  ip4_header_t ip;
+ 
+   reg = vl_api_client_index_to_registration (mp->client_index);
+   if (!reg)
+     return;
+ 
+   clib_memcpy (&ukey.addr, mp->ip_address, 4);
+-  ip.src_address.as_u32 = ukey.addr.as_u32;
+   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
+-  if (sm->num_workers > 1)
+-    tsm = vec_elt_at_index (
+-      sm->per_thread_data,
+-      nat44_ed_get_in2out_worker_index (0, &ip, ukey.fib_index, 0));
+-  else
+-    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+ 
+-  pool_foreach (s, tsm->sessions)
++  vec_foreach (tsm, sm->per_thread_data)
+     {
+-      if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
++      pool_foreach (s, tsm->sessions)
+ 	{
+-	  send_nat44_user_session_v2_details (s, reg, mp->context);
++	  if (s->in2out.addr.as_u32 == ukey.addr.as_u32 &&
++	      s->in2out.fib_index == ukey.fib_index)
++	    {
++	      send_nat44_user_session_v2_details (s, reg, mp->context);
++	    }
+ 	}
+     }
+ }
+@@ -1664,27 +1656,23 @@
+   vl_api_registration_t *reg;
+   snat_user_key_t ukey;
+   snat_session_t *s;
+-  ip4_header_t ip;
+ 
+   reg = vl_api_client_index_to_registration (mp->client_index);
+   if (!reg)
+     return;
+ 
+   clib_memcpy (&ukey.addr, mp->ip_address, 4);
+-  ip.src_address.as_u32 = ukey.addr.as_u32;
+   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
+-  if (sm->num_workers > 1)
+-    tsm = vec_elt_at_index (
+-      sm->per_thread_data,
+-      nat44_ed_get_in2out_worker_index (0, &ip, ukey.fib_index, 0));
+-  else
+-    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+ 
+-  pool_foreach (s, tsm->sessions)
++  vec_foreach (tsm, sm->per_thread_data)
+     {
+-      if (s->in2out.addr.as_u32 == ukey.addr.as_u32)
++      pool_foreach (s, tsm->sessions)
+ 	{
+-	  send_nat44_user_session_v3_details (s, reg, mp->context);
++	  if (s->in2out.addr.as_u32 == ukey.addr.as_u32 &&
++	      s->in2out.fib_index == ukey.fib_index)
++	    {
++	      send_nat44_user_session_v3_details (s, reg, mp->context);
++	    }
+ 	}
+     }
+ }

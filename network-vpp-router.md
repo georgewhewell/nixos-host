@@ -211,6 +211,33 @@ path. CNAT 26.06 takes the shared timestamp reader lock on the packet hot path,
 so it is retained only as a diagnostic lab and is not a production NAT44
 replacement. Production was returned to its exact pre-test generation.
 
+The follow-up NAT44-ED experiment fixed the actual single-client bottleneck.
+Established sessions still follow VPP's global endpoint-dependent flow table,
+but a genuinely new dynamic session now chooses its worker from the complete
+source/destination address and port tuple instead of the inside source address
+alone. One ordinary Trex IPv4 address then reached 23.26 Gbit/s receiver
+goodput with 16 parallel iPerf streams; only 1,138 NAT handoff-congestion drops
+were recorded, versus millions before the change. A forced-IPv4 Ookla run
+against the local 100G Zürich server measured 22.79 Gbit/s download and 23.29
+Gbit/s upload with zero reported packet loss. The result is independently
+published as `9d389719-7c93-4cea-996b-5424f36d1472`.
+
+Connection scale survived the same change: VPP held 53,266 live translations,
+including 29,056 TCP and 24,207 UDP sessions, while qBittorrent remained
+reachable and its TCP/UDP 17026 publications remained installed. qBittorrent's
+sessions appeared in every worker pool. The remaining performance defect is
+queueing rather than NAT capacity: the IPv4 Ookla run reported 0.715 ms
+download loaded-latency IQM, but 11.699 ms upload IQM and a 414.797 ms worst
+upload sample. The CRS812 WAN shaper should be tuned below the provider policer
+before calling loaded latency complete.
+
+This patch is isolated behind `bluefield2.vpp.nat44FlowWorkers.enable` and the
+`bluefield2-nat44-flow-workers-cross` review target. It is live through a
+non-persistent `test` activation while the booted generation remains the exact
+pre-test rollback. The same closure also makes IPv6 publication reconciliation
+wait for VPP's CLI and retry if DHCPv6-PD has not arrived yet; the existing
+30-second timer then keeps the prefix-aware ACLs current.
+
 The primary CRS812 endpoint is the live `sfp56-8` ISP cage; `sfp56-7` remains
 Rock-5B's live 25G link. The legacy-flat handoff is active: VLAN 100 contains
 only `sfp56-8` and BlueField, VLAN 50 follows the FDB-proved core path, all

@@ -266,6 +266,9 @@ in
   prime-cross = sysCross ./aarch64/prime;
   neo2-cross = sysCross ./aarch64/nanopi-neo2;
   bluefield2-cross = sysCross ./aarch64/bluefield2/hostpf-system.nix;
+  # Experimental NAT44-ED full-flow worker distribution; never the rollback.
+  bluefield2-nat44-flow-workers-cross =
+    sysCross ./aarch64/bluefield2/nat44-flow-workers-system.nix;
   # Production dataplane plus an inactive, documentation-prefix-only CNAT lab.
   bluefield2-cnat-lab-cross = sysCross ./aarch64/bluefield2/cnat-lab-system.nix;
   # Guarded review closure for future host-PF/DPDK experiments.
