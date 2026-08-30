@@ -71,10 +71,15 @@ traffic; restricted/bulk may initiate only declared services; WAN may enter
 only published services and required IPv6 control traffic. NAT state handles
 IPv4 return traffic and reflexive ACL state handles IPv6 return traffic.
 
-VPP assigns DSCP at the trust boundary, so endpoint markings are never
-trusted. The CRS812 performs scheduling on the actual ISP egress port. The
-staged `nixos-wan` manager uses weighted service for ordinary/bulk/streaming/
-interactive traffic and strict service for control traffic. At cutover:
+The CRS812 performs scheduling on the actual ISP egress port. The `nixos-wan`
+manager uses weighted service for ordinary/bulk/streaming/interactive traffic
+and strict service for control traffic. During the legacy-flat transition,
+VPP stores a zone class on ingress but has no QoS mark feature on the primary
+WAN output, so trusted endpoint DSCP reaches the switch unchanged. qBittorrent
+therefore emits the full ToS byte `32` (DSCP CS1), while a CRS804 hardware ACL
+promotes only unmarked IPv4 UDP/4791 traffic from Trex to the RoCE profile.
+The final VLAN split can restore an interface-level VPP trust boundary; the
+flat LAN must not be described as one. At cutover:
 
 1. Bind the manager only to the confirmed ISP-facing port.
 2. Set aggregate egress just below the measured provider policer rate.
@@ -95,6 +100,16 @@ CRS812 ASIC owns queues, weighted/strict scheduling, and port-rate shaping.
 Changing the BlueField dataplane driver does not change those capabilities.
 Doing the shaping on the DPU itself would be a separate VPP driver-integration
 project, not a startup option that should influence this cutover.
+
+The live ISP egress is shaped in the CRS812 ASIC at 24.7 Gbit/s. After removing
+the CRS804's old whole-port AF31 rewrite, a 16-stream public TCP upload measured
+23.71 Gbit/s sender and 22.79 Gbit/s receiver goodput. Concurrent EF probes had
+zero loss with 0.826 ms average and 2.621 ms maximum RTT; best-effort probes had
+5.96% loss with 1.396 ms average and 3.762 ms maximum RTT. Queue deltas proved
+the load in TC1, EF in TC5, qBittorrent in bulk TC0, and no ordinary traffic in
+RoCE TC3. With no egress cap, a comparable 23.32 Gbit/s test lost every probe.
+The manager is bound only to `sfp56-8`; download is not shaped because its
+loaded latency was already clean.
 
 ## Production cutover
 
@@ -245,8 +260,8 @@ existing untagged ports remain in VLAN 1, and bridge VLAN filtering is on.
 Post-cable checks proved real ISP DHCPv4, DHCPv6-PD/RA, public IPv4 and IPv6
 from Trex and `arr-servers`, and qBittorrent's TCP/UDP publication. The measured
 LAN-to-gateway RTT averaged 0.098 ms. IPv6 public service rules stay disabled
-until stable host IIDs and prefix-aware ACL updates are defined; the WAN queue
-manager remains unbound until the provider policer is measured.
+until stable host IIDs and prefix-aware ACL updates are defined. The WAN queue
+manager is bound to `sfp56-8` with a measured 24.7 Gbit/s aggregate egress cap.
 
 ## BlueField performance tuning protocol
 

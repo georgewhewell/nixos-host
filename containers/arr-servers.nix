@@ -1,5 +1,25 @@
-{mkSecret, config, network, ...}: let
+{
+  mkSecret,
+  config,
+  network,
+  pkgs,
+  ...
+}: let
   self = network.hosts."arr-servers";
+  qbittorrentPrepare = pkgs.writeShellScript "qbittorrent-prepare" ''
+    set -eu
+    profile=/var/lib/qbittorrent/qBittorrent/config
+    config="$profile/qBittorrent.conf"
+
+    ${pkgs.coreutils}/bin/rm -f "$profile/lockfile"
+
+    # qB/libtorrent expects the complete IPv4 ToS / IPv6 traffic-class octet,
+    # not the six-bit DSCP number. 32 is therefore CS1 (DSCP 8 shifted left
+    # two bits), matching the switches' nixos-wan-bulk profile.
+    if [ -e "$config" ]; then
+      ${pkgs.crudini}/bin/crudini --set "$config" BitTorrent 'Session\PeerToS' 32
+    fi
+  '';
 in {
   # Declare autobrr secret using sops-nix
   sops.secrets.autobrr = mkSecret "autobrr" {};
@@ -117,16 +137,25 @@ in {
 
       services.qbittorrent = {
         enable = true;
+        package = pkgs.qbittorrent-nox;
         profileDir = "/var/lib/qbittorrent";
         webuiPort = 8080;
         torrentingPort = 17026;
         openFirewall = true;
       };
-      systemd.services.qbittorrent.unitConfig.RequiresMountsFor = [
-        "/var/lib/qbittorrent"
-        "/var/lib/qbittorrent/incomplete"
-        "/mnt/Media"
-      ];
+      systemd.services.qbittorrent = {
+        # An unclean container/host stop can leave Qt's single-instance lock in
+        # the persistent profile. Its recycled PID then makes qBittorrent exit
+        # successfully at boot, which bypasses Restart=on-failure.
+        # The same preflight also enforces CS1 for peer traffic, so bulk flows
+        # remain in the WAN scheduler's low-weight queue after a restore.
+        serviceConfig.ExecStartPre = qbittorrentPrepare;
+        unitConfig.RequiresMountsFor = [
+          "/var/lib/qbittorrent"
+          "/var/lib/qbittorrent/incomplete"
+          "/mnt/Media"
+        ];
+      };
 
       services.qui = {
         enable = true;

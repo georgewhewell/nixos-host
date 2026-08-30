@@ -877,10 +877,11 @@ lib: rec {
         ];
         qos = {
           txManager = "nixos-wan";
-          # Bind the scheduler at cut-over, but set its actual egress rate only
-          # after measuring the provider policer.  Null prevents a guessed
-          # 24.x Gbit/s constant from becoming configuration.
-          egressRateMbps = null;
+          # The CRS812 ASIC quantizes this to 24.7 Gbit/s.  A 2026-08-30 sweep
+          # found this knee immediately below the provider policer: public
+          # iPerf still received 23.17 Gbit/s while concurrent RTT stayed near
+          # 1 ms instead of stalling behind the ISP queue.
+          egressRateMbps = 24700;
         };
       };
       backup = {
