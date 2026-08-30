@@ -7,6 +7,8 @@
 }: let
   spotifydNetns = "spotifyd";
   spotifydInterface = "spotifyd0";
+  spotifydParent = "${network.ports.router.lanBridge}.${toString network.vlans.wifi.id}";
+  spotifydParentDevice = "sys-subsystem-net-devices-${spotifydParent}.device";
   spotifydHost = network.hosts.spotifyd;
   spotifydWifiIp = network.primaryIp spotifydHost;
   spotifydResolvConf = pkgs.writeText "spotifyd-resolv.conf" ''
@@ -89,8 +91,9 @@ in {
     description = "Create the WiFi-only spotifyd network namespace";
     before = ["spotifyd.service"];
     requiredBy = ["spotifyd.service"];
-    after = ["network-online.target"];
-    wants = ["network-online.target"];
+    after = ["network-online.target" spotifydParentDevice];
+    wants = ["network-online.target" spotifydParentDevice];
+    bindsTo = [spotifydParentDevice];
     path = [pkgs.iproute2];
     serviceConfig = {
       Type = "oneshot";
@@ -101,7 +104,7 @@ in {
       ip netns delete ${spotifydNetns} 2>/dev/null || true
       ip netns add ${spotifydNetns}
 
-      ip link add link br0.lan.50 name ${spotifydInterface} type macvlan mode bridge
+      ip link add link ${spotifydParent} name ${spotifydInterface} type macvlan mode bridge
       ip link set dev ${spotifydInterface} address ${spotifydHost.mac}
       ip link set dev ${spotifydInterface} netns ${spotifydNetns}
 
