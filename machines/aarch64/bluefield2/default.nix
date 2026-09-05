@@ -180,6 +180,10 @@ in {
         matchConfig.MACAddress = oobMac;
         address = [
           (network.cidrOf "lan" self.addresses.lan)
+          # Control-plane rescue subnet. This is the DPU's Linux management
+          # side, not VPP's data plane -- which is exactly what you want to
+          # reach when VPP is the thing that has gone wrong.
+          (network.cidrOf "rescue" self.addresses.rescue)
         ];
         dns = [network.dnsIp];
         routes = [

@@ -120,6 +120,37 @@ lib: rec {
       gatewayHost = 1;
       role = "vpn";
     };
+    # Control-plane rescue subnet, reached from abroad through `rescueTunnel`.
+    #
+    # NOT an 802.1Q VLAN. Like fabric2 above, this is a second IPv4 network on
+    # the existing untagged LAN L2, so it needs no switch configuration and
+    # cannot be broken by one -- which matters for something whose entire job
+    # is to work on the day other things do not.
+    #
+    # Two reasons it exists rather than reusing 192.168.23.0/24:
+    #   1. ax102's wg-hydra-bld already claims .7, .8, .24, .136, .192 and .247
+    #      as /32s. WireGuard routes by longest prefix, so routing the LAN /24
+    #      down the rescue tunnel would still send those hosts into the Hydra
+    #      tunnel -- which is dialled out over the very WAN that is down when
+    #      the rescue tunnel is needed.
+    #   2. A host reached at 192.168.102.X replies to k3 at 192.168.102.19
+    #      ON-LINK. No gateway is consulted, so the path works precisely when
+    #      the gateway is the casualty.
+    #
+    # Only a handful of hosts carry an address here, by design: this is a
+    # control plane, not a second LAN. Anything without one is reached by
+    # hopping through k3.
+    rescue = {
+      id = null;
+      prefix = "192.168.102";
+      cidr = 24;
+      # These addresses ride existing LAN interfaces, so the real MTU is
+      # whatever that interface has. Recorded as the tunnel path's MTU, which
+      # is what actually constrains a rescue flow; k3 clamps TCP MSS to match.
+      mtu = 1500;
+      gatewayHost = 19; # k3
+      role = "mgmt";
+    };
     # Control-only backup-WAN transit between rock-5b and the BlueField VPP
     # router. The CRS812 carries this tag only between their two ports once
     # bridge VLAN filtering is enabled.
@@ -148,10 +179,59 @@ lib: rec {
     ];
     # The VPP lab's trusted peer lets us prove the complete Trex -> VPP ->
     # Rock -> iPhone path before production VLANs replace documentation nets.
-    additionalSourceCidrs = ["198.18.10.2/32"];
+    additionalSourceCidrs = [
+      "198.18.10.2/32"
+      # The "router" entry above resolves to .1, which the BlueField took at
+      # the gateway cutover. The old router is now an ordinary service host at
+      # .31 -- and it is the one running DNS, DHCP, Home Assistant and
+      # ESPHome. Without this line the single most important machine to be
+      # able to reach is the single machine the backup WAN refuses.
+      "${controlPlaneIp}/32"
+    ];
     vppTestReturnCidrs = ["198.18.10.0/24"];
     tcpPorts = [22 53 80 443 853];
-    udpPorts = [53 123 443 35947 51820 51821];
+    # 51823 is the rescue tunnel (see `rescue` below). It must be listed here
+    # because k3's own OUTPUT chain is filtered against this same set: without
+    # it the tunnel comes up over the main WAN and then goes silent the moment
+    # the phone becomes the only egress -- exactly when it is needed.
+    udpPorts = [53 123 443 35947 51820 51821 51823];
+  };
+
+  # Out-of-band rescue tunnel. Every existing way into this network depends on
+  # the ISP link, the BlueField gateway at .1, and the .31 service host all
+  # being alive at once; the backup WAN is egress-only and cannot help, because
+  # a phone hotspot is CGNAT and accepts no inbound flow. So k3 dials OUT to a
+  # public rendezvous and holds the tunnel open with a keepalive. Arriving is
+  # then ax102's problem, not the ISP's.
+  #
+  # This is a control path, not a WAN: it carries policies.backupWan's port set
+  # into the `rescue` subnet above, and nothing else. Named `rescueTunnel` to
+  # keep it distinct from `vlans.rescue`, which is the subnet it delivers to.
+  rescueTunnel = {
+    interface = "wg-rescue";
+    subnet = "10.102.0.0/24";
+    # Distinct from the Hydra builders' 51822 on the same box.
+    listenPort = 51823;
+    # Pinned via the LAN gateway so the health check always tests the *main*
+    # path, whatever the default route currently says. Deliberately not one of
+    # dnsmasq's upstreams below: a probe target that doubles as a resolver
+    # stops being a probe the moment you need it.
+    healthProbeTarget = "1.0.0.1";
+    # A stale tunnel is indistinguishable from a dead one from abroad, so the
+    # health timer rebuilds the interface if no handshake lands within this.
+    handshakeStaleSeconds = 300;
+    ax102 = {
+      wg = "10.102.0.1";
+      endpoint = "213.239.212.173:51823";
+      publicKey = "ncesw5s/Xd9OwkxEv7BIr+5YgwHTgFeJdEbP0CfUx3w=";
+    };
+    k3 = {
+      wg = "10.102.0.2";
+      publicKey = "0HqBnv5eTB2MmEicuXO0qF9tmEigGdYT3nVVEkPH4XY=";
+    };
+    # Upstream resolvers for k3's standby DNS. Plain 53, because 853/DoH would
+    # add a dependency on the very thing that is broken when this matters.
+    resolvers = ["1.1.1.1" "9.9.9.9"];
   };
 
   benchmarkBuildHosts = let
@@ -263,6 +343,11 @@ lib: rec {
         guest = 1;
         mgmt = 1;
         wifi = 1;
+        # The rescue octet is 31, not 1: since the VPP cutover this machine
+        # holds only .31 on the LAN (.1 moved to bluefield2-vpp-lan), and it
+        # is the host running DNS, DHCP, Home Assistant and ESPHome -- the
+        # single most valuable thing to be able to reach from abroad.
+        rescue = 31;
       };
       extraNames = ["frigate"];
     };
@@ -303,7 +388,10 @@ lib: rec {
     };
     fuckup = {
       mac = "b8:6f:35:ab:31:89";
-      addresses = {lan = 7;};
+      addresses = {
+        lan = 7;
+        rescue = 7;
+      };
     };
     trex = {
       mac = "50:6b:4b:03:04:cb";
@@ -319,8 +407,9 @@ lib: rec {
       addresses = {
         lan = 8;
         fabric = 8;
+        rescue = 8;
       };
-      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "open-webui" "cache" "kimi"];
+      extraNames = ["jellyfin" "grafana" "home" "radarr" "sonarr" "autobrr" "cache" "kimi" "dsh"];
     };
     # Trex's RoCE endpoint: a ConnectX-4 SR-IOV VF in the host namespace
     # (mlxlan0v1 / mlx5_1). The OVS internal port ovs-host cannot serve RDMA
@@ -434,6 +523,8 @@ lib: rec {
       addresses = {
         lan = 19;
         wanBackup = 3;
+        # k3 is the rescue subnet's gateway and the only host forwarding it.
+        rescue = 19;
       };
     };
     mbp = {
@@ -466,6 +557,7 @@ lib: rec {
         lan = 22;
         fabric = 22;
         wanBackup = 2;
+        rescue = 22;
       };
     };
     # VPP's data-plane PF is distinct from BlueField Linux management. This
@@ -479,6 +571,12 @@ lib: rec {
       # The AIC8800's burned-in MAC; wlan0 lives on the wifi VLAN.
       mac = "38:7a:cc:40:41:e3";
       addresses = {wifi = 17;};
+    };
+    claw = {
+      # PicoClaw's AIC8800. Keep it below the dynamic pool so the diskless
+      # NFS client has the same address in the initrd and stage 2.
+      mac = "38:7a:cc:9b:48:62";
+      addresses = {wifi = 18;};
     };
     "bambu-a1-mini" = {
       # A1 mini, serial 0300DA651900919. Reserving its current pool lease only

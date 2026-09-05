@@ -45,7 +45,8 @@ EOF
       local stub_root="/tmp/strix-install-stubs"
       echo "staging installer flake from $original to $staged" >&2
       rm -rf "$staged" "$stub_root"
-      mkdir -p "$staged" "$stub_root/hellas" "$stub_root/nanokvm"
+      mkdir -p "$staged" "$stub_root/hellas" "$stub_root/nanokvm" \
+        "$stub_root/catena-runner" "$stub_root/exploratory-catena"
       cp -aL "$original"/. "$staged"/
 
       cat > "$stub_root/hellas/flake.nix" <<'EOF'
@@ -89,6 +90,8 @@ EOF
         cd "$staged"
         ${pkgs.nix}/bin/nix flake lock \
           --override-input hellas "path:$stub_root/hellas" \
+          --override-input catena-runner "path:$stub_root/catena-runner" \
+          --override-input exploratory-catena "path:$stub_root/exploratory-catena" \
           --override-input nanokvm "path:$stub_root/nanokvm" \
           >/dev/null
       )

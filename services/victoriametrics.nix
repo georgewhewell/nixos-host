@@ -201,6 +201,45 @@
         {
           targets = ["trex:9184"];
         }
+        {
+          targets = ["fuckup:9184"];
+        }
+      ];
+      metric_relabel_configs = [
+        {
+          source_labels = ["instance" "provider"];
+          regex = "trex:9184;openai";
+          target_label = "provider";
+          replacement = "openai-company";
+        }
+        {
+          source_labels = ["instance" "provider"];
+          regex = "fuckup:9184;openai";
+          target_label = "provider";
+          replacement = "openai-personal";
+        }
+      ];
+    }
+    {
+      # llama.cpp on mbp (Muse-Glimmer-30B). llama-server serves its Prometheus
+      # metrics from the same port as the API, so this is :8080/metrics rather
+      # than a sidecar exporter. Gives prompt/generation tokens per second, KV
+      # cache utilisation and queue depth.
+      job_name = "llama-cpp";
+      static_configs = [
+        {
+          targets = ["mbp:8080"];
+        }
+      ];
+    }
+    {
+      # gpsd on k3: per-satellite SNR/elevation/azimuth, satellites seen vs
+      # used, fix mode. k3 is the only host with a receiver on a real UART.
+      job_name = "gpsd";
+      static_configs = [
+        {
+          targets = ["k3:9015"];
+        }
       ];
     }
     {
@@ -229,7 +268,7 @@
       scrape_interval = "10s";
       static_configs = [
         {
-          targets = ["fuckup:9400"];
+          targets = ["127.0.0.1:9400"];
         }
       ];
     }
@@ -262,9 +301,12 @@
       ];
       static_configs = [
         {
+          # The target string becomes the `instance` label, so renaming these
+          # starts fresh series; the pre-2026-08-15 history stays under the
+          # old mikrotik-10g / mikrotik-100g instance names.
           targets = [
-            "mikrotik-10g"
-            "mikrotik-100g"
+            "mikrotik-crs210"
+            "mikrotik-crs510"
             (network.fqdn "apc8b3fcb")
           ];
         }

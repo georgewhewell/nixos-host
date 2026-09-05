@@ -267,6 +267,10 @@ in {
           # brought up and tested while this host still owns .1; later .1
           # moves to BlueField and DNS/DHCP/netboot remain reachable here.
           (network.cidrOf "lan" network.routing.production.transition.controlPlane.targetHost)
+          # Control-plane rescue subnet. .31 is this machine's real LAN
+          # identity post-cutover, and it carries DNS, DHCP, Home Assistant
+          # and ESPHome -- the most valuable thing to reach from abroad.
+          (network.cidrOf "rescue" network.hosts.router.addresses.rescue)
           "${network.routing.production.transition.controlPlane.targetIpv6}/64"
           "fdde:ad::1/64" # ULA for LAN
         ];

@@ -1,0 +1,227 @@
+{
+  "source": "FAEX9 1.04 curated from Setup form 7b59104a-c00d-4158-87ff-f04d6396a915",
+  "varstores": {
+    "Setup-ec87d643-eba4-4bb5-a1e5-3f3e36b20da9": {
+      "guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "name": "Setup",
+      "size": 221
+    }
+  },
+  "questions": [
+    {
+      "name": "Auto Power On",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 52,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Power Off", "value": 0 },
+        { "text": "Power On", "value": 1 }
+      ]
+    },
+    {
+      "name": "BIOS Hot-Plug Support",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 152,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "Enabled", "value": 1 }
+      ]
+    },
+    {
+      "name": "Above 4G Decoding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 117,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "Enabled", "value": 1 }
+      ]
+    },
+    {
+      "name": "PCIE Resizable BAR support",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 118,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "Enabled", "value": 1 }
+      ]
+    },
+    {
+      "name": "SR-IOV Support",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 119,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "Enabled", "value": 1 }
+      ]
+    },
+    {
+      "name": "Link Training Retry",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 133,
+      "width": 1,
+      "min": 0,
+      "max": 5,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "2", "value": 2 },
+        { "text": "3", "value": 3 },
+        { "text": "5", "value": 5 }
+      ]
+    },
+    {
+      "name": "Link Training Timeout (uS)",
+      "kind": "Numeric",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 134,
+      "width": 2,
+      "min": 10,
+      "max": 10000,
+      "options": []
+    },
+    {
+      "name": "Unpopulated Links",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 136,
+      "width": 1,
+      "min": 0,
+      "max": 1,
+      "options": [
+        { "text": "Keep Link ON", "value": 0 },
+        { "text": "Disabled", "value": 1 }
+      ]
+    },
+    {
+      "name": "I/O Resources Padding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 154,
+      "width": 1,
+      "min": 0,
+      "max": 32,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "4 K", "value": 4 },
+        { "text": "8 K", "value": 8 },
+        { "text": "16 K", "value": 16 },
+        { "text": "32 K", "value": 32 }
+      ]
+    },
+    {
+      "name": "MMIO 32 bit Resources Padding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 155,
+      "width": 1,
+      "min": 0,
+      "max": 128,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "1 M", "value": 1 },
+        { "text": "2 M", "value": 2 },
+        { "text": "4 M", "value": 4 },
+        { "text": "8 M", "value": 8 },
+        { "text": "16 M", "value": 16 },
+        { "text": "32 M", "value": 32 },
+        { "text": "64 M", "value": 64 },
+        { "text": "128 M", "value": 128 }
+      ]
+    },
+    {
+      "name": "PCI Buses Padding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 153,
+      "width": 1,
+      "min": 0,
+      "max": 5,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "1", "value": 1 },
+        { "text": "2", "value": 2 },
+        { "text": "3", "value": 3 },
+        { "text": "4", "value": 4 },
+        { "text": "5", "value": 5 }
+      ]
+    },
+    {
+      "name": "PFMMIO 32 bit Resources Padding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 156,
+      "width": 1,
+      "min": 0,
+      "max": 128,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "1 M", "value": 1 },
+        { "text": "2 M", "value": 2 },
+        { "text": "4 M", "value": 4 },
+        { "text": "8 M", "value": 8 },
+        { "text": "16 M", "value": 16 },
+        { "text": "32 M", "value": 32 },
+        { "text": "64 M", "value": 64 },
+        { "text": "128 M", "value": 128 }
+      ]
+    },
+    {
+      "name": "PFMMIO 64 bit Resources Padding",
+      "kind": "OneOf",
+      "varstore_guid": "ec87d643-eba4-4bb5-a1e5-3f3e36b20da9",
+      "varstore_name": "Setup",
+      "offset": 159,
+      "width": 2,
+      "min": 0,
+      "max": 8192,
+      "options": [
+        { "text": "Disabled", "value": 0 },
+        { "text": "1 M", "value": 1 },
+        { "text": "2 M", "value": 2 },
+        { "text": "4 M", "value": 4 },
+        { "text": "8 M", "value": 8 },
+        { "text": "16 M", "value": 16 },
+        { "text": "32 M", "value": 32 },
+        { "text": "64 M", "value": 64 },
+        { "text": "128 M", "value": 128 },
+        { "text": "256 M", "value": 256 },
+        { "text": "512 M", "value": 512 },
+        { "text": "1 G", "value": 1024 },
+        { "text": "2 G", "value": 2048 },
+        { "text": "4 G", "value": 4096 },
+        { "text": "8 G", "value": 8192 }
+      ]
+    }
+  ]
+}

@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-host="${MIKROTIK_400G_HOST:-192.168.23.27}"
-user="${MIKROTIK_400G_USER:-admin}"
-pass_entry="${MIKROTIK_400G_PASS_ENTRY:-mikrotik-400g.lan}"
+# The CRS812 owns 192.168.23.27 / mikrotik-400g now; the CRS804 renumbered to
+# .28 (see machines/routeros/crs804/config.rsc). While the switch is still on
+# its pre-move address the two collide, so reach it over its link-local
+# instead: MIKROTIK_CRS804_HOST='fe80::d2ea:11ff:fed1:9d85%mlxlan0'. The
+# host-key fingerprint check below is what stops a wrong-address run from
+# applying the CRS804's desired state to the CRS812.
+host="${MIKROTIK_CRS804_HOST:-192.168.23.28}"
+user="${MIKROTIK_CRS804_USER:-admin}"
+pass_entry="${MIKROTIK_CRS804_PASS_ENTRY:-mikrotik-400g.lan}"
 expected_fingerprint="SHA256:hvAzlvmnyO7enVVMdUU+SO/XH9yms4YtaWSswgCuwjU"
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${repo_root}/machines/routeros/crs804/config.rsc"
@@ -11,10 +17,13 @@ remote_config="crs804-nixos-config.rsc"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/mikrotik-400g-apply-config [--dry-run|--apply]
+Usage: scripts/mikrotik-crs804-apply-config [--dry-run|--apply]
 
 The password is read directly from `pass` and supplied to sshpass through its
 environment; it is never printed or placed in a process argument.
+
+Set MIKROTIK_CRS804_HOST to override the target, e.g. the switch's link-local
+address while it is being renumbered off the contested 192.168.23.27.
 EOF
 }
 
@@ -47,7 +56,7 @@ if [[ -z "${sshpass_bin}" ]]; then
   sshpass_bin="$(nix build --no-link --print-out-paths nixpkgs#sshpass)/bin/sshpass"
 fi
 
-known_hosts="$(mktemp)"
+known_hosts="$(mktemp --tmpdir="${repo_root}/.git" crs804-known-hosts.XXXXXX)"
 trap 'rm -f "${known_hosts}"' EXIT
 ssh-keyscan -T 5 "${host}" >"${known_hosts}" 2>/dev/null
 actual_fingerprint="$(ssh-keygen -lf "${known_hosts}" -E sha256 | awk 'NR == 1 { print $2 }')"
@@ -66,7 +75,15 @@ ssh_opts=(
   -o ConnectTimeout=10
 )
 
-"${sshpass_bin}" -e scp -O "${ssh_opts[@]}" "${config}" "${user}@${host}:${remote_config}"
+# scp splits host:path on the last colon, so an IPv6 literal -- such as the
+# link-local used while the switch is still on its pre-move address -- has to
+# be bracketed. ssh and ssh-keyscan take the bare form.
+scp_host="${host}"
+if [[ "${host}" == *:* ]]; then
+  scp_host="[${host}]"
+fi
+
+"${sshpass_bin}" -e scp -O "${ssh_opts[@]}" "${config}" "${user}@${scp_host}:${remote_config}"
 
 if [[ "${mode}" == "--dry-run" ]]; then
   "${sshpass_bin}" -e ssh -n "${ssh_opts[@]}" "${user}@${host}" \

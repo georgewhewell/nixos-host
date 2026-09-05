@@ -1,19 +1,17 @@
 # LicheeRV-Nano "RV Claw" (PicoClaw LCD unit) host-side serving.
 #
 # The claw hangs off this machine's USB port and follows the same
-# diskless model as trex's strix netboot clients, with USB instead of
-# ethernet: whenever the board enumerates in ROM download mode (plugged
-# in, or reset with no bootable medium), udev starts
+# diskless model as trex's strix netboot clients: USB supplies the stateless
+# firmware/FIT handoff, then the board joins normal house WiFi and mounts
+# trex's read-only Nix store. Whenever it enumerates in ROM download mode,
+# udev starts
 # claw-usb-boot.service, which pushes FIP -> fastboot -> FIT. The FIT's
 # init= is the fleet `claw` nixosConfiguration's toplevel, so plugging
 # the board always boots the latest deployed claw image; the initrd
-# mounts /nix/store read-only over NFSv4 from this host's gadget address
-# (10.55.0.2, lib/protocol.nix in nixos-nanokvm) and stage 2 runs
-# straight from this store. Referencing the runner (and through its
-# bootargs the claw toplevel) from this system closure keeps both
-# GC-rooted for as long as they are served — deploying fuckup refreshes
-# what the next plug boots, one flake evaluation, no separate step.
-{ pkgs, inputs, ... }:
+# receives a SOPS-backed WiFi config over the private USB control link, then
+# mounts /nix/store read-only from trex. Referencing the runner keeps the boot
+# image on fuckup; trex separately GC-roots the complete target closure.
+{ pkgs, inputs, config, mkSecret, ... }:
 let
   # The artifact builders are not a flake output of nixos-nanokvm, but
   # they are a pure function of pkgs — import them from the input's
@@ -23,17 +21,19 @@ let
   nanokvmLib = inputs.nanokvm.inputs.nixpkgs.lib;
   protocol = import "${inputs.nanokvm}/lib/protocol.nix";
   hostShellPrelude = import "${inputs.nanokvm}/lib/host-prelude.nix" protocol;
+  cv181xRomPresence = import "${inputs.nanokvm}/lib/cv181x-rom-presence.nix";
   art = (import "${inputs.nanokvm}/lib/artifacts.nix" {
     lib = nanokvmLib;
     inherit hostShellPrelude;
   }) pkgs;
 
   clawCfg = inputs.self.nixosConfigurations.claw;
+  clawTargetIp = clawCfg.config.deployment.targetHost;
 
   # Same composition as the nanokvm flake's nfsLiveArtifacts for the
   # picoclaw.mainline.live.usb-lcd catalog entry, but built from the
   # fleet claw configuration so init= points at the fleet toplevel.
-  clawUsbLive = art.mkNfsUsbBootRunner {
+  clawUsbTransport = art.mkNfsUsbBootRunner {
     name = "usb-boot";
     fit = art.mkBootFit {
       cfg = clawCfg;
@@ -61,25 +61,119 @@ let
     };
     nfsServer = clawCfg.config.nanokvm.nfsLive.server;
     nfsExport = clawCfg.config.nanokvm.nfsLive.storeExport;
-    waitForSsh = true;
+    waitForSsh = false;
+  };
+
+  # The upstream control-plane address is deliberately fixed to the USB
+  # gadget subnet. For this WiFi-root profile, wait for the actual fleet SSH
+  # endpoint after the USB handoff instead.
+  clawUsbLive = pkgs.writeShellApplication {
+    name = "usb-boot";
+    runtimeInputs = [
+      pkgs.bash
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.netcat-openbsd
+    ];
+    text = ''
+      ${cv181xRomPresence}
+
+      work_root="''${RUNTIME_DIRECTORY:-/run/claw-usb-live}"
+      install -d -m 0700 "$work_root"
+      work_dir="$(mktemp -d --tmpdir="$work_root" wifi.XXXXXX)"
+      wifi_conf="$work_dir/wpa_supplicant.conf"
+      trap 'rm -f "$wifi_conf"; rmdir "$work_dir" 2>/dev/null || true' EXIT INT TERM
+
+      ssid='Radio Free Europe'
+      secret="$(tr -d '\r\n' < ${config.sops.secrets.wifi-password.path})"
+      secret_bytes="$(printf '%s' "$secret" | wc -c)"
+      if [ "$secret_bytes" -lt 8 ] || [ "$secret_bytes" -gt 63 ]; then
+        echo "[usb-boot] invalid WiFi secret: WPA3-SAE requires an 8-63 byte passphrase" >&2
+        exit 1
+      fi
+      escaped="$(printf '%s' "$secret" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+      sae_line="sae_password=\"$escaped\""
+      unset escaped secret_bytes
+      unset secret
+
+      {
+        printf 'ctrl_interface=/run/wpa_supplicant\n'
+        printf 'update_config=0\n'
+        printf 'country=CH\n'
+        printf 'sae_pwe=2\n\n'
+        printf 'network={\n'
+        printf '  ssid="%s"\n' "$ssid"
+        printf '  key_mgmt=SAE\n'
+        printf '  ieee80211w=2\n'
+        printf '  %s\n' "$sae_line"
+        printf '  scan_ssid=1\n'
+        printf '}\n'
+      } > "$wifi_conf"
+      unset sae_line
+      chmod 0600 "$wifi_conf"
+
+      ${clawUsbTransport}/bin/usb-boot "$@"
+
+      echo "[usb-boot] sending WiFi config over the private USB link..."
+      sent=0
+      for _ in $(seq 1 240); do
+        if nc -N -w 2 ${protocol.targetIp} ${toString protocol.ports.wifiConfig} \
+            < "$wifi_conf" 2>/dev/null; then
+          sent=1
+          break
+        fi
+        sleep 0.5
+      done
+      if [ "$sent" != 1 ]; then
+        echo "[usb-boot] Claw WiFi config receiver did not answer" >&2
+        exit 1
+      fi
+      echo "[usb-boot] WiFi config accepted; waiting for Claw SSH on ${clawTargetIp}..."
+
+      for _ in $(seq 1 240); do
+        if timeout 1 ${pkgs.bash}/bin/bash -c \
+            ':</dev/tcp/${clawTargetIp}/22' 2>/dev/null; then
+          echo "[usb-boot] Claw SSH is up on ${clawTargetIp}"
+          exit 0
+        fi
+        if cv181x_rom_present; then
+          echo "[usb-boot] Claw returned to the CV181x BootROM; restarting the uploader" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+
+      echo "[usb-boot] Claw SSH did not answer on ${clawTargetIp}" >&2
+      exit 1
+    '';
   };
 in
 {
-  fileSystems."/export/nix-store" = {
-    device = "/nix/store";
-    fsType = "none";
-    options = [ "bind" ];
+  sops.secrets.wifi-password = mkSecret "wifi-password" {
+    mode = "0400";
   };
 
-  # The runner refuses to boot without both of these (its preflight
-  # inspects exportfs output): a read-only fsid=0 pseudo-root and the
-  # read-only store export, both for the point-to-point USB-link CIDR.
-  services.nfs.server = {
-    enable = true;
-    exports = ''
-      /export            10.55.0.0/24(ro,all_squash,fsid=0,no_subtree_check)
-      /export/nix-store  10.55.0.0/24(ro,nohide,no_subtree_check)
-    '';
+  # Expose the complete secret-injecting wrapper for focused builds/tests
+  # without forcing evaluation of every workstation package on fuckup.
+  system.build.clawUsbLive = clawUsbLive;
+
+  # Beat profiles/thunderbolt-bridge.nix's generic 50-cdc-* rules. Without
+  # this persistent match, networkd briefly enslaves the Claw gadget to
+  # br0.lan before the boot runner can install its runtime override. The
+  # target's initrd RX guard sees that no-reply interval, re-probes DWC2, and
+  # destroys the very NFS transport it is trying to recover. Match the wire
+  # protocol's host MAC so this covers both ECM/cdc_ether and NCM/cdc_ncm.
+  systemd.network.networks."20-claw-usb" = {
+    matchConfig.MACAddress = protocol.hostMac;
+    address = [ "${protocol.hostIp}/${protocol.prefix}" ];
+    networkConfig = {
+      DHCP = "no";
+      IPv6AcceptRA = false;
+      LinkLocalAddressing = "no";
+      IgnoreCarrierLoss = true;
+    };
+    linkConfig.RequiredForOnline = "no";
   };
 
   # Stable path for ad-hoc runs: /var/lib/claw-usb-live/bin/usb-boot
@@ -111,10 +205,13 @@ in
     # next board reset is caught without manual intervention.
     serviceConfig = {
       Type = "simple";
+      RuntimeDirectory = "claw-usb-live";
+      RuntimeDirectoryMode = "0700";
       # This host's full-speed ROM path can spend ~25 seconds waiting for the
-      # next enumeration and another ~45 seconds draining the multi-stage FIP
-      # transfer. Ten 90-second attempts keep misses bounded without killing a
-      # real upload halfway through.
+      # next enumeration and about 70 seconds draining the multi-stage FIP
+      # transfer. The runner waits for 3346:1000 before opening an attempt's
+      # 120-second transfer window, so an unattended wait cannot consume the
+      # time needed by a real upload.
       ExecStart = "${clawUsbLive}/bin/usb-boot --rom-dl-verbose --rom-dl-timeout 900 --attempts 10";
       Environment = [
         "NANOKVM_ATTACH=none"

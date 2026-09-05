@@ -22,7 +22,7 @@ in {
   systemd.network.networks."20-enP2p1s0" = {
     matchConfig.MACAddress = lanMacs;
     address = [(network.cidrOf "lan" self.addresses.lan)];
-    dns = [network.routerIp];
+    dns = [network.dnsIp];
     routes = [
       {
         Gateway = network.gatewayIp "lan";

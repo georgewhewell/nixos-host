@@ -13,6 +13,9 @@
     "to": "now"
   },
   "refresh": "5m",
+  "templating": {
+    "list": []
+  },
   "schemaVersion": 39,
   "panels": [
     {
@@ -32,8 +35,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"anthropic\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=\"anthropic\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -94,8 +97,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"openai\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=~\"openai-.*\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -156,8 +159,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"gemini\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=\"gemini\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -218,8 +221,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"grok\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=\"grok\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -280,8 +283,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"kimi\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=\"kimi\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -342,8 +345,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(llm_quota_utilization_ratio{provider=\"openrouter\"})",
-          "legendFormat": "max"
+          "expr": "max by (provider) (llm_quota_utilization_ratio{provider=\"openrouter\"})",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -405,7 +408,8 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "min(clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\"} - time(), 0))"
+          "expr": "min by (provider) (clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\",provider!=\"openai\"} - time(), 0))",
+          "legendFormat": "{{provider}}"
         }
       ],
       "options": {
@@ -448,19 +452,17 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "llm_quota_utilization_ratio{scope=\"all\"}"
+          "format": "table",
+          "expr": "max by (provider, window) (llm_quota_utilization_ratio{scope=\"all\",provider!=\"openai\"})"
         },
         {
           "refId": "B",
           "instant": true,
-          "expr": "clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\"} - time(), 0)"
+          "format": "table",
+          "expr": "min by (provider, window) (clamp_min(llm_quota_reset_timestamp_seconds{scope=\"all\",provider!=\"openai\"} - time(), 0))"
         }
       ],
       "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {}
-        },
         {
           "id": "merge",
           "options": {}
@@ -476,9 +478,7 @@
               "scope": true
             },
             "renameByName": {
-              "llm_quota_utilization_ratio": "used",
               "Value #A": "used",
-              "Value": "resets in",
               "Value #B": "resets in"
             },
             "indexByName": {
@@ -627,7 +627,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sort_desc(llm_quota_utilization_ratio{scope!=\"all\"})",
+          "expr": "sort_desc(max by (provider, scope) (llm_quota_utilization_ratio{scope!=\"all\",provider!=\"openai\"}))",
           "legendFormat": "{{provider}} \u00b7 {{scope}}"
         }
       ],
@@ -691,19 +691,17 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "llm_quota_scrape_success"
+          "format": "table",
+          "expr": "max by (provider) (llm_quota_scrape_success{provider!=\"openai\"})"
         },
         {
           "refId": "B",
           "instant": true,
-          "expr": "time() - llm_quota_last_success_timestamp_seconds"
+          "format": "table",
+          "expr": "time() - max by (provider) (llm_quota_last_success_timestamp_seconds{provider!=\"openai\"})"
         }
       ],
       "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {}
-        },
         {
           "id": "merge",
           "options": {}
@@ -718,9 +716,7 @@
               "instance": true
             },
             "renameByName": {
-              "llm_quota_scrape_success": "status",
               "Value #A": "status",
-              "Value": "data age",
               "Value #B": "data age"
             },
             "indexByName": {
@@ -839,7 +835,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "llm_provider_info"
+          "expr": "max by (provider, plan, tier) (llm_provider_info{provider!=\"openai\"})"
         }
       ],
       "transformations": [
@@ -904,7 +900,7 @@
         {
           "refId": "A",
           "instant": true,
-          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[$__range])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[$__range])))"
+          "expr": "sort_desc(sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code)_token_usage_tokens_total\"}[$__range])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[$__range])) or sum by (model) (label_replace(last_over_time(gen_ai_client_token_usage_sum{gen_ai_token_type=\"total\",service_name=\"omp-cli\"}[$__range]),\"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\")))"
         }
       ],
       "options": {
@@ -1008,7 +1004,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code|gemini_cli)_token_usage_tokens_total\"}[30m])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[30m]))",
+          "expr": "sum by (model) (last_over_time({__name__=~\"(claude_code|grok_code)_token_usage_tokens_total\"}[30m])) or sum by (model) (last_over_time(codex_turn_token_usage_sum{token_type=\"total\"}[30m])) or sum by (model) (label_replace(last_over_time(gen_ai_client_token_usage_sum{gen_ai_token_type=\"total\",service_name=\"omp-cli\"}[30m]),\"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\"))",
           "legendFormat": "{{model}}"
         }
       ],
@@ -1091,6 +1087,12 @@
           "instant": true,
           "legendFormat": "edits ok",
           "expr": "sum(last_over_time(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[$__range]))"
+        },
+        {
+          "refId": "G",
+          "instant": true,
+          "legendFormat": "omp cost",
+          "expr": "sum(last_over_time(pi_omp_agent_chat_cost_estimated_usd_total{service_name=\"omp-cli\"}[$__range]))"
         }
       ],
       "options": {
@@ -1162,6 +1164,29 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "omp cost"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cff"
+                }
+              }
+            ]
           }
         ]
       }
@@ -1185,7 +1210,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "llm_quota_utilization_ratio{scope=\"all\"}",
+          "expr": "max by (provider, window) (llm_quota_utilization_ratio{scope=\"all\",provider!=\"openai\"})",
           "legendFormat": "{{provider}} \u00b7 {{window}}"
         }
       ],
@@ -1399,6 +1424,24 @@
           "instant": true,
           "legendFormat": "grok errors",
           "expr": "sum(last_over_time(grok_code_error_count_total[$__range]))"
+        },
+        {
+          "refId": "G",
+          "instant": true,
+          "legendFormat": "omp runs",
+          "expr": "sum(last_over_time(pi_omp_agent_runs_total{service_name=\"omp-cli\"}[$__range]))"
+        },
+        {
+          "refId": "H",
+          "instant": true,
+          "legendFormat": "omp chats",
+          "expr": "sum(last_over_time(pi_omp_agent_chat_calls_total{service_name=\"omp-cli\"}[$__range]))"
+        },
+        {
+          "refId": "I",
+          "instant": true,
+          "legendFormat": "omp errors",
+          "expr": "sum(last_over_time(pi_omp_agent_errors_total{service_name=\"omp-cli\"}[$__range]))"
         }
       ],
       "options": {
@@ -1499,6 +1542,51 @@
             "matcher": {
               "id": "byName",
               "options": "grok errors"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c4162a"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "omp runs"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cff"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "omp chats"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cff"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "omp errors"
             },
             "properties": [
               {

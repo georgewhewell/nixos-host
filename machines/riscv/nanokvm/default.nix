@@ -74,6 +74,12 @@ in {
   # grw ever logs in — not worth the RAM here.
   users.users.grw.linger = lib.mkForce false;
 
+  # This fleet card was already expanded to fill the device.  Leaving the
+  # generic first-boot growpart unit in the closure pulls cloud-utils and its
+  # ~218 MiB Python runtime through the target's memory-constrained Nix import,
+  # even though the unit's ExecCondition skips it on every boot.
+  boot.growPartition = lib.mkForce false;
+
   # Temporary stability profile while the 256 MB target is being brought
   # up. The journal from the first successful SD boot showed no swap,
   # repeated OOM kills of udev workers, coredump work under memory
@@ -161,10 +167,14 @@ in {
       # --io dmabuf: raw frames in cached dma-heap buffers imported by the
       # encoder (single SYNC ioctl per frame). --format nv12: the fixed
       # direct input path (0041 linear GDI map) — no kernel staging copy.
+      # --scaler vpss: hardware UYVY->NV12 CSC (+ optional downscale) on
+      # the VPSS mem2mem node, zero-copy dma-buf chain — no CPU conversion
+      # (the old 960x540 ~13 fps ceiling was the CPU, not the encoder).
       ExecStart = ''
         ${pkgs.sg2002-h264-bridge}/bin/sg2002-h264-bridge \
           /dev/video0 /dev/video1 \
-          --size half --io dmabuf --format nv12 \
+          --scaler vpss --scaler-node /dev/video2 \
+          --size half --format nv12 --heap reserved \
           --bitrate 4000000 --gop 30 \
           --rtsp rtsp://127.0.0.1:8554/hdmi
       '';
@@ -177,8 +187,10 @@ in {
       DeviceAllow = [
         "/dev/video0 rw"
         "/dev/video1 rw"
+        "/dev/video2 rw"
         "/dev/dma_heap/default_cma_region rw"
         "/dev/dma_heap/linux,cma rw"
+        "/dev/dma_heap/reserved rw"
         "/dev/dma_heap/system rw"
       ];
       NoNewPrivileges = true;
@@ -208,19 +220,22 @@ in {
   sg2002.usbGadget.network.controlFile = lib.mkForce null;
   sg2002.usbGadget.stage2.reenumerateAfterBoot.enable = lib.mkForce false;
   systemd.network.wait-online.enable = lib.mkForce false;
-  # The VPSS scaler driver probes and registers, but any access to the
-  # block (or even module removal) silently wedges the SoC on this board
-  # — reads work (TOP_CFG0=0x8, IMG_CFG sane), writes/rmmod stall the bus
-  # with zero console output and the 85 s watchdog resets. Keep it
-  # blacklisted until the access wedge is root-caused (needs ramoops or a
-  # UART console; repro tooling in nixos-nanokvm-artifacts/vpss-driver-*).
-  boot.blacklistedKernelModules = ["sg2002-vpss"];
+  # VPSS scaler: the 2026-08-18 campaign root-caused the wedges (pool
+  # binding in the remove path; VIP fabric clocks gated by the capture
+  # driver at stream stop) — fixed in the nanokvm kernel queue (0048-0052)
+  # and the VPSS DT node now claims the fabric clocks itself. The driver
+  # is hardware-validated for one-shot conversions; the bridge's vpss
+  # mode is the production path below.
+  # Drop the ~88 MiB preserved-initrd pin: this box is managed over
+  # ethernet/WiFi, nobody watches the ACM console, and the 256 MiB
+  # budget needs the RAM for the 1080p pipeline (bigger CMA).
+  sg2002.usbGadget.stage2.preserveInitrd = lib.mkForce false;
   systemd.network.networks = {
     "20-eth0" = {
       address = [
         (network.cidrOf "lan" ethHost)
       ];
-      dns = [network.routerIp];
+      dns = [network.dnsIp];
       routes = [
         {
           Gateway = network.gatewayIp "lan";

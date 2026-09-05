@@ -3,6 +3,7 @@
   lib,
   pkgs,
   network,
+  mkSecret,
   ...
 }: let
   # Cameras exported to HomeKit. go2rtc derives device_id and device_private
@@ -28,6 +29,15 @@
   # `homekit` block would wipe the pairings on every start. Streams do merge,
   # so those stay fully declarative below.
   stateConfig = "/var/lib/go2rtc/go2rtc.yaml";
+
+  # killsignal=15: go2rtc otherwise SIGKILLs the child, so the printer only
+  # learns the viewer is gone when its own socket times out. SIGTERM lets the
+  # bridge close the TLS session as it exits.
+  bambuSource = lib.concatStrings [
+    "exec:${lib.getExe pkgs.bambu-camera} ${network.fqdn "bambu-a1-mini"}"
+    " --access-code-file ${config.sops.secrets.bambu-access-code.path}"
+    "#killsignal=15"
+  ];
 
   yaml = pkgs.formats.yaml {};
   storeConfig = yaml.generate "go2rtc.yaml" config.services.go2rtc.settings;
@@ -89,8 +99,25 @@ in {
       nanokvm-hdmi = [
         "rtsp://${network.fqdn "nanokvm"}:8554/hdmi"
       ];
+      # The camera node publishes H.264 over RJ45 to mediamtx on trex; go2rtc
+      # pulls the stable relay here without transcoding.
+      licheerv-camera = [
+        "rtsp://${network.fqdn "trex"}:8554/licheerv"
+      ];
+      # The A1 mini has no RTSP server (that is an X1-only feature, on :322).
+      # bambu-camera speaks the printer's own framed protocol on TLS :6000 and
+      # writes bare JPEGs to stdout; go2rtc's pipe source sniffs the SOI marker
+      # and opens it as MJPEG, so nothing transcodes here. Expect roughly one
+      # frame every two seconds at 1680x1080 - it is a chamber monitor, not a
+      # video feed. Two concurrent clients were measured streaming at full rate,
+      # so a second consumer (the ha-bambulab integration, say) would not lock
+      # this out; going through go2rtc is for the fan-out and recording, not
+      # because the printer forces it.
+      bambu-a1-mini = [bambuSource];
     };
   };
+
+  sops.secrets.bambu-access-code = mkSecret "bambu-access-code" {};
 
   # A static user rather than the module's DynamicUser: DynamicUser puts the
   # state under /var/lib/private/go2rtc behind a symlink, which is awkward to

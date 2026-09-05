@@ -22,3 +22,9 @@
 *.sync-conflict-*
 
 .scion/agents/
+machines/routeros/**/.state/
+/artifacts/tuya-history.txt
+
+# Rescue WireGuard keys (k3 -> ax102). Plaintext staging for the ax102 side;
+# never committed.
+.rescue-keys/

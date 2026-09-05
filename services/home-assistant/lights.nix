@@ -45,6 +45,18 @@ in {
         })
         areas.lightGroups;
 
+      # Rooms declaring several presence sensors: any member being `on` holds
+      # the room occupied. device_class must be `motion` for the
+      # motion_light blueprint's entity selector to accept the group.
+      binary_sensor =
+        map
+        (g: {
+          platform = "group";
+          inherit (g) name entities;
+          device_class = "motion";
+        })
+        areas.motionGroups;
+
       automation = let
         bigRemote = "6fa8c342c806f9ef3825248cfffb7694";
       in
@@ -415,6 +427,67 @@ in {
                   color_temp_kelvin = 2000;
                   brightness_pct = 1;
                   transition = 10;
+                };
+              }
+            ];
+          }
+
+          # ── Overnight brightness ceiling ───────────────────────────────
+          # The bedroom is blocked outright (areas.nix `daytimeOnly`), but the
+          # shared rooms keep working after dark at a capped brightness.
+          # Capping via adaptive_lighting rather than per-automation means a
+          # light switched on by hand is limited too, not just motion. An
+          # explicit brightness change still wins, for `autoreset_control_seconds`.
+          # Only fixtures flagged `adaptive` in areas.nix are governed by this.
+          {
+            alias = "Night dim: 20% ceiling from 22:00";
+            trigger = {
+              platform = "time";
+              at = "22:00:00";
+            };
+            action = [
+              {
+                service = "adaptive_lighting.change_switch_settings";
+                data = {
+                  entity_id = "switch.adaptive_lighting_default";
+                  # Reset everything else to the values configured above, so
+                  # this is idempotent no matter what ran earlier.
+                  use_defaults = "configuration";
+                  max_brightness = 20;
+                };
+              }
+            ];
+          }
+          {
+            # Sleep mode drops to `sleep_brightness` (1%) and 1500K.
+            alias = "Night dim: 1% after midnight";
+            trigger = {
+              platform = "time";
+              at = "00:00:00";
+            };
+            action = [
+              {
+                service = "switch.turn_on";
+                target.entity_id = "switch.adaptive_lighting_sleep_mode_default";
+              }
+            ];
+          }
+          {
+            alias = "Restore daytime lighting at 07:00";
+            trigger = {
+              platform = "time";
+              at = "07:00:00";
+            };
+            action = [
+              {
+                service = "switch.turn_off";
+                target.entity_id = "switch.adaptive_lighting_sleep_mode_default";
+              }
+              {
+                service = "adaptive_lighting.change_switch_settings";
+                data = {
+                  entity_id = "switch.adaptive_lighting_default";
+                  use_defaults = "configuration";
                 };
               }
             ];

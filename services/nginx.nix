@@ -1,5 +1,7 @@
 {network, pkgs, config, mkSecret, ...}: let
-  routerHa = "${network.routerIp}:8123";
+  # The BlueField owns network.routerIp after the routing cutover. Home
+  # Assistant remains on the retired Linux router at its service address.
+  routerHa = "${network.routing.production.transition.controlPlane.targetIp}:8123";
   arrIp = network.primaryIp network.hosts."arr-servers";
   trexIp = network.primaryIp network.hosts.trex;
   # Restrict a vhost to LAN + wireguard clients; everyone else gets 403.
@@ -13,7 +15,7 @@
   # Internal-only services: no public A/AAAA records, so HTTP-01 can't renew.
   # Their certs use DNS-01 against Cloud DNS via lego's gcloud provider, reusing
   # the GCP ADC (authorized_user) stored in sops as acme-gcp-adc.
-  internalCerts = ["radarr" "sonarr" "autobrr" "open-webui" "cache"];
+  internalCerts = ["radarr" "sonarr" "autobrr" "cache" "dsh"];
   gcpAcmeEnv = pkgs.writeText "acme-gcloud.env" ''
     GCE_PROJECT=domain-owner
     GOOGLE_APPLICATION_CREDENTIALS=${config.sops.secrets.acme-gcp-adc.path}
@@ -222,18 +224,55 @@ in {
     };
   };
 
-  services.nginx.virtualHosts.${network.publicFqdn "open-webui"} = {
+  # Explicit catch-all for any unmatched Host / SNI.
+  #
+  # nginx promotes the FIRST server block on a port to default_server when no
+  # vhost claims it. Here that was autobrr.satanic.link, by alphabetical
+  # accident -- so every unknown name (a DNS record whose vhost is not deployed
+  # yet, a scanner hitting the bare IP, a stale bookmark) was answered with
+  # autobrr's login page and its certificate. The lanOnly allow-list still
+  # denied every non-LAN source, so this was never an internet exposure, but
+  # the safety was incidental: it would evaporate the moment the
+  # alphabetically-first vhost became one without lanOnly. Fail closed instead.
+  #
+  # strix-netboot is unaffected: it claims `192.168.23.8` in its own
+  # server_name, and an explicit name match always beats default_server.
+  services.nginx.virtualHosts."catch-all" = {
+    default = true;
+    # ssl_reject_handshake: an unmatched SNI gets a TLS alert instead of some
+    # unrelated vhost's certificate. Needs no cert, so nothing to renew.
+    rejectSSL = true;
+    locations."/".return = "444";
+  };
+
+  # DeepSeek Harness web UI (dsh-web on trex, see machines/x86/trex/default.nix).
+  #
+  # Unlike kimi-code and opencode, dsh ships NO authentication: `GET /` serves the
+  # full agent UI to anyone who can open the socket, and the only fence on /api is
+  # a Host-header check (403 on a forged authority) that stops DNS-rebinding from
+  # a hostile page but not a direct HTTP client. dsh also refuses `--host 0.0.0.0`
+  # outright. So the unit binds loopback and this vhost is the entire access
+  # control: TLS, the LAN/wireguard allow-list, and HTTP Basic on top.
+  services.nginx.virtualHosts.${network.publicFqdn "dsh"} = {
     forceSSL = true;
-    useACMEHost = network.publicFqdn "open-webui";
+    useACMEHost = network.publicFqdn "dsh";
+    # Rendered from sops as an htpasswd line; nginx reads it at request time.
+    basicAuthFile = config.sops.secrets.dsh-web-htpasswd.path;
     locations."/" = {
+      proxyPass = "http://127.0.0.1:58650";
+      proxyWebsockets = true;
       extraConfig = ''
         proxy_buffering off;
+        # Agent sessions stream for minutes over REST/WS; don't reap idle sockets.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
         ${lanOnly}
       '';
-      proxyPass = "http://${trexIp}:11111";
-      proxyWebsockets = true;
     };
   };
+
+  # nginx must be able to read the htpasswd file it authenticates against.
+  sops.secrets.dsh-web-htpasswd = mkSecret "dsh-web-htpasswd" {};
 
   # Kimi Code web UI. Self-signed TLS rather than ACME: this name has no public
   # DNS record, so DNS-01 would be the only issuance path and a publicly
@@ -262,7 +301,7 @@ in {
   # by hand, and trex's root is an impermanent tmpfs with /var/lib/kimi-certs
   # absent from the persistence list -- so the first reboot would have left
   # nginx unable to start at all on a missing ssl_certificate, taking jellyfin,
-  # grafana, radarr, sonarr, autobrr, open-webui, cache and the Strix netboot
+  # grafana, radarr, sonarr, autobrr, cache and the Strix netboot
   # server down with it. Generate on demand, and persist the result (see
   # environment.persistence in machines/x86/trex/default.nix) so the fingerprint
   # is stable across reboots instead of changing under the browser every time.

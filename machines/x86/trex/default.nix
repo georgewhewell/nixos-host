@@ -12,6 +12,29 @@
   # address below. Was named beegfsMgmtd* when that host ran BeeGFS mgmtd;
   # BeeGFS is retired and the route has nothing to do with it.
   bluefield2LanIp = network.ipOf "lan" network.hosts.bluefield2.addresses.lan;
+  transitionLanUla = "fdde:ad:${network.routing.production.transition.legacyInside.ipv6SubnetId}::${toString self.addresses.lan}/64";
+
+  hellasRocm = pkgs.symlinkJoin {
+    name = "hellas-rocm";
+    paths = with pkgs.rocmPackages; [
+      clang
+      clr
+      hip-common
+      hipcc
+      rocm-core
+      rocm-device-libs
+      rocm-runtime
+    ];
+  };
+  smollm2Package = "${inputs.catena-runner}/models/smollm2";
+  hellasRocmEnvironment = {
+    ROCM_PATH = hellasRocm;
+    HIP_PATH = hellasRocm;
+    HIP_CLANG_PATH = "${pkgs.rocmPackages.clang}/bin";
+    DEVICE_LIB_PATH = "${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode";
+    HIP_FLAGS = "--rocm-path=${hellasRocm} --rocm-device-lib-path=${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode";
+    LD_LIBRARY_PATH = "${hellasRocm}/lib";
+  };
 
   # ConnectX-4, plain (legacy) mode. Pin the PF name to its permanent MAC so it
   # survives PCIe re-enumeration -- the card's bus number moves whenever the
@@ -109,11 +132,21 @@ in {
     roceQos = {
       enable = true;
       interface = mlxPfName;
-      # trex faces the CRS510, which has no PFC at all, so 802.3x pause is the
-      # only backpressure available on this leg -- that switch is already
-      # pausing this port. The strix nodes face the PFC-capable CRS804 and
-      # deliberately leave it off.
-      globalPause = true;
+      # 2026-08-15 re-cable: trex's 100G moved off the CRS510 (no PFC) onto
+      # CRS804 cage 3, which runs pfc=nixos-pfc-tc3 at 100G on qsfp56-dd-3-1.
+      # The old justification for global pause -- "this leg has no PFC" -- is
+      # therefore dead, and leaving it true was actively harmful: mlx5 treats
+      # PFC and 802.3x pause as mutually exclusive (modules/roce-qos.nix), so
+      # globalPause=true silently disables PFC on this NIC. Meanwhile the
+      # CRS804 port has tx/rx-flow-control=off, so it never sends the 802.3x
+      # frames trex was listening for. The result was NO working backpressure
+      # in either direction: congestion became drops, and RoCEv2 drops become
+      # go-back-N retransmission. roce-qos.nix also measured pause as the
+      # slower option outright (5.90 vs 7.69 Gb/s).
+      #
+      # The old comment's evidence was misattributed too: the cited "tx-pause
+      # was 2543" was on qsfp28-2-1, the CRS812 uplink, not trex's port.
+      globalPause = false;
     };
     # Ephemeral tmpfs root (2026-07-24); explicit persistence list below.
     # sops/ssh host identity moves to /persist/etc/ssh via profiles/sops.nix.
@@ -131,6 +164,9 @@ in {
     gcp-ddns = {
       enable = true;
       hostName = true;
+      # Match the five-minute public DNS TTL so a delegated-prefix change does
+      # not leave the AAAA records pointing at the retired prefix for a day.
+      interval = "5min";
     };
     netconsole.collector = {
       enable = true;
@@ -168,7 +204,7 @@ in {
     # pins the build-time closure of ~450 result/.direnv roots (~1T live
     # store that nix-collect-garbage -d can never reclaim). Root must stay
     # lean enough for the 2-disk Optane pair replacing pool3d.
-    keep-outputs = lib.mkForce false;
+    #keep-outputs = lib.mkForce false;
     # Sign locally-built store paths with our cache key so `nix copy` to
     # strix-1/strix-2 (which trust this key via modules/nix.nix) is
     # accepted without --no-check-sigs.
@@ -214,41 +250,25 @@ in {
 
   services.hellas = {
     enable = true;
+    package = pkgs.hellas.cli-catena;
     openFirewall = true;
     port = 31145;
-    # downloadPolicy = "eager";
-    executePolicy = "allow(hf/HuggingFaceTB/SmolLM2-135M-Instruct)";
-    # Placeholder assurance terms (mirrors nix/tests/e2e.nix) until the
-    # attested-execution plan drops these flags.
-    assuranceCodec = "tpm2.quote.v1";
-    assurancePolicy = "0000000000000000000000000000000000000000000000000000000000000000";
+    executionPackages.smollm2-135m = smollm2Package;
+    executePolicy = ["package/smollm2-135m"];
+    packageCache = "/var/lib/hellas/packages";
+    metricsPort = 9400;
     graffiti = "trex";
-    preloadWeights = [
-      "Qwen/Qwen3.5-0.8B"
+    extraArgs = [
+      "--identity"
+      "/var/lib/hellas/.hellas/identity-v3"
+      "--software-root"
     ];
-    # trustedCallerPublicKeys = [
-    #   "03561852f0eda08f4b842cc800cf68845af1286c4881bf826a29fe87439e27eb08"
-    #   "02edec6b26cae32e9cd0bfbb90594066e60d0f9973b001af3ee15752162ab7dd99"
-    # ];
-    # fetchCodexResponses = true;
-    # fetchCodexAuthPath = "/var/lib/hellas/.hellas/codex-auth.json";
-    otel = {
-      endpoint = "https://jaeger.lsd-ag.ch/v1/traces";
-      serviceName = "executor-trex";
-      sampleRate = 1;
-      headers = {
-        CF-Access-Client-Id = "312310f4c9c50c2bf9ee7e801d92a9ed.access";
-        CF-Access-Client-Secret = "91bcfc62a1b4058b3c82b31560c146d7761b7cb1a507ff68b26d745d0650f6a8";
-      };
-    };
-    # Slim (non-candle) gateway routing OpenAI/Anthropic requests over the
-    # Hellas network. Replaced the llama.cpp proxy when the dGPU was pulled.
-    gateway = {
-      enable = true;
-      host = network.primaryIp self;
-      port = 8083;
-      openFirewall = true;
-    };
+    environment = hellasRocmEnvironment;
+  };
+
+  systemd.services.hellas = {
+    path = with pkgs.rocmPackages; [clang hipcc];
+    serviceConfig.SupplementaryGroups = ["render" "video"];
   };
 
   # Hermes and its Signal transport are intentionally disabled. OMP is the
@@ -288,15 +308,14 @@ in {
     };
   };
 
-  # opencode headless server (`opencode serve`). Mirrors kimi-server, but note
-  # the sharp difference: opencode's serve API has NO authentication and can
-  # execute shell commands, so binding it to the LAN address means anyone on
-  # the LAN or a WG client can run commands as grw. This LAN binding is an
-  # explicit, accepted decision (2026-07-21) for a trusted home LAN — revisit
-  # (localhost-only + an authenticated proxy) before this box ever faces a
-  # less-trusted network. ~grw/.local/share/opencode holds auth and sessions.
+  # OpenCode server (`opencode serve`): REST API and built-in web UI. It can
+  # execute shell commands as grw, so keep Basic authentication enabled through
+  # OPENCODE_SERVER_PASSWORD below. The LAN binding remains an explicit trust
+  # decision: revisit it (localhost plus an authenticated proxy) before this box
+  # ever faces a less-trusted network. ~grw/.local/share/opencode holds auth and
+  # sessions.
   systemd.services.opencode-server = {
-    description = "opencode server (headless REST API)";
+    description = "OpenCode server (REST API and web UI)";
     after = ["network-online.target"];
     wants = ["network-online.target"];
     unitConfig.RequiresMountsFor = "/home/grw";
@@ -314,6 +333,135 @@ in {
         + "--hostname ${network.primaryIp self}";
       Restart = "on-failure";
       RestartSec = "10s";
+    };
+  };
+
+  # DeepSeek Harness web UI (`dsh web`), the third agent surface on this box
+  # after kimi-server and opencode-server. It differs from both in one way that
+  # drives every choice below: dsh has no authentication. `GET /` hands the full
+  # agent UI to any client that can open the socket, and the only check on /api
+  # is a Host-header trust fence -- good against DNS-rebinding from a hostile
+  # page, useless against curl. dsh also refuses `--host 0.0.0.0` on purpose.
+  #
+  # So this binds loopback and nothing else, and the authenticating vhost in
+  # services/nginx.nix (TLS + LAN allow-list + HTTP Basic) owns access control.
+  # Do not give this unit a routable --host: that would publish an unauthenticated
+  # remote shell onto the LAN.
+  systemd.services.dsh-web = {
+    description = "DeepSeek Harness web UI";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    # ~grw/.dsh holds credentials, settings and session JSONL.
+    unitConfig.RequiresMountsFor = "/home/grw";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      User = "grw";
+      Group = "users";
+      # dsh roots its workspace-write sandbox at the process CWD, so give it a
+      # dedicated directory rather than all of ~grw. Agent file edits land here.
+      WorkingDirectory = "/home/grw/dsh-workspace";
+      Environment = [
+        "DSH_HOME=/home/grw/.dsh"
+        # Vendor telemetry ships to harness-telemetry.deepseeksvc.com. Upstream
+        # already defaults it off; pin both switches so a default flip upstream
+        # cannot silently start exporting session logs.
+        "DSH_TELEMETRY_MODE=DISABLED"
+        "DSH_TELEMETRY_DISABLED=1"
+        # Sandbox preset: tool writes stay under WorkingDirectory and every
+        # command still needs approval in the UI. Never danger-full-access here.
+        "DSH_PERMISSION_MODE=workspace-write"
+      ];
+      EnvironmentFile = config.sops.templates."deepseek-env".path;
+      ExecStart = let
+        dsh = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.dsh;
+        # DEEPSEEK_API_KEY comes from sops via EnvironmentFile above. The
+        # OpenRouter key has no sops entry -- it lives in pi's credential store,
+        # exactly as it does for omp -- so bridge it at start rather than
+        # copying the secret into a second place. The profile's pi-ai routes
+        # (home/development.nix) name these variables; a route whose reference
+        # resolves to nothing fails its request with MISSING_CREDENTIAL instead
+        # of silently authenticating with some unrelated key.
+        launcher = pkgs.writeShellScript "dsh-web-launch" ''
+          set -euo pipefail
+          pi_auth="/home/grw/.pi/agent/auth.json"
+          if [[ -z "''${OPENROUTER_API_KEY:-}" && -r "$pi_auth" ]]; then
+            openrouter_key="$(${pkgs.jq}/bin/jq -er '.openrouter.key // empty' "$pi_auth" 2>/dev/null || true)"
+            if [[ -n "$openrouter_key" ]]; then
+              export OPENROUTER_API_KEY="$openrouter_key"
+            fi
+          fi
+          exec ${dsh}/bin/dsh web --no-open \
+            --host 127.0.0.1 --port 58650 \
+            --trusted-host ${network.publicFqdn "dsh"} \
+            --trusted-host ${network.fqdn "dsh"}
+        '';
+      in "${launcher}";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
+
+  # DEEPSEEK_API_KEY, rendered from sops into an EnvironmentFile so the key
+  # never lands in the world-readable store. Shared by the two units that need
+  # it: dsh-web (to talk to the API) and llm-quota-exporter (to read the
+  # account balance). There is no DeepSeek CLI, so unlike the other providers
+  # the exporter has no credential file to discover and takes the env var.
+  sops.secrets.deepseek-api-key = mkSecret "deepseek-api-key" {};
+  sops.templates."deepseek-env".content = ''
+    DEEPSEEK_API_KEY=${config.sops.placeholder."deepseek-api-key"}
+  '';
+  systemd.services.llm-quota-exporter.serviceConfig.EnvironmentFile =
+    config.sops.templates."deepseek-env".path;
+
+  # Inactive-by-default peers for the BlueField CNAT proving ground. These
+  # namespaces have only documentation-prefix routes: starting the units can
+  # neither replace trex's default route nor carry production Internet traffic.
+  systemd.services.vpp-cnat-lab-peers = {
+    description = "Trex peers for the isolated BlueField CNAT lab";
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "vpp-cnat-lab-peers-start" ''
+        set -eu
+        ${pkgs.iproute2}/bin/ip netns del cnat-in 2>/dev/null || true
+        ${pkgs.iproute2}/bin/ip netns del cnat-out 2>/dev/null || true
+        ${pkgs.iproute2}/bin/ip netns add cnat-in
+        ${pkgs.iproute2}/bin/ip netns add cnat-out
+
+        ${pkgs.iproute2}/bin/ip link add link ${mlxPfName} name cnat-in type vlan id 3901
+        ${pkgs.iproute2}/bin/ip link add link ${mlxPfName} name cnat-out type vlan id 3902
+        ${pkgs.iproute2}/bin/ip link set cnat-in netns cnat-in
+        ${pkgs.iproute2}/bin/ip link set cnat-out netns cnat-out
+
+        ${pkgs.iproute2}/bin/ip -n cnat-in link set lo up
+        ${pkgs.iproute2}/bin/ip -n cnat-in link set cnat-in up
+        ${pkgs.iproute2}/bin/ip -n cnat-in address add 198.18.10.2/24 dev cnat-in
+        ${pkgs.iproute2}/bin/ip -n cnat-in route add default via 198.18.10.1
+
+        ${pkgs.iproute2}/bin/ip -n cnat-out link set lo up
+        ${pkgs.iproute2}/bin/ip -n cnat-out link set cnat-out up
+        ${pkgs.iproute2}/bin/ip -n cnat-out address add 203.0.113.100/24 dev cnat-out
+        ${pkgs.iproute2}/bin/ip -n cnat-out route add default via 203.0.113.2
+      '';
+      ExecStop = pkgs.writeShellScript "vpp-cnat-lab-peers-stop" ''
+        set -u
+        ${pkgs.iproute2}/bin/ip netns del cnat-in 2>/dev/null || true
+        ${pkgs.iproute2}/bin/ip netns del cnat-out 2>/dev/null || true
+      '';
+    };
+  };
+
+  systemd.services.vpp-cnat-lab-iperf = {
+    description = "iperf3 server in the isolated BlueField CNAT lab";
+    after = ["vpp-cnat-lab-peers.service"];
+    requires = ["vpp-cnat-lab-peers.service"];
+    partOf = ["vpp-cnat-lab-peers.service"];
+    serviceConfig = {
+      ExecStart = "${pkgs.iproute2}/bin/ip netns exec cnat-out ${pkgs.iperf3}/bin/iperf3 -s";
+      Restart = "on-failure";
+      RestartSec = "1s";
     };
   };
 
@@ -349,6 +497,7 @@ in {
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
+    common-gpu-amd
 
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
@@ -377,6 +526,7 @@ in {
     ../../../profiles/netboot-server.nix
     ../../../profiles/crypto
     ../../../profiles/logserver.nix
+    ../../../profiles/radeon.nix
     ./licheerv-usb-live.nix
 
     ../../../services/nginx.nix
@@ -417,13 +567,6 @@ in {
 
   hardware.cpu.amd.ryzen-smu.enable = false;
   programs.ryzen-monitor-ng.enable = false;
-
-  sops.secrets.hf-token = mkSecret "hf-token" {};
-  sops.templates."hellas-env".content = ''
-    HF_TOKEN=${config.sops.placeholder."hf-token"}
-  '';
-  systemd.services.hellas.serviceConfig.EnvironmentFile =
-    config.sops.templates."hellas-env".path;
 
   # Password-protect the LAN-exposed opencode-server (see the unit above).
   # opencode reads OPENCODE_SERVER_PASSWORD from the environment; render it from
@@ -560,7 +703,7 @@ in {
     '';
     mqtt = {
       enable = true;
-      host = network.routerIp;
+      host = network.controlPlaneIp;
       username = "rw";
       passwordFile = config.sops.secrets.mosquitto-password.path;
     };
@@ -644,8 +787,9 @@ in {
       fi
 
       ${lib.concatStrings (lib.imap0 (i: mac: ''
-        ip link set ${mlxPfName} vf ${toString i} mac ${mac}
-      '') mlxVfMacs)}
+          ip link set ${mlxPfName} vf ${toString i} mac ${mac}
+        '')
+        mlxVfMacs)}
     '';
   };
 
@@ -760,6 +904,13 @@ in {
     "/var/lib/kimi-certs"
     "/var/lib/samba"
     "/var/lib/nfs"
+    # Complete read-only efivarfs snapshots collected automatically from the
+    # diskless Strix clients at boot; profiles/netboot-server.nix exports one
+    # address-restricted directory per host.
+    {
+      directory = "/var/lib/strix-firmware-snapshots";
+      mode = "0711";
+    }
     {
       directory = "/var/lib/syncoid";
       user = "syncoid";
@@ -803,8 +954,6 @@ in {
     # disposable: persisting that parent would also retain dead lighthouse,
     # reth, llama-cpp, flood, and dnscrypt-proxy state forever.
     "/var/lib/private/hellas"
-    "/var/lib/private/hellas-gateway"
-    "/var/lib/private/open-webui"
     # Credentials for the root-owned gcp-ddns oneshot.
     {
       directory = "/root/.config/gcloud";
@@ -827,12 +976,11 @@ in {
   ];
 
   # Seed list mirrors the persistence list (normalized entries).
-  sconfig.impermanence.seedExisting.directories =
-    map (entry:
-      if lib.isString entry
-      then entry
-      else entry.directory)
-    config.environment.persistence."/persist".directories;
+  sconfig.impermanence.seedExisting.directories = map (entry:
+    if lib.isString entry
+    then entry
+    else entry.directory)
+  config.environment.persistence."/persist".directories;
   sconfig.impermanence.seedExisting.files = [
     "/var/lib/systemd/credential.secret"
   ];
@@ -965,7 +1113,7 @@ in {
     hostId = lib.mkForce "deadbeef";
     enableIPv6 = true;
     useNetworkd = true;
-    nameservers = [network.routerIp];
+    nameservers = [network.dnsIp];
     firewall = {
       enable = false;
       allowedTCPPorts = [
@@ -977,7 +1125,6 @@ in {
         4001 # lockd
         4002 # mountd
         17026 # qbittorrent
-        8083 # Hellas gateway
         18089 # monerod
         20048 # NFSv4 callback
       ];
@@ -992,26 +1139,6 @@ in {
         18089 # monerod
         20048 # NFSv4 callback
       ];
-    };
-  };
-
-  services.open-webui = {
-    enable = true;
-    host = network.primaryIp self;
-    port = 11111;
-    openFirewall = true;
-    environment = {
-      ANONYMIZED_TELEMETRY = "False";
-      DO_NOT_TRACK = "True";
-      SCARF_NO_ANALYTICS = "True";
-      ENABLE_OLLAMA_API = "False";
-      ENABLE_OPENAI_API = "True";
-      # Hellas gateway (llama.cpp left with the dGPU).
-      OPENAI_API_BASE_URL = "http://${network.primaryIp self}:8083/v1";
-      OPENAI_API_KEY = "sk-no-key-required";
-      WEBUI_URL = "https://${network.publicFqdn "open-webui"}";
-      HOME = "/var/lib/open-webui";
-      XDG_CACHE_HOME = "/var/lib/open-webui/.cache";
     };
   };
 
@@ -1098,8 +1225,15 @@ in {
         matchConfig.Name = mlxPfName;
         address = [
           (network.cidrOf "lan" self.addresses.lan)
+          # Control-plane rescue subnet: a second address on the same L2, so a
+          # rescue session reaches this host without consulting a gateway.
+          (network.cidrOf "rescue" self.addresses.rescue)
           (network.cidrOf "fabric" self.addresses.fabric)
           (network.cidrOf "fabric" network.hosts."trex-rdma".addresses.fabric)
+          # Stable service address in VPP's authoritative transition ULA.
+          # This also keeps replies to ULA-sourced LAN clients on-link instead
+          # of hairpinning through the same-interface VPP ACL.
+          transitionLanUla
         ];
         routes = [
           {Gateway = network.routerIp;}
@@ -1112,7 +1246,7 @@ in {
           }
         ];
         networkConfig = {
-          DNS = network.routerIp;
+          DNS = network.dnsIp;
           MulticastDNS = "yes";
           # This host publishes AAAA records (home.satanic.link and the other
           # sconfig.gcp-ddns names in services/nginx.nix), so it must have a
@@ -1133,12 +1267,11 @@ in {
           # The router already does this (machines/x86/router/default.nix:147).
           IPv6PrivacyExtensions = false;
         };
-        # Only autoconfigure SLAAC from our ISP's delegated /64. Rogue RAs from
-        # other devices on the LAN (e.g. Apple devices acting as Tailscale
-        # subnet routers) advertise ULA prefixes that briefly get autoconfigured
-        # and then trigger ICMPv6 "advertised our address" dmesg spam.
+        # Accept a changing ISP-delegated GUA while rejecting ULA prefixes from
+        # rogue RAs (for example Apple devices acting as subnet routers). This
+        # avoids baking the current DHCPv6-PD prefix into the server closure.
         ipv6AcceptRAConfig = {
-          PrefixAllowList = "2a02:168:58b4::/64";
+          PrefixDenyList = "fc00::/7";
         };
         linkConfig = {
           ActivationPolicy = "up";
@@ -1187,5 +1320,8 @@ in {
     # qBittorrent profile + separately mounted incomplete dataset
     "d /var/lib/qbittorrent 0775 qbittorrent qbittorrent -"
     "d /var/lib/qbittorrent/incomplete 0775 qbittorrent qbittorrent -"
+    # dsh-web's sandbox root. dsh does not create it, and StateDirectory cannot
+    # target /home, so make it here; agent file writes are confined to this tree.
+    "d /home/grw/dsh-workspace 0700 grw users -"
   ];
 }

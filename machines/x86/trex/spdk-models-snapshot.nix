@@ -94,11 +94,13 @@ To publish it, set this in machines/x86/trex/spdk-storage-constants.nix:
     uuid = "$snap_uuid";
   };
 
-then: deploy trex, and BOUNCE THE CLIENTS (reboot strix-1/3/4; deploy +
-restart nvme-trex-models on strix-2 and fuckup). The export deliberately
-refuses to swap namespaces while controllers are connected -- SPDK 26.01
-crashes on a live swap -- so it drains and converges within a minute of
-the last client dropping. Full procedure: spdk-storage-constants.nix.
+then: deploy trex, and DRAIN EVERY CLIENT (unmount /models and stop
+nvme-trex-models on strix-1/2/3/4; unmount /mnt/trex-models and stop the unit
+on fuckup). All four Strix hosts now netboot. The export deliberately refuses
+to swap namespaces while controllers are connected -- SPDK 26.01 crashes on a
+live swap -- so it converges within a minute of the last client dropping. Then
+reboot all four Strix hosts and restart the fuckup client. Full procedure:
+spdk-storage-constants.nix.
 
 Nothing is serving it yet; the current pin is still in effect.
 EOF

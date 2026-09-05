@@ -13,6 +13,50 @@
   # only uplink is this tagged subiface, so wifi clients egress eth tagged
   # and are routed/DHCP'd by the router on the wifi VLAN.
   wifiTag = "wifi${toString network.vlans.wifi.id}";
+  iphoneWan = "iphone0";
+  backupWan = network.vlans.wanBackup;
+  backupTag = "backup${toString backupWan.id}";
+  backupPeerIp = network.ipOf "wanBackup" network.hosts.bluefield2.addresses.wanBackup;
+  backupPeerCidr = "${backupPeerIp}/32";
+  backupAllowedSourceCidrs =
+    map
+      (name: "${network.primaryIp network.hosts.${name}}/32")
+      network.policies.backupWan.allowedSourceHosts
+    ++ network.policies.backupWan.additionalSourceCidrs
+    ++ [ backupPeerCidr ];
+  backupTcpPorts = lib.concatStringsSep "," (map toString network.policies.backupWan.tcpPorts);
+  backupUdpPorts = lib.concatStringsSep "," (map toString network.policies.backupWan.udpPorts);
+  backupForwardingRules = lib.concatMapStringsSep "\n" (source: ''
+    iptables -w -t filter -A nixos-filter-forward -i '${backupTag}' -s '${source}' -o '${iphoneWan}' -p icmp -j ACCEPT
+    iptables -w -t filter -A nixos-filter-forward -i '${backupTag}' -s '${source}' -o '${iphoneWan}' -p tcp -m multiport --dports '${backupTcpPorts}' -j ACCEPT
+    iptables -w -t filter -A nixos-filter-forward -i '${backupTag}' -s '${source}' -o '${iphoneWan}' -p udp -m multiport --dports '${backupUdpPorts}' -j ACCEPT
+    iptables -w -t nat -A nixos-nat-post -s '${source}' -o '${iphoneWan}' -j MASQUERADE
+  '') backupAllowedSourceCidrs;
+  backupRpfilterRules = lib.concatMapStringsSep "\n" (source: ''
+    iptables -w -t mangle -I nixos-fw-rpfilter 1 -i '${backupTag}' -s '${source}' -j RETURN
+  '') backupAllowedSourceCidrs;
+  backupRoutingPolicyRules =
+    map
+      (source: {
+        From = source;
+        Table = backupWan.id;
+        Priority = 10000 + backupWan.id;
+        Family = "ipv4";
+      })
+      backupAllowedSourceCidrs
+    ++ [
+      {
+        # Allows explicit Rock-local health checks bound to iphone0 without
+        # depending on the DHCP address or gateway assigned by the handset.
+        OutgoingInterface = iphoneWan;
+        Table = backupWan.id;
+        Priority = 9999 + backupWan.id;
+        Family = "ipv4";
+      }
+    ];
+  # Enabled after independently proving the USB lease and VLAN-101 transit.
+  # Route injection remains a separate BlueField gate.
+  backupForwardingEnable = true;
 in {
   system.stateVersion = "25.05";
 
@@ -30,6 +74,11 @@ in {
 
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
+
+  # Follow the OTG cable.  Only the FAEX9 boards (strix-1, strix-2) cannot
+  # netboot without this disk; strix-3/strix-4 are Bosgame BeyondMax and PXE
+  # natively, so parking the cable there needs no rebuild.
+  services.kvmBootstrap.targetHost = "strix-1";
 
   sconfig = {
     profile = "server";
@@ -177,11 +226,12 @@ in {
     openFirewall = true;
   };
 
-  # Spotify Connect endpoint (moved here from prime). Analog out goes
-  # through the on-board ES8316 codec (3.5mm jack). The kernel ASoC
-  # driver for ES8316 natively supports up to S32_LE @ 96kHz — anything
-  # above that is ALSA plug-rate resampling so we cap there.
-  # zeroconf_port pinned for the firewall holes below.
+  # Audio hardware only. The Spotify Connect endpoint that used to consume
+  # it moved to the router (2026-08-20); the ES8316 3.5mm jack and the
+  # PCM5102A on I2S2 are still wired to this board, so the ALSA config and
+  # the DTS overlay stay. The kernel ASoC driver for ES8316 natively
+  # supports up to S32_LE @ 96kHz — anything above that is ALSA plug-rate
+  # resampling so we cap there.
   hardware.alsa = {
     enable = true;
     config = ''
@@ -215,26 +265,6 @@ in {
         }
       }
     '';
-  };
-
-  services.spotifyd = {
-    enable = true;
-    settings.global = {
-      device_name = "rock-5b";
-      device_type = "speaker";
-      use_mpris = false;
-      dbus_type = "system";
-      cache_path = "/tmp/spotifyd";
-      max_cache_size = 100000000; # ~100MB
-      disable_discovery = false;
-      zeroconf_port = 1234;
-      backend = "alsa";
-      device = "pcm5102a";
-      volume_controller = "softvol";
-      initial_volume = 10;
-      audio_format = "S32";
-      bitrate = 320;
-    };
   };
 
   # Unmute the ES8316 Headphone output and set to max (range 0-3).
@@ -279,19 +309,46 @@ in {
 
   environment.persistence.${persist}.directories = [
     "/var/lib/bluetooth"
+    # Keep the iPhone trust record across the tmpfs root.  The USB Ethernet
+    # function normally appears without manual pairing, but retaining lockdown
+    # state avoids a trust prompt becoming a failover dependency.
+    "/var/lib/lockdown"
   ];
 
   sconfig.impermanence.seedExisting.directories = [
     "/var/lib/bluetooth"
+    "/var/lib/lockdown"
   ];
+
+  # usbmuxd switches an attached iPhone into its multiplexed USB
+  # configuration; the kernel ipheth driver provides the actual Ethernet
+  # device.  Phase one intentionally gives only rock-5b itself a high-metric
+  # IPv4 route.  Forwarding/NAT is added only after the lease is verified.
+  services.usbmuxd.enable = true;
 
   networking = {
     hostName = "rock-5b";
-    nameservers = [network.routerIp];
+    nameservers = [network.dnsIp];
     useNetworkd = true;
 
     useDHCP = false;
-    nat.enable = false;
+    nat = {
+      enable = backupForwardingEnable;
+      enableIPv6 = false;
+      externalInterface = iphoneWan;
+      # The NixOS NAT module turns either of these into an unrestricted
+      # forwarding ACCEPT. Keep them empty and install the narrow policy below.
+      internalInterfaces = [ ];
+      internalIPs = [ ];
+      extraCommands = ''
+        ${backupForwardingRules}
+        # Never let rejected BlueField transit escape through Rock's primary
+        # wired default, even if a future route or rpfilter change would permit
+        # it. Then fail closed for every other phone-bound source/protocol.
+        iptables -w -t filter -A nixos-filter-forward -i '${backupTag}' -j DROP
+        iptables -w -t filter -A nixos-filter-forward -o '${iphoneWan}' -j DROP
+      '';
+    };
     firewall.enable = true;
 
     wireless.interfaces = ["wlP2p33s0f0"];
@@ -300,6 +357,11 @@ in {
   systemd.network = {
     enable = true;
     wait-online.anyInterface = true;
+
+    links."10-iphone-tether" = {
+      matchConfig.Driver = "ipheth";
+      linkConfig.Name = iphoneWan;
+    };
 
     netdevs = {
       # AP bridge: hostapd's wlan0 + the tagged wifi uplink.
@@ -318,6 +380,14 @@ in {
         };
         vlanConfig.Id = network.vlans.wifi.id;
       };
+      # Dedicated control-only transit to BlueField VPP.
+      "30-${backupTag}" = {
+        netdevConfig = {
+          Kind = "vlan";
+          Name = backupTag;
+        };
+        vlanConfig.Id = backupWan.id;
+      };
     };
 
     networks = {
@@ -325,9 +395,9 @@ in {
       # the tagged wifi VLAN rides the same wire (see 30-${wifiTag}).
       "10-lan" = {
         matchConfig.Driver = "r8169";
-        vlan = [wifiTag];
+        vlan = [ wifiTag backupTag ];
         address = [(network.cidrOf "lan" self.addresses.lan)];
-        dns = [network.routerIp];
+        dns = [network.dnsIp];
         routes = [
           {
             Gateway = network.routerIp;
@@ -345,6 +415,22 @@ in {
       "30-${wifiTag}" = {
         matchConfig.Name = wifiTag;
         networkConfig.Bridge = "br0.lan";
+        linkConfig.RequiredForOnline = "no";
+      };
+
+      "30-${backupTag}" = {
+        matchConfig.Name = backupTag;
+        address = [ (network.cidrOf "wanBackup" self.addresses.wanBackup) ];
+        routes = map (destination: {
+          Destination = destination;
+          Gateway = backupPeerIp;
+          GatewayOnLink = true;
+        }) network.policies.backupWan.vppTestReturnCidrs;
+        networkConfig = {
+          ConfigureWithoutCarrier = true;
+          IPv6AcceptRA = false;
+          LinkLocalAddressing = "no";
+        };
         linkConfig.RequiredForOnline = "no";
       };
 
@@ -369,10 +455,81 @@ in {
         };
         linkConfig.RequiredForOnline = "no";
       };
+
+      # iPhone Personal Hotspot.  Do not consume its DNS and keep its default
+      # well below wired/Wi-Fi while the primary WAN exists.  IPv6 stays off
+      # until we have observed the provider behaviour; there is no NAT66
+      # fallback hidden here.
+      "60-iphone-tether" = {
+        matchConfig.Name = iphoneWan;
+        networkConfig = {
+          DHCP = "ipv4";
+          IPv6AcceptRA = false;
+          LinkLocalAddressing = "no";
+          DNSDefaultRoute = false;
+        };
+        dhcpV4Config = {
+          UseDNS = false;
+          UseRoutes = true;
+          RouteMetric = 4096;
+          # Keep the DHCP-derived cellular gateway in its own table. Approved
+          # transit sources select it below; no leased address is hardcoded.
+          RouteTable = backupWan.id;
+        };
+        routingPolicyRules = backupRoutingPolicyRules;
+        linkConfig.RequiredForOnline = "no";
+      };
     };
   };
 
+  # Several local services open ports globally through NixOS module options.
+  # Insert this before those accepts so none of them become reachable through
+  # the untrusted tether.  Replies to connections initiated by rock-5b remain
+  # possible; new inbound traffic from the iPhone is dropped.
+  networking.firewall.extraCommands = lib.mkAfter ''
+    # Replies arriving on the deliberately high-metric phone fail strict
+    # reverse-path validation because the same remote is normally reachable
+    # through wired LAN. Bypass rpfilter only on this interface; the input and
+    # forward rules below remain the actual trust boundary.
+    iptables -t mangle -I nixos-fw-rpfilter 1 -i ${iphoneWan} -j RETURN
+
+    # Transit reaches Rock through BlueField, so strict rpfilter cannot infer
+    # the intended asymmetric path from the ordinary LAN routes. Exempt only
+    # the source CIDRs admitted by the phone-egress policy; all other sources
+    # still hit strict rpfilter before the input/forward chains.
+    ${backupRpfilterRules}
+
+    # DHCP is the only new inbound IPv4 flow the phone may initiate toward the
+    # host. Everything else must be a reply to Rock's own traffic.
+    iptables -I nixos-fw 1 -i ${iphoneWan} -p udp --sport 67 --dport 68 -j nixos-fw-accept
+    iptables -I nixos-fw 2 -i ${iphoneWan} -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
+    iptables -I nixos-fw 3 -i ${iphoneWan} -j nixos-fw-refuse
+    ip6tables -I nixos-fw 1 -i ${iphoneWan} -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
+    ip6tables -I nixos-fw 2 -i ${iphoneWan} -j nixos-fw-refuse
+
+    # Rock's own processes get the same control-plane-only boundary. Forwarded
+    # traffic is governed separately by nixos-filter-forward above.
+    iptables -I OUTPUT 1 -o ${iphoneWan} -p udp --sport 68 --dport 67 -j ACCEPT
+    iptables -I OUTPUT 2 -o ${iphoneWan} -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    iptables -I OUTPUT 3 -o ${iphoneWan} -p icmp -j ACCEPT
+    iptables -I OUTPUT 4 -o ${iphoneWan} -p tcp -m multiport --dports ${backupTcpPorts} -j ACCEPT
+    iptables -I OUTPUT 5 -o ${iphoneWan} -p udp -m multiport --dports ${backupUdpPorts} -j ACCEPT
+    iptables -I OUTPUT 6 -o ${iphoneWan} -j DROP
+    ip6tables -I OUTPUT 1 -o ${iphoneWan} -j DROP
+
+    # VLAN 101 is a small control transit. Until switch filtering is enabled,
+    # explicitly distrust every host other than the BlueField router peer.
+    iptables -I nixos-fw 4 -i ${backupTag} -s ${backupPeerCidr} -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
+    iptables -I nixos-fw 5 -i ${backupTag} -s ${backupPeerCidr} -p icmp -j nixos-fw-accept
+    iptables -I nixos-fw 6 -i ${backupTag} -s ${backupPeerCidr} -p tcp --dport 22 -j nixos-fw-accept
+    iptables -I nixos-fw 7 -i ${backupTag} -j nixos-fw-refuse
+    ip6tables -I nixos-fw 3 -i ${backupTag} -j nixos-fw-refuse
+  '';
+
   environment.systemPackages = with pkgs; [
+    # Pairing/diagnostic CLI for the backup-WAN iPhone. usbmuxd already pulls
+    # the library into the closure, but not these user-facing tools onto PATH.
+    libimobiledevice
     iperf
     lshw
     pciutils
@@ -389,28 +546,30 @@ in {
     # xmrig
   ];
 
-  # GPS module on UART2 (40-pin header pins 8/10)
-  # Wiring:
+  # GPS moved to k3 (2026-08-11), which has the receiver on its own UART; gpsd
+  # went with it via services/gps.nix. This host's gpsd pointed at
+  # `tcp://esp32-p4-eth-01:8888`, an ESP32 UART-to-TCP bridge that no longer
+  # has a receiver attached, so it would have polled a dead socket forever.
+  #
+  # The 40-pin wiring this board would need, kept for whenever a receiver
+  # comes back to it:
   #   GPS TX  → Pin 10 (UART2_RX_M0, GPIO0_B6)
   #   GPS RX  → Pin 8  (UART2_TX_M0, GPIO0_B5)
   #   GPS PPS → Pin 16 (GPIO3_A4) - requires DT overlay
   #   GPS VCC → Pin 1 or 17 (3.3V)
   #   GPS GND → Pin 6, 9, 14, or 20 (GND)
-  services.gpsd = {
-    enable = true;
-    devices = ["tcp://esp32-p4-eth-01.${network.domains.lan}:8888"];
-    readonly = false;
-    extraArgs = ["-n"]; # Don't wait for client connect to poll GPS
-  };
 
   # PPS (Pulse Per Second) support for precise timing
-  boot.kernelModules = ["pps-gpio"];
+  boot.kernelModules = [
+    "pps-gpio"
+    "ipheth"
+  ];
 
   # Device tree for Rock 5B
-  # EDK2 UEFI ignores systemd-boot's devicetree directive — it loads
-  # `\dtb\<PcdDeviceTreeName>.dtb` from the ESP when FdtOverrideBasePath
-  # efivar is set (see edk2-rockchip FdtPlatformDxe). The activation
-  # script below syncs the merged DTB to that path on every switch/boot.
+  # EDK2 first loads `\dtb\<PcdDeviceTreeName>.dtb` from the ESP when the
+  # FdtOverrideBasePath efivar is set. systemd-boot's BLS `devicetree` entry
+  # then replaces the FDT passed to Linux. Keep the fixed firmware fallback
+  # synchronized with the same merged DTB on every switch/boot.
   hardware.deviceTree = {
     enable = true;
     name = "rockchip/rk3588-rock-5b.dtb";
@@ -418,6 +577,11 @@ in {
       {
         name = "rk3588-i2s2-pcm5102a";
         dtsFile = ./i2s2-pcm5102a.dts;
+      }
+      {
+        name = "rk3588-pex88096-pcie3x4";
+        dtsFile = ./pex88096-pcie3x4.dts;
+        filter = "rockchip/rk3588-rock-5b.dtb";
       }
     ];
   };
@@ -435,9 +599,9 @@ in {
     fi
   '';
 
-  # spotifyd zeroconf (1234) + mDNS (5353); KVM/mediamtx ports come from services/kvm.nix
-  networking.firewall.allowedTCPPorts = [1234];
-  networking.firewall.allowedUDPPorts = [5353];
+  # 1234 (spotifyd zeroconf) and 5353 (its libmdns responder) closed with the
+  # move to the router — nothing else on this host announces over mDNS.
+  # KVM/mediamtx ports come from services/kvm.nix.
 
   services.irqbalance.enable = lib.mkDefault true;
 

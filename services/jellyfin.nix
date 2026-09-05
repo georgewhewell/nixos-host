@@ -10,10 +10,8 @@
   # containers/arr-servers.nix. /var/lib/jellyfin stays on the host as the
   # bind-mount source and is still covered by trex's persistence list.
   #
-  # The old `users.users.jellyfin.extraGroups = ["video" "render"]` is gone
-  # deliberately: trex exposes only /dev/dri/card0 (the ASPEED BMC
-  # framebuffer) and no renderD128, so there is no render node and jellyfin
-  # has always transcoded on CPU here. There is nothing to pass through.
+  # The Radeon render node and Jellyfin's VA-API userspace live in the
+  # arr-servers container declaration. The host remains only the TLS proxy.
   arrIp = network.ipOf "lan" network.hosts."arr-servers".addresses.lan;
 in {
   sconfig.gcp-ddns = {

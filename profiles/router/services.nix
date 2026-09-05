@@ -18,6 +18,9 @@
   netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
   routerIp = network.routerIp;
   serviceIp = network.controlPlaneIp;
+  # k3's standby resolver. It answers from the same network.nix inventory and
+  # never serves DHCP, so it is safe to hand out as a second option 6 entry.
+  standbyDnsIp = network.primaryIp network.hosts.k3;
   trexIp = network.primaryIp network.hosts.trex;
   netbootBaseUrl = "http://${serviceIp}/strix-netboot";
   netbootIpxeUrl = "${netbootBaseUrl}/ipxe/snponly.efi";
@@ -114,10 +117,16 @@ in {
       ];
       "dhcp-option" = [
         "${lanName},3,${network.routerIp}"
-        "${lanName},6,${network.dnsIp}"
+        # Two resolvers, not one. This host was a single point of failure for
+        # every name in the house; k3 serves the same records from the same
+        # inventory and sits on the flat LAN, so LAN clients still resolve by
+        # direct L2 even when the gateway itself is the thing that died.
+        "${lanName},6,${network.dnsIp},${standbyDnsIp}"
         "${lanName},option:domain-search,${network.domains.lan}"
         "${wifiName},3,${network.gatewayIp "wifi"}"
-        "${wifiName},6,${network.dnsIp}"
+        # WiFi clients reach the standby only while routing still works, which
+        # covers this host failing but not the gateway failing. Worth having.
+        "${wifiName},6,${network.dnsIp},${standbyDnsIp}"
         "${wifiName},option:domain-search,${network.domains.lan}"
       ];
       # Netboot is restricted to the four tagged Strix MACs. Native UEFI HTTP

@@ -1,0 +1,47 @@
+--- a/Driver/Source.PlxSvc/SuppFunc.c
++++ b/Driver/Source.PlxSvc/SuppFunc.c
+@@ -629,11 +629,7 @@ PlxPciDevicesScan(
+-        // BIOS may not enable PLX devices so do it manually
+-        if (pDevice->Key.VendorId == PLX_PCI_VENDOR_ID_PLX)
+-        {
+-            PLX_PCI_REG_READ( pDevice, PCI_REG_CMD_STAT, &RegValue );
+-            if ((RegValue & 0x7) == 0)
+-            {
+-                // Enable device but don't clear any PCI error status
+-                RegValue = (RegValue & (~0x1F << 27)) | 0x7;
+-                PLX_PCI_REG_WRITE( pDevice, PCI_REG_CMD_STAT, RegValue );
+-            }
+-        }
++        /*
++         * Service discovery must be observational.  In particular, do not
++         * force-enable every PLX function found in the hierarchy.  On Atlas
++         * switches this can alter an active upstream bridge merely by loading
++         * PlxSvc.  A function without firmware/OS-provided decoding remains
++         * unavailable to mapped-register APIs and those APIs fail closed.
++         */
+@@ -692,24 +688,1 @@ PlxPciDevicesScan(
+-        // OS may place switch ports in low power state (D3)
+-        if ( (pDevice->Key.PlxChip != 0) &&
+-             (pDevice->PciHeaderType == PCI_HDR_TYPE_1) )
+-        {
+-            // Get power management capability
+-            offset =
+-                PlxPciFindCapability(
+-                    pDevice,
+-                    PCI_CAP_ID_POWER_MAN,
+-                    FALSE,
+-                    0
+-                    );
+-            if (offset != 0)
+-            {
+-                // Ensure PM state is D0 (PM 04h[1:0]=0)
+-                PLX_PCI_REG_READ( pDevice, offset + 0x4, &RegValue );
+-                if ((RegValue & 0x3) != PCI_CAP_PM_STATE_D0)
+-                {
+-                    RegValue &= ~(U32)0x3;
+-                    RegValue |= (PCI_CAP_PM_STATE_D0 << 0);
+-                    PLX_PCI_REG_WRITE( pDevice, offset + 0x4, RegValue );
+-                }
+-            }
+-        }
++        /* Likewise, discovery never forces bridge power-state transitions. */

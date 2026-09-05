@@ -125,6 +125,7 @@ class GeminiProvider(Provider):
     _access_token_expiry: float = 0.0
     _project: str | None = None
     _tier: str | None = None
+    _plan: str | None = None
 
     def credential_paths(self) -> tuple[Path, Path]:
         """The Antigravity credential file and the legacy Gemini CLI one, in preference order."""
@@ -151,7 +152,7 @@ class GeminiProvider(Provider):
         if not samples:
             raise ProviderError("retrieveUserQuotaSummary returned no usable buckets")
 
-        info = {"tier": self._tier} if self._tier else {}
+        info = {k: v for k, v in (("plan", self._plan), ("tier", self._tier)) if v}
         return ProviderSnapshot(samples=samples, info=info)
 
     def _get_access_token(self) -> str:
@@ -217,9 +218,7 @@ class GeminiProvider(Provider):
     def _load_code_assist(self, token: str) -> None:
         response = self._post(token, "loadCodeAssist", {"metadata": {"ideType": IDE_TYPE}})
         self._project = response.get("cloudaicompanionProject") or ""
-        tier = response.get("currentTier") or {}
-        if isinstance(tier, dict) and (tier_id := tier.get("id") or tier.get("name")):
-            self._tier = str(tier_id)
+        self._plan, self._tier = _parse_plan(response)
 
     def _post(self, token: str, method: str, body: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -278,6 +277,33 @@ def _parse_legacy_credentials(payload: dict[str, Any]) -> Credentials:
         client_id=GEMINI_CLIENT_ID,
         client_secret=GEMINI_CLIENT_SECRET,
     )
+
+
+def _parse_plan(response: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Extract (plan, tier) from a loadCodeAssist response.
+
+    `currentTier` and `paidTier` are two DIFFERENT axes and reading the wrong
+    one is actively misleading. `currentTier` is the Code Assist tier and reads
+    "free-tier"/"Antigravity" even for a subscriber; the Google One
+    subscription that actually funds the quota is `paidTier`
+    ("g1-pro-tier"/"Google AI Pro"). currentTier also carries an
+    `upgradeSubscriptionText` pitching AI Pro, which is free-tier boilerplate
+    and NOT evidence that the account lacks a subscription. Prefer paidTier;
+    fall back to currentTier only when there is no subscription at all.
+    """
+    paid = response.get("paidTier")
+    if isinstance(paid, dict) and paid.get("id"):
+        name = str(paid.get("name") or "")
+        # "Google AI Pro" -> "pro", to match the short plan names the other
+        # providers report (max, pro, advanced).
+        plan = re.sub(r"^google\s+ai\s+", "", name, flags=re.IGNORECASE).strip().lower()
+        return (plan.replace(" ", "_") or None, str(paid["id"]))
+
+    current = response.get("currentTier")
+    if isinstance(current, dict) and (tier_id := current.get("id") or current.get("name")):
+        tier_id = str(tier_id)
+        return ("free" if "free" in tier_id else None, tier_id)
+    return (None, None)
 
 
 def _parse_summary(summary: dict[str, Any]) -> list[QuotaSample]:

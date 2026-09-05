@@ -1,17 +1,15 @@
-nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns:
-let
+nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns: let
   inherit (inputs.nixpkgs) lib;
   inherit (pkgsFns) pkgsFor pkgsForCuda pkgsForRocm pkgsForRocmStrixHalo pkgsForRocmZnver5 allOverlays;
 
   # Base system builder - no GPU acceleration
-  sys = system: machine:
-    let
-      pkgs = pkgsFor system;
-    in
+  sys = system: machine: let
+    pkgs = pkgsFor system;
+  in
     lib.nixosSystem {
       inherit system pkgs;
       modules = [
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         nixosModule
         machine
       ];
@@ -23,23 +21,24 @@ let
       };
     };
 
-  sysWithSpecialArgs = system: extraSpecialArgs: machine:
-    let
-      pkgs = pkgsFor system;
-    in
+  sysWithSpecialArgs = system: extraSpecialArgs: machine: let
+    pkgs = pkgsFor system;
+  in
     lib.nixosSystem {
       inherit system pkgs;
       modules = [
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         nixosModule
         machine
       ];
       extraModules = [
         inputs.colmena.nixosModules.deploymentOptions
       ];
-      specialArgs = {
-        inherit inputs mkSecret network;
-      } // extraSpecialArgs;
+      specialArgs =
+        {
+          inherit inputs mkSecret network;
+        }
+        // extraSpecialArgs;
     };
 
   # Cross-compilation builder - builds on x86_64 for aarch64
@@ -58,25 +57,27 @@ let
           # RestrictFilesystems=, RestrictNetworkInterfaces= and socket bind
           # filtering, none of which these boards use, so drop it rather than
           # fall back to emulated aarch64 builds that take hours.
-          nixpkgs.overlays = allOverlays ++ [
-            (_final: prev: {
-              # Nulling bpftools/libbpf is not enough -- meson still requires
-              # the dependency -- so turn the feature off at the meson level.
-              systemd = prev.systemd.overrideAttrs (old: {
-                mesonFlags =
-                  (builtins.filter
-                    (f: !(lib.hasPrefix "-Dbpf-framework=" f))
-                    (old.mesonFlags or []))
-                  ++ ["-Dbpf-framework=disabled"];
-              });
-            })
-          ];
+          nixpkgs.overlays =
+            allOverlays
+            ++ [
+              (_final: prev: {
+                # Nulling bpftools/libbpf is not enough -- meson still requires
+                # the dependency -- so turn the feature off at the meson level.
+                systemd = prev.systemd.overrideAttrs (old: {
+                  mesonFlags =
+                    (builtins.filter
+                      (f: !(lib.hasPrefix "-Dbpf-framework=" f))
+                      (old.mesonFlags or []))
+                    ++ ["-Dbpf-framework=disabled"];
+                });
+              })
+            ];
           nixpkgs.config = {
             allowUnfree = true;
             allowBroken = true;
           };
         }
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         nixosModule
         machine
       ];
@@ -89,14 +90,13 @@ let
     };
 
   # CUDA-enabled system builder for NVIDIA machines
-  sysCuda = system: machine:
-    let
-      pkgs = pkgsForCuda system;
-    in
+  sysCuda = system: machine: let
+    pkgs = pkgsForCuda system;
+  in
     lib.nixosSystem {
       inherit system pkgs;
       modules = [
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         nixosModule
         machine
       ];
@@ -117,7 +117,7 @@ let
       inherit pkgs;
       system = pkgs.stdenv.hostPlatform.system;
       modules = [
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         nixosModule
         machine
       ];
@@ -145,7 +145,7 @@ let
   sysRiscvNanokvm = machine:
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         inputs.nanokvm.nixosModules.boards.pcie.mainline.sd
         nixosModuleNanokvm
         machine
@@ -159,14 +159,14 @@ let
     };
 
   # LicheeRV-Nano-W (SG2002). Same cross pattern as nanokvm, but the
-  # board module is the camera-enabled USB-fastboot + NFS-root live
+  # board module is the camera-enabled USB-fastboot + Ethernet NFS-root live
   # variant: no SD card, no bootloader state — every boot is pushed from
-  # trex over USB and stage 2 runs from trex's NFS export.
+  # trex over USB, then stage 2 and camera traffic use the board's RJ45.
   sysRiscvLicheerv = machine:
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
-        { _module.args = inputs; }
-        inputs.nanokvm.nixosModules.boards.licheerv.mainline.live."usb-nfs-cam"
+        {_module.args = inputs;}
+        inputs.nanokvm.nixosModules.boards.licheerv.mainline.live."eth-nfs-cam"
         nixosModuleNanokvm
         machine
       ];
@@ -178,16 +178,14 @@ let
       };
     };
 
-  # LicheeRV-Nano "RV Claw" (SG2002 + PicoClaw LCD expansion). Same cross
-  # pattern as licheerv, but the board module is the PicoClaw USB-NFS live
-  # variant with the ST7789 screen self-test: no SD, no LAN — every boot
-  # is pushed from fuckup over USB and the store mounts from fuckup's end
-  # of the gadget link.
+  # LicheeRV-Nano "RV Claw" (SG2002 + PicoClaw LCD expansion). USB performs
+  # the stateless ROM/FIP/FIT handoff and one-shot credential injection; the
+  # onboard AIC8800 carries the NFS store and SSH over trusted house WiFi.
   sysRiscvClaw = machine:
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
-        { _module.args = inputs; }
-        inputs.nanokvm.nixosModules.boards.picoclaw.mainline.live."usb-lcd"
+        {_module.args = inputs;}
+        inputs.nanokvm.nixosModules.boards.picoclaw.mainline.live."usb-lcd-wifi"
         nixosModuleNanokvm
         machine
       ];
@@ -208,7 +206,7 @@ let
         {
           nixpkgs.overlays = allOverlays;
         }
-        { _module.args = inputs; }
+        {_module.args = inputs;}
         inputs.disko.nixosModules.disko
         nixosModule
         machine
@@ -220,10 +218,9 @@ let
         inherit inputs mkSecret network;
       };
     };
-
-in
-{
+in {
   router = sys "x86_64-linux" ./x86/router/hostpf-system.nix;
+  router-ipsec-offload-lab = sys "x86_64-linux" ./x86/router/ipsec-offload-lab-system.nix;
   router-usb = sys "x86_64-linux" ./x86/router;
   n100 = sys "x86_64-linux" ./x86/n100;
 
@@ -239,19 +236,24 @@ in
   # runs, but it makes routine system rebuilds depend on gccarch-specific
   # builders.
   strix-2 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 2);
-  strix-2-nvme-image =
-    let
-      localBootNetwork = network // {
-        hosts = network.hosts // {
-          strix-2 = network.hosts.strix-2 // {
-            netboot = false;
+  strix-2-nvme-image = let
+    localBootNetwork =
+      network
+      // {
+        hosts =
+          network.hosts
+          // {
+            strix-2 =
+              network.hosts.strix-2
+              // {
+                netboot = false;
+              };
           };
-        };
       };
-    in
+  in
     (sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 2)).extendModules {
       specialArgs.network = localBootNetwork;
-      modules = [ ./x86/strix-halo/nvme-image.nix ];
+      modules = [./x86/strix-halo/nvme-image.nix];
     };
   strix-3 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 3);
   strix-4 = sysRocmStrixHalo "x86_64-linux" (import ./x86/strix-halo 4);
@@ -266,6 +268,7 @@ in
   prime-cross = sysCross ./aarch64/prime;
   neo2-cross = sysCross ./aarch64/nanopi-neo2;
   bluefield2-cross = sysCross ./aarch64/bluefield2/hostpf-system.nix;
+  bluefield2-ipsec-offload-cross = sysCross ./aarch64/bluefield2/ipsec-offload-system.nix;
   # Experimental NAT44-ED full-flow worker distribution; never the rollback.
   bluefield2-nat44-flow-workers-cross =
     sysCross ./aarch64/bluefield2/nat44-flow-workers-system.nix;

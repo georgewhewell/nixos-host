@@ -72,6 +72,13 @@ let
     (name: _: inputs.self.nixosConfigurations.${name}.config.system.build.strixNetboot)
     netbootHosts;
 
+  # The PicoClaw follows the same diskless model as the Strix clients, but its
+  # firmware path is ROM USB-DL -> U-Boot fastboot -> FIT instead of iPXE.
+  # Referencing the runner from trex's system closure keeps the FIT and every
+  # target-side /nix/store path alive while the board mounts this store.
+  picoclawUsbLive =
+    inputs.nanokvm.legacyPackages.${pkgs.stdenv.hostPlatform.system}.boards.picoclaw.mainline.live."usb-lcd-hs".usb-boot;
+
   # Ad-hoc escape hatch: rebuild a single host's image from a checkout on
   # this machine. Its out-link replaces the deployed symlink until the next
   # activation resets it. Builds against the checkout's flake.lock, so a
@@ -116,6 +123,7 @@ in
 
   systemd.tmpfiles.rules = [
     "d /models 0755 root root -"
+    "L+ ${stateDir}/picoclaw-usb-live - - - - ${picoclawUsbLive}"
   ] ++ lib.mapAttrsToList
     (name: image: "L+ ${stateDir}/${name} - - - - ${image}")
     netbootImages;

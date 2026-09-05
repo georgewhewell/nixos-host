@@ -15,7 +15,9 @@ let
   netboot = self.netboot or false;
   # Per-host hardware facts (CX5 port ownership, power limits) live in the
   # network.nix host record — the single inventory.
-  enableUsb4Rdma = builtins.elem index [ 1 2 3 4 ];
+  # strix-4 is the multikernel canary. Its host and spawn kernels must have the
+  # same mk2 layout, so it cannot simultaneously select the USB4-RDMA kernel.
+  enableUsb4Rdma = builtins.elem index [ 1 2 3 ];
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
   netbootSharesFabric = netboot && (self.netbootSharesFabric or false);
@@ -33,6 +35,16 @@ let
   cx5ForcedSpeed = if self.strix.bluefield or false then "100G_4X" else "100G";
   tbvPackages = inputs.thunderbolt-ibverbs-kernel.packages.${pkgs.stdenv.hostPlatform.system} or { };
   tbvHipGdaProbes = tbvPackages."tbv-hip-gda-probes" or null;
+  hellasVideoPackages =
+    inputs.hellas-ai-video.packages.${pkgs.stdenv.hostPlatform.system};
+  h3V620Cli = pkgs.symlinkJoin {
+    name = "hellas-minimax-h3-v620-cli";
+    paths = map
+      (command: pkgs.writeShellScriptBin "${command}-v620" ''
+        exec ${hellasVideoPackages.h3-rocm-v620}/bin/${command} "$@"
+      '')
+      [ "h3-generate" "h3-condition" "h3-denoise" "h3-doctor" ];
+  };
 
   # trex's models export. The constants file is the single pin shared by the
   # target and every client; see machines/x86/trex/spdk-storage-constants.nix.
@@ -52,6 +64,43 @@ let
   ];
 
   vllmFabricInterface = "cx5fabric0";
+  vllmFabric2Interface = "cx5fabric1";
+  # Require both inventory fields so this shared module only creates the
+  # second CX5 rail on hosts whose permanent MAC and address are explicit.
+  enableCx5Fabric2 = enableCx5Fabric
+    && self.strix ? cx5Fabric2Mac
+    && self.addresses ? fabric2;
+  # Resolve the intended PF by its permanent MAC before forcing its link.  The
+  # numeric mlx5 name is not stable across PCI enumeration, especially on the
+  # two-card hosts.  One target per service keeps the netboot exception for the
+  # primary/NFS rail from accidentally applying to the independent second rail.
+  cx5FabricLinkScript = targetMac: ''
+    target_mac=${lib.escapeShellArg targetMac}
+    nic_path=
+    for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
+      for candidate in /sys/class/net/*; do
+        [ -r "$candidate/address" ] || continue
+        if [ "$(${pkgs.coreutils}/bin/cat "$candidate/address")" = "$target_mac" ]; then
+          nic_path="$candidate"
+          break 2
+        fi
+      done
+      ${pkgs.coreutils}/bin/sleep 1
+    done
+
+    if [ -z "$nic_path" ]; then
+      echo "fabric NIC with permanent MAC $target_mac did not appear" >&2
+      exit 1
+    fi
+
+    pci_path=$(${pkgs.coreutils}/bin/readlink -f "$nic_path/device")
+    pci_address="''${pci_path##*/}"
+    exec ${pkgs.mlnx-mft}/bin/mlxlink \
+      -d "$pci_address" \
+      -s ${cx5ForcedSpeed} \
+      --link_mode_force \
+      --yes
+  '';
   vllmHostIp =
     if enableCx5Fabric
     then network.ipOf "fabric" self.addresses.fabric
@@ -95,18 +144,34 @@ in
     roceQos = lib.mkIf enableCx5Fabric {
       enable = true;
       interface = vllmFabricInterface;
+      extraInterfaces = lib.optionals enableCx5Fabric2 [ vllmFabric2Interface ];
+      # mlxlink --link_mode_force resets the adapter and takes the DCB state
+      # with it, so the QoS must be applied after the link forcing, not
+      # alongside it. Naming units that do not exist on a given host (the
+      # primary is excluded under netboot) is harmless: systemd ignores
+      # ordering against absent units.
+      afterUnits = [
+        "cx5-fabric-link.service"
+      ] ++ lib.optionals enableCx5Fabric2 [ "cx5-fabric2-link.service" ];
     };
     home-manager = {
       enable = true;
       enableDevelopment = true;
     };
     xmrig = {
-      enable = false;
+      enable = true;
       package = pkgs.xmrig-zen5;
     };
   };
 
   system.stateVersion = "24.11";
+
+  # Large local and distributed checkpoint loads can hold a CPU in kernel I/O
+  # long enough to miss the fleet-wide 15 s watchdog deadline. Strix-3 first
+  # exposed this under DSV4; H3 reproduced the same reset class on strix-2.
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = lib.mkForce "60s";
+  };
 
   hardware.cpu.amd.ryzen-smu.enable = true;
   programs.ryzen-monitor-ng.enable = true;
@@ -122,8 +187,41 @@ in
     pkgs.perftest
     pkgs.iperf3
     pkgs.mlnx-opensm
+    pkgs.pciutils
+    # Inspect named IFR questions or exact, experimentally-confirmed EFI
+    # variable offsets from the running host. Raw writes require an expected
+    # current value and keep full-variable backups before changing NVRAM.
+    pkgs.bios-setup-var
+    # Every Strix APU can run H3's gfx1151 conditioning/full-offload path.
+    # Referencing it here also roots the closure in trex's served netboot
+    # image, avoiding the clients' deliberately tiny writable Nix stores.
+    hellasVideoPackages.h3-rocm
+    # One gfx1151 rank per host; FSDP/Ulysses spans all four over cx5fabric0.
+    # The V620-local profiles below remain separate and available on strix-3.
+    hellasVideoPackages.h3-sglang-rocm
+    # Root the RDMA-enabled Hellas runner bundle in every served image. This
+    # carries xDiT/Ulysses, torchrun, the collective smoke benchmark, and LTX
+    # DistVAE with the USB4-aware userspace provider; clients cannot safely
+    # build this closure in their small writable netboot stores.
+    hellasVideoPackages.distributed-rocm-rdma
+    # Music 3 fits on the gfx1151 APU and shares the same pinned Diffusers /
+    # Transformers runtime as H3. Root it on all four nodes so independent
+    # songs (or pipeline jobs) can be scheduled without client-side builds.
+    hellasVideoPackages.music3-rocm
   ] ++ lib.optionals enableCx5Fabric [
     pkgs.nvme-cli
+  ] ++ lib.optionals (index == 3) [
+    # strix-3 is the designated four-V620 host. Keep the gfx1030 closures in
+    # its netboot image while those cards are temporarily out for cooling and
+    # service; the hybrid launcher keeps both architectures in separate
+    # interpreters and hands pipeline state across the process boundary.
+    h3V620Cli
+    hellasVideoPackages.h3-hybrid-rocm
+    hellasVideoPackages.music3-rocm-v620
+    # Native SGLang 0.5.17 supplies the experimental four-card FSDP/Ulysses
+    # and TP4 paths. Keep the closure in the netboot image: a client store is
+    # far too small to build or fetch it after boot.
+    hellasVideoPackages.h3-sglang-rocm-v620
   ];
 
   environment.etc."mft/mft.conf" = lib.mkIf enableSharedCx5 {
@@ -132,6 +230,29 @@ in
 
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
   boot.kernelPackages = lib.mkOverride 900 linuxPackagesThunderbolt;
+
+  # Keep resource transfer manual for the first hardware qualification. APIC
+  # IDs 24-31 are both SMT threads of physical cores 12-15 on strix-4.
+  boot.multikernel = lib.mkIf (index == 4) {
+    enable = true;
+    pool = {
+      cpus = "24-31";
+      memory = "8GB";
+      prepareAtBoot = false;
+    };
+    instances = {
+      blue = {
+        id = 1;
+        cpus = "24-27";
+        memory = "2GB";
+      };
+      red = {
+        id = 2;
+        cpus = "28-31";
+        memory = "2GB";
+      };
+    };
+  };
 
   boot.kernelParams =
     [
@@ -147,19 +268,137 @@ in
       "msr.allow_writes=on"
       "mitigations=off"
     ]
-    # The PEX880xx subtree on strix-4 needs one more 1 MiB bridge window than
+    # The PEX880xx subtree on strix-4 needed one more 1 MiB bridge window than
     # firmware allocated on the 2026-07-24 cold boot. Without reallocation the
-    # NVMe link trains, but BAR 0 remains unassigned and nvme_probe returns
-    # -ENODEV. Keep this scoped to the affected netboot host.
+    # NVMe link trained, but BAR 0 remained unassigned and nvme_probe returned
+    # -ENODEV.
     ++ lib.optionals (netboot && index == 4) [
       "pci=realloc=on"
     ]
+    # On a cold boot Strix-2's firmware assigns the complete PEX88096 bus tree
+    # and all four 32 GiB V620 PF BARs correctly. Do not add pci=assign-busses:
+    # on this switch it clears the hardware bridge bus-number registers while
+    # leaving Linux's cached tree populated, so every endpoint reads as ffff.
+    # Do not add pci=realloc either: it releases the valid PF BARs while trying
+    # unsuccessfully to fit each card's unused 384 GiB SR-IOV VF aperture.
     # Disabled after strix-1 amdgpu failed to fetch VBIOS from ACPI VFCT while
     # booted with these experimental PCIe enumeration parameters.
     ++ lib.optionals false [
       "pci=realloc,assign-busses"
       "pcie_ports=native"
     ];
+
+  # Strix-2 firmware Setup must keep PCI Hot-Plug -> PCI Buses Padding at 5.
+  # The old value 1 only reserved buses 03-06 after a genuine PEX-board cold
+  # start; value 5 was cold-boot verified to reserve the complete 03-22 tree.
+  # A warm reboot does not reset the PEX88096 board, and firmware can leave its
+  # bridge bus-number registers cleared on the next hand-off.  When Linux has
+  # already discovered the complete topology, put the exact retained hierarchy
+  # back before udev or the explicit initrd module list can bind amdgpu/mlx5_core.
+  boot.initrd.systemd.storePaths = lib.optionals (netboot && index == 2) [
+    "${pkgs.pciutils}/bin/setpci"
+  ];
+  boot.initrd.systemd.services.strix2-pex-bus-restore = lib.mkIf (netboot && index == 2) {
+    description = "Restore Strix-2 PEX88096 bridge routing";
+    wantedBy = ["initrd.target"];
+    before = [
+      "systemd-modules-load.service"
+      "systemd-udev-trigger.service"
+    ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -eu
+      setpci=${pkgs.pciutils}/bin/setpci
+
+      # Restoring 03-22 is safe only when firmware/Linux already reserved that
+      # complete range for GPP5.  If the firmware setting is lost, a genuine
+      # PEX-board power cycle reserves only 03-06 and assigns 07 onward to other
+      # root ports; expanding the switch in that layout would alias the CX5,
+      # iGPU, NPU, and USB4 buses.  In that case leave the machine usable and
+      # report the insufficient reservation instead.
+      root_buses="$($setpci -s 00:02.5 18.L 2>/dev/null || true)"
+      if [ "$root_buses" != 00220300 ]; then
+        echo "PEX root port has buses $root_buses, not reserved 03-22; skipping unsafe restore"
+        exit 0
+      fi
+
+      cached_endpoint() {
+        endpoint="$1"
+        expected_vendor="$2"
+        vendor_path="/sys/bus/pci/devices/0000:$endpoint/vendor"
+        [ -r "$vendor_path" ] || return 1
+        IFS= read -r cached_vendor < "$vendor_path"
+        [ "$cached_vendor" = "$expected_vendor" ]
+      }
+
+      if ! cached_endpoint 0a:00.0 0x15b3 \
+        || ! cached_endpoint 0f:00.0 0x1002 \
+        || ! cached_endpoint 12:00.0 0x1002 \
+        || ! cached_endpoint 17:00.0 0x1002 \
+        || ! cached_endpoint 1d:00.0 0x1002; then
+        echo "complete cached V620/BlueField topology is absent; skipping bus restore"
+        exit 0
+      fi
+
+      # The root port itself remains configured and makes 03:00.0 reachable;
+      # each restored parent then exposes the next level of the hierarchy.
+      if [ "$($setpci -s 03:00.0 0.W 2>/dev/null || true)" != 1000 ]; then
+        echo "PEX88096 upstream bridge is absent; skipping bus restore"
+        exit 0
+      fi
+
+      restore_bridge() {
+        pex_bdf="$1"
+        pex_buses="$2"
+        $setpci -s "$pex_bdf" 18.L="$pex_buses"
+        $setpci -s "$pex_bdf" COMMAND=0007
+      }
+
+      restore_bridge 03:00.0 00220403
+      restore_bridge 04:00.0 000a0504
+      restore_bridge 04:04.0 00120b04
+      restore_bridge 04:08.0 001d1304
+      restore_bridge 04:0c.0 00211e04
+      restore_bridge 04:1c.0 00222204
+      restore_bridge 05:00.0 000a0605
+      restore_bridge 06:04.0 00070706
+      restore_bridge 06:08.0 00080806
+      restore_bridge 06:0c.0 00090906
+      restore_bridge 06:10.0 000a0a06
+      restore_bridge 0b:00.0 00120c0b
+      restore_bridge 0c:00.0 000f0d0c
+      restore_bridge 0c:10.0 0012100c
+      restore_bridge 0d:00.0 000f0e0d
+      restore_bridge 0e:00.0 000f0f0e
+      restore_bridge 10:00.0 00121110
+      restore_bridge 11:00.0 00121211
+      restore_bridge 13:00.0 001d1413
+      restore_bridge 14:00.0 00171514
+      restore_bridge 14:04.0 00181814
+      restore_bridge 14:08.0 00191914
+      restore_bridge 14:0c.0 001a1a14
+      restore_bridge 14:10.0 001d1b14
+      restore_bridge 15:00.0 00171615
+      restore_bridge 16:00.0 00171716
+      restore_bridge 1b:00.0 001d1c1b
+      restore_bridge 1c:00.0 001d1d1c
+      restore_bridge 1e:00.0 00211f1e
+      restore_bridge 1f:14.0 0020201f
+      restore_bridge 1f:15.0 0021211f
+
+      for endpoint in 0a:00.0 0f:00.0 12:00.0 17:00.0 1d:00.0; do
+        vendor="$($setpci -s "$endpoint" 0.W 2>/dev/null || true)"
+        if [ "$vendor" = ffff ] || [ -z "$vendor" ]; then
+          echo "PEX endpoint $endpoint is still inaccessible after bus restore" >&2
+          exit 1
+        fi
+      done
+    '';
+  };
 
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
@@ -210,20 +449,22 @@ in
 
   # RouterOS 7.23.2 and the HELLAS HQSFP56-200G-C1M DACs fail 100G
   # autonegotiation. Match the CRS804's forced 100G CR4 configuration after
-  # every boot or PCI reset. Select the PF by inventory MAC: both ports are
-  # visible but only one is cabled.
-  # A diskless host has already proved its selected CX5 rail is trained by
-  # downloading iPXE, the kernel, and the initrd across it, and running mlxlink
-  # in stage 2 would reset the adapter under its live NFS root. Hence forced
-  # retraining only on local-disk boots, never on a netboot host after the
-  # initrd handoff.
+  # every boot or PCI reset. Select each cabled PF by inventory MAC: numeric
+  # mlx5 names are PCI-enumeration accidents, and unused functions are visible.
+  # A diskless host may have downloaded iPXE, the kernel, and the initrd across
+  # the selected CX5 rail, and running mlxlink on that adapter in stage 2 would
+  # reset it under its live NFS root. Hence primary retraining normally occurs
+  # only on local-disk boots. A per-host inventory flag permits it when the
+  # netboot root is known to use an independent NIC; secondary rails remain
+  # independently safe to train on enabled netboot hosts.
   #
   # 2026-07-30: this previously warned that the reset also drops "the sibling
   # PF" on the SharedIO adapter. That no longer applies -- multi-host was
   # disabled in the NIC firmware, so each node's card is its own and forcing
   # one node's link cannot affect another's.
-  systemd.services.cx5-fabric-link = lib.mkIf (enableCx5Fabric && !netboot) {
-    description = "Force the CRS804 fabric link to 100 GbE";
+  systemd.services.cx5-fabric-link =
+    lib.mkIf (enableCx5Fabric && (!netboot || (self.strix.forcePrimaryFabricLink or false))) {
+    description = "Force the primary CRS804 fabric link to 100 GbE";
     wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
     wantedBy = [ "network-online.target" ];
     before = [ "network-online.target" ];
@@ -233,34 +474,25 @@ in
       Type = "oneshot";
       RemainAfterExit = true;
     };
-    script = ''
-      target_mac=${lib.escapeShellArg self.strix.cx5FabricMac}
-      nic_path=
+    script = cx5FabricLinkScript self.strix.cx5FabricMac;
+  };
 
-      for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
-        for candidate in /sys/class/net/*; do
-          [ -r "$candidate/address" ] || continue
-          if [ "$(${pkgs.coreutils}/bin/cat "$candidate/address")" = "$target_mac" ]; then
-            nic_path="$candidate"
-            break 2
-          fi
-        done
-        ${pkgs.coreutils}/bin/sleep 1
-      done
-
-      if [ -z "$nic_path" ]; then
-        echo "fabric NIC with permanent MAC $target_mac did not appear" >&2
-        exit 1
-      fi
-
-      pci_path=$(${pkgs.coreutils}/bin/readlink -f "$nic_path/device")
-      pci_address="''${pci_path##*/}"
-      exec ${pkgs.mlnx-mft}/bin/mlxlink \
-        -d "$pci_address" \
-        -s ${cx5ForcedSpeed} \
-        --link_mode_force \
-        --yes
-    '';
+  # Rail 2 is independent of the primary/NFS rail, so it must not inherit the
+  # primary service's !netboot exclusion.  It has its own exact MAC selector
+  # and unit, so strix-2's local boot never double-runs the secondary PF and
+  # strix-3 (which has no secondary inventory/address) emits no unit at all.
+  systemd.services.cx5-fabric2-link = lib.mkIf enableCx5Fabric2 {
+    description = "Force the secondary CRS804 fabric link to 100 GbE";
+    wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
+    wantedBy = [ "network-online.target" ];
+    before = [ "network-online.target" ];
+    after = [ "systemd-udevd.service" ]
+      ++ lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = cx5FabricLinkScript self.strix.cx5Fabric2Mac;
   };
 
   # Clear PCIe ACS P2P-redirect on the Broadcom PEX880xx switch bridges so
@@ -320,6 +552,30 @@ in
     options = [ "umask=0077" ];
   });
 
+  # A netboot node owns no store to collect, and running the collector there is
+  # actively destructive rather than merely useless. /nix/store is an overlay
+  # whose lower layer is trex's read-only NFS store and whose upper layer is a
+  # small tmpfs. nix-gc walks the merged view, decides almost everything is
+  # garbage, and "deletes" it the only way overlayfs permits: by writing whiteout
+  # character devices into the tmpfs upper. The real files stay perfectly intact
+  # underneath, but the merged view hides them.
+  #
+  # 2026-08-24: observed on three of four nodes at once -- ~71,000 of 75,210
+  # paths masked on strix-1, strix-3 and strix-4 after the weekly timer fired.
+  # The symptom does not look like storage at all: binaries and Python modules
+  # vanish with `No such file or directory` / `ModuleNotFoundError` for paths
+  # that demonstrably exist in /nix/.ro-store, which cost two separate agents
+  # real debugging time before the cause was found.
+  #
+  # Recovery, if this ever recurs, is additive and safe -- delete only the
+  # whiteouts (`-type c`), never the real directories a node may legitimately
+  # have built into its upper layer, then drop the cached negative dentries:
+  #   find /nix/.rw-store/store -mindepth 1 -maxdepth 1 -type c -delete
+  #   echo 2 > /proc/sys/vm/drop_caches
+  #
+  # Locally-booting nodes keep the profile default: they own a real store.
+  nix.gc.automatic = lib.mkIf netboot (lib.mkForce false);
+
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-gpu-amd
@@ -335,6 +591,11 @@ in
 
     ../../../profiles/thunderbolt-bridge.nix
 
+    # Bench SMBus master for the PEX880xx boards' SMBUS header, over a CH341A
+    # USB dongle. Inert with nothing plugged in; see the profile for why it is
+    # not keyed on a per-host flag.
+    ../../../profiles/ch341-i2c.nix
+
     inputs.disko.nixosModules.disko
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
@@ -345,9 +606,12 @@ in
     inputs.nix-strix-halo.nixosModules.amduprof
     inputs.nix-strix-halo.nixosModules.smu-exporter
     inputs.nix-strix-halo.nixosModules.npu-exporter
+    (inputs.nix-strix-halo-multikernel + "/modules/multikernel.nix")
 
     ../../../profiles/amd-npu.nix
   ]) ++ [
+    (import ./ds4-serve.nix index)
+    (import ./qwen38-v620-serve.nix index)
     (if netboot
     then ../../../profiles/netboot-client.nix
     else ../../../profiles/uefi-boot.nix)
@@ -432,7 +696,7 @@ in
     offset = -10;
     mqtt = {
       enable = true;
-      host = network.routerIp;
+      host = network.controlPlaneIp;
       username = "rw";
       passwordFile = config.sops.secrets.mosquitto-password.path;
     };
@@ -586,6 +850,7 @@ in
       pkgs.iproute2
       pkgs.kmod
       pkgs.nvme-cli
+      pkgs.util-linux
     ];
     serviceConfig = {
       Type = "oneshot";
@@ -656,6 +921,7 @@ in
           --traddr="$target" \
           --trsvcid=4420 \
           --nqn=${lib.escapeShellArg modelsStorage.modelsNqn} \
+          --tos=${toString (config.sconfig.roceQos.dscp * 4 + 2)} \
           --host-traddr="$host"
       }
 
@@ -677,6 +943,28 @@ in
         [ -w "$subsystem/iopolicy" ] || continue
         echo round-robin >"$subsystem/iopolicy"
       done
+
+      # safetensors loads large checkpoints through mmap. The kernel default
+      # 256 KiB read-ahead starves this NVMe/RDMA controller (127 I/O queues,
+      # 128 KiB max requests): H3 transformer shards measured ~61 MiB/s and
+      # ~100 s each. A 16 MiB window reduced subsequent shard loads to ~28 s.
+      # blockdev takes 512-byte sectors, hence 32768 sectors = 16 MiB.
+      # nvme connect returns before udev necessarily creates the stable
+      # nvme-uuid symlink used by the mount. Wait briefly for that exact
+      # namespace rather than silently leaving the kernel's tiny default.
+      read_ahead_device=${lib.escapeShellArg modelsDevice}
+      for attempt in $(seq 1 100); do
+        [ -b "$read_ahead_device" ] && break
+        sleep 0.1
+      done
+
+      if [ -b "$read_ahead_device" ]; then
+        blockdev --setra 32768 "$read_ahead_device" \
+          || echo "could not raise models read-ahead; continuing" >&2
+      else
+        echo "models namespace is connected but $read_ahead_device is not ready;" >&2
+        echo "skipping read-ahead tuning" >&2
+      fi
     '';
     preStop = ''
       nvme disconnect --nqn=${modelsStorage.modelsNqn} || true
@@ -873,6 +1161,17 @@ in
     "net.core.busy_poll" = 100;
     "net.ipv4.tcp_low_latency" = 1;
     "net.ipv4.tcp_fastopen" = 3;
+    # The first and second CX5 rails share the fabric L2 domain, and the LAN can
+    # also see some of its broadcasts. Linux's default weak-host ARP behaviour
+    # therefore made every strix-1 interface answer for 192.168.25.101: peers
+    # observed the correct CX5 MAC, the second-rail CX5 MAC, and eno1's Realtek
+    # MAC in response to one request. Whichever reply won poisoned the RoCE
+    # neighbour and wedged RCCL init. Answer only on the interface that owns the
+    # target address, and never advertise a source from another interface.
+    "net.ipv4.conf.all.arp_ignore" = 1;
+    "net.ipv4.conf.default.arp_ignore" = 1;
+    "net.ipv4.conf.all.arp_announce" = 2;
+    "net.ipv4.conf.default.arp_announce" = 2;
     # Allow intermediate nodes to forward TP control-plane packets between
     # strix machines that are not directly Thunderbolt-connected.
     "net.ipv4.ip_forward" = 1;
@@ -907,13 +1206,33 @@ in
           # alias and permanent Linux identity describe the one cabled rail.
           "00-netboot-lan" = {
             matchConfig.PermanentMACAddress = self.netbootLinuxMac or self.netbootMac;
-            linkConfig.Name = "eno1";
+            linkConfig = {
+              Name = "eno1";
+              # r8169 defaults the RTL8125 back to disabled unless userspace
+              # requests magic-packet wake for the final Linux link
+              # configuration.  This was long applied to strix-3 alone, which
+              # left the other three unarmed after any clean shutdown: on
+              # 2026-08-21 strix-1 missed the cluster power-on and could not be
+              # woken remotely, needing a physical button press.  Verified then
+              # with `ethtool eno1`: strix-3 reported "Wake-on: g", strix-2 and
+              # strix-4 "Wake-on: d".  Firmware WOL must also be enabled in each
+              # board's BIOS (Advanced -> Wake On LAN) for this to take effect.
+              WakeOnLan = "magic";
+            };
           };
         }
         // lib.optionalAttrs (enableSharedCx5 && !netbootSharesFabric) {
           "10-cx5-fabric" = {
             matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
             linkConfig.Name = vllmFabricInterface;
+          };
+        }
+        // lib.optionalAttrs enableCx5Fabric2 {
+          # Match the inventory MAC, never mlx5_N: PCI enumeration changes
+          # across boots and between otherwise similar hosts.
+          "11-cx5-fabric2" = {
+            matchConfig.PermanentMACAddress = self.strix.cx5Fabric2Mac;
+            linkConfig.Name = vllmFabric2Interface;
           };
         };
       networks = {
@@ -925,7 +1244,7 @@ in
             (network.cidrOf "fabric" self.addresses.fabric)
           ];
           gateway = [ network.routerIp ];
-          dns = [ network.routerIp ];
+          dns = [ network.dnsIp ];
           networkConfig = {
             DHCP = "no";
             IPv6AcceptRA = true;
@@ -949,6 +1268,24 @@ in
         "15-cx5-fabric" = {
           matchConfig.Name = vllmFabricInterface;
           address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
+          networkConfig = {
+            DHCP = "no";
+            IPv6AcceptRA = false;
+            LinkLocalAddressing = "no";
+            ConfigureWithoutCarrier = true;
+          };
+          linkConfig = {
+            MTUBytes = "9000";
+            RequiredForOnline = "no";
+          };
+        };
+
+        # Rail 2 is a separate 192.168.26.0/24 L3 subnet over the existing
+        # untagged fabric VLAN-25 L2. Its filename sorts before the broad mlx5
+        # rule below, so systemd-networkd cannot leave it unaddressed.
+        "15-cx5-fabric2" = lib.mkIf enableCx5Fabric2 {
+          matchConfig.Name = vllmFabric2Interface;
+          address = [ (network.cidrOf "fabric2" self.addresses.fabric2) ];
           networkConfig = {
             DHCP = "no";
             IPv6AcceptRA = false;

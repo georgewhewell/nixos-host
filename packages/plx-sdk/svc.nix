@@ -15,7 +15,22 @@ stdenv.mkDerivation {
 
   hardeningDisable = ["pic"];
   nativeBuildInputs = kernel.moduleBuildDependencies;
-  patches = [./plx-svc-linux-7.2.patch];
+  patches = [
+    ./plx-svc-linux-7.2.patch
+    ./plx-svc-passive-discovery.patch
+  ];
+
+  postPatch = ''
+    discovery_function="$NIX_BUILD_TOP/plxsvc-discovery-function.c"
+    sed -n '/^PlxDeviceListBuild(/,/^}/p' \
+      Driver/Source.PlxSvc/SuppFunc.c > "$discovery_function"
+    test -s "$discovery_function"
+    if grep -Eq 'PLX_PCI_REG_WRITE|pci_write_config' \
+        "$discovery_function"; then
+      echo "PlxSvc discovery must not write PCI configuration" >&2
+      exit 1
+    fi
+  '';
 
   buildPhase = ''
     runHook preBuild

@@ -23,10 +23,11 @@
   #      swap namespaces while any controller is connected -- SPDK 26.01
   #      SEGVs on a live swap (twice, 2026-07-31) -- so if clients are
   #      attached it drops the listener and logs "swap pending".
-  #   3. Bounce the clients: reboot strix-1/3/4 (netboot picks up images with
-  #      the new pin automatically -- trex's closure builds them) and
-  #      `colmena apply switch` + `systemctl restart nvme-trex-models` on the
-  #      local-disk hosts (strix-2, fuckup).
+  #   3. Drain every controller: unmount /models and stop nvme-trex-models on
+  #      strix-1/2/3/4, and unmount /mnt/trex-models plus stop the same unit on
+  #      fuckup. All four Strix machines now netboot; trex's closure builds and
+  #      serves their new images. Reboot all four after the namespace swaps,
+  #      then restart/remount the local-disk fuckup client.
   #   4. Within a minute of the last controller dropping, the retry timer
   #      completes the swap and re-adds the listener; rebooted clients mount
   #      the new snapshot by its UUID. Verify with
@@ -63,8 +64,8 @@
   # remains the hard backstop. Note ublk does NOT propagate a live lvol
   # resize: growing requires umount + ublk stop/start + xfs_growfs.
   modelsSnapshot = {
-    name = "models-20260731-172720";
-    uuid = "29e791a0-26e8-43a3-a0d3-5743d79c9a8f";
+    name = "models-20260826-004351";
+    uuid = "377c424f-3010-48dd-92fa-9c73092228db";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.

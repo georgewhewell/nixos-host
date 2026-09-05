@@ -128,6 +128,19 @@
     mode = "0400";
   };
 
+  # Bambu Lab LAN access code (router)
+  # Authenticates go2rtc's chamber-camera bridge to the A1 mini on TLS :6000.
+  # Printed on the printer itself (Settings -> WLAN), so it changes only if the
+  # printer is reset or the code is regenerated from its screen.
+  bambu-access-code = {
+    sopsFile = ./home-automation.yaml;
+    key = "bambu-access-code";
+    path = "/run/secrets/bambu-access-code";
+    owner = "go2rtc";
+    group = "go2rtc";
+    mode = "0400";
+  };
+
   # Home Assistant Prometheus token (trex - for victoriametrics scraping)
   hass-prometheus-token = {
     sopsFile = ./monitoring.yaml;
@@ -155,6 +168,32 @@
     mode = "0400";
   };
 
+  # Control-only backup WAN hosted by the old iPhone on k3's WiFi NIC.
+  iphone-hotspot-password = {
+    sopsFile = ./iphone-hotspot.yaml;
+    key = "iphone-hotspot-password";
+    path = "/run/secrets/iphone-hotspot-password";
+    mode = "0400";
+  };
+
+  # Rescue tunnel identity (k3 -> ax102). k3 is the only holder; the matching
+  # public key and ax102's own key live in network.nix `rescue`, which is not
+  # secret. wireguard-wg-rescue.service reads these before the network is up,
+  # so they must land in /run/secrets rather than a user-owned path.
+  wg-rescue-k3-key = {
+    sopsFile = ./wireguard-rescue.yaml;
+    key = "wg-rescue-k3-key";
+    path = "/run/secrets/wg-rescue-k3-key";
+    mode = "0400";
+  };
+
+  wg-rescue-psk = {
+    sopsFile = ./wireguard-rescue.yaml;
+    key = "wg-rescue-psk";
+    path = "/run/secrets/wg-rescue-psk";
+    mode = "0400";
+  };
+
   # 802.11r Fast-Transition key-holder secret. Shared between the router/rock-5b
   # hostapd AP and the OpenWrt UniFi AC-Pro so clients can fast-roam (FT-SAE)
   # between them. Same value must be configured on both APs.
@@ -162,15 +201,6 @@
     sopsFile = ./wifi.yaml;
     key = "wifi-ft-key";
     path = "/run/secrets/wifi-ft-key";
-    mode = "0400";
-  };
-
-  # Hugging Face token (trex + fuckup)
-  # Used by hellas executor for gated model downloads
-  hf-token = {
-    sopsFile = ./hellas.yaml;
-    key = "hf-token";
-    path = "/run/secrets/hf-token";
     mode = "0400";
   };
 
@@ -193,6 +223,28 @@
     sopsFile = ./hellas.yaml;
     key = "kimi-web-password";
     path = "/run/secrets/kimi-web-password";
+    mode = "0400";
+  };
+
+  # dsh-web HTTP Basic credentials (trex)
+  # A full htpasswd line ("user:$2y$..."), consumed directly as nginx's
+  # basicAuthFile. dsh has no login of its own, so this is the only thing
+  # standing between the LAN and an agent that can run shell commands as grw.
+  dsh-web-htpasswd = {
+    sopsFile = ./hellas.yaml;
+    key = "dsh-web-htpasswd";
+    path = "/run/secrets/dsh-web-htpasswd";
+    owner = "nginx";
+    mode = "0400";
+  };
+
+  # DeepSeek API key (trex)
+  # Rendered into an EnvironmentFile as DEEPSEEK_API_KEY for dsh-web. Kept out
+  # of ~grw so the key is not readable by every process running as that user.
+  deepseek-api-key = {
+    sopsFile = ./hellas.yaml;
+    key = "deepseek-api-key";
+    path = "/run/secrets/deepseek-api-key";
     mode = "0400";
   };
 
@@ -247,6 +299,14 @@
     sopsFile = ./wireguard.yaml;
     key = "wg-home-macbook-pro-psk";
     path = "/run/secrets/wg-home-macbook-pro-psk";
+    mode = "0400";
+  };
+
+  # WireGuard PSK for macbook-air peer
+  wg-home-macbook-air-psk = {
+    sopsFile = ./wireguard.yaml;
+    key = "wg-home-macbook-air-psk";
+    path = "/run/secrets/wg-home-macbook-air-psk";
     mode = "0400";
   };
   # BeeGFS cluster shared connection secret (conn.auth). Same bytes on every

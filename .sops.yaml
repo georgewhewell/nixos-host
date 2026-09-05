@@ -102,6 +102,23 @@ creation_rules:
           - *grw_gpg
 
   # WiFi password - router and WiFi-enabled machines
+  - path_regex: secrets/iphone-hotspot\.yaml$
+    key_groups:
+      - age:
+          - *k3
+        pgp:
+          - *grw_gpg
+
+  # Rescue WireGuard tunnel: k3 dials out to ax102 so the LAN stays reachable
+  # when the ISP link, the BlueField gateway, or the .31 service host is down.
+  # k3 only -- no other host holds this identity.
+  - path_regex: secrets/wireguard-rescue\.yaml$
+    key_groups:
+      - age:
+          - *k3
+        pgp:
+          - *grw_gpg
+
   - path_regex: secrets/wifi\.yaml$
     key_groups:
       - age:

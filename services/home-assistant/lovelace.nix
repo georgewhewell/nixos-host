@@ -51,8 +51,10 @@
         entity = climate.humidity;
         name = "Humidity";
       })
+      # Resolve through areas.motionEntity so rooms with several sensors show
+      # the synthesized group rather than picking one member arbitrarily.
       ++ optional (motion != null) (sensorTile {
-        entity = motion.sensor;
+        entity = areas.motionEntity room;
         name = "Motion";
       })
       ++ optional (mediaPlayer != null) {

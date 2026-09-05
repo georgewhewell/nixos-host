@@ -34,9 +34,42 @@ in {
     }
   ];
 
+  # The service host no longer routes for the LAN, but it still terminates the
+  # home WireGuard tunnel.  Forwarding must therefore remain enabled for the
+  # two VPN interfaces; the early nftables guard below rejects every other
+  # transit path so .31 cannot accidentally become a second LAN gateway.
   boot.kernel.sysctl = {
-    "net.ipv4.ip_forward" = lib.mkForce false;
-    "net.ipv6.conf.all.forwarding" = lib.mkForce false;
+    "net.ipv4.ip_forward" = lib.mkForce true;
+    "net.ipv6.conf.all.forwarding" = lib.mkForce true;
+  };
+
+  networking.nftables.tables.router-service-forward-guard = {
+    family = "inet";
+    content = ''
+      # Profiles generated before the gateway handoff still name .1 as DNS.
+      # Redirect only home-VPN DNS to the service host; conntrack rewrites the
+      # reply source back to .1, so existing iOS/macOS profiles need no edit.
+      chain vpn_dns_compat {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        iifname "wg-home" ip daddr ${transition.controlPlane.currentGatewayIp} udp dport 53 counter dnat ip to ${serviceIp}:53
+        iifname "wg-home" ip daddr ${transition.controlPlane.currentGatewayIp} tcp dport 53 counter dnat ip to ${serviceIp}:53
+      }
+
+      chain forward {
+        type filter hook forward priority -10; policy accept;
+
+        iifname "wg-home" accept comment "home VPN may initiate LAN or full-tunnel traffic"
+        oifname "wg-home" ct state established,related accept comment "return traffic to home VPN"
+
+        # The later hydra-builders-guard table applies its narrower source,
+        # destination and port policy to traffic entering this tunnel.
+        iifname "wg-hydra-bld" accept comment "defer Hydra policy to its dedicated guard"
+        oifname "wg-hydra-bld" ct state established,related accept comment "return traffic to Hydra tunnel"
+
+        drop comment "service-only router must not forward other traffic"
+      }
+    '';
   };
 
   networking.nat.enable = lib.mkForce false;
@@ -67,6 +100,11 @@ in {
       address = lib.mkForce [
         "${serviceIp}/${toString network.vlans.lan.cidr}"
         "${serviceIpv6}/64"
+        # Control-plane rescue subnet. It has to be repeated here rather than
+        # only in profiles/router/linux.nix, because this mkForce replaces that
+        # list wholesale -- which is exactly how the address silently failed to
+        # appear on the first deploy of it.
+        (network.cidrOf "rescue" network.hosts.router.addresses.rescue)
       ];
       routes = lib.mkForce [
         {

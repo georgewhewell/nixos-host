@@ -9,7 +9,7 @@
 }:
 stdenvNoCC.mkDerivation {
   pname = "bios-setup-var";
-  version = "0.1.0";
+  version = "0.3.3";
 
   src = ./.;
 
@@ -19,6 +19,8 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
 
     install -Dm755 setup_var.py $out/bin/bios-setup-var
+    install -Dm444 faex9-1.04-known.json \
+      $out/share/bios-setup-var/faex9-1.04-known.json
     patchShebangs $out/bin/bios-setup-var
 
     # uefiextract + ifrextractor are the extraction backends; chattr (e2fsprogs)
@@ -26,7 +28,7 @@ stdenvNoCC.mkDerivation {
     wrapProgram $out/bin/bios-setup-var \
       --set UEFIEXTRACT ${uefitool}/bin/uefiextract \
       --set IFREXTRACTOR ${ifrextractor-rs}/bin/ifrextractor \
-      --prefix PATH : ${lib.makeBinPath [e2fsprogs]}
+      --prefix PATH : ${lib.makeBinPath [python3 e2fsprogs]}
 
     runHook postInstall
   '';

@@ -11,12 +11,14 @@ from llm_quota_exporter.providers.gemini import (
     Credentials,
     _parse_antigravity_credentials,
     _parse_legacy_credentials,
+    _parse_plan,
     _parse_summary,
 )
 from llm_quota_exporter.providers.grok import _parse_monthly, _parse_weekly
 from llm_quota_exporter.providers.kimi import _parse_usages
 from llm_quota_exporter.providers.openai_codex import _parse_credits
 from llm_quota_exporter.providers.openai_codex import _parse_usage as parse_codex
+from llm_quota_exporter.providers.deepseek import _parse_balance as parse_ds_balance
 from llm_quota_exporter.providers.openrouter import _parse_credits as parse_or_credits
 from llm_quota_exporter.providers.openrouter import _parse_key as parse_or_key
 
@@ -438,6 +440,33 @@ class TestGeminiCredentials:
         assert Credentials(None, time.time() + 3600, "r", "cid", "sec").usable_access_token() is None
 
 
+class TestGeminiPlan:
+    def test_paid_tier_wins_over_current_tier(self):
+        # The live account reads currentTier "free-tier" while holding a
+        # Google AI Pro subscription; reporting currentTier called a paying
+        # subscriber a free user.
+        response = {
+            "currentTier": {"id": "free-tier", "name": "Antigravity"},
+            "paidTier": {"id": "g1-pro-tier", "name": "Google AI Pro"},
+        }
+        assert _parse_plan(response) == ("pro", "g1-pro-tier")
+
+    def test_ultra(self):
+        assert _parse_plan({"paidTier": {"id": "g1-ultra-tier", "name": "Google AI Ultra"}}) == (
+            "ultra",
+            "g1-ultra-tier",
+        )
+
+    def test_no_subscription_falls_back_to_current_tier(self):
+        assert _parse_plan({"currentTier": {"id": "free-tier", "name": "Antigravity"}}) == (
+            "free",
+            "free-tier",
+        )
+
+    def test_absent(self):
+        assert _parse_plan({}) == (None, None)
+
+
 class TestJsonObject:
     """The json_object helper turns bad response bodies into clean errors."""
 
@@ -497,3 +526,71 @@ class TestCollectorDedup:
         # first value wins
         first = next(s for s in util.samples if s.labels["window"] == "seven_day")
         assert first.value == pytest.approx(0.5)
+
+
+class TestDeepSeek:
+    # Balances arrive as decimal *strings*, not numbers.
+    def test_granted_allowance_and_serviceable(self):
+        payload = {
+            "is_available": True,
+            "balance_infos": [
+                {
+                    "currency": "USD",
+                    "total_balance": "3.50",
+                    "granted_balance": "5.00",
+                    "topped_up_balance": "0.00",
+                }
+            ],
+        }
+        granted, serviceable = parse_ds_balance(payload)
+        assert (granted.window, granted.scope) == ("granted", "all")
+        assert granted.utilization == pytest.approx(0.3)
+        assert granted.used == pytest.approx(1.5)
+        assert granted.limit == pytest.approx(5.0)
+        assert (serviceable.window, serviceable.utilization) == ("serviceable", 0.0)
+
+    def test_exhausted_account_saturates_serviceable(self):
+        # The live symptom this exists to catch: every completion 402s.
+        payload = {
+            "is_available": False,
+            "balance_infos": [
+                {
+                    "currency": "USD",
+                    "total_balance": "0.00",
+                    "granted_balance": "0.00",
+                    "topped_up_balance": "0.00",
+                }
+            ],
+        }
+        (serviceable,) = parse_ds_balance(payload)
+        assert (serviceable.window, serviceable.utilization) == ("serviceable", 1.0)
+
+    def test_topped_up_balance_reports_no_granted_window(self):
+        # No ceiling to divide by, so a ratio would be invented.
+        payload = {
+            "is_available": True,
+            "balance_infos": [
+                {
+                    "currency": "USD",
+                    "total_balance": "42.00",
+                    "granted_balance": "0.00",
+                    "topped_up_balance": "42.00",
+                }
+            ],
+        }
+        assert [s.window for s in parse_ds_balance(payload)] == ["serviceable"]
+
+    def test_non_usd_account_falls_back_to_first_entry(self):
+        payload = {
+            "is_available": True,
+            "balance_infos": [
+                {"currency": "CNY", "total_balance": "8.00", "granted_balance": "10.00"}
+            ],
+        }
+        granted, _ = parse_ds_balance(payload)
+        assert granted.utilization == pytest.approx(0.2)
+
+    def test_empty_and_malformed(self):
+        assert parse_ds_balance({}) == []
+        assert parse_ds_balance({"balance_infos": []}) == []
+        assert parse_ds_balance({"balance_infos": "nope"}) == []

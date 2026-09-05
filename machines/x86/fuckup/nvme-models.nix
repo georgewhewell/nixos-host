@@ -47,14 +47,19 @@ in {
         exit 0
       fi
 
+      # Wait for the endpoint by ADDRESS, never by interface name. The VF's
+      # name follows whichever PF holds the fabric cable, and pinning a name
+      # here duplicated fabric-rdma-vf.nix's pfName/vfName -- when the cable
+      # moved to NIC port 2 on 2026-08-06 this copy went stale and the service
+      # reported "not configured" while the endpoint was in fact up.
       for _ in {1..100}; do
-        if ip -4 address show dev enp8s0f0v0 |
+        if ip -4 -oneline address show |
           grep -Fq "inet ${hostAddress}/"; then
           break
         fi
         sleep 0.1
       done
-      ip -4 address show dev enp8s0f0v0 |
+      ip -4 -oneline address show |
         grep -Fq "inet ${hostAddress}/" || {
           echo "RoCE endpoint ${hostAddress} is not configured" >&2
           exit 1

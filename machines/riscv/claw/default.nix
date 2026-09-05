@@ -2,14 +2,11 @@
 # expansion unit with the 240x240 ST7789 SPI LCD — USB-booted,
 # NFS-rooted fleet member hanging off fuckup's USB port.
 #
-# Same diskless model as licheerv, but even the store traffic rides the
-# USB gadget: each boot is pushed over USB by fuckup's usb-boot runner
-# (ROM USB-DL -> FIP -> fastboot FIT), the initrd mounts /nix/store
-# read-only over NFSv4 from fuckup's gadget address (10.55.0.2), and
-# stage 2 runs from that. There is no LAN path at all (nowifi DTB, no
-# RJ45 in play), so Colmena can only reach this node from fuckup itself
-# — 10.55.0.1 is the point-to-point link partner (lib/protocol.nix in
-# nixos-nanokvm).
+# Same diskless model as licheerv: each boot is pushed over USB by fuckup's
+# usb-boot runner (ROM USB-DL -> FIP -> fastboot FIT), then a one-shot WiFi
+# credential crosses that private USB control link. The initrd joins trusted
+# house WiFi and mounts /nix/store read-only from trex; USB remains available
+# only for control and recovery.
 #
 # Hardware/boot stack (kernel, DTB, initrd, NFS live root, LCD
 # self-test) comes from the nanokvm flake as a module, like licheerv —
@@ -18,10 +15,41 @@
 {
   inputs,
   lib,
+  network,
   pkgs,
   ...
 }:
 let
+  self = network.hosts.claw;
+  clawWifiAddress = network.cidrOf "wifi" self.addresses.wifi;
+  clawWifiIp = network.ipOf "wifi" self.addresses.wifi;
+  trexIp = network.primaryIp network.hosts.trex;
+  protocol = import "${inputs.nanokvm}/lib/protocol.nix";
+  runtimeWpaConf = "/run/sg2002-wpa_supplicant.conf";
+  wifiConfigReceiver = pkgs.writeText "claw-wifi-config-receiver" ''
+    set -eu
+
+    BB=${pkgs.busybox}/bin/busybox
+    target=${runtimeWpaConf}
+    incoming="''${target}.incoming"
+    trap '"$BB" rm -f "$incoming"' EXIT INT TERM
+
+    while :; do
+      "$BB" rm -f "$incoming"
+      if "$BB" nc -n -l -s ${protocol.targetIp} \
+          -p ${toString protocol.ports.wifiConfig} -w 300 > "$incoming"; then
+        bytes="$("$BB" wc -c < "$incoming")"
+        if [ "$bytes" -gt 0 ] && [ "$bytes" -le 8192 ] \
+            && "$BB" grep -q 'ssid=' "$incoming" \
+            && "$BB" grep -Eq '^[[:space:]]*(psk|sae_password)=' "$incoming"; then
+          "$BB" chmod 0600 "$incoming"
+          "$BB" mv "$incoming" "$target"
+          trap - EXIT INT TERM
+          exit 0
+        fi
+      fi
+    done
+  '';
   clawLcdStatus = pkgs.callPackage ../../../packages/claw-lcd-status { };
   waitForSpi = pkgs.writeShellScript "claw-lcd-wait-for-spi" ''
     for _ in $(${pkgs.coreutils}/bin/seq 1 100); do
@@ -55,6 +83,14 @@ in
 
   networking.hostName = "claw";
 
+  # This board has no usable RTC. The shared USB/NFS live profile keeps the
+  # fleet's normal resolver and time daemon enabled, so only order time sync
+  # behind the network here; timezone remains inherited from fleet-core.
+  systemd.services.systemd-timesyncd = {
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+  };
+
   # Local display: replace the board module's ST7789 self-test with the
   # fleet status dashboard — same spidev/GPIO interface, but LVGL renders
   # partial (dirty-area) frames instead of one static full-screen push.
@@ -74,13 +110,68 @@ in
     };
   };
 
-  # Use the board module's full-speed LCD DTB. The full-speed ECM function
-  # enumerates on fuckup but never completes a host-to-device bulk transfer:
-  # cdc_ether's TX queue times out before the initrd can mount NFS. NCM uses a
-  # different gadget/host framing path while retaining the conservative 12M
-  # PHY setting. The earlier failed NCM test used the experimental high-speed
-  # DWC2 path, so it did not exercise this combination.
-  sg2002.usbGadget.network.transport = lib.mkForce "ncm";
+  # USB carries only the stateless ROM/FIT handoff and this one-shot secret.
+  # The normal data plane is the onboard AIC8800 on trusted house WiFi; trex
+  # serves the read-only Nix store. The WPA3 credential is streamed over the private
+  # USB control link into /run, which survives switch-root, so it never enters
+  # the Nix store or the FIT image.
+  sg2002.bluetooth.enable = true;
+  sg2002.wifi = {
+    wpaConf = lib.mkForce null;
+    wpaConfRuntimePath = runtimeWpaConf;
+  };
+  nanokvm.nfsLive.server = lib.mkForce trexIp;
+  sg2002.watchdogKeeper.healthHost = lib.mkForce trexIp;
+
+  boot.initrd.systemd = {
+    storePaths = [ pkgs.busybox wifiConfigReceiver ];
+    services = {
+      claw-wifi-config = {
+        description = "Receive Claw WiFi config over the USB control link";
+        wantedBy = [ "initrd.target" ];
+        before = [ "wpa_supplicant-wlan0.service" ];
+        after = [ "usb-debug-network.service" ];
+        wants = [ "usb-debug-network.service" ];
+        unitConfig.DefaultDependencies = false;
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${pkgs.busybox}/bin/busybox sh ${wifiConfigReceiver}";
+        };
+      };
+      "wpa_supplicant-wlan0" = {
+        requires = [ "claw-wifi-config.service" ];
+        after = [ "claw-wifi-config.service" ];
+      };
+    };
+  };
+
+  boot.initrd.systemd.network.networks."40-wlan0" = {
+    matchConfig.Name = "wlan0";
+    address = lib.mkForce [ clawWifiAddress ];
+    dns = [ (network.gatewayIp "wifi") ];
+    routes = [ { Gateway = network.gatewayIp "wifi"; } ];
+    networkConfig = {
+      DHCP = lib.mkForce "no";
+      IPv6AcceptRA = false;
+      LinkLocalAddressing = "no";
+      KeepConfiguration = "static";
+    };
+    linkConfig.RequiredForOnline = "no";
+  };
+  systemd.network.networks."40-wlan0" = {
+    matchConfig.Name = "wlan0";
+    address = lib.mkForce [ clawWifiAddress ];
+    dns = [ (network.gatewayIp "wifi") ];
+    routes = [ { Gateway = network.gatewayIp "wifi"; } ];
+    networkConfig = {
+      DHCP = lib.mkForce "no";
+      IPv6AcceptRA = false;
+      LinkLocalAddressing = "no";
+      KeepConfiguration = "static";
+    };
+    linkConfig.RequiredForOnline = "no";
+  };
   # Prefetch stage-2 systemd's ELF dependencies while still in the initrd so
   # the switch-root transition needs less traffic from the USB-backed store.
   nanokvm.nfsLive.prefetchStage2Systemd = true;
@@ -154,13 +245,10 @@ in
   # boots (sg2002-watchdog-keeper.nix forces RuntimeWatchdogSec off — a
   # live NFS box that stalls on the network must not watchdog-loop).
 
-  # Cross-compiled on the x86_64 builder; the closure lands in fuckup's
-  # /nix/store, which the board already mounts over NFS — activation
-  # copies nothing to the 256 MB target. Reachable only from fuckup:
-  # 10.55.0.1 is the board end of the point-to-point USB-gadget link
-  # (protocol.targetIp in nixos-nanokvm's lib/protocol.nix).
+  # Cross-compiled on the x86_64 builder; trex GC-roots the closure exported
+  # to this diskless target.
   deployment = {
-    targetHost = lib.mkDefault "10.55.0.1";
+    targetHost = lib.mkDefault clawWifiIp;
     targetUser = "grw";
     buildOnTarget = false;
   };

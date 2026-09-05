@@ -41,7 +41,7 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
-    nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs";
+#    nix-ai-tools.inputs.nixpkgs.follows = "nixpkgs";
 
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
@@ -65,17 +65,31 @@
       inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel";
     };
 
+    atlas = {
+      # Pin the reviewed Atlas branch rather than copying pexctl source into
+      # this repository. Refresh this lock after the corresponding Atlas commit.
+      url = "git+file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok?ref=lane/20260813/f15-omp-grok&dir=packages/pexctl&shallow=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    hellas-ai-video = {
+      # Media-model runners are part of the diskless Strix closures. Pin the
+      # reviewed deployment ref so ignored renders, model data, local secrets,
+      # and the mutable git index never enter the flake source hash.
+      url = "git+file:///mnt/Home/src/hellas-ai-video?ref=codex/h3-deploy&shallow=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nix-strix-halo.follows = "nix-strix-halo";
+      # Deliberately NOT redirected to thunderbolt-ibverbs-kernel the way
+      # nix-strix-halo is above: this input needs the codex/apple-xdomain
+      # branch, which is the only one exporting overlays.rdma-core-usb4
+      # (nix/pkgs.nix:37 consumes it). The gda-v2-rebase tree builds that
+      # package but does not expose the overlay, so following it fails.
+    };
+
     thunderbolt-ibverbs-kernel = {
       url = "path:/mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.linux-src.follows = "linux-src";
-    };
-
-    atlas = {
-      # Consume the reviewed Atlas package flake. The lock file fixes the exact
-      # commit and content hash; source is no longer copied into this repo.
-      url = "git+file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok?ref=lane/20260813/f15-omp-grok&dir=packages/pexctl&shallow=1";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # NOTE: this flake pins its own nixpkgs fork (vitis-ai branch) because
@@ -95,7 +109,7 @@
       # flake source. Keep NanoKVM's tested nixpkgs pin as well: following the
       # Strix pin invalidates the cached RISC-V cross closure and rebuilds the
       # toolchain without changing the host integration contract.
-      url = "git+file:///mnt/Home/src/nixos-nanokvm?ref=master&shallow=1";
+      url = "git+file:///mnt/Home/src/nixos-nanokvm?shallow=1";
       inputs.disko.follows = "disko";
       inputs.impermanence.follows = "impermanence";
     };
@@ -494,7 +508,17 @@
       # the standalone esphome generator.
       network = import ./network.nix nixpkgs.lib;
 
-      nixosModules = builtins.removeAttrs moduleAttrs [ "xmrig-darwin" ];
+      # Darwin-only modules must be excluded here: everything left in
+      # moduleAttrs is imported into *every* NixOS host via nixosModule below,
+      # and a module that defines `launchd.*` fails evaluation on Linux where
+      # that option does not exist. An `stdenv.isDarwin` guard inside mkIf does
+      # not help — mkIf defers the value, not the option path. Darwin hosts pick
+      # these up by explicit path import instead (see darwin-configuration.nix
+      # for xmrig-darwin, mbp.nix for llama-server-darwin).
+      nixosModules = builtins.removeAttrs moduleAttrs [
+        "xmrig-darwin"
+        "llama-server-darwin"
+      ];
 
       nixosModule = {
         imports =
@@ -558,7 +582,6 @@
             nodeNixpkgs = {
               nanokvm = pkgsForNanokvm;
               licheerv = pkgsForNanokvm;
-              claw = pkgsForNanokvm;
               fuckup = pkgsForCuda "x86_64-linux";
               strix-1 = pkgsForRocmStrixHalo "x86_64-linux";
               strix-2 = pkgsForRocmStrixHalo "x86_64-linux";
@@ -607,7 +630,7 @@
         in
         (import ./packages pkgs)
         // {
-          # Stable package output backed by the pinned Atlas input.
+          # Public Atlas input is the sole maintained pexctl source.
           pexctl = inputs.atlas.packages.${system}.pexctl;
           # Keep `nix run .#colmena` on the same Colmena input that provides
           # `colmenaHive`; nixpkgs currently carries an older 0.4 CLI.
@@ -663,6 +686,7 @@
 
       darwinModules = {
         xmrig-darwin = moduleAttrs.xmrig-darwin;
+        llama-server-darwin = moduleAttrs.llama-server-darwin;
       };
 
       devShells = forAllSystems (system: {

@@ -19,38 +19,63 @@ let
   # /var — on these diskless nodes that is the tmpfs overlay, and filling it
   # has previously stale-handled the root.
   cacheDir = "/mnt/Home/services/qwen38/cache";
+  # Refuse to start if HIP ordinals 0-3 are not the four V620s. HIP orders
+  # GPUs by KFD topology node, and that ordering HAS shifted on this host
+  # (2026-08-24: a PCI rescan moved the iGPU from node 5 to node 1, so
+  # "devices 0-3" would have included the iGPU and collided with the DS4
+  # campaign). Check silicon identity, never PCI bus addresses: the PEX
+  # switch renumbers the bus between power events (0f/12/17/1d one boot,
+  # 4c/4f/54/57 the next), so a BDF pin fails on every re-enumeration even
+  # when the device set is perfectly sound.
   v620IdentityGuard = pkgs.writeShellScript "qwen38-v620-identity-guard" ''
     set -eu
 
-    for gpu_id in 0 1 2 3; do
-      case "$gpu_id" in
-        0) expected_bdf=0000:0f:00.0 ;;
-        1) expected_bdf=0000:12:00.0 ;;
-        2) expected_bdf=0000:17:00.0 ;;
-        3) expected_bdf=0000:1d:00.0 ;;
-      esac
+    # KFD GPU nodes (simd_count > 0) in node order = HIP ordinal order.
+    gpu_ids=$(
+      for n in /sys/class/kfd/kfd/topology/nodes/*; do
+        simd=$(${pkgs.gnugrep}/bin/grep -m1 '^simd_count' "$n/properties" | ${pkgs.gawk}/bin/awk '{print $2}')
+        [ "''${simd:-0}" -gt 0 ] || continue
+        ${pkgs.gnugrep}/bin/grep -m1 '^device_id' "$n/properties" | ${pkgs.gawk}/bin/awk '{print $2}'
+      done
+    )
 
-      pci_device="/sys/bus/pci/devices/$expected_bdf"
-      expected_path="$(${pkgs.coreutils}/bin/readlink -f "$pci_device" 2>/dev/null || true)"
-      visible_path="$(${pkgs.coreutils}/bin/readlink -f "/sys/class/drm/card$gpu_id/device" 2>/dev/null || true)"
-      vendor="$(${pkgs.coreutils}/bin/cat "$pci_device/vendor" 2>/dev/null || true)"
-      driver="$(${pkgs.coreutils}/bin/basename "$(${pkgs.coreutils}/bin/readlink -f "$pci_device/driver" 2>/dev/null || true)")"
-
-      if [ -z "$expected_path" ] \
-        || [ "$visible_path" != "$expected_path" ] \
-        || [ "$vendor" != 0x1002 ] \
-        || [ "$driver" != amdgpu ]; then
-        echo "HIP ordinal $gpu_id must be the AMD V620 at $expected_bdf; refusing to expose a shifted device set" >&2
-        exit 2
-      fi
-    done
+    # 0x73a1 = 29601 = Navi 21 GL-XL (Radeon Pro V620).
+    expected="29601
+    29601
+    29601
+    29601"
+    first_four=$(printf '%s\n' $gpu_ids | ${pkgs.coreutils}/bin/head -n4)
+    if [ "$(printf '%s\n' $first_four)" != "$(printf '%s\n' $expected)" ]; then
+      echo "HIP ordinals 0-3 must all be V620s (device_id 29601); got: $(printf '%s ' $gpu_ids). Refusing to expose a shifted device set" >&2
+      exit 2
+    fi
   '';
 in
 {
   # strix-2 (netboot) is the dedicated four-V620 serving host.
   systemd.services.qwen38-serve = lib.mkIf (netboot && index == 2) {
     description = "Serve Qwen3.8-27B with sglang on the four V620s (TP4)";
-    wantedBy = [ "multi-user.target" ];
+    # Also wanted by the mount itself: at boot the fabric link races
+    # nvme-trex-models, and a dependency-failed start job is never retried
+    # even after the mount appears (observed 2026-08-26 23:49 boot). The
+    # mount pulling the service closes that gap.
+    wantedBy = [
+      "multi-user.target"
+      "models.mount"
+    ];
+    # sglang's get_amdgpu_memory_capacity shells out to `rocm-smi | awk`, and
+    # its TVM-FFI JIT runs ninja, whose nixpkgs wrapper execs `sh` via PATH
+    # (strace-verified: it never tries the literal /bin/sh) and whose
+    # merge_objects rule invokes bare `ld`. A unit's minimal PATH has none of
+    # these and the server dies before or during its first JIT compile; the
+    # compilers themselves are absolute store paths in the sglang wrapper.
+    path = [
+      pkgs.bash
+      pkgs.gawk
+      pkgs.gnugrep
+      pkgs.coreutils
+      pkgs.binutils
+    ];
     # /models is trex's NVMe-oF snapshot, connected by nvme-trex-models and
     # mounted as models.mount (via RequiresMountsFor). The caches need the
     # NFS /mnt/Home, hence remote-fs.target.
@@ -107,8 +132,14 @@ in
         "triton"
         "--linear-attn-backend"
         "triton"
+        # The model's native max_position_embeddings (no rope scaling). This
+        # caps request length; the KV/mamba pools are still sized from free
+        # VRAM by --mem-fraction-static, so capacity, not this flag, bounds
+        # concurrent long contexts. Expect long cold TTFT near the limit
+        # (~35 s at 31K measured; the radix cache is what makes warm long
+        # prompts cheap).
         "--context-length"
-        "32768"
+        "262144"
         "--mem-fraction-static"
         "0.85"
         "--host"

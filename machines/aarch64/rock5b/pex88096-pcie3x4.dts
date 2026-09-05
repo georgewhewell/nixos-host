@@ -1,0 +1,49 @@
+// Give the Rock 5B x4 root port enough bus numbers and 32-bit PCI address
+// space for the PEX88096's own internal hierarchy.  No downstream endpoint
+// cards are present; the observed switch still consumes buses through 0x12,
+// a 16 MiB upstream management BAR, and a 1 MiB bridge window.
+//
+// Keep pcie3x2 disabled: it shares PCIe 3.0 lane/PHY resources with pcie3x4,
+// and enabling it would overlap this host's bus/RID range at 0x1000-0x1fff.
+
+/dts-v1/;
+/plugin/;
+
+/ {
+  compatible = "radxa,rock-5b", "rockchip,rk3588";
+
+  fragment@0 {
+    target = <&pcie3x4>;
+
+    __overlay__ {
+      #address-cells = <3>;
+      #size-cells = <2>;
+
+      // Buses 00-1f and their complete 8-bit devfn RID space.
+      bus-range = <0x00 0x1f>;
+      msi-map = <0x0000 &its1 0x0000 0x2000>;
+      iommu-map = <0x0000 &mmu600_pcie 0x0000 0x2000>;
+
+      // Preserve the 1 MiB I/O aperture. Split the original contiguous 1 GiB
+      // CPU window into 32 MiB of 32-bit non-prefetchable PCI space followed
+      // by 992 MiB of 64-bit non-prefetchable PCI space.
+      ranges = <0x01000000 0x00000000 0xf0100000
+                0x00000000 0xf0100000
+                0x00000000 0x00100000>,
+               <0x02000000 0x00000000 0x80000000
+                0x00000009 0x00000000
+                0x00000000 0x02000000>,
+               <0x03000000 0x00000009 0x02000000
+                0x00000009 0x02000000
+                0x00000000 0x3e000000>;
+    };
+  };
+
+  fragment@1 {
+    target = <&pcie3x2>;
+
+    __overlay__ {
+      status = "disabled";
+    };
+  };
+};

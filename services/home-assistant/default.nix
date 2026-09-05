@@ -44,6 +44,56 @@
       license = licenses.mit;
     };
   };
+
+  # Not in nixpkgs - of the ~107 packaged custom components the only
+  # 3D-printing one is elegoo_printer - so it is built from the upstream tag,
+  # the same shape as philipsSonicareBle above. Talks MQTT over TLS to the
+  # printer on :8883 for telemetry and control; the chamber camera is left to
+  # go2rtc (services/go2rtc.nix) because this integration's camera option opens
+  # a *permanent* connection to :6000 rather than one per viewer.
+  bambuLab = pkgs.buildHomeAssistantComponent rec {
+    owner = "greghesp";
+    domain = "bambu_lab";
+    version = "2.2.22";
+
+    src = pkgs.fetchFromGitHub {
+      inherit owner;
+      repo = "ha-bambulab";
+      tag = "v${version}";
+      hash = "sha256-JRJ+tfllDuMrtz+5VQL2l5nkhJQXRoNvsvFnrReSZHE=";
+    };
+
+    # Upstream commits a placeholder version and only stamps the real one into
+    # the manifest when its CI builds the release asset. The builder asserts
+    # that the manifest version matches, so restore it from the tag.
+    postPatch = ''
+      substituteInPlace custom_components/bambu_lab/manifest.json \
+        --replace-fail '"version": "0.0.0"' '"version": "${version}"'
+    '';
+
+    # beautifulsoup4 is the integration's only declared requirement; the rest
+    # are imports that happen to be satisfied by home-assistant's own closure
+    # and are named here so an upstream change cannot silently break them.
+    #
+    # cloudscraper and curl_cffi are deliberately absent. They exist only to
+    # get past Cloudflare when logging in to Bambu Cloud, both imports are
+    # already wrapped in try/except ImportError, and this printer is driven
+    # entirely over the LAN.
+    dependencies = with pkgs.home-assistant.python3Packages; [
+      aiofiles
+      beautifulsoup4
+      packaging
+      paho-mqtt
+      pillow
+      python-dateutil
+    ];
+
+    meta = with lib; {
+      description = "Home Assistant integration for Bambu Lab printers";
+      homepage = "https://github.com/greghesp/ha-bambulab";
+      license = licenses.mit;
+    };
+  };
 in {
   imports = [
     ./lights.nix
@@ -110,11 +160,13 @@ in {
       advanced-camera-card
       auto-entities
     ];
-    customComponents = with pkgs.home-assistant-custom-components; [
-      frigate
-      roborock_custom_map
-      tuya_local
-    ] ++ [philipsSonicareBle];
+    customComponents = with pkgs.home-assistant-custom-components;
+      [
+        frigate
+        roborock_custom_map
+        tuya_local
+      ]
+      ++ [philipsSonicareBle bambuLab];
     extraPackages = ps:
       with ps; [
         defusedxml

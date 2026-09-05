@@ -2,6 +2,7 @@
 
 from .anthropic import AnthropicProvider
 from .base import Provider
+from .deepseek import DeepSeekProvider
 from .gemini import GeminiProvider
 from .grok import GrokProvider
 from .kimi import KimiProvider
@@ -17,6 +18,7 @@ PROVIDERS: dict[str, type[Provider]] = {
         GrokProvider,
         KimiProvider,
         OpenRouterProvider,
+        DeepSeekProvider,
     )
 }
 

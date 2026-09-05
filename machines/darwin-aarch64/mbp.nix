@@ -1,13 +1,16 @@
 {
   pkgs,
   lib,
-  inputs,
   ...
-}: {
+}: let
+  # Weights live on mbp's own disk, not in the nix store.
+  modelDir = "/Users/grw/models/muse-glimmer-30b";
+in {
   imports = [
     ./darwin-configuration.nix
     ../../profiles/darwin-no-power-management.nix
     ../../services/hydra-builder-slave-darwin.nix
+    ../../modules/llama-server-darwin.nix
   ];
 
   networking.hostName = "mbp";
@@ -28,20 +31,21 @@
   # on MBP; normal applications remain available under Nix Apps.
   services.mac-app-util.enable = false;
 
-  home-manager.users.grw = {...}: {
-    imports = [
-      inputs.hellas.homeManagerModules.default
-    ];
+  home-manager.users.grw.targets.darwin.mac-app-util.enable = false;
 
-    targets.darwin.mac-app-util.enable = false;
-
-    programs.hellas = {
-      enable = true;
-      serve = {
-        enable = true;
-        port = 31145;
-      };
-    };
+  # Muse-Glimmer-30B served over the LAN from the M4 Max's 128 GB of unified
+  # memory. Full BF16 (~56 GiB of weights across two shards), so no quantisation
+  # loss at all; the DFlash sidecar is what keeps generation usable at that
+  # width. 128k is the model's own max_position_embeddings, and it is cheap
+  # here: only 13 of 52 layers are full-attention (the rest are
+  # sliding-window-2048), so the KV cache is ~1.8 GiB rather than tens of GiB.
+  sconfig.llama-server = {
+    enable = true;
+    alias = "muse-glimmer-30b";
+    modelPath = "${modelDir}/Muse-Glimmer-30B-BF16-00001-of-00002.gguf";
+    mmprojPath = "${modelDir}/mmproj-Muse-Glimmer-30B-BF16.gguf";
+    draftModelPath = "${modelDir}/dflash-kquant.gguf";
+    contextSize = 131072;
   };
 
   sconfig.xmrig = {

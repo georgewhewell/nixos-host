@@ -3,8 +3,8 @@
 # OTLP collector for the AI CLI tools (claude-code, grok, gemini, codex, ...).
 # Receives OTLP on :4317 (gRPC) / :4318 (HTTP) from anywhere on the LAN and
 # writes metrics into the local VictoriaMetrics for the home dashboards.
-# Agent telemetry lives here and only here; the hellas services keep their own
-# separate pipeline to the infra collector on ax102 (services.hellas.otel).
+# This is the fleet's local agent-telemetry pipeline; Hellas currently exposes
+# Prometheus metrics directly instead of exporting into this collector.
 {
   services.opentelemetry-collector = {
     enable = true;

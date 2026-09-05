@@ -58,6 +58,13 @@ in
 
   system.stateVersion = "25.05";
 
+  # Personal Codex quota is read from this host's live credential. Keeping
+  # the exporter beside the token avoids cloning a rotating OAuth credential.
+  services.llm-quota-exporter = {
+    enable = true;
+    providers = "openai";
+  };
+
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
 
@@ -66,14 +73,6 @@ in
     group = "root";
     mode = "0400";
   };
-
-  sops.secrets.hf-token = mkSecret "hf-token" { };
-  sops.templates."hellas-env".content = ''
-    HF_TOKEN=${config.sops.placeholder."hf-token"}
-  '';
-
-  systemd.services.hellas.serviceConfig.EnvironmentFile =
-    config.sops.templates."hellas-env".path;
 
   boot.tmp.useTmpfs = lib.mkForce false;
 
@@ -138,35 +137,6 @@ in
     '')
   ];
 
-  services.hellas = {
-    enable = true;
-    # package = inputs.hellas.packages.x86_64-linux.server-cuda;
-    openFirewall = true;
-    port = 31145;
-    executePolicy = [
-      "hf/lewtun/talkie-1930-13b-it-hf"
-      "hf/Qwen/Qwen3.5-0.8B"
-    ];
-    metricsPort = 9400;
-    # Placeholder assurance terms (mirrors nix/tests/e2e.nix) until the
-    # attested-execution plan drops these flags.
-    assuranceCodec = "tpm2.quote.v1";
-    assurancePolicy = "0000000000000000000000000000000000000000000000000000000000000000";
-    graffiti = "cuda12-sm89";
-    preloadWeights = [
-      "Qwen/Qwen3.5-0.8B"
-    ];
-    otel = {
-      endpoint = "https://jaeger.lsd-ag.ch/v1/traces";
-      serviceName = "executor-fuckup";
-      sampleRate = 1;
-      headers = {
-        CF-Access-Client-Id = "312310f4c9c50c2bf9ee7e801d92a9ed.access";
-        CF-Access-Client-Secret = "91bcfc62a1b4058b3c82b31560c146d7761b7cb1a507ff68b26d745d0650f6a8";
-      };
-    };
-  };
-
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
     common-gpu-amd
@@ -192,7 +162,6 @@ in
 
     inputs.nix-strix-halo.nixosModules.default
     inputs.nix-strix-halo.nixosModules.benchmark-runner
-    inputs.hellas.nixosModules.default
     # inputs.nix-strix-halo.nixosModules.tuning
 
     ./fabric-rdma-vf.nix
@@ -232,6 +201,19 @@ in
           --group MouseBindings \
           --key CommandAllKey Meta
       '';
+
+      systemd.user.services.qwen38-dense-tunnel = {
+        Unit = {
+          Description = "SSH tunnel to the Qwen3.8-27B vLLM Metal server on mbp";
+          After = [ "network-online.target" ];
+        };
+        Service = {
+          ExecStart = "${pkgs.openssh}/bin/ssh -N -o BatchMode=yes -o ControlMaster=no -o ControlPath=none -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -L 127.0.0.1:18150:127.0.0.1:11500 grw@${network.primaryIp network.hosts.mbp}";
+          Restart = "always";
+          RestartSec = 5;
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
     };
 
   networking.firewall.allowedTCPPorts = [ 8080 8081 ];
@@ -376,6 +358,10 @@ in
         enable = true;
         anyInterface = true;
       };
+      # The fabric PF's .link profile (rename + 10G thermal cap) lives in
+      # fabric-rdma-vf.nix as 10-cx4-fabric, matched by permanent MAC. Do not
+      # add another .link for that port here: udev applies only the first
+      # matching profile.
       netdevs = {
         "20-${lanBridge}" = {
           netdevConfig = {
@@ -389,9 +375,13 @@ in
         "10-bridge" = {
           matchConfig.Name = lanBridge;
           networkConfig.IPv6AcceptRA = true;
-          address = [ (network.cidrOf "lan" self.addresses.lan) ];
+          address = [
+            (network.cidrOf "lan" self.addresses.lan)
+            # Control-plane rescue subnet; see network.nix `vlans.rescue`.
+            (network.cidrOf "rescue" self.addresses.rescue)
+          ];
           gateway = [ network.routerIp ];
-          dns = [ network.routerIp ];
+          dns = [ network.dnsIp ];
         };
         "10-mlx5" = {
           matchConfig.Driver = "mlx5_core";
@@ -401,10 +391,9 @@ in
           };
           # Jumbo on the ConnectX PFs so the RoCE VF in fabric-rdma-vf.nix can
           # reach MTU 9000 -- a VF's MTU is capped by its PF's. This does not
-          # give br0.lan jumbo: a Linux bridge takes the minimum MTU of its
-          # ports and the igc/aquantia members stay at 1500, so LAN behaviour
-          # is unchanged (verified: br0.lan remained 1500 with both PFs at
-          # 9000, and the router stayed reachable at 0.078 ms).
+          # also give br0.lan jumbo on its own: a Linux bridge takes the
+          # minimum MTU of its ports, so every other member has to be raised
+          # too -- see the igc and Aquantia blocks below.
           linkConfig.MTUBytes = "9000";
           linkConfig.RequiredForOnline = "enslaved";
         };
@@ -414,7 +403,10 @@ in
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
           };
-          linkConfig.RequiredForOnline = "enslaved";
+          linkConfig = {
+            MTUBytes = "9000";
+            RequiredForOnline = "enslaved";
+          };
         };
         # enp10s0 has the long cable to the 400G switch management port,
         # which lands in the cluster MANAGEMENT LAN (23.x), not the fabric
@@ -428,14 +420,22 @@ in
           linkConfig.RequiredForOnline = false;
           linkConfig.ActivationPolicy = "down";
         };
-        # Keep the second Aquantia port on the LAN bridge as before.
+        # Keep the second Aquantia port on the LAN bridge as before, but at
+        # the same 9000 MTU as the ConnectX PFs. It is only a 2.5G fallback
+        # and has had no carrier since 2026-07-15, yet because a Linux bridge
+        # takes the minimum MTU of its ports, leaving it at 1500 silently
+        # pinned br0.lan -- and so every LAN flow, including the 25G path --
+        # to 1500 while the router and trex both ran 9000.
         "11-aquantia-lan" = {
           matchConfig.Name = "enp11s0";
           networkConfig = {
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
           };
-          linkConfig.RequiredForOnline = false;
+          linkConfig = {
+            MTUBytes = "9000";
+            RequiredForOnline = false;
+          };
         };
       };
     };

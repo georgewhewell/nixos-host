@@ -35,6 +35,10 @@ enum {
     /* 240 px x 40 rows x RGB565 per draw buffer, double buffered. */
     DRAW_BUF_ROWS = 40,
     DRAW_BUF_SIZE = LCD_WIDTH * DRAW_BUF_ROWS * 2,
+    /* spidev's default bufsiz is 4096 bytes. LVGL may flush all 40 draw
+     * rows at once (19,200 bytes), so keep each write below that kernel
+     * transfer ceiling while D/C remains in data mode. */
+    SPI_WRITE_CHUNK = 4096,
 };
 
 static volatile sig_atomic_t stopping;
@@ -128,7 +132,8 @@ static void write_all(int fd, const void *buffer, size_t length)
     const uint8_t *cursor = buffer;
 
     while (length > 0) {
-        ssize_t written = write(fd, cursor, length);
+        size_t chunk = length > SPI_WRITE_CHUNK ? SPI_WRITE_CHUNK : length;
+        ssize_t written = write(fd, cursor, chunk);
 
         if (written < 0) {
             if (errno == EINTR)

@@ -11,7 +11,11 @@
 #                 { name, entity, adaptive ? false, group ? null }
 #                 If `group` is a list of member entities, lights.nix will create a
 #                 `platform = "group"` light with `entity` as the resulting entity_id.
-#   motion      — { sensor, timeout ? 120, conditions ? [] } or null
+#   motion      — { sensor | sensors, timeout ? 120, conditions ? [] } or null
+#                 `sensor` is one entity; `sensors` is a list, which lights.nix
+#                 turns into a `platform = "group"` binary_sensor (on if any
+#                 member is on) because the motion_light blueprint takes a
+#                 single entity.
 #   climate     — { temperature?, humidity?, battery? } or null
 #   mediaPlayer — entity_id of a media player in the room, or null
 #   battery     — entity_id of an extra battery indicator (e.g. motion sensor), or null
@@ -21,6 +25,20 @@
   inherit (lib) attrValues concatLists concatMap filter mapAttrsToList optional optionals;
 
   georgeInBedEntity = "binary_sensor.withings_in_bed_george";
+
+  # Motion must never turn lights on overnight — a room that lights itself up
+  # at 3am is why bedroom motion was abandoned the first time round. Rooms opt
+  # in via `motion.conditions = daytimeOnly`. Manual control is unaffected:
+  # this gates the generated automation only, so a light switched on
+  # deliberately at night also stays on (the blueprint's no-motion-off timer
+  # is blocked by the same condition).
+  daytimeOnly = [
+    {
+      condition = "time";
+      after = "07:00:00";
+      before = "22:00:00";
+    }
+  ];
 
   # ── Rooms ────────────────────────────────────────────────────────────────
   rooms = {
@@ -39,9 +57,14 @@
           adaptive = true;
         }
       ];
-      # No bedroom motion sensor currently paired; original entity
-      # `binary_sensor.bedroom_motion_sensor_motion` doesn't exist in HA.
-      motion = null;
+      # HOBEIAN ZG-204ZV, paired 2026-08-09 — the first bedroom presence
+      # sensor since the original `binary_sensor.bedroom_motion_sensor_motion`
+      # vanished. Every motion automation is already gated on
+      # `georgeInBedEntity` being off, so this cannot wake the room at night.
+      motion = {
+        sensor = "binary_sensor.zg_204zv_03";
+        conditions = daytimeOnly;
+      };
       climate = {
         temperature = "sensor.bedroom_temperature_2";
         humidity = "sensor.bedroom_humidity_2";
@@ -66,8 +89,11 @@
         ];
         adaptive = true;
       }];
+      # HOBEIAN ZG-204ZV (mmWave presence), replacing the TRADFRI PIR that
+      # stopped reporting in May 2026. Same model as the living room's
+      # `binary_sensor.presence`.
       motion = {
-        sensor = "binary_sensor.office_3";
+        sensor = "binary_sensor.zg_204zv_01";
         timeout = 1800;
       };
       climate = {
@@ -75,7 +101,7 @@
         humidity = "sensor.sideboard_temp_humidity";
         battery = "sensor.sideboard_temp_battery";
       };
-      battery = "sensor.office_battery_3";
+      battery = "sensor.zg_204zv_01_battery";
     };
 
     livingRoom = {
@@ -85,9 +111,17 @@
         name = "All";
         entity = "light.living_room_lights";
         group = ["light.corner_light" "light.hue_iris" "light.esp32_c3_super_mini_2_my_light"];
+        # Adaptive so the overnight brightness ceiling in lights.nix reaches
+        # this room too; the cap only governs fixtures listed here.
+        adaptive = true;
       }];
+      # Two ZG-204ZV mmWave sensors covering different parts of the room;
+      # either one keeps the lights on.
       motion = {
-        sensor = "binary_sensor.presence";
+        sensors = [
+          "binary_sensor.presence"
+          "binary_sensor.zg_204zv_02"
+        ];
       };
       climate = {
         temperature = "sensor.presence_temperature";
@@ -209,6 +243,25 @@
   adaptiveLights =
     map (f: f.entity) (filter (f: f.adaptive or false) allFixtures);
 
+  # Rooms with several presence sensors get a synthesized group binary_sensor;
+  # HA derives its entity_id from the name, so keep the two in step.
+  motionGroupEntity = room:
+    "binary_sensor.${lib.toLower (builtins.replaceStrings [" "] ["_"] room.label)}_presence";
+
+  # The single entity a room's automation actually triggers on.
+  motionEntity = room:
+    if room.motion ? sensors
+    then motionGroupEntity room
+    else room.motion.sensor;
+
+  motionGroups =
+    mapAttrsToList
+    (_key: room: {
+      name = "${room.label} Presence";
+      entities = room.motion.sensors;
+    })
+    (lib.filterAttrs (_: r: r.motion != null && r.motion ? sensors) rooms);
+
   # Motion-light automations, derived from each room with `motion` set.
   motionAutomations =
     mapAttrsToList
@@ -217,7 +270,7 @@
       use_blueprint = {
         path = "homeassistant/motion_light.yaml";
         input = {
-          motion_entity = room.motion.sensor;
+          motion_entity = motionEntity room;
           light_target.area_id = "{{ area_id('${room.label}') }}";
           no_motion_wait = room.motion.timeout or 120;
         };
@@ -234,6 +287,6 @@
     })
     (lib.filterAttrs (_: r: r.motion != null) rooms);
 in {
-  inherit rooms mora cerberus miners georgeInBedEntity;
+  inherit rooms mora cerberus miners georgeInBedEntity motionGroups motionEntity;
   inherit allLightEntities lightGroups adaptiveLights motionAutomations;
 }
