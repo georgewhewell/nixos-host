@@ -26,6 +26,15 @@ keys:
 
   # Your GPG key for editing
   - &grw_gpg 4ED64FA5BBF73612035B86B20C414B6F2BA7BB19  # George Whewell
+  # New USB-C YubiKey (serial 29649078), provisioned 2026-09-05. The master for
+  # 4ED64FA5 is unrecoverable -- searched trex, fuckup, strix-1, the yoga and
+  # rock5b home backups and all four raw disk images; the only subkey material
+  # found anywhere was card stubs. So a new identity, not a moved one.
+  #
+  # BOTH keys are recipients. 4ED64FA5 stays until this one has been proven
+  # across a full deploy cycle: a re-key that locks you out of your own secrets
+  # is worse than the problem it solves.
+  - &grw_gpg_new 2CA3E8ADF4A11935CC7554069BA899CFBEE59D40  # George Whewell (yk5c)
 
 creation_rules:
   # Crypto services - trex and router (merge mining)
@@ -36,6 +45,7 @@ creation_rules:
           - *router
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # GitHub runners - trex only
   - path_regex: secrets/github-runners\.yaml$
@@ -44,6 +54,7 @@ creation_rules:
           - *trex
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # Media services (Arr stack) - trex only
   - path_regex: secrets/media\.yaml$
@@ -52,6 +63,7 @@ creation_rules:
           - *trex
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # ACME DNS-01 credentials (GCP ADC for internal-only certs) - trex only
   - path_regex: secrets/acme\.yaml$
@@ -60,6 +72,7 @@ creation_rules:
           - *trex
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # Monitoring (Grafana) - trex only
   - path_regex: secrets/monitoring\.yaml$
@@ -68,6 +81,7 @@ creation_rules:
           - *trex
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # Home automation (MQTT) - router + MQTT-controlled hosts
   - path_regex: secrets/home-automation\.yaml$
@@ -85,6 +99,7 @@ creation_rules:
           - *neo2
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # BeeGFS cluster connection auth - mgmtd on BlueField-2,
   # meta/storage/clients on trex and the strix nodes.
@@ -100,6 +115,7 @@ creation_rules:
           - *strix-4
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # WiFi password - router and WiFi-enabled machines
   - path_regex: secrets/iphone-hotspot\.yaml$
@@ -108,6 +124,7 @@ creation_rules:
           - *k3
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # Rescue WireGuard tunnel: k3 dials out to ax102 so the LAN stays reachable
   # when the ISP link, the BlueField gateway, or the .31 service host is down.
@@ -118,6 +135,7 @@ creation_rules:
           - *k3
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   - path_regex: secrets/wifi\.yaml$
     key_groups:
@@ -132,6 +150,7 @@ creation_rules:
           - *nanokvm
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # ESPHome device credentials (API/OTA/web auth) and shared substitutions.
   # Router decrypts these at activation to populate the ESPHome dashboard's
@@ -142,6 +161,7 @@ creation_rules:
           - *router
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # WireGuard VPN - router (server) and clients
   - path_regex: secrets/wireguard\.yaml$
@@ -150,6 +170,7 @@ creation_rules:
           - *router
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # Hellas executor secrets (HF_TOKEN) - trex + fuckup
   - path_regex: secrets/hellas\.yaml$
@@ -159,6 +180,7 @@ creation_rules:
           - *fuckup
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # nix-daemon path-signing key + nix-serve key. trex is the only signer;
   # other hosts trust the corresponding public key via nix.settings in
@@ -169,9 +191,11 @@ creation_rules:
           - *trex
         pgp:
           - *grw_gpg
+          - *grw_gpg_new
 
   # SSH host keys - GPG only (for bootstrapping new installs)
   - path_regex: secrets/ssh-host-keys\.yaml$
     key_groups:
       - pgp:
           - *grw_gpg
+          - *grw_gpg_new
