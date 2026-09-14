@@ -138,6 +138,121 @@ let
         --set OTEL_LOG_TOOL_DETAILS "false"
     '';
   };
+
+  # The set of long-lived, actually-used project roots under /mnt/Home/src
+  # that should come pre-trusted for every coding agent. Codex, Claude Code,
+  # and Grok Build all key directory trust by exact absolute path with no
+  # ancestor/parent inheritance (confirmed against openai/codex#19426 and
+  # each tool's own on-disk trust store), so a single "/mnt/Home/src" entry
+  # does not cover its children for those three -- each real project root
+  # has to be listed. /mnt/Home/src also holds hundreds of ephemeral
+  # scratch/worktree directories (a72-cpu8-*, etc.); those are deliberately
+  # NOT enumerated here, since a trust gate that auto-trusts throwaway
+  # checkouts isn't actually a trust gate. Codex's own interactive trust
+  # dialog remains available (and, after the config.toml fix below, actually
+  # persists) for anything not in this list. Kept in sync by hand with
+  # `programs.codex.settings.projects` below, which predates this list and
+  # additionally covers a few /home/grw/src paths outside this repo's remit.
+  agentTrustedDirs = [
+    "/mnt/Home/src"
+    "/mnt/Home/src/amd-strix-halo-vllm-toolboxes"
+    "/mnt/Home/src/ax35b-ec-dump"
+    "/mnt/Home/src/blog"
+    "/mnt/Home/src/btop"
+    "/mnt/Home/src/explorer"
+    "/mnt/Home/src/hellas"
+    "/mnt/Home/src/hellas-agents"
+    "/mnt/Home/src/hellas-ai-video"
+    "/mnt/Home/src/hellas-alto"
+    "/mnt/Home/src/hellas-esp32"
+    "/mnt/Home/src/hellas-extras/hellas-esp32"
+    "/mnt/Home/src/hellasbox"
+    "/mnt/Home/src/infra"
+    "/mnt/Home/src/nix-evals"
+    "/mnt/Home/src/nix-strix-halo"
+    "/mnt/Home/src/nixos-config"
+    "/mnt/Home/src/nixos-gemini"
+    "/mnt/Home/src/nixos-nanokvm"
+    "/mnt/Home/src/node"
+    "/mnt/Home/src/strix-inf"
+    "/mnt/Home/src/thunderbolt-ibverbs"
+    "/mnt/Home/src/thunderbolt-ibverbs-kernel-clean"
+  ];
+
+  # Codex's config.toml merge (home.activation.codexTrustedProjects below)
+  # and its former `programs.codex.settings` value are the same attrset;
+  # kept as one binding so the two can't drift.
+  codexSettings = {
+    model = "gpt-6-astra";
+    model_reasoning_effort = "medium";
+    approval_policy = "never";
+    features = {
+      terminal_resize_reflow = true;
+      context_management.experimental_mode = true;
+    };
+    tui = {
+      resume_cwd = "session";
+      model_availability_nux = {
+        "gpt-5.5" = 4;
+        "gpt-5.6-sol" = 4;
+        "gpt-6-astra" = 4;
+      };
+    };
+    notice.hide_rate_limit_model_nudge = true;
+    analytics.enabled = false;
+    otel = {
+      environment = "prod";
+      log_user_prompt = false;
+      metrics_exporter.otlp-http = {
+        endpoint = "http://trex:4318/v1/metrics";
+        protocol = "binary";
+      };
+    };
+    projects = lib.genAttrs
+      [
+        "/home/grw/src"
+        "/home/grw/src/george-admin"
+        "/home/grw/src/hellas-admin"
+        "/home/grw/src/nixos-nanokvm"
+        "/home/grw/src/nix-llamacpp-rocm"
+        "/home/grw/src/linux-libibverbs-usb4"
+        "/home/grw/src/hellas-esp32"
+        "/mnt/Home/src/hellas-ai-video"
+        "/mnt/Home/src/nixos-config"
+        "/mnt/Home/src/thunderbolt-ibverbs"
+        "/mnt/Home/src/node"
+        "/mnt/Home/src/nix-strix-halo"
+        "/mnt/Home/src/blog"
+        "/home/grw"
+        "/mnt/Home/src/infra"
+        "/mnt/Home/src/nixos-nanokvm"
+        "/mnt/Home/src/thunderbolt-ibverbs-kernel-clean"
+        "/mnt/Home/src"
+        "/mnt/Home/src/hellas-alto"
+        "/mnt/Home/src/nix-evals"
+        "/mnt/Home/src/amd-strix-halo-vllm-toolboxes"
+        "/mnt/Home/src/hellas-esp32"
+        "/tmp/nanokvm-checkout"
+        "/tmp/ds4-src"
+        "/mnt/Home/src/hellas"
+        "/mnt/Home/src/hellas-agents"
+        "/mnt/Home/src/ax35b-ec-dump"
+        "/mnt/Home/src/btop"
+        "/mnt/Home/src/explorer"
+        "/mnt/Home/src/strix-inf"
+        "/mnt/Home/pde"
+        "/mnt/Home/src/hellasbox"
+        "/mnt/Home/src/nixos-gemini"
+        "/mnt/Home/src/hellas-extras/hellas-esp32"
+      ]
+      (_: { trust_level = "trusted"; });
+  };
+
+  # Used by the codex/grok config.toml merge activation scripts below. Both
+  # tools' mutable trust state is TOML, and both need a read-merge-write that
+  # preserves keys the tool itself has written (e.g. trust decisions accepted
+  # interactively since the last rebuild) instead of clobbering the file.
+  python3WithTomlkit = pkgs.python3.withPackages (ps: [ ps.tomlkit ]);
 in
 {
   imports = [
@@ -170,75 +285,95 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
+  # NOTE: `settings` is deliberately left at its default ({ }), not set to
+  # `codexSettings`. The upstream module writes
+  # `programs.codex.settings` to `~/.codex/config.toml` via `home.file`,
+  # which home-manager materialises as a symlink into the read-only Nix
+  # store. Codex's own "do you trust this folder?" dialog persists its
+  # answer by rewriting that exact file (`config/batchWrite` in the
+  # app-server); against a store symlink that write fails outright:
+  #   Failed to set trust for <dir>: config/batchWrite failed in TUI:
+  #   failed to persist config.toml: failed to persist config at
+  #   /nix/store/...-codex-config (code -32603)
+  # so trust could never actually be saved, declared config or not. Instead,
+  # `home.activation.codexTrustedProjects` below owns config.toml directly as
+  # a real writable file and merges `codexSettings` into it, preserving
+  # anything Codex itself has since written (e.g. later interactive trust
+  # decisions for directories outside `codexSettings.projects`).
   programs.codex = {
     enable = true;
     package = codexCli;
-    settings = {
-      model = "gpt-6-astra";
-      model_reasoning_effort = "medium";
-      approval_policy = "never";
-      features = {
-        terminal_resize_reflow = true;
-        context_management.experimental_mode = true;
-      };
-      tui = {
-        resume_cwd = "session";
-        model_availability_nux = {
-          "gpt-5.5" = 4;
-          "gpt-5.6-sol" = 4;
-          "gpt-6-astra" = 4;
-        };
-      };
-      notice.hide_rate_limit_model_nudge = true;
-      analytics.enabled = false;
-      otel = {
-        environment = "prod";
-        log_user_prompt = false;
-        metrics_exporter.otlp-http = {
-          endpoint = "http://trex:4318/v1/metrics";
-          protocol = "binary";
-        };
-      };
-      projects = lib.genAttrs
-        [
-          "/home/grw/src"
-          "/home/grw/src/george-admin"
-          "/home/grw/src/hellas-admin"
-          "/home/grw/src/nixos-nanokvm"
-          "/home/grw/src/nix-llamacpp-rocm"
-          "/home/grw/src/linux-libibverbs-usb4"
-          "/home/grw/src/hellas-esp32"
-          "/mnt/Home/src/hellas-ai-video"
-          "/mnt/Home/src/nixos-config"
-          "/mnt/Home/src/thunderbolt-ibverbs"
-          "/mnt/Home/src/node"
-          "/mnt/Home/src/nix-strix-halo"
-          "/mnt/Home/src/blog"
-          "/home/grw"
-          "/mnt/Home/src/infra"
-          "/mnt/Home/src/nixos-nanokvm"
-          "/mnt/Home/src/thunderbolt-ibverbs-kernel-clean"
-          "/mnt/Home/src"
-          "/mnt/Home/src/hellas-alto"
-          "/mnt/Home/src/nix-evals"
-          "/mnt/Home/src/amd-strix-halo-vllm-toolboxes"
-          "/mnt/Home/src/hellas-esp32"
-          "/tmp/nanokvm-checkout"
-          "/tmp/ds4-src"
-          "/mnt/Home/src/hellas"
-          "/mnt/Home/src/hellas-agents"
-          "/mnt/Home/src/ax35b-ec-dump"
-          "/mnt/Home/src/btop"
-          "/mnt/Home/src/explorer"
-          "/mnt/Home/src/strix-inf"
-          "/mnt/Home/pde"
-          "/mnt/Home/src/hellasbox"
-          "/mnt/Home/src/nixos-gemini"
-          "/mnt/Home/src/hellas-extras/hellas-esp32"
-        ]
-        (_: { trust_level = "trusted"; });
-    };
   };
+
+  # Make ~/.codex/config.toml a real, writable file (see the note on
+  # `programs.codex` above) and merge `codexSettings` into it idempotently.
+  # `entryAfter [ "writeBoundary" ]` matches the existing
+  # `qwen38AgentModels` precedent: it runs after home-manager has linked (and
+  # cleaned up stale) home.file entries, so by the time this runs, home-manager
+  # will already have removed its own config.toml symlink now that
+  # `programs.codex.settings` is unset. The explicit store-symlink check below
+  # is a defensive belt-and-braces for the first activation after upgrading
+  # from an older generation, or if that ordering assumption ever changes.
+  home.activation.codexTrustedProjects = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    set -eu
+    codex_dir="$HOME/.codex"
+    codex_config="$codex_dir/config.toml"
+    ${pkgs.coreutils}/bin/mkdir -p "$codex_dir"
+
+    if [ -L "$codex_config" ]; then
+      link_target=$(${pkgs.coreutils}/bin/readlink -f "$codex_config" 2>/dev/null || true)
+      case "$link_target" in
+        /nix/store/*)
+          echo "codex: config.toml is a read-only store symlink, replacing with a writable copy" >&2
+          ${pkgs.coreutils}/bin/cat "$codex_config" > "$codex_config.rw" 2>/dev/null || : > "$codex_config.rw"
+          ${pkgs.coreutils}/bin/rm -f "$codex_config"
+          ${pkgs.coreutils}/bin/mv "$codex_config.rw" "$codex_config"
+          ;;
+      esac
+    fi
+    [ -e "$codex_config" ] || : > "$codex_config"
+
+    ${python3WithTomlkit}/bin/python3 - "$codex_config" <<'PYEOF' || echo "codex: config.toml merge failed, left the file untouched" >&2
+import json
+import os
+import sys
+from collections.abc import Mapping
+
+import tomlkit
+
+path = sys.argv[1]
+desired = json.loads(r'''${builtins.toJSON codexSettings}''')
+
+def merge(table, values):
+    for key, value in values.items():
+        if isinstance(value, dict):
+            existing = table.get(key)
+            if not isinstance(existing, Mapping):
+                existing = tomlkit.table()
+                table[key] = existing
+            merge(existing, value)
+        else:
+            table[key] = value
+
+try:
+    with open(path, "r", encoding="utf-8") as fh:
+        doc = tomlkit.parse(fh.read())
+except Exception as exc:  # malformed file: never block activation
+    print(f"codex: config.toml unreadable/invalid TOML ({exc}), leaving untouched", file=sys.stderr)
+    sys.exit(0)
+
+try:
+    merge(doc, desired)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(tomlkit.dumps(doc))
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, path)
+except Exception as exc:
+    print(f"codex: config.toml merge raised {exc}, leaving untouched", file=sys.stderr)
+    sys.exit(0)
+PYEOF
+  '';
 
   programs.claude-code = {
     enable = true;
@@ -281,6 +416,132 @@ in
       };
     };
   };
+
+  # Pre-trust `agentTrustedDirs` for Claude Code, Grok Build, and
+  # Gemini/Antigravity so none of them prompt "do you trust this folder?"
+  # the first time an agent is launched there. All three trust stores are
+  # real, tool-rewritten files (none of them home-manager symlinks), so this
+  # merges into them rather than replacing them -- see codexTrustedProjects
+  # above for what goes wrong when that isn't true.
+  home.activation.agentDirectoryTrust = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    set -eu
+
+    # --- Claude Code: ~/.claude.json .projects[path].hasTrustDialogAccepted.
+    # Keyed by exact absolute path (confirmed against the live file: sibling
+    # dirs each carry their own entry, and github.com/blooop/devlaunch#617
+    # documents seeding this same key per-workspace) -- no ancestor/parent
+    # trust, so every directory needs its own entry. Only touch the file if
+    # it already exists and parses as an object: it also holds session/usage
+    # history we must not clobber, and if it's missing entirely Claude Code
+    # will create it correctly on first run anyway.
+    claude_json="$HOME/.claude.json"
+    if [ -s "$claude_json" ] && ${pkgs.jq}/bin/jq -e 'type == "object"' "$claude_json" >/dev/null 2>&1; then
+      ${pkgs.jq}/bin/jq --argjson paths '${builtins.toJSON agentTrustedDirs}' '
+        .projects = (.projects // {}) |
+        reduce $paths[] as $p (.;
+          .projects[$p] = ((.projects[$p] // {}) + { hasTrustDialogAccepted: true })
+        )
+      ' "$claude_json" > "$claude_json.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/chmod --reference="$claude_json" "$claude_json.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/mv "$claude_json.new" "$claude_json" \
+        || { ${pkgs.coreutils}/bin/rm -f "$claude_json.new"; echo "claude: ~/.claude.json trust merge failed, left the file untouched" >&2; }
+    else
+      echo "claude: ~/.claude.json missing or not a JSON object, skipping trust seeding" >&2
+    fi
+
+    # --- Grok Build: ~/.grok/trusted_folders.toml [folders."path"] trusted.
+    # Same exact-path-only scheme as Codex (confirmed by the live file: each
+    # atlas-work-* variant has its own entry rather than one shared parent
+    # entry). decided_at is only set when creating a new entry, so a
+    # re-activation doesn't churn timestamps on already-trusted folders.
+    grok_dir="$HOME/.grok"
+    ${pkgs.coreutils}/bin/mkdir -p "$grok_dir"
+    grok_trusted="$grok_dir/trusted_folders.toml"
+    [ -e "$grok_trusted" ] || : > "$grok_trusted"
+    ${python3WithTomlkit}/bin/python3 - "$grok_trusted" <<'PYEOF' || echo "grok: trusted_folders.toml merge failed, left the file untouched" >&2
+import json
+import os
+import sys
+import time
+from collections.abc import Mapping
+
+import tomlkit
+
+path = sys.argv[1]
+paths = json.loads(r'''${builtins.toJSON agentTrustedDirs}''')
+
+try:
+    with open(path, "r", encoding="utf-8") as fh:
+        doc = tomlkit.parse(fh.read())
+except Exception as exc:
+    print(f"grok: trusted_folders.toml unreadable/invalid TOML ({exc}), leaving untouched", file=sys.stderr)
+    sys.exit(0)
+
+try:
+    folders = doc.get("folders")
+    if not isinstance(folders, Mapping):
+        folders = tomlkit.table()
+        doc["folders"] = folders
+
+    now = int(time.time())
+    for p in paths:
+        entry = folders.get(p)
+        if not isinstance(entry, Mapping):
+            entry = tomlkit.table()
+            entry["trusted"] = True
+            entry["decided_at"] = now
+            folders[p] = entry
+        else:
+            entry["trusted"] = True
+
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(tomlkit.dumps(doc))
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+except Exception as exc:
+    print(f"grok: trusted_folders.toml merge raised {exc}, leaving untouched", file=sys.stderr)
+    sys.exit(0)
+PYEOF
+
+    # --- Gemini/Antigravity: ~/.gemini/trustedFolders.json and settings.json.
+    # Unlike Codex/Claude/Grok, gemini-cli's folder trust genuinely cascades:
+    # google-gemini/gemini-cli#13125 documents "a general, parent-level
+    # TRUST_FOLDER rule" being honoured for child directories with no rule of
+    # their own. So a single parent entry covers every directory under
+    # /mnt/Home/src, present or future -- no per-repo enumeration needed here.
+    # folderTrust itself is opt-in via security.folderTrust.enabled; only set
+    # it if the key is entirely absent, so an explicit "false" the user set
+    # is never overridden.
+    gemini_dir="$HOME/.gemini"
+    ${pkgs.coreutils}/bin/mkdir -p "$gemini_dir"
+
+    gemini_settings="$gemini_dir/settings.json"
+    [ -s "$gemini_settings" ] || echo '{}' > "$gemini_settings"
+    if ${pkgs.jq}/bin/jq -e 'type == "object"' "$gemini_settings" >/dev/null 2>&1; then
+      ${pkgs.jq}/bin/jq '
+        .security = (.security // {}) |
+        .security.folderTrust = (.security.folderTrust // {}) |
+        if (.security.folderTrust | has("enabled")) then . else .security.folderTrust.enabled = true end
+      ' "$gemini_settings" > "$gemini_settings.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/chmod --reference="$gemini_settings" "$gemini_settings.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/mv "$gemini_settings.new" "$gemini_settings" \
+        || { ${pkgs.coreutils}/bin/rm -f "$gemini_settings.new"; echo "gemini: settings.json merge failed, left the file untouched" >&2; }
+    else
+      echo "gemini: settings.json is not a JSON object, skipping folderTrust.enabled seeding" >&2
+    fi
+
+    gemini_trusted="$gemini_dir/trustedFolders.json"
+    [ -s "$gemini_trusted" ] || echo '{}' > "$gemini_trusted"
+    if ${pkgs.jq}/bin/jq -e 'type == "object"' "$gemini_trusted" >/dev/null 2>&1; then
+      ${pkgs.jq}/bin/jq --arg d "/mnt/Home/src" '.[$d] = "TRUST_FOLDER"' "$gemini_trusted" > "$gemini_trusted.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/chmod --reference="$gemini_trusted" "$gemini_trusted.new" 2>/dev/null \
+        && ${pkgs.coreutils}/bin/mv "$gemini_trusted.new" "$gemini_trusted" \
+        || { ${pkgs.coreutils}/bin/rm -f "$gemini_trusted.new"; echo "gemini: trustedFolders.json merge failed, left the file untouched" >&2; }
+    else
+      echo "gemini: trustedFolders.json is not a JSON object, skipping" >&2
+    fi
+  '';
 
   # One global instruction source for all coding agents. Codex reads
   # ~/.codex/AGENTS.md, Claude Code reads ~/.claude/CLAUDE.md, and pi reads
@@ -780,6 +1041,15 @@ DSHPATCH
           }
         }
       } |
+      # opencode has no single "trust this folder" dialog; the closest
+      # equivalent is the external_directory permission (default "ask"),
+      # which gates file access *outside* the directory opencode was
+      # launched in. A glob pattern here pre-trusts the whole tree in one
+      # rule -- https://opencode.ai/docs/permissions/ documents path-pattern
+      # keys under permission.external_directory.
+      .permission = (.permission // {}) |
+      .permission.external_directory = (.permission.external_directory // {}) |
+      .permission.external_directory["/mnt/Home/src/**"] = "allow" |
       .model = "mbp-qwen38/qwen38-dense"
     ' "$opencode_config" > "$opencode_config.new"
     ${pkgs.coreutils}/bin/chmod 0600 "$opencode_config.new"
