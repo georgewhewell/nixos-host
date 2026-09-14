@@ -371,14 +371,18 @@ in
           dns = [ network.dnsIp ];
         };
         "10-mlx5" = {
-          # Driver alone can be evaluated before the .link rename above has
-          # landed, so pin this rule to the PF's permanent MAC too -- a
-          # Driver-only match can lose that ordering race and leave the port
-          # unmatched, unmanaged, and never enslaved for the rest of the boot.
-          matchConfig = {
-            Driver = "mlx5_core";
-            PermanentMACAddress = self.mac;
-          };
+          # Match the PF by permanent MAC ONLY -- never add Driver= here.
+          # networkd resolves Driver= with a single ethtool call keyed on the
+          # ifname it holds at that instant and never retries it. Because
+          # systemd-networkd.socket (ListenNetlink=route) buffers every link
+          # event since early boot, networkd replays the kernel's original
+          # "eth1" add event after the 10-cx4-fabric rename has already
+          # happened, makes that one ethtool call as "eth1", gets ENODEV, and
+          # leaves the driver unknown for the rest of the boot -- so a match
+          # containing Driver= can never succeed and the port stays unmanaged.
+          # PermanentMACAddress= is read from the IFLA_PERM_ADDRESS attribute
+          # carried by every netlink message, independent of the name.
+          matchConfig.PermanentMACAddress = self.mac;
           networkConfig = {
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
