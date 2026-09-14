@@ -154,6 +154,7 @@ in {
     home-manager = {
       enable = true;
       enableVscodeServer = true;
+      enableDevelopment = true;
     };
     xmrig = {
       # Parked with the chain services (its upstream is the local p2pool).
