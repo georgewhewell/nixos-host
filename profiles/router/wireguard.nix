@@ -25,6 +25,7 @@ in
   sops.secrets.wg-hydra-builders-psk = mkSecret "wg-hydra-builders-psk" { };
   sops.secrets.wg-home-ios-psk = mkSecret "wg-home-ios-psk" { };
   sops.secrets.wg-home-macbook-pro-psk = mkSecret "wg-home-macbook-pro-psk" { };
+  sops.secrets.wg-home-macbook-air-psk = mkSecret "wg-home-macbook-air-psk" { };
 
   # Central place to declare WireGuard peers for the router. Once keys are in
   # place, flip enable = true and add peers with their public keys.
@@ -62,6 +63,14 @@ in
         ip = network.ipOf "wireguard" 10;
         publicKey = "6cTKDAKaQLfT0JbZC+R9HJi4pNEp44Qzvwm5GxKe0Ho=";
         presharedKeyFile = config.sops.secrets.wg-home-macbook-pro-psk.path;
+        persistentKeepalive = 25;
+        fullTunnel = true;
+        extraClientRoutes = [ "fdde:ad::/48" ];
+      };
+      macbook-air = {
+        ip = network.ipOf "wireguard" 12;
+        publicKey = "3iNU6P7S3Djar8+tYRux4GVkk+Qv16PePq9KHzjOQCA=";
+        presharedKeyFile = config.sops.secrets.wg-home-macbook-air-psk.path;
         persistentKeepalive = 25;
         fullTunnel = true;
         extraClientRoutes = [ "fdde:ad::/48" ];

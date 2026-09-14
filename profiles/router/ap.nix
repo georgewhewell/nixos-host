@@ -286,6 +286,13 @@ in {
           SND_SOC_PCM5102A = lib.mkForce module;
           SND_SOC_ROCKCHIP_I2S = lib.mkForce module;
           SND_SOC_ROCKCHIP_I2S_TDM = lib.mkForce module;
+          # services/kvm.nix builds an ECM + HID keyboard/mouse composite
+          # gadget on the RK3588 DWC3 UDC. Keep the configfs function drivers
+          # explicit so kernel-size trimming cannot silently remove /dev/hidg*.
+          USB_GADGET = lib.mkForce yes;
+          USB_CONFIGFS = lib.mkForce module;
+          USB_CONFIGFS_ECM = lib.mkForce yes;
+          USB_CONFIGFS_F_HID = lib.mkForce yes;
           VFAT_FS = lib.mkForce yes;
 
           # Large subsystem or family gates with no matching hardware/use.
@@ -311,7 +318,6 @@ in {
           SND_HDA_ACPI = lib.mkForce no;
           SND_PCI = lib.mkForce no;
           SND_SOC_HDA = lib.mkForce no;
-          USB_GADGET = lib.mkForce no;
           WAN = lib.mkForce no;
           XEN = lib.mkForce no;
 
