@@ -71,6 +71,27 @@ self: super: {
     tclSupport = false;
   };
 
+  # `spotifyd authenticate` is unusable as shipped: 0.4.2's OAUTH_SCOPES in
+  # src/oauth.rs still asks for seven scopes Spotify has retired, so the
+  # authorize endpoint bounces the whole request with
+  #   /login?error=invalid_scope&state=...
+  # and no code is ever issued (observed on the router, 2026-08-20). Drop the
+  # retired scopes and keep the ones Spotify still documents. replace-fail so
+  # a nixpkgs bump that fixes this upstream breaks the build loudly instead of
+  # silently no-oping.
+  spotifyd = super.spotifyd.overrideAttrs (old: {
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace src/oauth.rs \
+        --replace-fail '"playlist-modify",' "" \
+        --replace-fail '"playlist-read",' "" \
+        --replace-fail '"user-modify",' "" \
+        --replace-fail '"user-modify-private",' "" \
+        --replace-fail '"user-personalized",' "" \
+        --replace-fail '"user-read-birthdate",' "" \
+        --replace-fail '"user-read-play-history",' ""
+    '';
+  });
+
   # Fix mtail cross-compilation - upstream vendor directory is out of sync
   mtail = super.mtail.overrideAttrs (old: {
     proxyVendor = true;
@@ -105,12 +126,6 @@ self: super: {
   # older bare-path substitution no longer matches. Drop after 7452b6fd8be2.
   freecad = super.freecad.overrideAttrs (_: {
     postInstall = null;
-  });
-
-  # open-webui's pytest suite has a flaky SSE test that collides on a fixed
-  # loopback port (test_get_sse_stream: "address already in use").
-  open-webui = super.open-webui.overridePythonAttrs (old: {
-    doCheck = false;
   });
 
   apple-health-ingester = super.callPackage ../packages/apple-health-ingester {};
@@ -166,23 +181,65 @@ self: super: {
   # Client kernel module builds per-kernel:
   #   config.boot.kernelPackages.callPackage ../packages/beegfs/client-module.nix { }
 
+  bambu-camera = super.callPackage ../packages/bambu-camera { };
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
   llm-quota-exporter = super.callPackage ../packages/llm-quota-exporter {};
+  gpsd-prometheus-exporter = super.callPackage ../packages/gpsd-prometheus-exporter {};
+
+  # gpsd from upstream master rather than the 3.27.5 release nixpkgs carries.
+  # 3.27.5 (Jan 2026) is the newest *tag*; master is the 3.27.6~dev line and
+  # its NEWS claims "Fix a lot of buffer over runs" plus OSSFuzz/security
+  # reports beyond the two CVEs fixed in 3.27.1, and stops a ppsthread memory
+  # leak that would matter once PPS is wired.
+  #
+  # Explicitly NOT for receiver support: master has no CASIC/Allystar/URANUS
+  # driver, so k3's module is still detected as generic NMEA0183 and
+  # services/gps.nix still has to send the $PCAS init sentences itself.
+  #
+  # Note this also moves the `gps` Python binding that
+  # packages/gpsd-prometheus-exporter wraps — they come from the same
+  # derivation, so the two cannot drift apart.
+  gpsd = super.gpsd.overrideAttrs (old: {
+    version = "3.27.6-unstable-2026-08-10";
+    src = super.fetchFromGitLab {
+      owner = "gpsd";
+      repo = "gpsd";
+      rev = "699f1f83549ed41c06f31b77ad4d92623aca174b";
+      hash = "sha256-gw8hcPoJ0GUVWiL/ppJTcRSaASGjB2zAeE8nAiJSXeU=";
+    };
+  });
   bios-setup-var = super.callPackage ../packages/bios-setup-var {};
-  pexctl = super.callPackage ../packages/pexctl {};
   mlnx-mft = super.callPackage ../packages/mlnx-mft {};
   mlnx-opensm = super.callPackage ../packages/mlnx-opensm {};
   nvidia_oc = super.callPackage ../packages/nvidia-oc {};
 
-  # llama-cpp = super.llama-cpp.overrideAttrs (oldAttrs: rec {
-  #   version = "HEAD";
-  #   src = super.fetchFromGitHub {
-  #     owner = "ggerganov";
-  #     repo = "llama.cpp";
-  #     rev = "HEAD";
-  #     hash = "sha256-I1X+xRk4qVnGZWavS8XY5IcQBZXdMoKLa/G/2Tmefbc=";
-  #   };
-  # });
+  # llama.cpp newer than nixpkgs' pin, for Muse-Glimmer-30B on mbp.
+  #
+  # Muse-Glimmer support (LLM_ARCH_MUSE_GLIMMER, src/models/muse-glimmer.cpp)
+  # only landed upstream in ggml-org/llama.cpp#26841 on 2026-08-10, well after
+  # nixpkgs' b9925 (2026-07-08) — that build fails the model outright with
+  # "unknown model architecture: 'muse-glimmer'". b10375 also carries #26900,
+  # which fixes the DFlash drafter failing to bind against GGUFs that encode
+  # attention.sliding_window_pattern as an array (as Glimmer's do).
+  #
+  # Kept as a separate attribute rather than overriding `llama-cpp`: nothing
+  # else in the fleet needs the bump (k3 uses llama-cpp-spacemit, trex's
+  # llama.cpp left with its dGPU), so this avoids rebuilding them.
+  llama-cpp-latest = super.llama-cpp.overrideAttrs (_finalAttrs: _oldAttrs: {
+    version = "10375";
+    src = super.fetchFromGitHub {
+      owner = "ggml-org";
+      repo = "llama.cpp";
+      tag = "b10375";
+      hash = "sha256-/AWjgH96UlRaOGwqA3z7eiPGnB73evRNwBuUoL/1rgw=";
+      leaveDotGit = true;
+      postFetch = ''
+        git -C "$out" rev-parse --short HEAD > $out/COMMIT
+        find "$out" -name .git -print0 | xargs -0 rm -rf
+      '';
+    };
+    npmDepsHash = "sha256-2Q7XhaLAArmviOLdQsNbYTfdyDE5pW9lR26cRHEVl9k=";
+  });
 
   xmrig-cuda-plugin = let
     version = "6.22.1";
@@ -685,5 +742,15 @@ self: super: {
 
   # OCP CAD Viewer backend (build123d/cadquery/ocp_vscode) via uv in an FHS env.
   ocp-cad-viewer = super.callPackage ../packages/ocp-cad-viewer {};
+
+  # Bambu Studio only links opencv_imgcodecs (see nixpkgs' own
+  # dont-link-opencv-world-bambu.patch), but on CUDA-enabled hosts
+  # (nixpkgs.config.cudaSupport, see flake.nix pkgsForCuda) CMake's
+  # OpenCVConfig.cmake still probes for nvcc and fails the configure step
+  # with "Could not find nvcc, please set CUDAToolkit_ROOT". Pin its opencv
+  # to a non-CUDA build rather than dragging the CUDA toolkit into a slicer.
+  bambu-studio = super.bambu-studio.override {
+    opencv = super.opencv.override { enableCuda = false; };
+  };
 
 }
