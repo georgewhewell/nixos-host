@@ -5,61 +5,20 @@
     ../modules/hardware/ip101-eth.nix
   ];
 
+  # The GPS receiver this board used to bridge — UART on GPIO47/48 at 9600,
+  # re-served as raw NMEA over TCP:8888 by oxan/esphome-stream-server, with a
+  # template select to retune the baud rate at runtime — now hangs off k3's
+  # on-board UART (/dev/ttyS0, the only probed port on that board), so the
+  # bridge is gone. Checked before removing: the stream server still accepted
+  # connections but produced no bytes, i.e. nothing was on the UART any more.
   esphome.settings = {
     esphome = {
       name = "esp32-p4-eth-01";
       friendly_name = "esp32-p4-eth-01";
     };
 
+    # Serial logging stays off: it was disabled to keep the logger off the GPS
+    # UART. Drop this line if you now want console output from the board.
     logger.baud_rate = 0;
-
-    external_components = [
-      {
-        source = "github://oxan/esphome-stream-server";
-        components = ["stream_server"];
-      }
-    ];
-
-    uart = {
-      id = "gps_uart";
-      tx_pin = "GPIO47";
-      rx_pin = "GPIO48";
-      baud_rate = 9600;
-    };
-
-    stream_server = {
-      uart_id = "gps_uart";
-      buffer_size = 8192;
-      port = 8888;
-    };
-
-    select = [
-      {
-        id = "change_baud_rate";
-        name = "Baud rate";
-        platform = "template";
-        options = ["2400" "9600" "38400" "57600" "115200" "256000" "512000" "921600"];
-        initial_option = "9600";
-        optimistic = true;
-        restore_value = true;
-        internal = false;
-        entity_category = "config";
-        icon = "mdi:swap-horizontal";
-        set_action = [
-          {
-            lambda = ''
-              id(gps_uart).flush();
-              uint32_t new_baud_rate = stoi(x);
-              ESP_LOGD("change_baud_rate", "Changing baud rate from %i to %i",id(gps_uart).get_baud_rate(),
-                        new_baud_rate);
-              if (id(gps_uart).get_baud_rate() != new_baud_rate) {
-                id(gps_uart).set_baud_rate(new_baud_rate);
-                id(gps_uart).load_settings();
-              }
-            '';
-          }
-        ];
-      }
-    ];
   };
 }
