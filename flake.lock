@@ -60,20 +60,20 @@
       },
       "locked": {
         "dir": "packages/pexctl",
-        "lastModified": 1786696216,
-        "narHash": "sha256-RsDwuPx4YvYxtx/m+DbKTujfyC4++/6ohFLIiPq+qFU=",
-        "ref": "lane/20260813/f15-omp-grok",
-        "rev": "68aed4bb9ce93beb98592a6269ecd8ea32c5593e",
+        "lastModified": 1787641368,
+        "narHash": "sha256-6UL9+01n8vbeBYDcvsllzL435j6cof35/iUCq1Z58AU=",
+        "ref": "master",
+        "rev": "99d1f5f0f211d94fe46cd1c5cc2f7ad016d50b5d",
         "shallow": true,
         "type": "git",
-        "url": "file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok"
+        "url": "file:///mnt/Home/src/atlas-work"
       },
       "original": {
         "dir": "packages/pexctl",
-        "ref": "lane/20260813/f15-omp-grok",
+        "ref": "master",
         "shallow": true,
         "type": "git",
-        "url": "file:///mnt/Home/src/atlas-work-20260813-f15-omp-grok"
+        "url": "file:///mnt/Home/src/atlas-work"
       }
     },
     "blueprint": {
@@ -135,15 +135,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1784665499,
-        "narHash": "sha256-9BMxlTxCCDAeoNLtb1a/st7udtTIJep+wpUzquA29VU=",
-        "owner": "nix-community",
+        "lastModified": 1788011267,
+        "narHash": "sha256-mEq2kU+ljompTToZ44Afvm7d/rHJ5iMBl0tjZuyShJs=",
+        "owner": "Mic92",
         "repo": "bun2nix",
-        "rev": "0f2a1f0b6f42cebe3b149bf62d38754c5e0e9729",
+        "rev": "5765b0614591f75ee8ba5596e81ae85c167d1071",
         "type": "github"
       },
       "original": {
-        "owner": "nix-community",
+        "owner": "Mic92",
+        "ref": "fix-structured-attrs-hook",
         "repo": "bun2nix",
         "type": "github"
       }
@@ -185,33 +186,104 @@
         "type": "github"
       }
     },
-    "catgrad": {
+    "bun2nix_3": {
       "inputs": {
-        "flake-utils": "flake-utils_2",
+        "flake-parts": [
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
+          "flake-parts"
+        ],
         "nixpkgs": [
-          "hellas",
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
           "nixpkgs"
+        ],
+        "systems": [
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
+          "systems"
+        ],
+        "treefmt-nix": [
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
+          "treefmt-nix"
         ]
       },
       "locked": {
-        "lastModified": 1781073667,
-        "narHash": "sha256-0ylGTfMbQ2rbOrvrpWshzZeMuVbWAC3uEHwbcGQ+WJE=",
-        "owner": "hellas-ai",
-        "repo": "catgrad",
-        "rev": "7629a506680fdd9380706bd31b43017d1bf153fc",
+        "lastModified": 1782772816,
+        "narHash": "sha256-s9BuFv0mRuZx9C1MF8qPHRdcAK14ONi0A5m6E2wqOoM=",
+        "owner": "nix-community",
+        "repo": "bun2nix",
+        "rev": "5a39d717029e94163ac223aee8d5c9946cafed1c",
         "type": "github"
       },
       "original": {
-        "owner": "hellas-ai",
-        "repo": "catgrad",
+        "owner": "nix-community",
+        "repo": "bun2nix",
         "type": "github"
+      }
+    },
+    "bun2nix_4": {
+      "inputs": {
+        "flake-parts": [
+          "nix-strix-halo-qwen38",
+          "nix-ai-tools",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "nix-strix-halo-qwen38",
+          "nix-ai-tools",
+          "nixpkgs"
+        ],
+        "systems": [
+          "nix-strix-halo-qwen38",
+          "nix-ai-tools",
+          "systems"
+        ],
+        "treefmt-nix": [
+          "nix-strix-halo-qwen38",
+          "nix-ai-tools",
+          "treefmt-nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782772816,
+        "narHash": "sha256-s9BuFv0mRuZx9C1MF8qPHRdcAK14ONi0A5m6E2wqOoM=",
+        "owner": "nix-community",
+        "repo": "bun2nix",
+        "rev": "5a39d717029e94163ac223aee8d5c9946cafed1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "bun2nix",
+        "type": "github"
+      }
+    },
+    "catena-runner": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788082486,
+        "narHash": "sha256-nccWDSHvnhqWLBq9c09WvZlU51dgpvsQKLv+9f7tDBE=",
+        "ref": "grw/hellas-interface",
+        "rev": "407b3162e36703ffeb6a9789dccf4014bd735358",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/catena-runner"
+      },
+      "original": {
+        "ref": "grw/hellas-interface",
+        "rev": "407b3162e36703ffeb6a9789dccf4014bd735358",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/catena-runner"
       }
     },
     "cl-nix-lite": {
       "inputs": {
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs",
-        "systems": "systems_3",
+        "systems": "systems_2",
         "treefmt-nix": "treefmt-nix_2"
       },
       "locked": {
@@ -259,17 +331,34 @@
         ]
       },
       "locked": {
-        "lastModified": 1781242433,
-        "narHash": "sha256-bchLZZ3sRn740zyvD2icZSnNoTaanN0nw7l6fjVXO+E=",
+        "lastModified": 1785389976,
+        "narHash": "sha256-0tLW8Ff5yt8AH97jw4ZpFJ0OCJ122zIlgWGDmOfU/VU=",
         "owner": "lnl7",
         "repo": "nix-darwin",
-        "rev": "aabb2037edfc0f210723b72cd5f528aab5dd3f0b",
+        "rev": "15abb8c98f336cd8bd840d71059adebabe60bf04",
         "type": "github"
       },
       "original": {
         "owner": "lnl7",
         "ref": "master",
         "repo": "nix-darwin",
+        "type": "github"
+      }
+    },
+    "diffusers-h3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786630673,
+        "narHash": "sha256-2zhgl1eSU2NNUgXkALeCUGdFsS/2stv5qcuUV0iz4gk=",
+        "owner": "huggingface",
+        "repo": "diffusers",
+        "rev": "dafe3733fcfdbf3c48915fe77be3aef65b5d6a2d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "huggingface",
+        "repo": "diffusers",
+        "rev": "dafe3733fcfdbf3c48915fe77be3aef65b5d6a2d",
         "type": "github"
       }
     },
@@ -326,7 +415,122 @@
         "type": "github"
       }
     },
+    "ds4-hip_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780562402,
+        "narHash": "sha256-W0PW0274eHM3nYDtpwiMNKk3y4R42f4VpWKY5Nx9b8A=",
+        "owner": "ejpir",
+        "repo": "ds4-hip",
+        "rev": "3490c2e46c91331323dc0f2bfb7d3018e227fdff",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ejpir",
+        "ref": "rocm-upstream-shape-cyberneurova",
+        "repo": "ds4-hip",
+        "type": "github"
+      }
+    },
+    "ds4-hip_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780562402,
+        "narHash": "sha256-W0PW0274eHM3nYDtpwiMNKk3y4R42f4VpWKY5Nx9b8A=",
+        "owner": "ejpir",
+        "repo": "ds4-hip",
+        "rev": "3490c2e46c91331323dc0f2bfb7d3018e227fdff",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ejpir",
+        "ref": "rocm-upstream-shape-cyberneurova",
+        "repo": "ds4-hip",
+        "type": "github"
+      }
+    },
+    "ds4-upstream": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785240292,
+        "narHash": "sha256-HVw/5BOqZUA79UWbyWSaNGJVhcYjwKNhhN7qefwdaFQ=",
+        "owner": "antirez",
+        "repo": "ds4",
+        "rev": "54b36ed9ba42da31b24f2d1a5feb075c2475dbb1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antirez",
+        "repo": "ds4",
+        "rev": "54b36ed9ba42da31b24f2d1a5feb075c2475dbb1",
+        "type": "github"
+      }
+    },
+    "ds4_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781677530,
+        "narHash": "sha256-Ieuc72GHZs20ModQfnvI5Me31n4Pj+WFYtsuqaKJceo=",
+        "owner": "antirez",
+        "repo": "ds4",
+        "rev": "80ebbc396aee40eedc1d829222f3362d10fa4c6c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antirez",
+        "repo": "ds4",
+        "type": "github"
+      }
+    },
+    "ds4_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781677530,
+        "narHash": "sha256-Ieuc72GHZs20ModQfnvI5Me31n4Pj+WFYtsuqaKJceo=",
+        "owner": "antirez",
+        "repo": "ds4",
+        "rev": "80ebbc396aee40eedc1d829222f3362d10fa4c6c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "antirez",
+        "repo": "ds4",
+        "type": "github"
+      }
+    },
     "ec-su-axb35": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783792693,
+        "narHash": "sha256-+fN7C07oYYZW6qp4kDlg51N1mAgQTbgPiQnf2wX1KUs=",
+        "owner": "cmetz",
+        "repo": "ec-su_axb35-linux",
+        "rev": "7a9f372edcaa99e562dece70204c4f609692a778",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cmetz",
+        "repo": "ec-su_axb35-linux",
+        "type": "github"
+      }
+    },
+    "ec-su-axb35_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783792693,
+        "narHash": "sha256-+fN7C07oYYZW6qp4kDlg51N1mAgQTbgPiQnf2wX1KUs=",
+        "owner": "cmetz",
+        "repo": "ec-su_axb35-linux",
+        "rev": "7a9f372edcaa99e562dece70204c4f609692a778",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cmetz",
+        "repo": "ec-su_axb35-linux",
+        "type": "github"
+      }
+    },
+    "ec-su-axb35_3": {
       "flake": false,
       "locked": {
         "lastModified": 1783792693,
@@ -381,6 +585,25 @@
         "type": "github"
       }
     },
+    "exploratory-catena": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788081769,
+        "narHash": "sha256-ok5n9H/hOoP1r/fEElUPP8y49zuzd7OIrIFhBalVbvo=",
+        "ref": "grw/hellas-runner-hygiene-v2",
+        "rev": "ac58d7ee4325c8e59da7cbf4b0e8173e5d7b22bc",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/exploratory-catena"
+      },
+      "original": {
+        "ref": "grw/hellas-runner-hygiene-v2",
+        "rev": "ac58d7ee4325c8e59da7cbf4b0e8173e5d7b22bc",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/exploratory-catena"
+      }
+    },
     "extra-container": {
       "inputs": {
         "flake-utils": [
@@ -408,6 +631,38 @@
       }
     },
     "fastflowlm": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784320030,
+        "narHash": "sha256-kSOZvOqiiIMIRwcLivbRJwcBhkzr0fpeC8w3Q4iTj+M=",
+        "owner": "FastFlowLM",
+        "repo": "FastFlowLM",
+        "rev": "fd371409897d7c0abb4de4dbc5098b9b43c094ff",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FastFlowLM",
+        "repo": "FastFlowLM",
+        "type": "github"
+      }
+    },
+    "fastflowlm_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784320030,
+        "narHash": "sha256-kSOZvOqiiIMIRwcLivbRJwcBhkzr0fpeC8w3Q4iTj+M=",
+        "owner": "FastFlowLM",
+        "repo": "FastFlowLM",
+        "rev": "fd371409897d7c0abb4de4dbc5098b9b43c094ff",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FastFlowLM",
+        "repo": "FastFlowLM",
+        "type": "github"
+      }
+    },
+    "fastflowlm_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784320030,
@@ -536,11 +791,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1782949081,
-        "narHash": "sha256-vp6Y/Grm98ESt6ceOkWiHWyZRDV3J1RID4w+6NWK9yA=",
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "17c9d6cdfc60c64f4ee8d306f9bc0b4ccb51481e",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
         "type": "github"
       },
       "original": {
@@ -570,6 +825,28 @@
     "flake-parts_4": {
       "inputs": {
         "nixpkgs-lib": [
+          "nix-routeros",
+          "terranix",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1736143030,
+        "narHash": "sha256-+hu54pAoLDEZT9pjHlqL9DNzWz0NbUn8NEAHP7PQPzU=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "b905f6fc23a9051a6e1b741e1438dbfc0634c6de",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_5": {
+      "inputs": {
+        "nixpkgs-lib": [
           "nix-strix-halo",
           "nix-ai-tools",
           "nixpkgs"
@@ -589,7 +866,51 @@
         "type": "github"
       }
     },
-    "flake-parts_5": {
+    "flake-parts_6": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782949081,
+        "narHash": "sha256-vp6Y/Grm98ESt6ceOkWiHWyZRDV3J1RID4w+6NWK9yA=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "17c9d6cdfc60c64f4ee8d306f9bc0b4ccb51481e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_7": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nix-strix-halo-qwen38",
+          "nix-ai-tools",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782949081,
+        "narHash": "sha256-vp6Y/Grm98ESt6ceOkWiHWyZRDV3J1RID4w+6NWK9yA=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "17c9d6cdfc60c64f4ee8d306f9bc0b4ccb51481e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_8": {
       "inputs": {
         "nixpkgs-lib": [
           "openwrt-imagebuilder",
@@ -610,7 +931,7 @@
         "type": "github"
       }
     },
-    "flake-parts_6": {
+    "flake-parts_9": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib_3"
       },
@@ -645,7 +966,7 @@
     },
     "flake-utils-plus": {
       "inputs": {
-        "flake-utils": "flake-utils_5"
+        "flake-utils": "flake-utils_4"
       },
       "locked": {
         "lastModified": 1715533576,
@@ -663,24 +984,6 @@
       }
     },
     "flake-utils_2": {
-      "inputs": {
-        "systems": "systems_2"
-      },
-      "locked": {
-        "lastModified": 1731533236,
-        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
-    "flake-utils_3": {
       "inputs": {
         "systems": [
           "mac-app-util",
@@ -700,9 +1003,9 @@
         "type": "indirect"
       }
     },
-    "flake-utils_4": {
+    "flake-utils_3": {
       "inputs": {
-        "systems": "systems_6"
+        "systems": "systems_5"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -718,9 +1021,9 @@
         "type": "github"
       }
     },
-    "flake-utils_5": {
+    "flake-utils_4": {
       "inputs": {
-        "systems": "systems_9"
+        "systems": "systems_11"
       },
       "locked": {
         "lastModified": 1694529238,
@@ -738,7 +1041,12 @@
     },
     "hellas": {
       "inputs": {
-        "catgrad": "catgrad",
+        "catena-runner": [
+          "catena-runner"
+        ],
+        "exploratory-catena": [
+          "exploratory-catena"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -747,18 +1055,47 @@
         ]
       },
       "locked": {
-        "lastModified": 1786208660,
-        "narHash": "sha256-XzltBhx9HeiXsj6Hjks3GhKY5wGGCEuhBQSD+6LPhy8=",
-        "ref": "refs/heads/model-materialization",
-        "rev": "9c84f64c9ef7060c5b8b5da41e4989b6c1fda04a",
+        "lastModified": 1788127289,
+        "narHash": "sha256-gEJavK8ZEsNhUWMSSmlmQDViJlYaTd4EUCf1Zwi/ynk=",
+        "ref": "grw/catena-cutover",
+        "rev": "55c9233fbc6eddb297c429ea7c3ff12e8ef69b13",
         "shallow": true,
         "type": "git",
-        "url": "file:///mnt/Home/src/hellas"
+        "url": "file:///mnt/Home/src/hellas-catena-cutover"
       },
       "original": {
+        "ref": "grw/catena-cutover",
+        "rev": "55c9233fbc6eddb297c429ea7c3ff12e8ef69b13",
         "shallow": true,
         "type": "git",
-        "url": "file:///mnt/Home/src/hellas"
+        "url": "file:///mnt/Home/src/hellas-catena-cutover"
+      }
+    },
+    "hellas-ai-video": {
+      "inputs": {
+        "diffusers-h3": "diffusers-h3",
+        "nix-strix-halo": [
+          "nix-strix-halo"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "thunderbolt-ibverbs": "thunderbolt-ibverbs"
+      },
+      "locked": {
+        "lastModified": 1786932193,
+        "narHash": "sha256-z1MsBuainPaXpiwHPjdy4fIDR7JN1sPFYn2fyH58SDE=",
+        "ref": "codex/h3-deploy",
+        "rev": "9f1766a5ceaa341cd1e1b4274fce58cf4916feec",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/hellas-ai-video"
+      },
+      "original": {
+        "ref": "codex/h3-deploy",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/hellas-ai-video"
       }
     },
     "home-manager": {
@@ -843,6 +1180,24 @@
     "linux-src": {
       "flake": false,
       "locked": {
+        "lastModified": 1780549139,
+        "narHash": "sha256-HkhLiKigaUCQeH6z5enWhExJtW2LLh4NHVBrSlZc3XU=",
+        "ref": "refs/heads/next",
+        "rev": "503c5ae1e72aa9ed91925dafa3d82ee2e992747f",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/westeri/thunderbolt.git"
+      },
+      "original": {
+        "ref": "refs/heads/next",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/westeri/thunderbolt.git"
+      }
+    },
+    "linux-src_2": {
+      "flake": false,
+      "locked": {
         "lastModified": 1783298646,
         "narHash": "sha256-0DmLhD5AiuT/ryBhFIHUzs+7Avty/MYlBY0y6SZ7tTo=",
         "ref": "refs/tags/v7.2-rc2",
@@ -858,7 +1213,75 @@
         "url": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
       }
     },
+    "linux-src_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780549139,
+        "narHash": "sha256-HkhLiKigaUCQeH6z5enWhExJtW2LLh4NHVBrSlZc3XU=",
+        "ref": "refs/heads/next",
+        "rev": "503c5ae1e72aa9ed91925dafa3d82ee2e992747f",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/westeri/thunderbolt.git"
+      },
+      "original": {
+        "ref": "refs/heads/next",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/westeri/thunderbolt.git"
+      }
+    },
+    "linux-stable": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786312490,
+        "narHash": "sha256-/DWgi9VEk6DhN0+Mz3fqr9f+2K9V91J/4mWXP0CaIOM=",
+        "ref": "refs/tags/v7.2-rc7",
+        "rev": "db2ddb87143519e20a95aa36c60b36107b736a58",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
+      },
+      "original": {
+        "ref": "refs/tags/v7.2-rc7",
+        "shallow": true,
+        "type": "git",
+        "url": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
+      }
+    },
     "llama-cpp-master": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784379738,
+        "narHash": "sha256-PU2rQT1KBxrox6Fo8sryTphR8Ir7i6Z2NEodKKgNOfI=",
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "rev": "571d0d540df04f25298d0e159e520d9fc62ed121",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
+    "llama-cpp-master_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784379738,
+        "narHash": "sha256-PU2rQT1KBxrox6Fo8sryTphR8Ir7i6Z2NEodKKgNOfI=",
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "rev": "571d0d540df04f25298d0e159e520d9fc62ed121",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ggml-org",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
+    "llama-cpp-master_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784379738,
@@ -891,15 +1314,49 @@
         "type": "github"
       }
     },
+    "llama-cpp-spacemit_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783141934,
+        "narHash": "sha256-Z8APQR0Xp9/zm+izIW0ICY8NhD5RQbZC/G49z3j9bJE=",
+        "owner": "spacemit-com",
+        "repo": "llama.cpp",
+        "rev": "86d4ff230bdfef62de1cc4987783a8d29af66d49",
+        "type": "github"
+      },
+      "original": {
+        "owner": "spacemit-com",
+        "ref": "v0.1.5",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
+    "llama-cpp-spacemit_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783141934,
+        "narHash": "sha256-Z8APQR0Xp9/zm+izIW0ICY8NhD5RQbZC/G49z3j9bJE=",
+        "owner": "spacemit-com",
+        "repo": "llama.cpp",
+        "rev": "86d4ff230bdfef62de1cc4987783a8d29af66d49",
+        "type": "github"
+      },
+      "original": {
+        "owner": "spacemit-com",
+        "ref": "v0.1.5",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
     "mac-app-util": {
       "inputs": {
         "cl-nix-lite": "cl-nix-lite",
         "flake-compat": "flake-compat_2",
-        "flake-utils": "flake-utils_3",
+        "flake-utils": "flake-utils_2",
         "nixpkgs": [
           "nixpkgs"
         ],
-        "systems": "systems_4",
+        "systems": "systems_3",
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
@@ -932,6 +1389,25 @@
         "type": "github"
       }
     },
+    "mklinux-multikernel": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787679248,
+        "narHash": "sha256-tMCLOHzGon+i5jws7tzaHgR5D1/2ef9bQJYegG42r74=",
+        "ref": "refs/tags/v7.0-mk2",
+        "rev": "3bdd35b64413da0b4e089ce931bfc2e8b031cbf7",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/mklinux-7.0-mk2"
+      },
+      "original": {
+        "ref": "refs/tags/v7.0-mk2",
+        "rev": "3bdd35b64413da0b4e089ce931bfc2e8b031cbf7",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/mklinux-7.0-mk2"
+      }
+    },
     "mlnx-ofed-nixos": {
       "inputs": {
         "flake-compat": "flake-compat_3",
@@ -954,6 +1430,40 @@
       }
     },
     "mlx-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784241827,
+        "narHash": "sha256-aYsfPcYIwsuKkYwssy0ANHuRVlM/KarfoTqlT8VJggo=",
+        "owner": "NripeshN",
+        "repo": "mlx",
+        "rev": "0dadb703d77301af29405cf7e12627efb88a6d0f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NripeshN",
+        "ref": "rocm-support",
+        "repo": "mlx",
+        "type": "github"
+      }
+    },
+    "mlx-src_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784241827,
+        "narHash": "sha256-aYsfPcYIwsuKkYwssy0ANHuRVlM/KarfoTqlT8VJggo=",
+        "owner": "NripeshN",
+        "repo": "mlx",
+        "rev": "0dadb703d77301af29405cf7e12627efb88a6d0f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NripeshN",
+        "ref": "rocm-support",
+        "repo": "mlx",
+        "type": "github"
+      }
+    },
+    "mlx-src_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784241827,
@@ -1007,15 +1517,16 @@
         "sophgo-fiptool": "sophgo-fiptool"
       },
       "locked": {
-        "lastModified": 1786409850,
-        "narHash": "sha256-BrYuNF3w6U7emI8IjUqigDyn+J4G67t9Qf6jdkq3imM=",
-        "ref": "refs/heads/cleanup-mainline-nanokvm-20260701",
-        "rev": "0504b8728c1153fa3b963478a5052298737e5b18",
+        "lastModified": 1788143125,
+        "narHash": "sha256-QgcE6NKCmw5lJwdGP8LZ25vdiTcpBQEJNPE/nem3B2w=",
+        "ref": "master",
+        "rev": "ebb5bdbe9787be5a3572f471b3b66a15681497ef",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nixos-nanokvm"
       },
       "original": {
+        "ref": "master",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nixos-nanokvm"
@@ -1042,18 +1553,16 @@
       "inputs": {
         "bun2nix": "bun2nix",
         "flake-parts": "flake-parts_2",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "systems": "systems_5",
+        "nixpkgs": "nixpkgs_5",
+        "systems": "systems_4",
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
-        "lastModified": 1785393846,
-        "narHash": "sha256-ZrkupCDmDaM2lZZoOZ4bR5ioHBxyBdIUTSeXbx+383c=",
+        "lastModified": 1789247568,
+        "narHash": "sha256-RcIZlx7S5lLjeS3zoSGoZkQJeD9YIzCrcWZz4vOjMco=",
         "owner": "numtide",
         "repo": "nix-ai-tools",
-        "rev": "ce99071da939d9d7997e27d35cf4d6c5e44bc32a",
+        "rev": "bbd275d61a86ed39cfcf9ebbba40fef68e177b49",
         "type": "github"
       },
       "original": {
@@ -1065,7 +1574,7 @@
     "nix-ai-tools_2": {
       "inputs": {
         "bun2nix": "bun2nix_2",
-        "flake-parts": "flake-parts_4",
+        "flake-parts": "flake-parts_5",
         "nixpkgs": [
           "nix-strix-halo",
           "nixpkgs"
@@ -1087,10 +1596,60 @@
         "type": "github"
       }
     },
+    "nix-ai-tools_3": {
+      "inputs": {
+        "bun2nix": "bun2nix_3",
+        "flake-parts": "flake-parts_6",
+        "nixpkgs": [
+          "nix-strix-halo-ds4",
+          "nixpkgs"
+        ],
+        "systems": "systems_8",
+        "treefmt-nix": "treefmt-nix_6"
+      },
+      "locked": {
+        "lastModified": 1784470748,
+        "narHash": "sha256-/A+1q5cjAdh/HH30MMzi7JDu1CM3mBoj2jFewUbq520=",
+        "owner": "numtide",
+        "repo": "nix-ai-tools",
+        "rev": "26b51974319a3931a16ae9eb7dd3f4b8b1c67fd9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "nix-ai-tools",
+        "type": "github"
+      }
+    },
+    "nix-ai-tools_4": {
+      "inputs": {
+        "bun2nix": "bun2nix_4",
+        "flake-parts": "flake-parts_7",
+        "nixpkgs": [
+          "nix-strix-halo-qwen38",
+          "nixpkgs"
+        ],
+        "systems": "systems_9",
+        "treefmt-nix": "treefmt-nix_7"
+      },
+      "locked": {
+        "lastModified": 1784470748,
+        "narHash": "sha256-/A+1q5cjAdh/HH30MMzi7JDu1CM3mBoj2jFewUbq520=",
+        "owner": "numtide",
+        "repo": "nix-ai-tools",
+        "rev": "26b51974319a3931a16ae9eb7dd3f4b8b1c67fd9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "nix-ai-tools",
+        "type": "github"
+      }
+    },
     "nix-amd-npu": {
       "inputs": {
         "flake-parts": "flake-parts_3",
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_6"
       },
       "locked": {
         "lastModified": 1775660927,
@@ -1109,7 +1668,7 @@
     "nix-bitcoin": {
       "inputs": {
         "extra-container": "extra-container",
-        "flake-utils": "flake-utils_4",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -1172,6 +1731,30 @@
         "type": "github"
       }
     },
+    "nix-routeros": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "terranix": "terranix"
+      },
+      "locked": {
+        "lastModified": 1787947702,
+        "narHash": "sha256-ldxpctRnTAzrHejnJFpThtd0hj3e896jVh1GifJleC8=",
+        "ref": "crs812-adoption",
+        "rev": "d549aa410d053a7bd7e5c1aa95fa3ad13b9e26eb",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-routeros"
+      },
+      "original": {
+        "ref": "crs812-adoption",
+        "rev": "d549aa410d053a7bd7e5c1aa95fa3ad13b9e26eb",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-routeros"
+      }
+    },
     "nix-strix-halo": {
       "inputs": {
         "ds4": "ds4",
@@ -1182,7 +1765,7 @@
         "llama-cpp-spacemit": "llama-cpp-spacemit",
         "mlx-src": "mlx-src",
         "nix-ai-tools": "nix-ai-tools_2",
-        "nixpkgs": "nixpkgs_6",
+        "nixpkgs": "nixpkgs_7",
         "spine-triton": "spine-triton",
         "therock-src-7-15-gfx1151-base-half-011b45bd": "therock-src-7-15-gfx1151-base-half-011b45bd",
         "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84": "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84",
@@ -1226,15 +1809,209 @@
         "xrt-src": "xrt-src"
       },
       "locked": {
-        "lastModified": 1786208535,
-        "narHash": "sha256-ZiaUqsZYFM2QW+H2zUjRr4P59u6WyhwjZzuLC0mDQv0=",
-        "ref": "refs/heads/feat/glm52-int4-kernel-quant",
-        "rev": "649645e226d1a520ffceaebd855e44af1cad4eff",
+        "lastModified": 1786938337,
+        "narHash": "sha256-P40QUTQAJJ9cJNSkqoE4dOL9Z4Ybxf7qOlIiExJJ8UI=",
+        "ref": "refs/heads/npu-exporter",
+        "rev": "61adb7a789cb887d41adc9aa17b64e0676fe02f4",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nix-strix-halo"
       },
       "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      }
+    },
+    "nix-strix-halo-ds4": {
+      "inputs": {
+        "ds4": "ds4_2",
+        "ds4-hip": "ds4-hip_2",
+        "ds4-upstream": "ds4-upstream",
+        "ec-su-axb35": "ec-su-axb35_2",
+        "fastflowlm": "fastflowlm_2",
+        "llama-cpp-master": "llama-cpp-master_2",
+        "llama-cpp-spacemit": "llama-cpp-spacemit_2",
+        "mlx-src": "mlx-src_2",
+        "nix-ai-tools": "nix-ai-tools_3",
+        "nixpkgs": [
+          "nix-strix-halo",
+          "nixpkgs"
+        ],
+        "spine-triton": "spine-triton_2",
+        "therock-src-7-15-gfx1010-base-half-011b45bd": "therock-src-7-15-gfx1010-base-half-011b45bd",
+        "therock-src-7-15-gfx1010-base-rocm-cmake-ec512d84": "therock-src-7-15-gfx1010-base-rocm-cmake-ec512d84",
+        "therock-src-7-15-gfx1010-compiler-amd-llvm-1e702164": "therock-src-7-15-gfx1010-compiler-amd-llvm-1e702164",
+        "therock-src-7-15-gfx1010-compiler-hipify-ea979a85": "therock-src-7-15-gfx1010-compiler-hipify-ea979a85",
+        "therock-src-7-15-gfx1010-compiler-spirv-llvm-translator-b9250448": "therock-src-7-15-gfx1010-compiler-spirv-llvm-translator-b9250448",
+        "therock-src-7-15-gfx1010-debug-tools-rocgdb-source-e3322990": "therock-src-7-15-gfx1010-debug-tools-rocgdb-source-e3322990",
+        "therock-src-7-15-gfx1010-math-libs-libhipcxx-10b48ff4": "therock-src-7-15-gfx1010-math-libs-libhipcxx-10b48ff4",
+        "therock-src-7-15-gfx1010-rocm-libraries-36c771f3": "therock-src-7-15-gfx1010-rocm-libraries-36c771f3",
+        "therock-src-7-15-gfx1010-rocm-systems-9c0ec3e9": "therock-src-7-15-gfx1010-rocm-systems-9c0ec3e9",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa",
+        "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf": "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf",
+        "therock-src-7-15-gfx1010-root": "therock-src-7-15-gfx1010-root",
+        "therock-src-7-15-gfx1010-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c": "therock-src-7-15-gfx1010-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c",
+        "therock-src-7-15-gfx1151-base-half-011b45bd": "therock-src-7-15-gfx1151-base-half-011b45bd_2",
+        "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84": "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84_2",
+        "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164": "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164_2",
+        "therock-src-7-15-gfx1151-compiler-hipify-ea979a85": "therock-src-7-15-gfx1151-compiler-hipify-ea979a85_2",
+        "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448": "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448_2",
+        "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990": "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990_2",
+        "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4": "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4_2",
+        "therock-src-7-15-gfx1151-rocm-libraries-36c771f3": "therock-src-7-15-gfx1151-rocm-libraries-36c771f3_2",
+        "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9": "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa_2",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf_2",
+        "therock-src-7-15-gfx1151-root": "therock-src-7-15-gfx1151-root_2",
+        "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c": "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c_2",
+        "thunderbolt-ibverbs": [
+          "thunderbolt-ibverbs-kernel"
+        ],
+        "vllm-src": "vllm-src_2",
+        "xdna-driver-src": "xdna-driver-src_2",
+        "xrt-src": "xrt-src_2"
+      },
+      "locked": {
+        "lastModified": 1787723401,
+        "narHash": "sha256-FyhwrrFe6BQDQkp2S6RxmJZltPvr2hJBS4n9cuy6CQ4=",
+        "ref": "prod/ds4-agent",
+        "rev": "8e6cc4f0f03088d22743d9e1a3db841e067971d9",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      },
+      "original": {
+        "ref": "prod/ds4-agent",
+        "rev": "8e6cc4f0f03088d22743d9e1a3db841e067971d9",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      }
+    },
+    "nix-strix-halo-multikernel": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787799463,
+        "narHash": "sha256-mZp8FfrT5+vYPF+cuHm55Y6EjXsRNSb4lIjEVwBisb4=",
+        "ref": "codex/multikernel-7.0-mk2",
+        "rev": "909c744e17b87be7d2b6ef3243a405a8823d7d9d",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      },
+      "original": {
+        "ref": "codex/multikernel-7.0-mk2",
+        "rev": "909c744e17b87be7d2b6ef3243a405a8823d7d9d",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      }
+    },
+    "nix-strix-halo-qwen38": {
+      "inputs": {
+        "ds4": "ds4_3",
+        "ds4-hip": "ds4-hip_3",
+        "ec-su-axb35": "ec-su-axb35_3",
+        "fastflowlm": "fastflowlm_3",
+        "llama-cpp-master": "llama-cpp-master_3",
+        "llama-cpp-spacemit": "llama-cpp-spacemit_3",
+        "mlx-src": "mlx-src_3",
+        "nix-ai-tools": "nix-ai-tools_4",
+        "nixpkgs": "nixpkgs_8",
+        "spine-triton": "spine-triton_3",
+        "therock-src-7-15-gfx1151-base-half-011b45bd": "therock-src-7-15-gfx1151-base-half-011b45bd_3",
+        "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84": "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84_3",
+        "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164": "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164_3",
+        "therock-src-7-15-gfx1151-compiler-hipify-ea979a85": "therock-src-7-15-gfx1151-compiler-hipify-ea979a85_3",
+        "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448": "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448_3",
+        "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990": "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990_3",
+        "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4": "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4_3",
+        "therock-src-7-15-gfx1151-rocm-libraries-36c771f3": "therock-src-7-15-gfx1151-rocm-libraries-36c771f3_3",
+        "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9": "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa_3",
+        "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf": "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf_3",
+        "therock-src-7-15-gfx1151-root": "therock-src-7-15-gfx1151-root_3",
+        "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c": "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c_3",
+        "thunderbolt-ibverbs": "thunderbolt-ibverbs_2",
+        "vllm-src": "vllm-src_3",
+        "xdna-driver-src": "xdna-driver-src_3",
+        "xrt-src": "xrt-src_3"
+      },
+      "locked": {
+        "lastModified": 1787696818,
+        "narHash": "sha256-8L3M7lRWM5f/Y9m7X2JQ8m8GusEPwHb+zdDR2Ek6CMg=",
+        "ref": "feat/qwen38-v620-roofline",
+        "rev": "4a6ae1a47f3a53c2c828f0ba78fdf872bac9c666",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/nix-strix-halo"
+      },
+      "original": {
+        "ref": "feat/qwen38-v620-roofline",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nix-strix-halo"
@@ -1294,11 +2071,11 @@
     },
     "nixpkgs-esphome": {
       "locked": {
-        "lastModified": 1785967620,
-        "narHash": "sha256-IItrdb7Puk05RqOBWZYFC5X6Wl1sJmCfh5MWVHw5iMM=",
+        "lastModified": 1787498568,
+        "narHash": "sha256-9i/VTdusq/+NM/tz+J1Re+ojkMB8MBf0QshnYfzHz30=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "b7c2ada94fe99c15b0dbcf4d11fd7850b957a436",
+        "rev": "56c02bc00adcf003215cc4bd996d6efaf4cff188",
         "type": "github"
       },
       "original": {
@@ -1419,6 +2196,22 @@
     },
     "nixpkgs_5": {
       "locked": {
+        "lastModified": 1788982683,
+        "narHash": "sha256-PJCTsE4I20CrJJPcye9/z6brRFysG5+aygr/dZK097k=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "5052d7ccbcfb7e4ae1586cb2ecf95a2e3707dce9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_6": {
+      "locked": {
         "lastModified": 1775660890,
         "narHash": "sha256-hZoabmLFqWRyjJwwfzdpaJ+BpbNt5tI2ArkN7bIQCww=",
         "owner": "robcohen",
@@ -1433,7 +2226,23 @@
         "type": "github"
       }
     },
-    "nixpkgs_6": {
+    "nixpkgs_7": {
+      "locked": {
+        "lastModified": 1784356753,
+        "narHash": "sha256-12KrbMiWLcf8m7pCvAtZh1ZrgF85ZXDXvfR/fWTKy84=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "61b7c44c4073f0b827768aff0049561b5110ea5a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_8": {
       "locked": {
         "lastModified": 1784356753,
         "narHash": "sha256-12KrbMiWLcf8m7pCvAtZh1ZrgF85ZXDXvfR/fWTKy84=",
@@ -1451,11 +2260,11 @@
     },
     "openwrt-imagebuilder": {
       "inputs": {
-        "flake-parts": "flake-parts_5",
+        "flake-parts": "flake-parts_8",
         "nixpkgs": [
           "nixpkgs"
         ],
-        "systems": "systems_8"
+        "systems": "systems_10"
       },
       "locked": {
         "lastModified": 1781434986,
@@ -1579,18 +2388,22 @@
         "ath-kernel": "ath-kernel",
         "atlas": "atlas",
         "btop-src": "btop-src",
+        "catena-runner": "catena-runner",
         "colmena": "colmena",
         "darwin": "darwin",
         "disko": "disko",
         "ethereum": "ethereum",
         "evdi-src": "evdi-src",
+        "exploratory-catena": "exploratory-catena",
         "firefox-addons": "firefox-addons",
         "hellas": "hellas",
+        "hellas-ai-video": "hellas-ai-video",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
         "linux-rockchip-src": "linux-rockchip-src",
-        "linux-src": "linux-src",
+        "linux-src": "linux-src_2",
         "mac-app-util": "mac-app-util",
+        "mklinux-multikernel": "mklinux-multikernel",
         "mlnx-ofed-nixos": "mlnx-ofed-nixos",
         "mt7927": "mt7927",
         "nanokvm": "nanokvm",
@@ -1598,7 +2411,11 @@
         "nix-amd-npu": "nix-amd-npu",
         "nix-bitcoin": "nix-bitcoin",
         "nix-github-actions": "nix-github-actions_2",
+        "nix-routeros": "nix-routeros",
         "nix-strix-halo": "nix-strix-halo",
+        "nix-strix-halo-ds4": "nix-strix-halo-ds4",
+        "nix-strix-halo-multikernel": "nix-strix-halo-multikernel",
+        "nix-strix-halo-qwen38": "nix-strix-halo-qwen38",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": [
           "nix-strix-halo",
@@ -1714,6 +2531,44 @@
         "url": "https://github.com/spacemit-com/spine-triton.git"
       }
     },
+    "spine-triton_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780563047,
+        "narHash": "sha256-z7t6hb+rQXqjDt0OwdcWkeDXosi4Vw+LsSQ9IYL1Zqw=",
+        "ref": "refs/tags/0.5.5",
+        "rev": "c62b11c5ea994ed6f7ce1d5ac881f14fc5e4aba4",
+        "revCount": 444,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/spacemit-com/spine-triton.git"
+      },
+      "original": {
+        "ref": "refs/tags/0.5.5",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/spacemit-com/spine-triton.git"
+      }
+    },
+    "spine-triton_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780563047,
+        "narHash": "sha256-z7t6hb+rQXqjDt0OwdcWkeDXosi4Vw+LsSQ9IYL1Zqw=",
+        "ref": "refs/tags/0.5.5",
+        "rev": "c62b11c5ea994ed6f7ce1d5ac881f14fc5e4aba4",
+        "revCount": 444,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/spacemit-com/spine-triton.git"
+      },
+      "original": {
+        "ref": "refs/tags/0.5.5",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/spacemit-com/spine-triton.git"
+      }
+    },
     "stable": {
       "locked": {
         "lastModified": 1750133334,
@@ -1745,6 +2600,36 @@
         "type": "github"
       }
     },
+    "systems_10": {
+      "locked": {
+        "lastModified": 1680978846,
+        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
+        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
+        "type": "github"
+      }
+    },
+    "systems_11": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
     "systems_2": {
       "locked": {
         "lastModified": 1681028828,
@@ -1762,21 +2647,6 @@
     },
     "systems_3": {
       "locked": {
-        "lastModified": 1681028828,
-        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
-        "owner": "nix-systems",
-        "repo": "default",
-        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-systems",
-        "repo": "default",
-        "type": "github"
-      }
-    },
-    "systems_4": {
-      "locked": {
         "lastModified": 1689347925,
         "narHash": "sha256-ozenz5bFe1UUqOn7f60HRmgc01BgTGIKZ4Xl+HbocGQ=",
         "owner": "nix-systems",
@@ -1787,6 +2657,21 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default-darwin",
+        "type": "github"
+      }
+    },
+    "systems_4": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
         "type": "github"
       }
     },
@@ -1837,16 +2722,16 @@
     },
     "systems_8": {
       "locked": {
-        "lastModified": 1680978846,
-        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
         "owner": "nix-systems",
-        "repo": "x86_64-linux",
-        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
         "type": "github"
       },
       "original": {
         "owner": "nix-systems",
-        "repo": "x86_64-linux",
+        "repo": "default",
         "type": "github"
       }
     },
@@ -1865,7 +2750,642 @@
         "type": "github"
       }
     },
+    "terranix": {
+      "inputs": {
+        "flake-parts": "flake-parts_4",
+        "nixpkgs": [
+          "nix-routeros",
+          "nixpkgs"
+        ],
+        "systems": "systems_6"
+      },
+      "locked": {
+        "lastModified": 1773700838,
+        "narHash": "sha256-6KFxpxyXjcqhOexc7ZeaXVWdDtGb6zO8HtjBEci9DfU=",
+        "owner": "terranix",
+        "repo": "terranix",
+        "rev": "306ce146bf0324dc3b3c45c095036b6f0e26bf35",
+        "type": "github"
+      },
+      "original": {
+        "owner": "terranix",
+        "repo": "terranix",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-base-half-011b45bd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750971477,
+        "narHash": "sha256-If9O5BEeymsLN+C0drZsPSxEWXpJTxeDBGNHNXSumm4=",
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-base-rocm-cmake-ec512d84": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755709169,
+        "narHash": "sha256-im6UO0crO0Jc27zkTsdvJYPHit8IGlw/vDPGrmP1XqY=",
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-compiler-amd-llvm-1e702164": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784147967,
+        "narHash": "sha256-UpoXFyhaO0H4TFYgPRvBo/MxSKr9NpJQgTM+NunfqdY=",
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-compiler-hipify-ea979a85": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778159713,
+        "narHash": "sha256-hS13lgo2sDBfkOV5Nsiz0HixqgE9B0d7oRuU4o274ns=",
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-compiler-spirv-llvm-translator-b9250448": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780443579,
+        "narHash": "sha256-OQi8TBqJ7K3vE5YSQkNtzAinylfd5QQtOUqiFf/ZDQI=",
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-debug-tools-rocgdb-source-e3322990": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784124121,
+        "narHash": "sha256-oc/2aXdb8DJ+F9y2r91ocls+3EJtMKyOVDA6LQ6fEIE=",
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-math-libs-libhipcxx-10b48ff4": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782909735,
+        "narHash": "sha256-rXHXco98x1cD36MXA6UnJeBXK0s3PJibeSzwtr1eMV8=",
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-libraries-36c771f3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784062192,
+        "narHash": "sha256-X9MoNiS5JDiM7q1GTQgfJYJ2kTRCYWEKGs6n4qsMpC8=",
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-9c0ec3e9": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784212595,
+        "narHash": "sha256-M6jbvyL+R9yVZ3iezUx5w67oXWRHJBFgR+Bh/6TzF68=",
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761748827,
+        "narHash": "sha256-ZmI1Dv0ZabPlxa02OpERI47jp7zFfjpeWCy1WyuPYZ0=",
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777055253,
+        "narHash": "sha256-lQr/3uut38g00JEuBIXP4mLGPXiskbsz7r1XU448AQ8=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758834645,
+        "narHash": "sha256-jUooIBp80cLxvdU/zLF0X8Yjrf0Yp9peYeiFjuV8AHA=",
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770824088,
+        "narHash": "sha256-TJT2Kzc64zI42FAbbGWP3Sshh1dU/D/AtEpgZrrhebg=",
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760484697,
+        "narHash": "sha256-iNg1U0g4Opj3VcZ2cv1q6hxXHio601KubCchNyfbih4=",
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755240366,
+        "narHash": "sha256-XvSK/OfH/krsiH3Tm/LdeuW9DePWGN8qHk8DDfzcP/Y=",
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1678018010,
+        "narHash": "sha256-XZ0IxyNIAs2tegktOGQevkLPbWHam/AOFT+M6wAWPFg=",
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755016804,
+        "narHash": "sha256-FxCCtJnWFod5VXqfb+r0XlfcCAtcjNwfIsVhjUPlRQU=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1732727001,
+        "narHash": "sha256-jqk9TS8qvucsZaK6HS5NNyFYnkyxQLNloF6pFtSrzMQ=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1712741208,
+        "narHash": "sha256-9v4kUKpOLosGayu+GhhPOW/+NXSjX5Lngbt8YJ3KxFM=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709321309,
+        "narHash": "sha256-DZQUjg8l1n6iPx9OCn3W3tt2vcwnQfgijCoIKjywF8I=",
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648696333,
+        "narHash": "sha256-O3bkexUBa+gfiJEM6KSR8y/iVqHqlCFmz/9EghxdIpw=",
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781671772,
+        "narHash": "sha256-Q0GMeeGp8GNLYw5ydrWTGeaiU7rI267EXrsrOtRUPww=",
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744360948,
+        "narHash": "sha256-cECvDOLxgX7Q9R3IE86Hj9JJUxraDQvhoyPDF03B2CY=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761737496,
+        "narHash": "sha256-HIHF6KHlEI4rgQ9Epe0+DmNe1y95K9iYa4V/wFnJfEU=",
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      },
+      "original": {
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773687226,
+        "narHash": "sha256-iII6W6HZXsHRgqniO5IH2GDjhl1JcwhYdhWuIE8Lymk=",
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1718298493,
+        "narHash": "sha256-L7RnOQmD74JFpa10mNwXcLV8YyyjaQ7qYx9eXJpizpw=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1664927513,
+        "narHash": "sha256-MWdkZY255bVYLzUhV1BxMPb+LbM3dtDkg1M4AhrB2rQ=",
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1690716675,
+        "narHash": "sha256-z5YCue0zadQnMEbGFniFvDjXNy6dSHQDQnXRXS6Uh/Y=",
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752612818,
+        "narHash": "sha256-KHTPiNCzYtIsGcSwjVwFSIgO+GZgdBkruMfv1HNxzYk=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780482623,
+        "narHash": "sha256-AAaBBfutxm0suCyJyTZK1vEEG9kAkeho2m6b0JGK4R8=",
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-root": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784405051,
+        "narHash": "sha256-mroWKdRD7qnOWpJI63s2h8fhZtvpHiD8f35aLtDu6m4=",
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1010-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782156113,
+        "narHash": "sha256-DG3g3Ovdee/Sx6JFOYqEoRQFhm/z/4/Cmlj/kd6xxoA=",
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-base-half-011b45bd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750971477,
+        "narHash": "sha256-If9O5BEeymsLN+C0drZsPSxEWXpJTxeDBGNHNXSumm4=",
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-base-half-011b45bd_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1750971477,
+        "narHash": "sha256-If9O5BEeymsLN+C0drZsPSxEWXpJTxeDBGNHNXSumm4=",
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "half",
+        "rev": "207ee58595a64b5c4a70df221f1e6e704b807811",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-base-half-011b45bd_3": {
       "flake": false,
       "locked": {
         "lastModified": 1750971477,
@@ -1899,7 +3419,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755709169,
+        "narHash": "sha256-im6UO0crO0Jc27zkTsdvJYPHit8IGlw/vDPGrmP1XqY=",
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-base-rocm-cmake-ec512d84_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755709169,
+        "narHash": "sha256-im6UO0crO0Jc27zkTsdvJYPHit8IGlw/vDPGrmP1XqY=",
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-cmake",
+        "rev": "10155d7272ea1bf79f6b5a9dbc339657af1aa372",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784147967,
+        "narHash": "sha256-UpoXFyhaO0H4TFYgPRvBo/MxSKr9NpJQgTM+NunfqdY=",
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784147967,
+        "narHash": "sha256-UpoXFyhaO0H4TFYgPRvBo/MxSKr9NpJQgTM+NunfqdY=",
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "llvm-project",
+        "rev": "92fe31231dd83aedaedd822daa2079ca8a445547",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-compiler-amd-llvm-1e702164_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784147967,
@@ -1933,7 +3521,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-compiler-hipify-ea979a85_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778159713,
+        "narHash": "sha256-hS13lgo2sDBfkOV5Nsiz0HixqgE9B0d7oRuU4o274ns=",
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-compiler-hipify-ea979a85_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778159713,
+        "narHash": "sha256-hS13lgo2sDBfkOV5Nsiz0HixqgE9B0d7oRuU4o274ns=",
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "HIPIFY",
+        "rev": "c917282dbc1fe85d3814807a2c77d4288cff112d",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780443579,
+        "narHash": "sha256-OQi8TBqJ7K3vE5YSQkNtzAinylfd5QQtOUqiFf/ZDQI=",
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780443579,
+        "narHash": "sha256-OQi8TBqJ7K3vE5YSQkNtzAinylfd5QQtOUqiFf/ZDQI=",
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "SPIRV-LLVM-Translator",
+        "rev": "ddeda6468d45cf1e888a0e81e50bc170756a335b",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-compiler-spirv-llvm-translator-b9250448_3": {
       "flake": false,
       "locked": {
         "lastModified": 1780443579,
@@ -1967,7 +3623,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784124121,
+        "narHash": "sha256-oc/2aXdb8DJ+F9y2r91ocls+3EJtMKyOVDA6LQ6fEIE=",
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-debug-tools-rocgdb-source-e3322990_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784124121,
+        "narHash": "sha256-oc/2aXdb8DJ+F9y2r91ocls+3EJtMKyOVDA6LQ6fEIE=",
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocgdb",
+        "rev": "1b5ded2e8e4239e9dc94b7c77c1b753cc7f68e26",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782909735,
+        "narHash": "sha256-rXHXco98x1cD36MXA6UnJeBXK0s3PJibeSzwtr1eMV8=",
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782909735,
+        "narHash": "sha256-rXHXco98x1cD36MXA6UnJeBXK0s3PJibeSzwtr1eMV8=",
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "libhipcxx",
+        "rev": "3ea4c70920e0cdd1bab79d1897043090a93372b6",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-math-libs-libhipcxx-10b48ff4_3": {
       "flake": false,
       "locked": {
         "lastModified": 1782909735,
@@ -2001,7 +3725,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-libraries-36c771f3_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784062192,
+        "narHash": "sha256-X9MoNiS5JDiM7q1GTQgfJYJ2kTRCYWEKGs6n4qsMpC8=",
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-libraries-36c771f3_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784062192,
+        "narHash": "sha256-X9MoNiS5JDiM7q1GTQgfJYJ2kTRCYWEKGs6n4qsMpC8=",
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-libraries",
+        "rev": "fa9cdd186b222f6449a6be1710038bdee4faa328",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784212595,
+        "narHash": "sha256-M6jbvyL+R9yVZ3iezUx5w67oXWRHJBFgR+Bh/6TzF68=",
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784212595,
+        "narHash": "sha256-M6jbvyL+R9yVZ3iezUx5w67oXWRHJBFgR+Bh/6TzF68=",
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "rocm-systems",
+        "rev": "8ceab8e581fbd0e191b1a0a56f9e59d8d1ca4e00",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-9c0ec3e9_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784212595,
@@ -2035,7 +3827,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761748827,
+        "narHash": "sha256-ZmI1Dv0ZabPlxa02OpERI47jp7zFfjpeWCy1WyuPYZ0=",
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-fmt-db1fc275_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761748827,
+        "narHash": "sha256-ZmI1Dv0ZabPlxa02OpERI47jp7zFfjpeWCy1WyuPYZ0=",
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "407c905e45ad75fc29bf0f9bb7c5c2fd3475976f",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777055253,
+        "narHash": "sha256-lQr/3uut38g00JEuBIXP4mLGPXiskbsz7r1XU448AQ8=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777055253,
+        "narHash": "sha256-lQr/3uut38g00JEuBIXP4mLGPXiskbsz7r1XU448AQ8=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "98386eb08b609c172f9f4bf3e74c8d18c5ad583c",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-lib-external-json-c887b002_3": {
       "flake": false,
       "locked": {
         "lastModified": 1777055253,
@@ -2069,7 +3929,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758834645,
+        "narHash": "sha256-jUooIBp80cLxvdU/zLF0X8Yjrf0Yp9peYeiFjuV8AHA=",
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-compute-src-vendored-pyyaml-b64e5974_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1758834645,
+        "narHash": "sha256-jUooIBp80cLxvdU/zLF0X8Yjrf0Yp9peYeiFjuV8AHA=",
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "yaml",
+        "repo": "pyyaml",
+        "rev": "49790e73684bebad1df05ef8d828fa12f685bffb",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770824088,
+        "narHash": "sha256-TJT2Kzc64zI42FAbbGWP3Sshh1dU/D/AtEpgZrrhebg=",
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1770824088,
+        "narHash": "sha256-TJT2Kzc64zI42FAbbGWP3Sshh1dU/D/AtEpgZrrhebg=",
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abseil",
+        "repo": "abseil-cpp",
+        "rev": "255c84dadd029fd8ad25c5efb5933e47beaa00c7",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-abseil-cpp-471579c4_3": {
       "flake": false,
       "locked": {
         "lastModified": 1770824088,
@@ -2103,7 +4031,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760484697,
+        "narHash": "sha256-iNg1U0g4Opj3VcZ2cv1q6hxXHio601KubCchNyfbih4=",
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-cereal-7f708e93_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760484697,
+        "narHash": "sha256-iNg1U0g4Opj3VcZ2cv1q6hxXHio601KubCchNyfbih4=",
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "cereal",
+        "rev": "40a30defcb8874270a04836d316502b08904b2bc",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755240366,
+        "narHash": "sha256-XvSK/OfH/krsiH3Tm/LdeuW9DePWGN8qHk8DDfzcP/Y=",
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755240366,
+        "narHash": "sha256-XvSK/OfH/krsiH3Tm/LdeuW9DePWGN8qHk8DDfzcP/Y=",
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "serge1",
+        "repo": "ELFIO",
+        "rev": "575bfdb12cd90fa8913660295103549f151d116a",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-elfio-cf38c296_3": {
       "flake": false,
       "locked": {
         "lastModified": 1755240366,
@@ -2137,7 +4133,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1678018010,
+        "narHash": "sha256-XZ0IxyNIAs2tegktOGQevkLPbWHam/AOFT+M6wAWPFg=",
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-filesystem-807165f4_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1678018010,
+        "narHash": "sha256-XZ0IxyNIAs2tegktOGQevkLPbWHam/AOFT+M6wAWPFg=",
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gulrak",
+        "repo": "filesystem",
+        "rev": "8a2edd6d92ed820521d42c94d179462bf06b5ed3",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755016804,
+        "narHash": "sha256-FxCCtJnWFod5VXqfb+r0XlfcCAtcjNwfIsVhjUPlRQU=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755016804,
+        "narHash": "sha256-FxCCtJnWFod5VXqfb+r0XlfcCAtcjNwfIsVhjUPlRQU=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "b944da10ff9b3364ef2e4b12e02cb2464e05dd48",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-gotcha-10fa2c98_3": {
       "flake": false,
       "locked": {
         "lastModified": 1755016804,
@@ -2171,7 +4235,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1732727001,
+        "narHash": "sha256-jqk9TS8qvucsZaK6HS5NNyFYnkyxQLNloF6pFtSrzMQ=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-json-a3f85fd2_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1732727001,
+        "narHash": "sha256-jqk9TS8qvucsZaK6HS5NNyFYnkyxQLNloF6pFtSrzMQ=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "e41905fcb0938a7502d25ea5242c6b41396e21b0",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1712741208,
+        "narHash": "sha256-9v4kUKpOLosGayu+GhhPOW/+NXSjX5Lngbt8YJ3KxFM=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1712741208,
+        "narHash": "sha256-9v4kUKpOLosGayu+GhhPOW/+NXSjX5Lngbt8YJ3KxFM=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "eb5ef24c58d13cec289d733d03f0f3f0ed321b12",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-perfetto-9d309359_3": {
       "flake": false,
       "locked": {
         "lastModified": 1712741208,
@@ -2205,7 +4337,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709321309,
+        "narHash": "sha256-DZQUjg8l1n6iPx9OCn3W3tt2vcwnQfgijCoIKjywF8I=",
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-ptl-db721fa0_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709321309,
+        "narHash": "sha256-DZQUjg8l1n6iPx9OCn3W3tt2vcwnQfgijCoIKjywF8I=",
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "PTL",
+        "rev": "48df41625430d27ce43cf197fd467a8dda87cb45",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648696333,
+        "narHash": "sha256-O3bkexUBa+gfiJEM6KSR8y/iVqHqlCFmz/9EghxdIpw=",
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648696333,
+        "narHash": "sha256-O3bkexUBa+gfiJEM6KSR8y/iVqHqlCFmz/9EghxdIpw=",
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "914c06fb252b6cc3727d0eedab6736e88a3fcb01",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-sdk-external-pybind11-6da66437_3": {
       "flake": false,
       "locked": {
         "lastModified": 1648696333,
@@ -2239,7 +4439,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781671772,
+        "narHash": "sha256-Q0GMeeGp8GNLYw5ydrWTGeaiU7rI267EXrsrOtRUPww=",
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-dyninst-5f477976_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781671772,
+        "narHash": "sha256-Q0GMeeGp8GNLYw5ydrWTGeaiU7rI267EXrsrOtRUPww=",
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "dyninst",
+        "rev": "5dff47bf6fb53e51cdc5e98c8ef6656080931ede",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744360948,
+        "narHash": "sha256-cECvDOLxgX7Q9R3IE86Hj9JJUxraDQvhoyPDF03B2CY=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744360948,
+        "narHash": "sha256-cECvDOLxgX7Q9R3IE86Hj9JJUxraDQvhoyPDF03B2CY=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "55f93686c01528224f448c19128836e7df245f72",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-json-ef3d2b7e_3": {
       "flake": false,
       "locked": {
         "lastModified": 1744360948,
@@ -2273,7 +4541,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761737496,
+        "narHash": "sha256-HIHF6KHlEI4rgQ9Epe0+DmNe1y95K9iYa4V/wFnJfEU=",
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      },
+      "original": {
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-onetbb-9159eae3_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761737496,
+        "narHash": "sha256-HIHF6KHlEI4rgQ9Epe0+DmNe1y95K9iYa4V/wFnJfEU=",
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      },
+      "original": {
+        "owner": "uxlfoundation",
+        "repo": "oneTBB",
+        "rev": "f1862f38f83568d96e814e469ab61f88336cc595",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773687226,
+        "narHash": "sha256-iII6W6HZXsHRgqniO5IH2GDjhl1JcwhYdhWuIE8Lymk=",
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773687226,
+        "narHash": "sha256-iII6W6HZXsHRgqniO5IH2GDjhl1JcwhYdhWuIE8Lymk=",
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "icl-utk-edu",
+        "repo": "papi",
+        "rev": "c27003e1642f1c151c9b18ef9e7610072b3c852d",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-papi-ae8ec169_3": {
       "flake": false,
       "locked": {
         "lastModified": 1773687226,
@@ -2307,7 +4643,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1718298493,
+        "narHash": "sha256-L7RnOQmD74JFpa10mNwXcLV8YyyjaQ7qYx9eXJpizpw=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-perfetto-c27c4344_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1718298493,
+        "narHash": "sha256-L7RnOQmD74JFpa10mNwXcLV8YyyjaQ7qYx9eXJpizpw=",
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "perfetto",
+        "rev": "35b3d9845c2f4017865c4dc93fafcf6d202f1651",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-pybind11-92d9411d_3": {
       "flake": false,
       "locked": {
         "lastModified": 1689348038,
@@ -2341,7 +4745,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1664927513,
+        "narHash": "sha256-MWdkZY255bVYLzUhV1BxMPb+LbM3dtDkg1M4AhrB2rQ=",
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-1cc6846c_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1664927513,
+        "narHash": "sha256-MWdkZY255bVYLzUhV1BxMPb+LbM3dtDkg1M4AhrB2rQ=",
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "yaml-cpp",
+        "rev": "1b50109f7bea60bd382d8ea7befce3d2bd67da5f",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1690716675,
+        "narHash": "sha256-z5YCue0zadQnMEbGFniFvDjXNy6dSHQDQnXRXS6Uh/Y=",
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1690716675,
+        "narHash": "sha256-z5YCue0zadQnMEbGFniFvDjXNy6dSHQDQnXRXS6Uh/Y=",
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "libunwind",
+        "repo": "libunwind",
+        "rev": "24947191d61dda869e039e0414fe97e9f594acd5",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-742cff1f_3": {
       "flake": false,
       "locked": {
         "lastModified": 1690716675,
@@ -2375,7 +4847,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752612818,
+        "narHash": "sha256-KHTPiNCzYtIsGcSwjVwFSIgO+GZgdBkruMfv1HNxzYk=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-811a2531_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1752612818,
+        "narHash": "sha256-KHTPiNCzYtIsGcSwjVwFSIgO+GZgdBkruMfv1HNxzYk=",
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "GOTCHA",
+        "rev": "6ef1232a0acc99f3340c2ca4c5d23890e9b8a459",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1689348038,
+        "narHash": "sha256-r0b1Wr/PtTk4kHOVhgSy3gi/GLED774Ys49J1E7B7WQ=",
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jrmadsen",
+        "repo": "pybind11",
+        "rev": "1a917f1852eb7819b671fc3fa862840f4c491a07",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-exte-d76a29fa_3": {
       "flake": false,
       "locked": {
         "lastModified": 1689348038,
@@ -2409,7 +4949,75 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780482623,
+        "narHash": "sha256-AAaBBfutxm0suCyJyTZK1vEEG9kAkeho2m6b0JGK4R8=",
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-rocm-systems-projects-rocprofiler-systems-external-timemory-fb6426bf_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780482623,
+        "narHash": "sha256-AAaBBfutxm0suCyJyTZK1vEEG9kAkeho2m6b0JGK4R8=",
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "timemory",
+        "rev": "54ae9d214a63132da22c7cab21c5fb4b7b5049f8",
+        "type": "github"
+      }
+    },
     "therock-src-7-15-gfx1151-root": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784405051,
+        "narHash": "sha256-mroWKdRD7qnOWpJI63s2h8fhZtvpHiD8f35aLtDu6m4=",
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-root_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784405051,
+        "narHash": "sha256-mroWKdRD7qnOWpJI63s2h8fhZtvpHiD8f35aLtDu6m4=",
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "TheRock",
+        "rev": "1de3171d00f6de55e9ed517dc6ca6e825d1e4b55",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-root_3": {
       "flake": false,
       "locked": {
         "lastModified": 1784405051,
@@ -2443,6 +5051,65 @@
         "type": "github"
       }
     },
+    "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782156113,
+        "narHash": "sha256-DG3g3Ovdee/Sx6JFOYqEoRQFhm/z/4/Cmlj/kd6xxoA=",
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      }
+    },
+    "therock-src-7-15-gfx1151-third-party-sysdeps-linux-amd-mesa-mesa-fork-a692c85c_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782156113,
+        "narHash": "sha256-DG3g3Ovdee/Sx6JFOYqEoRQFhm/z/4/Cmlj/kd6xxoA=",
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ROCm",
+        "repo": "mesa-fork",
+        "rev": "22abfc06d7cf4c115ca2e368505d75ba4af174b4",
+        "type": "github"
+      }
+    },
+    "thunderbolt-ibverbs": {
+      "inputs": {
+        "linux-src": "linux-src",
+        "linux-stable": "linux-stable",
+        "nixpkgs": [
+          "hellas-ai-video",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786809689,
+        "narHash": "sha256-wgYdG+YoP0/XEBcFqtufRGO4O76QvnvEvmuUNShpXuw=",
+        "ref": "codex/apple-xdomain-property-match",
+        "rev": "d11357bb7d04e56a1b9b1e4e0d0098852032a489",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/thunderbolt-ibverbs"
+      },
+      "original": {
+        "ref": "codex/apple-xdomain-property-match",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/thunderbolt-ibverbs"
+      }
+    },
     "thunderbolt-ibverbs-kernel": {
       "inputs": {
         "linux-src": [
@@ -2453,14 +5120,42 @@
         ]
       },
       "locked": {
-        "lastModified": 1782867651,
-        "narHash": "sha256-k1TzLvIBatyiWin9qmqUKy8wvyVeaPo0fQHV9zn5Ruc=",
-        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase",
-        "type": "path"
+        "lastModified": 1787701042,
+        "narHash": "sha256-9pIbW6ycJBfggllffmllzJ1BtX8/kWE84+bV01YuRjU=",
+        "ref": "codex/gda-v2-rebased-port",
+        "rev": "93cfff16b7be025bbf993d761406c3b1fb8122c6",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase"
       },
       "original": {
-        "path": "/mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase",
-        "type": "path"
+        "ref": "codex/gda-v2-rebased-port",
+        "rev": "93cfff16b7be025bbf993d761406c3b1fb8122c6",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/thunderbolt-ibverbs-gda-v2-rebase"
+      }
+    },
+    "thunderbolt-ibverbs_2": {
+      "inputs": {
+        "linux-src": "linux-src_3",
+        "nixpkgs": [
+          "nix-strix-halo-qwen38",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782863499,
+        "narHash": "sha256-Qx7O5WgO5wY8hUkERu2l+miVL4fTPONQyvtDmBBk0Yo=",
+        "owner": "hellas-ai",
+        "repo": "thunderbolt-ibverbs",
+        "rev": "76ba39b630a70accb72f19388eefe48844b50eb8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hellas-ai",
+        "repo": "thunderbolt-ibverbs",
+        "type": "github"
       }
     },
     "treefmt-nix": {
@@ -2528,11 +5223,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785360170,
-        "narHash": "sha256-XE1lKgQ3eIO3E7zWryqcRsax+mYXod/5RHBn4YaR9YE=",
+        "lastModified": 1786901030,
+        "narHash": "sha256-WSFCsDSE5ffgD2MqzkM2CYjeFiKhRF/dJUN8uedb6YE=",
         "owner": "numtide",
         "repo": "treefmt-nix",
-        "rev": "d1187f8bc71fb8aab02395869ec3f5c1920f75c0",
+        "rev": "27b3b12a8e6375f28ebe122f07d230ca5459bbfa",
         "type": "github"
       },
       "original": {
@@ -2545,6 +5240,50 @@
       "inputs": {
         "nixpkgs": [
           "nix-strix-halo",
+          "nix-ai-tools",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784369104,
+        "narHash": "sha256-47cxbcZODibHv3rELFQ9vZly0vUNkND/atn/U7HLeb0=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "df3c0640565d04a0261253cdd89fce78ec50168a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_6": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-strix-halo-ds4",
+          "nix-ai-tools",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784369104,
+        "narHash": "sha256-47cxbcZODibHv3rELFQ9vZly0vUNkND/atn/U7HLeb0=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "df3c0640565d04a0261253cdd89fce78ec50168a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_7": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-strix-halo-qwen38",
           "nix-ai-tools",
           "nixpkgs"
         ]
@@ -2605,9 +5344,43 @@
         "type": "github"
       }
     },
+    "vllm-src_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783899612,
+        "narHash": "sha256-a2OoTfQOJyB8iKBfkfCC23MMBMOHEBjAZ0WGag8hcTQ=",
+        "owner": "vllm-project",
+        "repo": "vllm",
+        "rev": "752a3a504485790a2e8491cacbb35c137339ad34",
+        "type": "github"
+      },
+      "original": {
+        "owner": "vllm-project",
+        "ref": "v0.25.1",
+        "repo": "vllm",
+        "type": "github"
+      }
+    },
+    "vllm-src_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783899612,
+        "narHash": "sha256-a2OoTfQOJyB8iKBfkfCC23MMBMOHEBjAZ0WGag8hcTQ=",
+        "owner": "vllm-project",
+        "repo": "vllm",
+        "rev": "752a3a504485790a2e8491cacbb35c137339ad34",
+        "type": "github"
+      },
+      "original": {
+        "owner": "vllm-project",
+        "ref": "v0.25.1",
+        "repo": "vllm",
+        "type": "github"
+      }
+    },
     "vscode-server": {
       "inputs": {
-        "flake-parts": "flake-parts_6"
+        "flake-parts": "flake-parts_9"
       },
       "locked": {
         "lastModified": 1784312229,
@@ -2642,7 +5415,83 @@
         "url": "https://github.com/amd/xdna-driver"
       }
     },
+    "xdna-driver-src_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780591096,
+        "narHash": "sha256-pG9fptnKMoHbK2HSBObfflCyBt9k0uDO/leKvtsKUnA=",
+        "ref": "1.7",
+        "rev": "0fb464f6e043fdaf8d9007b76bd9e9a666ffe870",
+        "revCount": 873,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/amd/xdna-driver"
+      },
+      "original": {
+        "ref": "1.7",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/amd/xdna-driver"
+      }
+    },
+    "xdna-driver-src_3": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780591096,
+        "narHash": "sha256-pG9fptnKMoHbK2HSBObfflCyBt9k0uDO/leKvtsKUnA=",
+        "ref": "1.7",
+        "rev": "0fb464f6e043fdaf8d9007b76bd9e9a666ffe870",
+        "revCount": 873,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/amd/xdna-driver"
+      },
+      "original": {
+        "ref": "1.7",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/amd/xdna-driver"
+      }
+    },
     "xrt-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780589208,
+        "narHash": "sha256-JrqJIGJoQiXTwXjZpqAXVaHx+6i09B1qtqkJzoRPZKw=",
+        "ref": "XRT-2.21",
+        "rev": "8661761775a266b11992a3bd6eb08209d88aa845",
+        "revCount": 8684,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/Xilinx/XRT"
+      },
+      "original": {
+        "ref": "XRT-2.21",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/Xilinx/XRT"
+      }
+    },
+    "xrt-src_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780589208,
+        "narHash": "sha256-JrqJIGJoQiXTwXjZpqAXVaHx+6i09B1qtqkJzoRPZKw=",
+        "ref": "XRT-2.21",
+        "rev": "8661761775a266b11992a3bd6eb08209d88aa845",
+        "revCount": 8684,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/Xilinx/XRT"
+      },
+      "original": {
+        "ref": "XRT-2.21",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/Xilinx/XRT"
+      }
+    },
+    "xrt-src_3": {
       "flake": false,
       "locked": {
         "lastModified": 1780589208,
