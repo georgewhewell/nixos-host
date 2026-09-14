@@ -13,6 +13,7 @@ in {
       "render"
       "dialout"
       "plugdev"
+      "pcscd"
       "wireshark"
       "lp"
       "scanner"
