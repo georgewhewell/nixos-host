@@ -95,10 +95,16 @@ in
       systemd.services.bluefield-rshim.conflicts = lib.mkForce [ ];
 
       systemd.network.links."20-bluefield-hostpf" = {
-        matchConfig = {
-          Driver = "mlx5_core";
-          PermanentMACAddress = topology.router.mac;
-        };
+        # Match by permanent MAC ONLY -- never add Driver= here, matching the
+        # convention in profiles/router/linux.nix and machines/x86/fuckup.
+        # A Driver= term in a *.network* [Match] can never be satisfied for a
+        # renamed link: networkd resolves it with a single, never-retried
+        # ethtool call keyed on whatever ifname the link held at that instant,
+        # and a replayed pre-rename event leaves it permanently unresolved.
+        # This particular block is a *.link* file (udev, not networkd) and MAC
+        # alone is already a sufficient, name-independent match, so there is
+        # no reason to carry the Driver= term here either.
+        matchConfig.PermanentMACAddress = topology.router.mac;
         linkConfig = {
           Name = topology.router.linuxName;
           MTUBytes = toString transit.mtu;
