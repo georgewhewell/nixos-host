@@ -28,3 +28,8 @@ machines/routeros/**/.state/
 # Rescue WireGuard keys (k3 -> ax102). Plaintext staging for the ax102 side;
 # never committed.
 .rescue-keys/
+
+# Ad-hoc build/deploy scratch logs from the repo root; not meant to be committed.
+.rock5b-cross-build.log
+.router-deploy.log
+.strix2-verify-*.log
