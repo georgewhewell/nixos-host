@@ -1299,7 +1299,21 @@ in
         };
 
         "16-shared-cx5-unaddressed" = {
-          matchConfig.Driver = "mlx5_core";
+          # Driver= cannot match here: networkd resolves it with a single
+          # ethtool call keyed to the ifname it holds at that instant, never
+          # retried, and systemd-networkd.socket's buffered netlink replay
+          # delivers each mlx5 port's pre-rename kernel name (e.g. eth1)
+          # after udev has already renamed it -- that ethtool call then hits
+          # ENODEV and Driver= never matches for the rest of the boot. This
+          # rule exists to catch whichever mlx5 ports the more specific rules
+          # above (15-cx5-fabric, 15-cx5-fabric2) did not claim by name, so it
+          # cannot be pinned to one Name= or one host's PermanentMACAddress=
+          # either. Match the udev ID_NET_DRIVER property instead: udev sets
+          # it synchronously during the device's own add event, independent
+          # of any later rename, so it is immune to the replay. No SR-IOV VFs
+          # are configured on this driver anywhere in this repo, so the match
+          # stays specific to physical mlx5 PFs.
+          matchConfig.Property = "ID_NET_DRIVER=mlx5_core";
           networkConfig = {
             DHCP = "no";
             IPv6AcceptRA = false;
