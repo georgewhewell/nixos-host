@@ -8,7 +8,7 @@ broken, and how we made the boot reliable and faster along the way.
 - Router: AMD board with ConnectX-4 Lx dual-port 25G NIC.
   - PF0 (PCI `0000:01:00.0`) → WAN, MAC `50:6b:4b:03:04:ca`, `enp1s0f0np0`
   - PF1 (PCI `0000:01:00.1`) → LAN, MAC `50:6b:4b:03:04:cb`, `enp1s0f1np1`
-- LAN is plugged into MikroTik CRS510 (`mikrotik-100g.lan.satanic.link`),
+- LAN is plugged into MikroTik CRS510 (`mikrotik-crs510.lan.satanic.link`),
   port `sfp28-1`. MikroTik defaults every sfp28 port to
   `auto-negotiation=yes, fec-mode=auto`.
 - The WAN PF is flipped to `devlink eswitch mode=switchdev` at boot for

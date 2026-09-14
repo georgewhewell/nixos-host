@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-host="${MIKROTIK_100G_HOST:-192.168.23.9}"
-user="${MIKROTIK_100G_USER:-admin}"
+host="${MIKROTIK_CRS510_HOST:-192.168.23.9}"
+user="${MIKROTIK_CRS510_USER:-admin}"
 expected_fingerprint="SHA256:Aaiw03D1EKCVo903WYxe/XUg2wodIWKqJLonyYAVGN8"
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${repo_root}/machines/routeros/crs510/config.rsc"
@@ -10,7 +10,7 @@ remote_config="crs510-nixos-config.rsc"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/mikrotik-100g-apply-config [--dry-run|--apply]
+Usage: scripts/mikrotik-crs510-apply-config [--dry-run|--apply]
 
 Authenticates with the SSH agent (the CRS510 is key-auth only).
 EOF
