@@ -384,7 +384,14 @@ in
           dns = [ network.dnsIp ];
         };
         "10-mlx5" = {
-          matchConfig.Driver = "mlx5_core";
+          # Driver alone can be evaluated before the .link rename above has
+          # landed, so pin this rule to the PF's permanent MAC too -- a
+          # Driver-only match can lose that ordering race and leave the port
+          # unmatched, unmanaged, and never enslaved for the rest of the boot.
+          matchConfig = {
+            Driver = "mlx5_core";
+            PermanentMACAddress = self.mac;
+          };
           networkConfig = {
             Bridge = lanBridge;
             ConfigureWithoutCarrier = true;
