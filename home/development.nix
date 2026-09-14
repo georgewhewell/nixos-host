@@ -28,9 +28,7 @@ let
   ompRpcPythonWrapper = pkgs.writeShellScriptBin "omp-rpc-python" ''
     exec ${ompRpcPython}/bin/python3 "$@"
   '';
-  codexCli = pkgs.writeShellScriptBin "codex" ''
-    exec ${pkgs.nodejs}/bin/npx --yes @openai/codex@latest "$@"
-  '';
+  codexCli = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.codex;
   codexAccounts = pkgs.stdenvNoCC.mkDerivation {
     pname = "codex-accounts";
     version = "0.1.4";
@@ -170,6 +168,76 @@ in
       Persistent = true;
     };
     Install.WantedBy = [ "timers.target" ];
+  };
+
+  programs.codex = {
+    enable = true;
+    package = codexCli;
+    settings = {
+      model = "gpt-6-astra";
+      model_reasoning_effort = "medium";
+      approval_policy = "never";
+      features = {
+        terminal_resize_reflow = true;
+        context_management.experimental_mode = true;
+      };
+      tui = {
+        resume_cwd = "session";
+        model_availability_nux = {
+          "gpt-5.5" = 4;
+          "gpt-5.6-sol" = 4;
+          "gpt-6-astra" = 4;
+        };
+      };
+      notice.hide_rate_limit_model_nudge = true;
+      analytics.enabled = false;
+      otel = {
+        environment = "prod";
+        log_user_prompt = false;
+        metrics_exporter.otlp-http = {
+          endpoint = "http://trex:4318/v1/metrics";
+          protocol = "binary";
+        };
+      };
+      projects = lib.genAttrs
+        [
+          "/home/grw/src"
+          "/home/grw/src/george-admin"
+          "/home/grw/src/hellas-admin"
+          "/home/grw/src/nixos-nanokvm"
+          "/home/grw/src/nix-llamacpp-rocm"
+          "/home/grw/src/linux-libibverbs-usb4"
+          "/home/grw/src/hellas-esp32"
+          "/mnt/Home/src/hellas-ai-video"
+          "/mnt/Home/src/nixos-config"
+          "/mnt/Home/src/thunderbolt-ibverbs"
+          "/mnt/Home/src/node"
+          "/mnt/Home/src/nix-strix-halo"
+          "/mnt/Home/src/blog"
+          "/home/grw"
+          "/mnt/Home/src/infra"
+          "/mnt/Home/src/nixos-nanokvm"
+          "/mnt/Home/src/thunderbolt-ibverbs-kernel-clean"
+          "/mnt/Home/src"
+          "/mnt/Home/src/hellas-alto"
+          "/mnt/Home/src/nix-evals"
+          "/mnt/Home/src/amd-strix-halo-vllm-toolboxes"
+          "/mnt/Home/src/hellas-esp32"
+          "/tmp/nanokvm-checkout"
+          "/tmp/ds4-src"
+          "/mnt/Home/src/hellas"
+          "/mnt/Home/src/hellas-agents"
+          "/mnt/Home/src/ax35b-ec-dump"
+          "/mnt/Home/src/btop"
+          "/mnt/Home/src/explorer"
+          "/mnt/Home/src/strix-inf"
+          "/mnt/Home/pde"
+          "/mnt/Home/src/hellasbox"
+          "/mnt/Home/src/nixos-gemini"
+          "/mnt/Home/src/hellas-extras/hellas-esp32"
+        ]
+        (_: { trust_level = "trusted"; });
+    };
   };
 
   programs.claude-code = {
@@ -839,13 +907,11 @@ DSHPATCH
       # runs as dsh-web on trex behind an authenticating nginx vhost, because
       # dsh itself has no login (see machines/x86/trex/default.nix).
       dsh
-      # codex
     ])
     ++ [
       # xAI's Grok Build CLI. Vendor telemetry remains disabled above; this
       # wrapper enables only its content-free external OTel stream to ax102.
       grokWithPrivateOtel
-      codexCli
       codexAccounts
       inputs.nix-strix-halo.packages.${pkgs.stdenv.hostPlatform.system}.pi-wrap
     ]
