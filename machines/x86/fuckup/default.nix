@@ -164,7 +164,8 @@ in
   };
 
   home-manager.users.grw =
-    { lib
+    { config
+    , lib
     , pkgs
     , ...
     }: {
@@ -174,6 +175,19 @@ in
           --group MouseBindings \
           --key CommandAllKey Meta
       '';
+
+      # baloo_file_extractor (kde-baloo.service) ran for 3.5 days straight
+      # pegging a core and peaking at 25G RSS while indexing. Turn indexing
+      # off and mask the service so it can't restart itself.
+      home.activation.baloofileDisable = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 \
+          --file "$HOME/.config/baloofilerc" \
+          --group "Basic Settings" \
+          --key Indexing-Enabled false
+      '';
+
+      xdg.configFile."systemd/user/kde-baloo.service".source =
+        config.lib.file.mkOutOfStoreSymlink "/dev/null";
 
       systemd.user.services.qwen38-dense-tunnel = {
         Unit = {
