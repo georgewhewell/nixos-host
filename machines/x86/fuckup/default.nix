@@ -8,31 +8,6 @@
 }:
 let
   self = network.hosts.fuckup;
-  moshi = pkgs.moshi.override {
-    cudaPackages = pkgs.cudaPackages_12_8;
-    cudaCapability = "8.9";
-  };
-  moshiConfig = pkgs.writeText "moshi-bf16.json" (builtins.toJSON {
-    instance_name = "fuckup-bf16";
-    hf_repo = "kyutai/moshiko-candle-bf16";
-    lm_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/model.safetensors";
-    text_tokenizer_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/tokenizer_spm_32k_3.model";
-    log_dir = "$HOME/.local/state/moshi/logs";
-    mimi_model_file = "/models/.cache/huggingface/moshi/moshiko-candle-bf16/tokenizer-e351c8d8-checkpoint125.safetensors";
-    mimi_num_codebooks = 8;
-    static_dir = "/models/.cache/huggingface/moshi/web-dist";
-    addr = "127.0.0.1";
-    port = 8998;
-    cert_dir = "$HOME/.local/state/moshi/certs";
-  });
-  moshiBf16 = pkgs.writeShellScriptBin "moshi-bf16" ''
-    set -euo pipefail
-
-    state_dir="$HOME/.local/state/moshi"
-    mkdir -p "$state_dir/logs" "$state_dir/certs"
-    cd "$state_dir"
-    exec ${moshi}/bin/moshi-backend --config ${moshiConfig} standalone "$@"
-  '';
 in
 {
   /*
@@ -111,8 +86,6 @@ in
 
   environment.systemPackages = [
     pkgs.kexec-tools
-    moshi
-    moshiBf16
     pkgs.gpu-screen-recorder-gtk
     pkgs.wl-screenrec
     (pkgs.writeShellScriptBin "wl-capture" ''

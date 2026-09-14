@@ -98,9 +98,6 @@ self: super: {
     vendorHash = "sha256-9XEg7Io3yi/6PKgc0oKmTWNYACOLf8FfKM/c15jXOUQ=";
   });
 
-  # moshi's PyO3 supports Python <= 3.13; nixpkgs default python3 is 3.14.
-  moshi = super.moshi.override { python3 = super.python313; };
-
   # CGAL 6.2 omits the required trailing NUL from its SHF_STRINGS
   # .debug_gdb_scripts section, which lld 21 correctly rejects. Backport
   # CGAL eb2257df4da4; drop once nixpkgs carries it or updates past 6.2.
