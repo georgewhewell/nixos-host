@@ -35,7 +35,21 @@ in {
     # Use SR-IOV VF instead of bridge for dedicated hardware NIC
     interfaces = ["mlxlan0v0"];
 
+    # Jellyfin uses the Radeon render node for VA-API transcoding. Keep the
+    # display/card nodes unavailable through the outer container device cgroup;
+    # decoding and encoding need only renderD128.
+    allowedDevices = [
+      {
+        node = "/dev/dri/renderD128";
+        modifier = "rw";
+      }
+    ];
+
     bindMounts = {
+      "/dev/dri" = {
+        hostPath = "/dev/dri";
+        isReadOnly = false;
+      };
       "/run/autobrr.secret".hostPath = "/run/autobrr.secret";
       "/var/lib/private/autobrr" = {
         hostPath = "/var/lib/autobrr";
@@ -91,7 +105,7 @@ in {
 
       # Configure the SR-IOV VF interface (override DHCP from container.nix)
       networking.useNetworkd = true;
-      networking.interfaces = {};  # Clear legacy interface config
+      networking.interfaces = {}; # Clear legacy interface config
       systemd.network = {
         enable = true;
         networks."10-vf" = {
@@ -99,7 +113,7 @@ in {
           address = [(network.cidrOf "lan" self.addresses.lan)];
           gateway = [network.routerIp];
           networkConfig = {
-            DNS = network.routerIp;
+            DNS = network.dnsIp;
           };
         };
       };
@@ -115,21 +129,32 @@ in {
       # unable to read its own bind-mounted state (/var/lib/jellyfin is uid 979
       # on disk, /var/lib/qbittorrent is uid 888). This container shares the
       # host's user namespace, so the numbers must agree exactly.
-      users.users.jellyfin = { uid = 979; group = "jellyfin"; isSystemUser = true; };
+      users.users.jellyfin = {
+        uid = 979;
+        group = "jellyfin";
+        isSystemUser = true;
+        extraGroups = ["render" "video"];
+      };
       users.groups.jellyfin.gid = 975;
-      users.users.qbittorrent = { uid = 888; group = "qbittorrent"; isSystemUser = true; home = "/var/lib/qbittorrent"; };
+      users.users.qbittorrent = {
+        uid = 888;
+        group = "qbittorrent";
+        isSystemUser = true;
+        home = "/var/lib/qbittorrent";
+      };
       users.groups.qbittorrent.gid = 888;
-      users.users.qui = { uid = 968; group = "qui"; isSystemUser = true; };
+      users.users.qui = {
+        uid = 968;
+        group = "qui";
+        isSystemUser = true;
+      };
       users.groups.qui.gid = 963;
 
       services.jellyfin = {
         enable = true;
         openFirewall = true;
       };
-      # No /dev/dri passthrough: trex has only card0 (the ASPEED BMC
-      # framebuffer) and no renderD128, so there is no render node and jellyfin
-      # has always transcoded on CPU here. The old video/render group
-      # membership on the host was aspirational.
+      hardware.graphics.enable = true;
       systemd.services.jellyfin = {
         unitConfig.RequiresMountsFor = ["/mnt/Media" "/var/lib/jellyfin"];
         serviceConfig.MemoryDenyWriteExecute = false;
@@ -137,6 +162,8 @@ in {
 
       services.qbittorrent = {
         enable = true;
+        # Like Qui below, carry the explicitly pinned leaf package into the
+        # container's otherwise independent package set.
         package = pkgs.qbittorrent-nox;
         profileDir = "/var/lib/qbittorrent";
         webuiPort = 8080;
@@ -159,6 +186,10 @@ in {
 
       services.qui = {
         enable = true;
+        # The container evaluates with its own package set, so carry the host's
+        # explicitly pinned Qui build across instead of falling back to the
+        # fleet nixpkgs version.
+        package = pkgs.qui;
         openFirewall = true;
         secretFile = "/run/qui-session.secret";
         settings = {
