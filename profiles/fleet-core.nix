@@ -55,6 +55,11 @@ in {
 
   i18n.defaultLocale = "en_GB.UTF-8";
 
+  # Fleet machines use local civil time by default, including small headless
+  # targets which deliberately do not import profiles/home.nix. Individual
+  # hosts and containers can still override this default where appropriate.
+  time.timeZone = lib.mkDefault "Europe/Zurich";
+
   # nixpkgs.config is now set in pkgsFor (flake.nix) and read-only via readOnlyPkgs
 
   # Core nix settings are in modules/nix.nix (auto-imported)

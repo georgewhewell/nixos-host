@@ -24,6 +24,6 @@
       useDHCP = true;
     };
     useHostResolvConf = false;
-    nameservers = [network.routerIp];
+    nameservers = [network.dnsIp];
   };
 }

@@ -12,7 +12,7 @@
   enableCadvisor = pkgs.stdenv.hostPlatform.isx86_64 && hasContainerRuntime;
 in {
   # Config for machines on home network
-  networking.nameservers = [network.routerIp];
+  networking.nameservers = [network.dnsIp];
   networking.search = lib.mkDefault [network.domains.lan];
 
   time.timeZone = "Europe/Zurich";
