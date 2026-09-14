@@ -142,6 +142,29 @@ in
     ./claw-usb-live.nix
   ];
 
+  # Enabling any benchmark runner makes nix-strix-halo's benchmark-runner
+  # module bind `benchmark.modelsPath` (default "/models") into
+  # nix.settings.extra-sandbox-paths unconditionally, for every build this
+  # daemon runs -- not just benchmark derivations. On fuckup, "/models" is
+  # the NFS mount above, an x-systemd.automount unit: it is absent until
+  # something first touches it, and the sandbox's bind-mount cannot wait for
+  # that automount to fire, so it fails outright until a later build
+  # retriggers it. The cuda-rtx4090 runner below never references files
+  # under /models, so point the module at a plain local directory instead of
+  # the autofs mount, which sidesteps the race without touching the real
+  # /models mount used for interactive/HF-Hub access.
+  benchmark.modelsPath = "/var/lib/benchmark-models-stub";
+
+  # nix-strix-halo's benchmark-runner module already creates
+  # `benchmark.modelsPath` via its own tmpfiles rule, so this is currently
+  # redundant -- but that rule is an implementation detail of a separately
+  # pinned, external module, and if the stub directory did not exist the
+  # sandbox bind would fail again (with "does not exist" instead of
+  # "Operation not permitted"), since modelsPath is spliced into
+  # extra-sandbox-paths without the optional `?` suffix. Declare it here too
+  # so the invariant holds regardless of upstream's internals.
+  systemd.tmpfiles.rules = [ "d /var/lib/benchmark-models-stub 0755 root root -" ];
+
   benchmark.runners.cuda-rtx4090 = {
     requireIommuOff = false;
     gpus = [
