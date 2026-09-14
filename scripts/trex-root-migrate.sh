@@ -46,8 +46,6 @@ STATE_DIRS=(
   /var/lib/systemd/linger
   /var/lib/jellyfin
   /var/lib/private/hellas
-  /var/lib/private/hellas-gateway
-  /var/lib/private/open-webui
   /var/lib/nixos
   /root/.config/gcloud
   /var/log/journal
