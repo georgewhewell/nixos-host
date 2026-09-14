@@ -14,6 +14,7 @@ let
     lib.unique ([ bootMac bootLinuxMac ] ++ (self.extraMacs or [ ]));
   bootMacCandidateArgs = lib.escapeShellArgs bootMacCandidates;
   sharesFabric = self.netbootSharesFabric or false;
+  firmwareSnapshotDir = "/var/lib/bios-setup-var/snapshots";
 
   # Kernel-direct NFSv4.2 mount options. The initrd has no mount.nfs
   # helper, so every option here must be understood by the kernel nfs4
@@ -111,6 +112,48 @@ in
       workdir = "/nix/.rw-store/work";
     };
     neededForBoot = true;
+  };
+
+  # `/` is tmpfs. Mount this host's private trex export so a snapshot taken at
+  # every boot remains available after the cluster is shut down. The export is
+  # restricted to this inventory address on the server.
+  fileSystems.${firmwareSnapshotDir} = {
+    device = "${trexIp}:/strix-firmware-snapshots/${hostName}";
+    fsType = "nfs4";
+    options = nfsBootOptions ++ [
+      "rw"
+      "sync"
+      "nofail"
+      "_netdev"
+      "x-systemd.mount-timeout=15s"
+      "noexec"
+      "nosuid"
+      "nodev"
+    ];
+  };
+
+  systemd.services.bios-setup-var-snapshot = {
+    description = "Snapshot all EFI variables to trex";
+    wantedBy = [ "multi-user.target" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    unitConfig = {
+      ConditionPathIsDirectory = "/sys/firmware/efi/efivars";
+      RequiresMountsFor = [ firmwareSnapshotDir ];
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      UMask = "0077";
+    };
+    script = ''
+      set -eu
+      IFS= read -r boot_id < /proc/sys/kernel/random/boot_id
+      captured_at="$(${pkgs.coreutils}/bin/date --utc +%Y%m%dT%H%M%SZ)"
+      exec ${pkgs.bios-setup-var}/bin/bios-setup-var \
+        --db ${pkgs.bios-setup-var}/share/bios-setup-var/faex9-1.04-known.json \
+        snapshot \
+        "${firmwareSnapshotDir}/$captured_at-$boot_id"
+    '';
   };
 
   boot.supportedFilesystems = [ "nfs" ];
@@ -257,12 +300,19 @@ in
   # covers `switch` reordering. If the TPM refuses the blob (cleared fTPM),
   # this snippet fails loudly in the activation log and the host simply
   # boots with the disposable-identity behaviour below.
+  # The subshell keeps the umask from leaking into later activation snippets:
+  # they all run in one shell, and this snippet sorts before `usrbinenv`,
+  # whose `mkdir -p /usr/bin` would then create /usr as 0700 on every boot
+  # (the root here is tmpfs, so /usr never pre-exists) — breaking every
+  # `#!/usr/bin/env` shebang for non-root users.
   system.activationScripts = lib.mkIf hasHostKeyCredential {
     restoreHostIdentity = lib.stringAfter [ "specialfs" ] ''
-      umask 077
-      mkdir -p /etc/ssh
-      ${config.systemd.package}/bin/systemd-creds decrypt --name=ssh_host_ed25519_key \
-        ${hostKeyCredential} /etc/ssh/ssh_host_ed25519_key
+      (
+        umask 077
+        mkdir -p /etc/ssh
+        ${config.systemd.package}/bin/systemd-creds decrypt --name=ssh_host_ed25519_key \
+          ${hostKeyCredential} /etc/ssh/ssh_host_ed25519_key
+      )
     '';
     # Merges into sops-nix's script; assumes the host declares sops secrets
     # (a deps-only definition would fail eval otherwise).
@@ -270,6 +320,15 @@ in
   };
 
   environment.systemPackages = [ strixNetbootEnroll ];
+
+  # Belt and braces for the umask hazard above: /usr is recreated in tmpfs on
+  # every boot, so enforce sane modes even if some future activation snippet
+  # leaks a restrictive umask again. Non-root users need the x bit on /usr to
+  # resolve /usr/bin/env shebangs (2026-08-26 incident: /usr was 0700).
+  systemd.tmpfiles.rules = [
+    "d /usr 0755 root root -"
+    "d /usr/bin 0755 root root -"
+  ];
 
   # Fallback identity: hosts without an enrolled credential (or with a
   # cleared TPM) generate fresh stage-2 host keys in the tmpfs root on

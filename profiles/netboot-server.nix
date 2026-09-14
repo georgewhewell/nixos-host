@@ -1,6 +1,7 @@
 { config, lib, pkgs, network, inputs, ... }:
 let
   lanCidr = "${network.vlans.lan.prefix}.0/${toString network.vlans.lan.cidr}";
+  wifiCidr = "${network.vlans.wifi.prefix}.0/${toString network.vlans.wifi.cidr}";
   # Point-to-point USB-gadget link used by the nixos-nanokvm dev boards
   # (target 10.55.0.1, this host 10.55.0.2 — lib/protocol.nix there).
   # They mount the store read-only from this export just like the
@@ -62,6 +63,7 @@ let
   );
 
   stateDir = "/var/lib/strix-netboot";
+  firmwareSnapshotStateDir = "/var/lib/strix-firmware-snapshots";
 
   # Every netboot host's boot image is part of this host's system closure;
   # the tmpfiles rules below point the served symlinks at them on each
@@ -72,12 +74,10 @@ let
     (name: _: inputs.self.nixosConfigurations.${name}.config.system.build.strixNetboot)
     netbootHosts;
 
-  # The PicoClaw follows the same diskless model as the Strix clients, but its
-  # firmware path is ROM USB-DL -> U-Boot fastboot -> FIT instead of iPXE.
-  # Referencing the runner from trex's system closure keeps the FIT and every
-  # target-side /nix/store path alive while the board mounts this store.
-  picoclawUsbLive =
-    inputs.nanokvm.legacyPackages.${pkgs.stdenv.hostPlatform.system}.boards.picoclaw.mainline.live."usb-lcd-hs".usb-boot;
+  # The Claw receives its kernel/initrd from fuckup over USB, but mounts this
+  # host's /nix/store over trusted WiFi. Keep its complete system closure on
+  # trex and GC-rooted by the deployed trex generation.
+  clawSystem = inputs.self.nixosConfigurations.claw.config.system.build.toplevel;
 
   # Ad-hoc escape hatch: rebuild a single host's image from a checkout on
   # this machine. Its out-link replaces the deployed symlink until the next
@@ -115,23 +115,56 @@ in
     depends = [ "/models" ];
   };
 
+  # Netboot clients have tmpfs roots. Keep their read-only boot-time EFI
+  # snapshots on trex so the evidence survives powering the cluster off.
+  fileSystems."/export/strix-firmware-snapshots" = {
+    device = firmwareSnapshotStateDir;
+    fsType = "none";
+    options = [ "bind" ];
+    depends = [ firmwareSnapshotStateDir ];
+  };
+
   # Activation (not tmpfiles) so the directories exist before systemd
   # starts mount units on boot.
   system.activationScripts.strixNetbootDirs.text = ''
-    mkdir -p ${stateDir} /models
+    mkdir -p ${stateDir} ${firmwareSnapshotStateDir} /models
+    # NFSv4 clients must traverse the pseudoroot parent before the more
+    # specific per-host no_root_squash export takes effect. Permit traversal
+    # without allowing directory listing; host directories remain mode 0700.
+    chmod 0711 ${firmwareSnapshotStateDir}
+    ${lib.concatMapStringsSep "\n"
+      (name: ''
+        mkdir -p ${firmwareSnapshotStateDir}/${name}
+        chmod 0700 ${firmwareSnapshotStateDir}/${name}
+        # The existing NFSv4 fsid=0 pseudoroot is all_squash, so a client's
+        # root credential reaches nested exports as the anonymous 65534 user.
+        # Give that identity ownership of only its host-specific directory.
+        chown 65534:65534 ${firmwareSnapshotStateDir}/${name}
+      '')
+      (builtins.attrNames netbootHosts)}
   '';
 
   systemd.tmpfiles.rules = [
     "d /models 0755 root root -"
-    "L+ ${stateDir}/picoclaw-usb-live - - - - ${picoclawUsbLive}"
   ] ++ lib.mapAttrsToList
     (name: image: "L+ ${stateDir}/${name} - - - - ${image}")
     netbootImages;
 
   services.nfs.server.exports = ''
-    /export/nix-store      ${lanCidr}(ro,nohide,no_subtree_check) ${nanokvmUsbCidr}(ro,nohide,no_subtree_check)
+    /export/nix-store      ${lanCidr}(ro,nohide,no_subtree_check) ${wifiCidr}(ro,nohide,no_subtree_check) ${nanokvmUsbCidr}(ro,nohide,no_subtree_check)
     /export/strix-models   ${lanCidr}(ro,nohide,insecure,no_subtree_check)
+    # The existing fsid=0 export is all_squash. Export this traversable parent
+    # with the same anonymous identity so nested host directories can accept
+    # snapshots; the directory itself is 0711 and contains no files.
+    /export/strix-firmware-snapshots ${lanCidr}(rw,nohide,all_squash,anonuid=65534,anongid=65534,no_subtree_check)
+    ${lib.concatMapStringsSep "\n"
+      (name:
+        "/export/strix-firmware-snapshots/${name} "
+        + "${network.primaryIp netbootHosts.${name}}(rw,sync,nohide,no_subtree_check,root_squash)")
+      (builtins.attrNames netbootHosts)}
   '';
+
+  system.extraDependencies = [ clawSystem ];
 
   services.nginx.virtualHosts."strix-netboot" = {
     # Select this vhost for firmware requests whose Host header is the boot
