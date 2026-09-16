@@ -643,19 +643,18 @@ lib: rec {
       strix = {
         beegfsDiskSerial = "A632B32900OTVY";
         beegfsFsUUID = "8c4b594f-72e6-4575-996d-00d2f127c745";
+        # Serving is disabled on Strix-1 by operator request; do not start
+        # the coordinator or open its inference listener on this host.
+        ds4Serve = false;
         cx5Port = 1;
-        # The M.2-slot ConnectX-7 (MT2910, PCI c3:00.0; permanent MAC by
-        # ethtool -P, 2026-08-26), NOT the ConnectX-5. The CX5 (:b4/:b5,
-        # f1np1 primary since the 2026-08-14 PCIe rework) served the fabric
-        # until 2026-08-26: a pending mlxconfig LINK_TYPE=IB(1) on both its
-        # ports was activated by that day's reboot, its Ethernet netdevs
-        # became ibp196s0f0/f1, cx5fabric0 vanished, and /models failed by
-        # dependency. The CX7 is cabled to the second 200GbE leg of the
-        # Mikrotik 400G->2x200G breakout and already had carrier at 200G
-        # when adopted (enp195s0np0, LOWER_UP). If the CX5 is ever wanted
-        # back: mstconfig set LINK_TYPE_P1=2 LINK_TYPE_P2=2 (it sat at PCI
-        # c4:00.x this boot, but match by MAC/GUID, not BDF) plus a reset.
-        cx5FabricMac = "10:70:fd:91:c5:90";
+        # 2026-09-16 physical canary audit: only the Ethernet-mode CX5
+        # (:b4/:b5, MT27800) enumerates; the previously selected CX7
+        # (10:70:fd:91:c5:90, adopted 2026-08-26) is absent from PCI.
+        # Restore the earlier f1np1 primary, selected by permanent MAC rather
+        # than its changing BDF. This port has 100GbE carrier to CRS812 and
+        # its ARP probe reaches trex-rdma at the expected 50:6b:4b:0d:24:86.
+        # Matching the absent CX7 left both live CX5 ports unaddressed.
+        cx5FabricMac = "1c:34:da:61:12:b5";
         ryzenAdj = {
           # stapm = 75000;
           # fast = 75000;

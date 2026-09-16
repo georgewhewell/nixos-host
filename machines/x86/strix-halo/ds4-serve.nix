@@ -13,6 +13,7 @@ let
   hostName = "strix-${toString index}";
   self = network.hosts.${hostName};
   netboot = self.netboot or false;
+  servingEnabled = netboot && (self.strix.ds4Serve or true);
   productionPackages = inputs.nix-strix-halo-ds4.packages.${pkgs.stdenv.hostPlatform.system};
   server = productionPackages.sglang-dsv4-halo4;
   agent = productionPackages.ds4-opencode;
@@ -38,7 +39,7 @@ in
     DS4_OPENAI_MODEL = "deepseek-v4-flash";
   };
 
-  systemd.services.ds4-serve = lib.mkIf netboot {
+  systemd.services.ds4-serve = lib.mkIf servingEnabled {
     description = "Serve DeepSeek-V4 on Strix Halo rank ${toString nodeRank}";
     wantedBy = [ "multi-user.target" ];
     wants = [
@@ -100,7 +101,7 @@ in
     };
   };
 
-  networking.firewall.interfaces.cx5fabric0.allowedTCPPorts = lib.mkIf (netboot && index == 1) [
+  networking.firewall.interfaces.cx5fabric0.allowedTCPPorts = lib.mkIf (servingEnabled && index == 1) [
     30000
   ];
 }
