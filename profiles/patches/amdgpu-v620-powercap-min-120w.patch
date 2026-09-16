@@ -1,0 +1,33 @@
+Subject: [PATCH] drm/amd/pm: allow lower PPT limits on Radeon PRO V620
+
+The reference V620 reports a 250 W minimum despite accepting lower PPT
+limits in its SMU. Allow userspace to cap these boards at 120 W or above;
+leave their default and maximum power limits unchanged.
+
+Adapted from blivioniag/v620_toolbox at
+050d893fa989d606ef91a08d1da17d015f9adf4f:
+https://github.com/blivioniag/v620_toolbox/blob/050d893fa989d606ef91a08d1da17d015f9adf4f/powertuning/patches/v620-powercap-min-120W.patch
+SPDX-License-Identifier: GPL-2.0-only
+
+--- a/drivers/gpu/drm/amd/pm/swsmu/smu11/sienna_cichlid_ppt.c
++++ b/drivers/gpu/drm/amd/pm/swsmu/smu11/sienna_cichlid_ppt.c
+@@ -671,5 +671,19 @@ static int sienna_cichlid_get_power_limit(struct smu_context *smu,
+ 		*min_power_limit = power_limit * (100 - od_percent_lower);
+ 		*min_power_limit /= 100;
++
++		/* The V620 reference board accepts PPT limits down to 120 W.
++		 * Only relax its lower bound; do not enable OverDrive or change
++		 * the VBIOS, default limit, or upper bound. Units here are watts.
++		 */
++		if (smu->adev->pdev->vendor == 0x1002 &&
++		    smu->adev->pdev->device == 0x73a1 &&
++		    smu->adev->pdev->subsystem_vendor == 0x1002 &&
++		    smu->adev->pdev->subsystem_device == 0x0e34 &&
++		    *min_power_limit > 120) {
++			*min_power_limit = 120;
++			dev_info(smu->adev->dev,
++				 "V620: allowing PPT limits down to 120 W\n");
++		}
+ 	}
+ 	return 0;
+ }

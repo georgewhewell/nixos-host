@@ -166,6 +166,12 @@ in
 
   system.stateVersion = "24.11";
 
+  hardware.amdgpu.v620PowerCap = lib.mkIf (self.strix ? v620) {
+    enable = true;
+    watts = self.strix.v620.powerLimitWatts;
+    expectedCount = self.strix.v620.count;
+  };
+
   # Large local and distributed checkpoint loads can hold a CPU in kernel I/O
   # long enough to miss the fleet-wide 15 s watchdog deadline. Strix-3 first
   # exposed this under DSV4; H3 reproduced the same reset class on strix-2.
@@ -609,6 +615,7 @@ in
     (inputs.nix-strix-halo-multikernel + "/modules/multikernel.nix")
 
     ../../../profiles/amd-npu.nix
+    ../../../profiles/amd-v620-powercap.nix
   ]) ++ [
     (import ./ds4-serve.nix index)
     (import ./qwen38-v620-serve.nix index)

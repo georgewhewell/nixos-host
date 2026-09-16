@@ -79,7 +79,10 @@ in
     # /models is trex's NVMe-oF snapshot, connected by nvme-trex-models and
     # mounted as models.mount (via RequiresMountsFor). The caches need the
     # NFS /mnt/Home, hence remote-fs.target.
-    after = [ "nvme-trex-models.service" "remote-fs.target" ];
+    # Never begin the GPU workload until every expected card has a verified
+    # cap. A missing card or an unpatched running kernel fails this dependency.
+    requires = [ "v620-powercap.service" ];
+    after = [ "nvme-trex-models.service" "remote-fs.target" "v620-powercap.service" ];
     wants = [ "nvme-trex-models.service" ];
     unitConfig.RequiresMountsFor = [ "/models" ];
     environment = {

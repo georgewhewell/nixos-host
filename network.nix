@@ -729,6 +729,9 @@ lib: rec {
       strix = {
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
+        # Passive V620 cooling cannot sustain the stock 4 x 250 W load.
+        # Start at 180 W per card; validate sustained temperatures after boot.
+        v620 = { powerLimitWatts = 180; count = 4; };
         cx5Port = 1;
         # The BlueField-2 that temporarily carried this identity was removed
         # from the PEX88096 on 2026-08-28. Promote the remaining M.2-slot CX5's
