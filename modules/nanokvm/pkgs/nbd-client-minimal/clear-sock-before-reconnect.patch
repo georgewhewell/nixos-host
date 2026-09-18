@@ -1,0 +1,12 @@
+diff --git a/nbd-client.c b/nbd-client.c
+index 2bdbf25..4a4c0bd 100644
+--- a/nbd-client.c
++++ b/nbd-client.c
+@@ -1305,6 +1305,7 @@ int main(int argc, char *argv[]) {
+ 					u64 new_size;
+ 					uint16_t new_flags;
+ 
++					ioctl(nbd, NBD_CLEAR_SOCK);
+ 					close(sock); close(nbd);
+ 					for (;;) {
+ 						fprintf(stderr, " Reconnecting\n");

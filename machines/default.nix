@@ -146,7 +146,7 @@ nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns: let
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
         {_module.args = inputs;}
-        inputs.nanokvm.nixosModules.boards.pcie.mainline.sd
+        (import ../modules/nanokvm/fleet.nix { inherit inputs; }).boards.pcie.mainline.sd
         nixosModuleNanokvm
         machine
       ];
@@ -166,7 +166,7 @@ nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns: let
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
         {_module.args = inputs;}
-        inputs.nanokvm.nixosModules.boards.licheerv.mainline.live."eth-nfs-cam"
+        (import ../modules/nanokvm/fleet.nix { inherit inputs; }).boards.licheerv.mainline.live."eth-nfs-cam"
         nixosModuleNanokvm
         machine
       ];
@@ -185,7 +185,7 @@ nixosModule: nixosModuleNanokvm: inputs: mkSecret: network: pkgsFns: let
     inputs.nanokvm.inputs.nixpkgs.lib.nixosSystem {
       modules = [
         {_module.args = inputs;}
-        inputs.nanokvm.nixosModules.boards.picoclaw.mainline.live."usb-lcd-wifi"
+        (import ../modules/nanokvm/fleet.nix { inherit inputs; }).boards.picoclaw.mainline.live."usb-lcd-wifi"
         nixosModuleNanokvm
         machine
       ];

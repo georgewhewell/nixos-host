@@ -13,19 +13,9 @@
 # image on fuckup; trex separately GC-roots the complete target closure.
 { pkgs, inputs, config, mkSecret, ... }:
 let
-  # The artifact builders are not a flake output of nixos-nanokvm, but
-  # they are a pure function of pkgs — import them from the input's
-  # source tree, exactly as its flake.nix does. pkgs here carries the
-  # nanokvm overlay (allOverlays), which provides sg2002-boot-fit and
-  # sg2002-usb-boot.
-  nanokvmLib = inputs.nanokvm.inputs.nixpkgs.lib;
   protocol = import "${inputs.nanokvm}/lib/protocol.nix";
-  hostShellPrelude = import "${inputs.nanokvm}/lib/host-prelude.nix" protocol;
   cv181xRomPresence = import "${inputs.nanokvm}/lib/cv181x-rom-presence.nix";
-  art = (import "${inputs.nanokvm}/lib/artifacts.nix" {
-    lib = nanokvmLib;
-    inherit hostShellPrelude;
-  }) pkgs;
+  art = (import ../../../modules/nanokvm/fleet.nix { inherit inputs; }).artifacts pkgs;
 
   clawCfg = inputs.self.nixosConfigurations.claw;
   clawTargetIp = clawCfg.config.deployment.targetHost;

@@ -1517,10 +1517,10 @@
         "sophgo-fiptool": "sophgo-fiptool"
       },
       "locked": {
-        "lastModified": 1788143125,
-        "narHash": "sha256-QgcE6NKCmw5lJwdGP8LZ25vdiTcpBQEJNPE/nem3B2w=",
+        "lastModified": 1789698635,
+        "narHash": "sha256-8GbHAH3KCA4Ceodp2/we5xzwSAMRS9c5X+FFn+NQD14=",
         "ref": "master",
-        "rev": "ebb5bdbe9787be5a3572f471b3b66a15681497ef",
+        "rev": "ef33c95e8d9bfe055c28e3e8fa586e4383bc341b",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/nixos-nanokvm"

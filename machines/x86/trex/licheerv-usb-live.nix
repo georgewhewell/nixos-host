@@ -6,13 +6,8 @@
 # USB Ethernet gadget remains a private control/recovery link.
 { lib, pkgs, inputs, network, ... }:
 let
-  nanokvmLib = inputs.nanokvm.inputs.nixpkgs.lib;
   protocol = import "${inputs.nanokvm}/lib/protocol.nix";
-  hostShellPrelude = import "${inputs.nanokvm}/lib/host-prelude.nix" protocol;
-  art = (import "${inputs.nanokvm}/lib/artifacts.nix" {
-    lib = nanokvmLib;
-    inherit hostShellPrelude;
-  }) pkgs;
+  art = (import ../../../modules/nanokvm/fleet.nix { inherit inputs; }).artifacts pkgs;
   licheervIp = network.primaryIp network.hosts.licheerv;
 
   licheervCfg = inputs.self.nixosConfigurations.licheerv;
