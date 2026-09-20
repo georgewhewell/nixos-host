@@ -269,7 +269,7 @@
       static_configs = map (host: {
         targets = ["${network.primaryIp network.hosts.${host}}:9400"];
         labels.instance = host;
-      }) [ "strix-1" "strix-2" "strix-4" ];
+      }) [ "strix-4" ];
     }
     {
       job_name = "apcupsd";
