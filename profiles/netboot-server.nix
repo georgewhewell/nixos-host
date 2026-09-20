@@ -112,11 +112,10 @@ let
   stateDir = "/var/lib/strix-netboot";
   firmwareSnapshotStateDir = "/var/lib/strix-firmware-snapshots";
 
-  # Every netboot host's boot image is part of this host's system closure;
-  # the tmpfiles rules below point the served symlinks at them on each
-  # activation. Deploying this host therefore refreshes what the strix
-  # machines boot — one flake evaluation, no separate deploy step — and the
-  # images stay GC-rooted for as long as they are being served.
+  # Every netboot host's boot image is part of this host's system closure.
+  # Expose them through stable /etc links: putting their changing store paths
+  # directly in tmpfiles.d makes every image refresh restart sysinit, which
+  # needlessly tears down /tmp and D-Bus on a running boot server.
   netbootImages = lib.mapAttrs
     (name: _: inputs.self.nixosConfigurations.${name}.config.system.build.strixNetboot)
     netbootHosts;
@@ -138,12 +137,17 @@ let
     flake="''${2:-/mnt/Home/src/nixos-config}"
 
     mkdir -p ${stateDir}
+    rm -f "${stateDir}/$host"
     exec nix --extra-experimental-features 'nix-command flakes' build -L \
       --out-link "${stateDir}/$host" \
       "$flake#nixosConfigurations.$host.config.system.build.strixNetboot"
   '';
 in
 {
+  environment.etc = lib.mapAttrs'
+    (name: image: lib.nameValuePair "strix-netboot/${name}" { source = image; })
+    netbootImages;
+
   # iPXE loads the kernel/initrd over HTTP. Each Strix copies its system
   # closure from NFS into its freshly formatted private NVMe/RDMA volume.
   # Model storage uses the separate pinned read-only snapshot.
@@ -194,29 +198,33 @@ in
 
   # Activation (not tmpfiles) so the directories exist before systemd
   # starts mount units on boot.
-  system.activationScripts.strixNetbootDirs.text = ''
-    mkdir -p ${stateDir} ${firmwareSnapshotStateDir} /models
-    # NFSv4 clients must traverse the pseudoroot parent before the more
-    # specific per-host no_root_squash export takes effect. Permit traversal
-    # without allowing directory listing; host directories remain mode 0700.
-    chmod 0711 ${firmwareSnapshotStateDir}
-    ${lib.concatMapStringsSep "\n"
-      (name: ''
-        mkdir -p ${firmwareSnapshotStateDir}/${name}
-        chmod 0700 ${firmwareSnapshotStateDir}/${name}
-        # The existing NFSv4 fsid=0 pseudoroot is all_squash, so a client's
-        # root credential reaches nested exports as the anonymous 65534 user.
-        # Give that identity ownership of only its host-specific directory.
-        chown 65534:65534 ${firmwareSnapshotStateDir}/${name}
-      '')
-      (builtins.attrNames netbootHosts)}
-  '';
+  system.activationScripts.strixNetbootDirs = {
+    deps = [ "etc" ];
+    text = ''
+      mkdir -p ${stateDir} ${firmwareSnapshotStateDir} /models
+      ${lib.concatMapStringsSep "\n"
+        (name: "ln -sfnT /etc/strix-netboot/${name} ${stateDir}/${name}")
+        (builtins.attrNames netbootHosts)}
+      # NFSv4 clients must traverse the pseudoroot parent before the more
+      # specific per-host no_root_squash export takes effect. Permit traversal
+      # without allowing directory listing; host directories remain mode 0700.
+      chmod 0711 ${firmwareSnapshotStateDir}
+      ${lib.concatMapStringsSep "\n"
+        (name: ''
+          mkdir -p ${firmwareSnapshotStateDir}/${name}
+          chmod 0700 ${firmwareSnapshotStateDir}/${name}
+          # The existing NFSv4 fsid=0 pseudoroot is all_squash, so a client's
+          # root credential reaches nested exports as the anonymous 65534 user.
+          # Give that identity ownership of only its host-specific directory.
+          chown 65534:65534 ${firmwareSnapshotStateDir}/${name}
+        '')
+        (builtins.attrNames netbootHosts)}
+    '';
+  };
 
   systemd.tmpfiles.rules = [
     "d /models 0755 root root -"
-  ] ++ lib.mapAttrsToList
-    (name: image: "L+ ${stateDir}/${name} - - - - ${image}")
-    netbootImages;
+  ];
 
   services.nfs.server.exports = ''
     /export/nix-store      ${lanCidr}(ro,nohide,no_subtree_check) ${wifiCidr}(ro,nohide,no_subtree_check) ${nanokvmUsbCidr}(ro,nohide,no_subtree_check)
