@@ -66,6 +66,7 @@ in {
         # destination and port policy to traffic entering this tunnel.
         iifname "wg-hydra-bld" accept comment "defer Hydra policy to its dedicated guard"
         oifname "wg-hydra-bld" ct state established,related accept comment "return traffic to Hydra tunnel"
+        oifname "wg-hydra-bld" ip saddr ${network.primaryIp network.hosts.trex} ip daddr ${network.hydraBuilders.ax102.wg} tcp dport 4318 accept comment "trex OTLP collector to ax102"
 
         drop comment "service-only router must not forward other traffic"
       }

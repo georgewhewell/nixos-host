@@ -91,12 +91,12 @@
   # A failed networking experiment then destroys its own evidence on rollback.
   # Persist a small, bounded journal in this staged closure only.
   services.journald = {
-    storage = lib.mkForce "persistent";
-    extraConfig = lib.mkForce ''
-      SystemMaxUse=128M
-      SystemMaxFileSize=16M
-      RuntimeMaxUse=16M
-      RuntimeMaxFileSize=4M
-    '';
+    settings.Journal = {
+      Storage = lib.mkForce "persistent";
+      SystemMaxUse = lib.mkForce "128M";
+      SystemMaxFileSize = lib.mkForce "16M";
+      RuntimeMaxUse = lib.mkForce "16M";
+      RuntimeMaxFileSize = lib.mkForce "4M";
+    };
   };
 }

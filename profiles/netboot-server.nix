@@ -16,6 +16,53 @@ let
 
   netbootHosts = lib.filterAttrs (_: h: h.netboot or false) network.hosts;
   netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
+  storage = import ../machines/x86/trex/spdk-storage-constants.nix;
+  rdmaAddress = network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
+
+  netbootExport = pkgs.writeShellApplication {
+    name = "spdk-netboot-export";
+    runtimeInputs = [ pkgs.coreutils pkgs.jq pkgs.spdk-ublk ];
+    text = ''
+      rpc() {
+        timeout 30s spdk-rpc -s ${storage.rpcSocket} "$@"
+      }
+
+      # The models exporter initializes the shared RDMA transport first.
+      rpc nvmf_get_transports | jq -e 'any(.[]; .trtype == "RDMA")' >/dev/null
+
+      ${lib.concatMapStringsSep "\n" (hostName:
+        let volume = storage.netbootVolume hostName;
+        in ''
+          if ! rpc bdev_get_bdevs | jq -e \
+            'any(.[]; (.aliases // []) | index("${storage.lvstore}/${volume.name}"))' >/dev/null; then
+            rpc bdev_lvol_create -l ${storage.lvstore} -t \
+              ${volume.name} ${toString volume.sizeMiB} >/dev/null
+          fi
+          bdev_uuid=$(rpc bdev_get_bdevs -b ${storage.lvstore}/${volume.name} | jq -er '.[0].uuid')
+          if ! rpc nvmf_get_subsystems | jq -e \
+            'any(.[]; .nqn == "${volume.nqn}")' >/dev/null; then
+            rpc nvmf_create_subsystem ${volume.nqn} -s ${volume.serial} >/dev/null
+          fi
+          subsystem=$(rpc nvmf_get_subsystems | jq -e '.[] | select(.nqn == "${volume.nqn}")')
+          if ! jq -e '.hosts | any(.nqn == "nqn.2026-07.link.satanic:${hostName}")' <<<"$subsystem" >/dev/null; then
+            rpc nvmf_subsystem_add_host ${volume.nqn} nqn.2026-07.link.satanic:${hostName} >/dev/null
+          fi
+          if jq -e '.namespaces | length == 0' <<<"$subsystem" >/dev/null; then
+            rpc nvmf_subsystem_add_ns ${volume.nqn} "$bdev_uuid" -n 1 -u ${volume.uuid} >/dev/null
+          else
+            # Never replace a namespace under a running host's store.
+            jq -e --arg bdev "$bdev_uuid" \
+              '.namespaces | length == 1 and .[0].bdev_name == $bdev and .[0].uuid == "${volume.uuid}"' \
+              <<<"$subsystem" >/dev/null
+          fi
+          if ! jq -e '.listen_addresses | any(.trtype == "RDMA" and .traddr == "${rdmaAddress}" and .trsvcid == "4420")' \
+            <<<"$subsystem" >/dev/null; then
+            rpc nvmf_subsystem_add_listener ${volume.nqn} -t RDMA -a ${rdmaAddress} -s 4420 >/dev/null
+          fi
+          echo "${hostName}: private ${toString (volume.sizeMiB / 1024)} GiB netboot volume ready"
+        '') (builtins.attrNames netbootHosts)}
+    '';
+  };
 
   # iPXE binary fetched by the firmware's UEFI HTTP boot client (the
   # router's dnsmasq hands out its URL). snponly.efi rides the firmware's
@@ -97,10 +144,31 @@ let
   '';
 in
 {
-  # Serves diskless strix machines: read-only /nix/store over NFSv4.2 plus the
-  # iPXE boot files over HTTP. Strix model storage is separate and travels only
-  # over the pinned NVMe/RDMA path configured by the machine module. The model
-  # export below remains for non-Strix LAN clients.
+  # iPXE loads the kernel/initrd over HTTP. Each Strix copies its system
+  # closure from NFS into its freshly formatted private NVMe/RDMA volume.
+  # Model storage uses the separate pinned read-only snapshot.
+
+  systemd.services.spdk-netboot-export = {
+    description = "Export private disposable Strix Nix stores over NVMe/RDMA";
+    after = [ "spdk-storage-assemble.service" "spdk-models-export.service" ];
+    wants = [ "spdk-models-export.service" ];
+    bindsTo = [ "spdk-storage-assemble.service" ];
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      TimeoutStartSec = "300s";
+      ExecStart = "${netbootExport}/bin/spdk-netboot-export";
+    };
+  };
+  systemd.timers.spdk-netboot-export = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5s";
+      OnUnitInactiveSec = "10s";
+      Unit = "spdk-netboot-export.service";
+    };
+  };
 
   fileSystems."/export/nix-store" = {
     device = "/nix/store";

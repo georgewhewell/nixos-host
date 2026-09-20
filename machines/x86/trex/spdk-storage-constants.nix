@@ -5,6 +5,25 @@
   modelsLvol = "optstore/models";
   incompleteLvol = "optstore/qb-incomplete";
 
+  # Private disposable stores. Namespace identity is shared by the exporter
+  # and initrd; only these volumes are reformatted when a Strix boots.
+  netbootVolume = hostName:
+    let
+      hash = builtins.hashString "sha256" "spdk-netboot-${hostName}";
+    in {
+      name = "${hostName}-netboot";
+      nqn = "nqn.2026-09.link.satanic.trex:netboot-${hostName}";
+      serial = "TREX${builtins.replaceStrings [ "-" ] [ "" ] hostName}";
+      uuid = builtins.concatStringsSep "-" [
+        (builtins.substring 0 8 hash)
+        (builtins.substring 8 4 hash)
+        (builtins.substring 12 4 hash)
+        (builtins.substring 16 4 hash)
+        (builtins.substring 20 12 hash)
+      ];
+      sizeMiB = 512 * 1024;
+    };
+
   modelsMount = "/mnt/optane/models";
   incompleteMount = "/var/lib/qbittorrent/incomplete";
 
@@ -64,8 +83,8 @@
   # remains the hard backstop. Note ublk does NOT propagate a live lvol
   # resize: growing requires umount + ublk stop/start + xfs_growfs.
   modelsSnapshot = {
-    name = "models-20260826-004351";
-    uuid = "377c424f-3010-48dd-92fa-9c73092228db";
+    name = "models-20260919-020713";
+    uuid = "47ce5479-b9de-4eb8-9891-24519c74b3ca";
   };
 
   # calc-iobuf.py minimum for 8 reactor cores + RDMA + ublk is 8184.

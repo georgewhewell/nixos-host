@@ -28,7 +28,7 @@ let
 in
 {
   # The thunderbolt-ibverbs NixOS module is brought in by
-  # `nix-strix-halo.nixosModules.default`, pinned via
+  # `profiles/nix-strix-halo.nix`, pinned via
   # `inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel"`
   # in the top-level flake. Re-importing it here causes an
   # already-declared error on `hardware.thunderbolt-ibverbs.enable`.

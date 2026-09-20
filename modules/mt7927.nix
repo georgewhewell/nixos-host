@@ -185,11 +185,16 @@ in {
   };
 
   config = lib.mkIf cfg.enable (let
-    builtModules = mkMt7927 config.boot.kernelPackages.kernel;
+    kernel = config.boot.kernelPackages.kernel;
+    builtModules = mkMt7927 kernel;
+    # Linux 7.2's mt7925e supports MT7927 (14c3:7927) directly. Keep the
+    # firmware and module loading, but only build the WiFi backport for
+    # older kernels. Bluetooth still needs the external driver.
+    hasNativeWifi = lib.versionAtLeast kernel.version "7.2";
   in {
     hardware.firmware = [builtModules.firmware];
     boot.extraModulePackages =
-      lib.optional cfg.enableWifi builtModules.wifi
+      lib.optional (cfg.enableWifi && !hasNativeWifi) builtModules.wifi
       ++ lib.optional cfg.enableBluetooth builtModules.bluetooth;
     boot.kernelModules =
       lib.optionals cfg.enableWifi ["mt7925e" "mt7921e"]

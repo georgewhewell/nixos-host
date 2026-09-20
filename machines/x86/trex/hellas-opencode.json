@@ -1,0 +1,28 @@
+{
+  "model": "hellas/Qwen3.6-35B-A3B",
+  "small_model": "hellas/Qwen3.6-35B-A3B",
+  "provider": {
+    "hellas": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Hellas on Strix",
+      "options": {
+        "baseURL": "http://192.168.23.8:8080/v1",
+        "apiKey": "{file:/run/hellas-gateway/client-token}",
+        "timeout": 3600000,
+        "headerTimeout": 3600000,
+        "chunkTimeout": 3600000
+      },
+      "models": {
+        "Qwen3.6-35B-A3B": {
+          "name": "Qwen3.6-35B-A3B",
+          "limit": {
+            "context": 32768,
+            "output": 4096
+          },
+          "tool_call": true,
+          "reasoning": false
+        }
+      }
+    }
+  }
+}

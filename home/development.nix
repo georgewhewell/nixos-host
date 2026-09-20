@@ -211,6 +211,7 @@ let
 in
 {
   imports = [
+    ./opencode-telemetry.nix
     ./vim/default.nix
     ./git.nix
     ./agent-trust.nix
@@ -247,7 +248,7 @@ in
   };
 
   # Auto-sync password store from keybase git
-  systemd.user.services.pass-sync = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.pass-sync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Sync password store";
     Service = {
       Type = "oneshot";
@@ -255,7 +256,7 @@ in
     };
   };
 
-  systemd.user.timers.pass-sync = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.timers.pass-sync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Daily password store sync";
     Timer = {
       OnCalendar = "daily";
@@ -928,6 +929,11 @@ DSHPATCH
     ${pkgs.coreutils}/bin/mv "$opencode_config.new" "$opencode_config"
   '';
 
+  programs.opencode = {
+    enable = true;
+    package = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+  };
+
   home.sessionVariables = {
     # AITER's fallback copies its JIT sources from the immutable Nix store to
     # ~/.aiter while preserving mode 0555, then tries to create build/ there.
@@ -993,8 +999,8 @@ DSHPATCH
   programs.git.lfs.enable = true;
 
   # Lorri for nix-shell caching
-  services.lorri.enable = lib.mkIf pkgs.stdenv.isLinux true;
-  systemd.user.services.lorri.Service = lib.mkIf pkgs.stdenv.isLinux {
+  services.lorri.enable = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;
+  systemd.user.services.lorri.Service = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     ProtectHome = lib.mkForce "false";
     ProtectSystem = lib.mkForce "full";
   };
@@ -1044,7 +1050,6 @@ DSHPATCH
       kimi-code
       # SST's opencode — terminal AI coding agent; also runs a headless
       # server (`opencode serve`) exposed on the LAN via opencode-server on trex.
-      opencode
       # DeepSeek's agent harness. `dsh --profile tui` locally; the `web` profile
       # runs as dsh-web on trex behind an authenticating nginx vhost, because
       # dsh itself has no login (see machines/x86/trex/default.nix).

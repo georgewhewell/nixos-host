@@ -9,6 +9,11 @@
     rpcSocket
     ;
 
+  # Shared model data must be traversable by the clients' Nix build users.
+  modelPermissions = pkgs.writeTextDir "lib/tmpfiles.d/flm-models.conf" ''
+    z ${modelsMount}/flm 0755 - - -
+  '';
+
   # Publishing the live, read-write-mounted models volume over NVMe-oF is
   # unsafe: XFS is not a shared-disk filesystem, so a client mounting it — even
   # with -o ro — caches metadata that this host mutates underneath it, and a
@@ -31,6 +36,9 @@
         echo "subsystem ${modelsNqn} does not exist yet" >&2
         exit 1
       }
+
+      # The models mount arrives after boot-time tmpfiles on this host.
+      ${pkgs.systemd}/bin/systemd-tmpfiles --create ${modelPermissions}/lib/tmpfiles.d/flm-models.conf
 
       # Refuse to freeze a filesystem whose store cannot absorb writes.
       #
@@ -69,8 +77,7 @@
       trap - EXIT
       echo "created snapshot ${lvstore}/$snap"
 
-      # Swap the export over: add the new namespace, then drop the previous
-      # ones so a client never sees an empty subsystem.
+      # Read the immutable snapshot's UUID for the pin below.
       snapshot_bdev=$(rpc bdev_get_bdevs -b "${lvstore}/$snap")
       jq -e '.[0].supported_io_types.write == false' <<<"$snapshot_bdev" >/dev/null || {
         echo "new snapshot ${lvstore}/$snap unexpectedly supports writes; refusing to offer it" >&2
@@ -116,6 +123,7 @@ EOF
   };
 in {
   environment.systemPackages = [snapshotScript];
+  systemd.tmpfiles.packages = [modelPermissions];
 
   # Snapshots remain an explicit administrative action: rebooting never creates
   # one, and creating one never changes what is served. Publishing is the

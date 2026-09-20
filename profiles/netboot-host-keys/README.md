@@ -20,3 +20,9 @@ update the host's age recipient there (the enroll script prints it) and run
 A BIOS update or CMOS reset can clear the fTPM, invalidating the blob; the
 host then falls back to fresh-keys-per-boot until re-enrolled. Keep the
 underlying private keys escrowed so re-enrollment doesn't change identity.
+
+Strix-2 was re-enrolled on 2026-09-18 after its previous TPM blob stopped
+decrypting. Its replacement identity is escrowed as `strix-2-ed25519` and
+`strix-2-ed25519-pub` in `secrets/ssh-host-keys.yaml`, encrypted to the
+operator GPG keys. Recover that key before re-enrolling after a future TPM
+reset to preserve its SSH and SOPS identity.

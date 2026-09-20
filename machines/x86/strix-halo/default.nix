@@ -9,18 +9,19 @@ index: { pkgs
 let
   hostName = "strix-${toString index}";
   self = network.hosts.${hostName};
-  # Diskless hosts boot via PXE/iPXE and run from trex's NFS store. The
+  # Diskless hosts boot via PXE/iPXE and seed a fresh private SPDK store. The
   # flag lives in network.nix so the router (DHCP/TFTP) and trex
   # (exports/boot files) stay in sync with the machine config.
   netboot = self.netboot or false;
   # Per-host hardware facts (CX5 port ownership, power limits) live in the
   # network.nix host record — the single inventory.
-  # strix-4 is the multikernel canary. Its host and spawn kernels must have the
-  # same mk2 layout, so it cannot simultaneously select the USB4-RDMA kernel.
-  enableUsb4Rdma = builtins.elem index [ 1 2 3 ];
+  # Temporarily disable the custom Thunderbolt kernels and RDMA module.
+  # To restore them, use `builtins.elem index [ 1 2 3 ]`.
+  enableUsb4Rdma = false;
   enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
   enableSharedCx5 = enableCx5Fabric;
   netbootSharesFabric = netboot && (self.netbootSharesFabric or false);
+  trainPrimaryInInitrd = netboot && (self.strix.forcePrimaryFabricLink or false);
 
   # The shared ConnectX-5 ports attach to the Ethernet-only CRS804.  Keep the
   # separate flag so the old IPoIB/OpenSM experiment cannot silently return.
@@ -122,8 +123,10 @@ let
     target = modelsTargetAddress;
   }];
 
-  linuxPackagesThunderbolt =
-    (pkgs.linuxPackagesFor tbvPackages.linux-thunderbolt).extend (_: super: {
+  linuxPackagesStrix =
+    (if enableUsb4Rdma
+     then pkgs.linuxPackagesFor tbvPackages.linux-thunderbolt
+     else pkgs.linuxPackages_latest).extend (_: super: {
       ryzen-smu = super.ryzen-smu.overrideAttrs (old: {
         patches = (old.patches or [ ]) ++ lib.optionals
           (lib.versionAtLeast super.kernel.version "7.2")
@@ -145,12 +148,10 @@ in
       enable = true;
       interface = vllmFabricInterface;
       extraInterfaces = lib.optionals enableCx5Fabric2 [ vllmFabric2Interface ];
-      # mlxlink --link_mode_force resets the adapter and takes the DCB state
-      # with it, so the QoS must be applied after the link forcing, not
-      # alongside it. Naming units that do not exist on a given host (the
-      # primary is excluded under netboot) is harmless: systemd ignores
-      # ordering against absent units.
-      afterUnits = [
+      # Follow resets in this boot stage. The netboot primary is trained in
+      # the initrd; tying stage-2 QoS to that unit would propagate its stop
+      # across switch-root.
+      afterUnits = lib.optionals (!trainPrimaryInInitrd) [
         "cx5-fabric-link.service"
       ] ++ lib.optionals enableCx5Fabric2 [ "cx5-fabric2-link.service" ];
     };
@@ -225,8 +226,7 @@ in
     hellasVideoPackages.h3-hybrid-rocm
     hellasVideoPackages.music3-rocm-v620
     # Native SGLang 0.5.17 supplies the experimental four-card FSDP/Ulysses
-    # and TP4 paths. Keep the closure in the netboot image: a client store is
-    # far too small to build or fetch it after boot.
+    # and TP4 paths. Seed it with the system so serving needs no download.
     hellasVideoPackages.h3-sglang-rocm-v620
   ];
 
@@ -235,12 +235,13 @@ in
   };
 
   boot.loader.systemd-boot.configurationLimit = lib.mkForce 4;
-  boot.kernelPackages = lib.mkOverride 900 linuxPackagesThunderbolt;
+  boot.kernelPackages = lib.mkOverride 900 linuxPackagesStrix;
 
   # Keep resource transfer manual for the first hardware qualification. APIC
   # IDs 24-31 are both SMT threads of physical cores 12-15 on strix-4.
   boot.multikernel = lib.mkIf (index == 4) {
-    enable = true;
+    # Temporarily use the stock kernel during the fleet upgrade.
+    enable = false;
     pool = {
       cpus = "24-31";
       memory = "8GB";
@@ -303,7 +304,13 @@ in
   # back before udev or the explicit initrd module list can bind amdgpu/mlx5_core.
   boot.initrd.systemd.storePaths = lib.optionals (netboot && index == 2) [
     "${pkgs.pciutils}/bin/setpci"
+  ] ++ lib.optionals trainPrimaryInInitrd [
+    pkgs.mlnx-mft
   ];
+  boot.initrd.systemd.contents."/etc/mft/mft.conf" =
+    lib.mkIf trainPrimaryInInitrd {
+      source = config.environment.etc."mft/mft.conf".source;
+    };
   boot.initrd.systemd.services.strix2-pex-bus-restore = lib.mkIf (netboot && index == 2) {
     description = "Restore Strix-2 PEX88096 bridge routing";
     wantedBy = ["initrd.target"];
@@ -457,19 +464,10 @@ in
   # autonegotiation. Match the CRS804's forced 100G CR4 configuration after
   # every boot or PCI reset. Select each cabled PF by inventory MAC: numeric
   # mlx5 names are PCI-enumeration accidents, and unused functions are visible.
-  # A diskless host may have downloaded iPXE, the kernel, and the initrd across
-  # the selected CX5 rail, and running mlxlink on that adapter in stage 2 would
-  # reset it under its live NFS root. Hence primary retraining normally occurs
-  # only on local-disk boots. A per-host inventory flag permits it when the
-  # netboot root is known to use an independent NIC; secondary rails remain
-  # independently safe to train on enabled netboot hosts.
-  #
-  # 2026-07-30: this previously warned that the reset also drops "the sibling
-  # PF" on the SharedIO adapter. That no longer applies -- multi-host was
-  # disabled in the NIC firmware, so each node's card is its own and forcing
-  # one node's link cannot affect another's.
+  # Netboot hosts train in the initrd when requested by inventory, before
+  # their private store starts using the fabric. Local boots train in stage 2.
   systemd.services.cx5-fabric-link =
-    lib.mkIf (enableCx5Fabric && (!netboot || (self.strix.forcePrimaryFabricLink or false))) {
+    lib.mkIf (enableCx5Fabric && !netboot) {
     description = "Force the primary CRS804 fabric link to 100 GbE";
     wants = lib.optionals (self.strix.bluefield or false) [ "bluefield-nic-bind.service" ];
     wantedBy = [ "network-online.target" ];
@@ -483,6 +481,21 @@ in
     script = cx5FabricLinkScript self.strix.cx5FabricMac;
   };
 
+  # Train the independent fabric port before connecting the netboot store.
+  # Repeating this in stage 2 would reset the link underneath /nix.
+  boot.initrd.systemd.services.cx5-fabric-link =
+    lib.mkIf trainPrimaryInInitrd {
+      description = "Force the primary CRS804 fabric link to 100 GbE";
+      wantedBy = [ "network-online.target" ];
+      before = [ "network-online.target" ];
+      after = [ "systemd-udev-trigger.service" ];
+      unitConfig.DefaultDependencies = false;
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = cx5FabricLinkScript self.strix.cx5FabricMac;
+    };
   # Rail 2 is independent of the primary/NFS rail, so it must not inherit the
   # primary service's !netboot exclusion.  It has its own exact MAC selector
   # and unit, so strix-2's local boot never double-runs the secondary PF and
@@ -545,7 +558,7 @@ in
   #
   # Locally-booting nodes own their disk: the root and ESP partitions provisioned
   # by disko. mkForce overrides the device references the netboot profile would
-  # otherwise supply. Netboot nodes skip both and run from trex's NFS store.
+  # otherwise supply. Netboot nodes use a tmpfs root and a fresh SPDK store.
   fileSystems."/" = lib.mkIf (!netboot) (lib.mkForce {
     device = "/dev/disk/by-partlabel/${hostName}-root";
     fsType = "btrfs";
@@ -557,30 +570,6 @@ in
     fsType = "vfat";
     options = [ "umask=0077" ];
   });
-
-  # A netboot node owns no store to collect, and running the collector there is
-  # actively destructive rather than merely useless. /nix/store is an overlay
-  # whose lower layer is trex's read-only NFS store and whose upper layer is a
-  # small tmpfs. nix-gc walks the merged view, decides almost everything is
-  # garbage, and "deletes" it the only way overlayfs permits: by writing whiteout
-  # character devices into the tmpfs upper. The real files stay perfectly intact
-  # underneath, but the merged view hides them.
-  #
-  # 2026-08-24: observed on three of four nodes at once -- ~71,000 of 75,210
-  # paths masked on strix-1, strix-3 and strix-4 after the weekly timer fired.
-  # The symptom does not look like storage at all: binaries and Python modules
-  # vanish with `No such file or directory` / `ModuleNotFoundError` for paths
-  # that demonstrably exist in /nix/.ro-store, which cost two separate agents
-  # real debugging time before the cause was found.
-  #
-  # Recovery, if this ever recurs, is additive and safe -- delete only the
-  # whiteouts (`-type c`), never the real directories a node may legitimately
-  # have built into its upper layer, then drop the cached negative dentries:
-  #   find /nix/.rw-store/store -mindepth 1 -maxdepth 1 -type c -delete
-  #   echo 2 > /proc/sys/vm/drop_caches
-  #
-  # Locally-booting nodes keep the profile default: they own a real store.
-  nix.gc.automatic = lib.mkIf netboot (lib.mkForce false);
 
   imports = (with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd
@@ -603,7 +592,7 @@ in
     ../../../profiles/ch341-i2c.nix
 
     inputs.disko.nixosModules.disko
-    inputs.nix-strix-halo.nixosModules.default
+    ../../../profiles/nix-strix-halo.nix
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.nix-strix-halo.nixosModules.rpc-server
     inputs.nix-strix-halo.nixosModules.fastflowlm
@@ -617,6 +606,7 @@ in
     ../../../profiles/amd-npu.nix
     ../../../profiles/amd-v620-powercap.nix
   ]) ++ [
+    ./hellas.nix
     (import ./ds4-serve.nix index)
     (import ./qwen38-v620-serve.nix index)
     (if netboot
@@ -1148,9 +1138,10 @@ in
     };
   };
 
-  boot.extraModprobeConfig = ''
+  boot.extraModprobeConfig = lib.optionalString enableUsb4Rdma ''
     options thunderbolt xdomain=1
     options thunderbolt_net e2e=0 tx_e2e=0
+  '' + ''
     options cfg80211 ieee80211_regdom=CH
     options sp5100_tco heartbeat=30 nowayout=1 action=0
   '';
@@ -1280,6 +1271,7 @@ in
             IPv6AcceptRA = false;
             LinkLocalAddressing = "no";
             ConfigureWithoutCarrier = true;
+            KeepConfiguration = "static";
           };
           linkConfig = {
             MTUBytes = "9000";

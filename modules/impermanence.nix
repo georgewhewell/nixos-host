@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  options,
   ...
 }: let
   cfg = config.sconfig.impermanence;
@@ -99,7 +100,12 @@ in {
   config = lib.mkIf cfg.enable {
     # On impermanent hosts, keep logs in the runtime filesystem instead of
     # creating boot-local journals under the ephemeral root.
-    services.journald.storage = lib.mkDefault "volatile";
+    # The NanoKVM-derived boards still use a package set without settings.
+    services.journald = if options.services.journald ? settings then {
+      settings.Journal.Storage = lib.mkDefault "volatile";
+    } else {
+      storage = lib.mkDefault "volatile";
+    };
 
     environment.persistence.${cfg.persistentStoragePath} = {
       directories = [

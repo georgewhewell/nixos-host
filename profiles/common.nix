@@ -58,7 +58,7 @@
   services.pcscd.enable = true;
 
   services.irqbalance.enable = lib.mkDefault true;
-  services.fwupd.enable = lib.mkDefault config.boot.kernelPackages.stdenv.isx86_64;
+  services.fwupd.enable = lib.mkDefault config.boot.kernelPackages.stdenv.hostPlatform.isx86_64;
 
   # fwupd-refresh.service runs `fwupdmgr refresh` as the non-interactive
   # `fwupd-refresh` user; polkit denies the metadata action by default

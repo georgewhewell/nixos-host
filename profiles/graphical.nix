@@ -14,7 +14,7 @@
   # instead of gnome-keyring. The D-Bus session activation file and systemd
   # user unit are wired up in home/gpg.nix.
   services.gnome.gnome-keyring.enable = false;
-  services.dbus.packages = [pkgs.gcr pkgs.pass-secret-service];
+  services.dbus.packages = [pkgs.gcr_3 pkgs.pass-secret-service];
 
   /*
   environment.loginShellInit = ''

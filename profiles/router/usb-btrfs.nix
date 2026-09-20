@@ -32,11 +32,11 @@ in
   # Persist journals across reboots to diagnose intermittent crashes;
   # /var/log/journal is bind-mounted from btrfs /persist above so logs
   # survive the ephemeral tmpfs root (overrides impermanence mkDefault).
-  services.journald.storage = "persistent";
+  services.journald.settings.Journal.Storage = "persistent";
   # Cap on-disk journal so it cannot fill /persist, but keep enough history to
   # span several boots — 64M vacuumed away the logs of the panic/watchdog
   # reboots that truncated HA's .storage files, leaving them undiagnosable.
-  services.journald.extraConfig = "SystemMaxUse=256M";
+  services.journald.settings.Journal.SystemMaxUse = "256M";
 
   # The router image keeps /nix and /persist on the same small btrfs device.
   # Treat old Nix generations as disposable here; service state is the thing

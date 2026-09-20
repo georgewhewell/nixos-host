@@ -155,7 +155,6 @@ in {
 
   services.home-assistant = {
     enable = true;
-    openFirewall = false;
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
       advanced-camera-card
       auto-entities

@@ -14,28 +14,6 @@
   bluefield2LanIp = network.ipOf "lan" network.hosts.bluefield2.addresses.lan;
   transitionLanUla = "fdde:ad:${network.routing.production.transition.legacyInside.ipv6SubnetId}::${toString self.addresses.lan}/64";
 
-  hellasRocm = pkgs.symlinkJoin {
-    name = "hellas-rocm";
-    paths = with pkgs.rocmPackages; [
-      clang
-      clr
-      hip-common
-      hipcc
-      rocm-core
-      rocm-device-libs
-      rocm-runtime
-    ];
-  };
-  smollm2Package = "${inputs.catena-runner}/models/smollm2";
-  hellasRocmEnvironment = {
-    ROCM_PATH = hellasRocm;
-    HIP_PATH = hellasRocm;
-    HIP_CLANG_PATH = "${pkgs.rocmPackages.clang}/bin";
-    DEVICE_LIB_PATH = "${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode";
-    HIP_FLAGS = "--rocm-path=${hellasRocm} --rocm-device-lib-path=${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode";
-    LD_LIBRARY_PATH = "${hellasRocm}/lib";
-  };
-
   # ConnectX-4, plain (legacy) mode. Pin the PF name to its permanent MAC so it
   # survives PCIe re-enumeration -- the card's bus number moves whenever the
   # PCIe tree is re-walked (e.g. toggling the BMC's shared-NIC mode), and with
@@ -212,8 +190,7 @@ in {
     secret-key-files = [config.sops.secrets.nix-cache-key.path];
   };
 
-  # Strix-2 remains netbooted with a read-only /nix/store, so it cannot act as
-  # a writable Nix builder for trex. Strix-1 boots from its local NVMe again.
+  # Keep trex's benchmark executor off Strix-2.
   benchmark.executor.builders."strix-2".enable = lib.mkForce false;
 
   boot.kernel.sysctl = {
@@ -247,29 +224,6 @@ in {
     "vm.swappiness" = 10;
     "vm.page-cluster" = 0;
     "vm.max_map_count" = 1048576;
-  };
-
-  services.hellas = {
-    enable = true;
-    package = pkgs.hellas.cli-catena;
-    openFirewall = true;
-    port = 31145;
-    executionPackages.smollm2-135m = smollm2Package;
-    executePolicy = ["package/smollm2-135m"];
-    packageCache = "/var/lib/hellas/packages";
-    metricsPort = 9400;
-    graffiti = "trex";
-    extraArgs = [
-      "--identity"
-      "/var/lib/hellas/.hellas/identity-v3"
-      "--software-root"
-    ];
-    environment = hellasRocmEnvironment;
-  };
-
-  systemd.services.hellas = {
-    path = with pkgs.rocmPackages; [clang hipcc];
-    serviceConfig.SupplementaryGroups = ["render" "video"];
   };
 
   # Hermes and its Signal transport are intentionally disabled. OMP is the
@@ -327,7 +281,7 @@ in {
       WorkingDirectory = "/home/grw";
       Environment = ["OPENCODE_DISABLE_AUTOUPDATE=1"];
       ExecStart = let
-        opencode = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+        opencode = config.home-manager.users.grw.programs.opencode.package;
       in
         "${opencode}/bin/opencode serve --print-logs --log-level INFO "
         + "--port 58640 "
@@ -500,12 +454,12 @@ in {
     common-cpu-amd
     common-gpu-amd
 
-    inputs.nix-strix-halo.nixosModules.default
+    ../../../profiles/nix-strix-halo.nix
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.nix-strix-halo.nixosModules.grafana-dashboards
     inputs.nix-strix-halo.nixosModules.rpc-server
 
-    inputs.hellas.nixosModules.default
+    ./hellas-gateway.nix
 
     # Parked 2026-08-08 for the switchdev -> legacy migration: this container
     # takes SR-IOV VF mlxlan0v0 into its namespace (its whole point -- its own
@@ -845,6 +799,43 @@ in {
     options = ["subvol=/nix" "compress=zstd" "noatime" "flushoncommit"];
   };
 
+  # Build scratch belongs on the large NVMe array. Disabling the separate
+  # tmpfs alone would put /tmp on the RAM-backed root filesystem instead.
+  boot.tmp = {
+    useTmpfs = lib.mkForce false;
+    cleanOnBoot = true;
+  };
+  environment.persistence."/nix" = {
+    hideMounts = true;
+    directories = [{ directory = "/tmp"; mode = "1777"; }];
+  };
+
+  # Temporary activation variant while the running tmpfs contains active
+  # builds. Activate this child with `test`, and install the parent with
+  # `boot` so the disk-backed /tmp takes effect at the next planned reboot.
+  specialisation.live-tmpfs.configuration = {
+    boot.tmp.useTmpfs = lib.mkOverride 40 true;
+    environment.persistence."/nix".directories = lib.mkForce [];
+    systemd.services = lib.genAttrs [
+      # Finish running builds before restarting Nix for its store migration.
+      "nix-daemon"
+      # Keep the adopted storage daemon's assembled state and live exports.
+      "spdk-storage-assemble"
+      "spdk-models-export"
+      # Preserve the fabric's VFs and flow-control state under connected clients.
+      "mlx-sriov"
+      "roce-qos"
+      # Diskless builders use the NFS exports while this host is activated.
+      "nfs-server"
+      "nfs-mountd"
+      "nfs-idmapd"
+      "nfsdcld"
+      "rpcbind"
+      "rpc-statd"
+      "rpc-statd-notify"
+    ] (_: {restartIfChanged = false;});
+  };
+
   fileSystems."/persist" = {
     device = "/dev/disk/by-label/trexroot";
     fsType = "btrfs";
@@ -987,8 +978,8 @@ in {
   ];
 
   # Override the impermanence default: this box is the fleet logserver.
-  services.journald.storage = "persistent";
-  services.journald.extraConfig = "SystemMaxUse=4G";
+  services.journald.settings.Journal.Storage = "persistent";
+  services.journald.settings.Journal.SystemMaxUse = "4G";
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-label/TREXBOOTA";
@@ -1238,6 +1229,12 @@ in {
         ];
         routes = [
           {Gateway = network.routerIp;}
+          # The OTLP collector reaches ax102 through the service host's
+          # WireGuard tunnel; the BlueField default gateway does not own it.
+          {
+            Destination = "${network.hydraBuilders.ax102.wg}/32";
+            Gateway = network.controlPlaneIp;
+          }
           # The management daemon is on the BlueField itself. Its fabric
           # address is now directly connected; only the private DPU address
           # still needs the BlueField LAN side as a gateway.

@@ -143,6 +143,18 @@ in {
     };
 
     systemd.services.esphome.serviceConfig = {
+      # ESPHome 2026.8 removed its dashboard command. Keep the older command
+      # on legacy package sets and use the separate Device Builder otherwise.
+      ExecStart = lib.mkIf (lib.versionAtLeast config.services.esphome.package.version "2026.8") (
+        lib.mkForce (lib.escapeShellArgs (
+          [ (lib.getExe pkgs.esphome-device-builder) "--remote-build-host" cfg.address ]
+          ++ (if config.services.esphome.enableUnixSocket then
+            [ "--socket" "/run/esphome/esphome.sock" ]
+          else
+            [ "--host" cfg.address "--port" (toString cfg.port) ])
+          ++ [ stateDir ]
+        ))
+      );
       ExecStartPre = ["${prestart}"];
       SupplementaryGroups = lib.mkForce ["dialout" secretsGroup];
       StateDirectoryMode = lib.mkForce "0700";

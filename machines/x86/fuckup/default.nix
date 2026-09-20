@@ -127,13 +127,14 @@ in
     ../../../profiles/displaylink.nix
     ../../../profiles/wayland-compositors-test.nix
 
-    ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
+    # Temporarily use the stock kernel while upgrading the fleet.
+    # ../../../profiles/thunderbolt-ibverbs-kernel-stable.nix
     ../../../profiles/thunderbolt-bridge.nix
 
     ../../../services/buildfarm-slave.nix
     ../../../services/hydra-builder-slave.nix
 
-    inputs.nix-strix-halo.nixosModules.default
+    ../../../profiles/nix-strix-halo.nix
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     # inputs.nix-strix-halo.nixosModules.tuning
 
@@ -321,8 +322,10 @@ in
     bridgeThunderboltNet = false;
   };
 
+  boot.kernelPackages = lib.mkOverride 900 pkgs.linuxPackages_latest;
+
   hardware.thunderbolt-ibverbs = {
-    enable = true;
+    enable = false;
     loadOnBoot = false;
     blacklist.enable = true;
     config = {

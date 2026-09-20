@@ -4,9 +4,8 @@ let
   self = network.hosts.${hostName};
   trexIp = network.primaryIp network.hosts.trex;
   clientIp = network.primaryIp self;
-  # Firmware now boots from a cabled ConnectX-5 port rather than the onboard
-  # Realtek NIC. Record that identity explicitly so the same interface keeps
-  # the LAN address when Linux replaces iPXE.
+  # Keep the inventory-selected boot interface's LAN identity when Linux
+  # replaces iPXE. The RDMA fabric can be a separate ConnectX port.
   bootMac = self.netbootMac or self.mac;
   bootLinuxMac = self.netbootLinuxMac or bootMac;
   bootMacMatch = lib.concatStringsSep " " (lib.unique [ bootMac bootLinuxMac ]);
@@ -15,6 +14,11 @@ let
   bootMacCandidateArgs = lib.escapeShellArgs bootMacCandidates;
   sharesFabric = self.netbootSharesFabric or false;
   firmwareSnapshotDir = "/var/lib/bios-setup-var/snapshots";
+  storage = import ../machines/x86/trex/spdk-storage-constants.nix;
+  volume = storage.netbootVolume hostName;
+  volumeDevice = "/dev/disk/by-id/nvme-uuid.${volume.uuid}";
+  fabricIp = network.ipOf "fabric" self.addresses.fabric;
+  rdmaAddress = network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
 
   # Kernel-direct NFSv4.2 mount options. The initrd has no mount.nfs
   # helper, so every option here must be understood by the kernel nfs4
@@ -64,10 +68,9 @@ let
   '';
 in
 {
-  # Diskless netboot client: kernel+initrd arrive via iPXE/HTTP, the Nix
-  # store is a read-only NFS export from trex with a tmpfs overlay for
-  # writes (benchmark builds and interactive shells). Everything else is
-  # stateless tmpfs; Home Manager recreates grw's home on every boot.
+  # Kernel+initrd arrive via iPXE/HTTP. A private SPDK volume is formatted
+  # every boot and seeded with only this system's closure, then used for
+  # /nix and build scratch. The ordinary root remains disposable tmpfs.
 
   # No local bootloader: the boot chain is firmware PXE -> iPXE -> HTTP.
   # switch-to-configuration still needs an install hook so colmena's
@@ -79,38 +82,27 @@ in
     installHook = "${pkgs.coreutils}/bin/true";
   };
 
-  boot.tmp.useTmpfs = true;
+  boot.tmp.useTmpfs = lib.mkForce false;
 
   fileSystems."/" = {
     fsType = "tmpfs";
-    # Bound all ordinary volatile state (/etc, /var, /home and build
-    # temporaries) so diskless boot cannot consume the machines' UMA.
+    # Bound ordinary volatile state (/etc, /var and /home). Builds use the
+    # private block volume so their scratch space does not consume UMA.
     options = [ "mode=0755" "size=2G" ];
   };
 
-  fileSystems."/nix/.ro-store" = {
-    device = "${trexIp}:/nix-store";
-    fsType = "nfs4";
-    # The store is immutable content-addressed data, so relax close-to-open
-    # coherency and cache attributes aggressively.
-    options = nfsBootOptions ++ [ "ro" "nocto" "actimeo=600" ];
+  fileSystems."/nix" = {
+    device = volumeDevice;
+    fsType = "xfs";
+    options = [ "noatime" "_netdev" "x-systemd.device-timeout=180s" ];
     neededForBoot = true;
   };
 
-  fileSystems."/nix/.rw-store" = {
-    fsType = "tmpfs";
-    # Together with the 2 GiB root tmpfs above, netboot-specific writable
-    # storage has a hard aggregate ceiling of 4 GiB.
-    options = [ "mode=0755" "size=2G" ];
-    neededForBoot = true;
-  };
-
-  fileSystems."/nix/store" = {
-    overlay = {
-      lowerdir = [ "/nix/.ro-store" ];
-      upperdir = "/nix/.rw-store/store";
-      workdir = "/nix/.rw-store/work";
-    };
+  fileSystems."/tmp" = {
+    device = "/nix/tmp";
+    fsType = "none";
+    options = [ "bind" ];
+    depends = [ "/nix" ];
     neededForBoot = true;
   };
 
@@ -157,20 +149,97 @@ in
   };
 
   boot.supportedFilesystems = [ "nfs" ];
-  boot.initrd.supportedFilesystems = [ "nfs" "overlay" ];
+  boot.initrd.supportedFilesystems = [ "nfs" "xfs" ];
   boot.initrd.availableKernelModules = [
     "r8169"
     "mlx5_core"
     "nfsv4"
-    "overlay"
-    # Keep the diskless image bootable under KVM for regression tests.
+    "mlx5_ib"
+    "nvme-rdma"
+    # Also support virtual NICs when inspecting the initrd under KVM.
     "virtio_pci"
     "virtio_net"
   ];
   # mlx5_core is both available and explicitly loaded. SharedIO firmware can
   # leave the PCI function without a fresh uevent when Linux takes over from
   # iPXE, so relying only on modalias autoloading is not robust enough here.
-  boot.initrd.kernelModules = [ "mlx5_core" "nfsv4" ];
+  boot.initrd.kernelModules = [ "mlx5_core" "mlx5_ib" "nvme-rdma" "nfsv4" ];
+  boot.initrd.systemd.initrdBin = [
+    pkgs.coreutils pkgs.findutils pkgs.nvme-cli
+    pkgs.iproute2 pkgs.ethtool
+  ];
+
+  # The fixed namespace UUID belongs only to this host's disposable volume.
+  # This runs in stage 1 on every boot, before anything can mount /nix.
+  boot.initrd.systemd.services.strix-netboot-volume = {
+    description = "Connect and format the private Strix netboot volume";
+    requires = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    requiredBy = [ "sysroot-nix.mount" ];
+    before = [ "sysroot-nix.mount" ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      TimeoutStartSec = "180s";
+    };
+    script = ''
+      set -euo pipefail
+      # The store uses RDMA before stage 2 can apply the fabric's QoS policy.
+      ${lib.optionalString config.sconfig.roceQos.enable config.systemd.services.roce-qos.script}
+      nvme connect --transport=rdma --traddr=${rdmaAddress} --trsvcid=4420 \
+        --nqn=${volume.nqn} --host-traddr=${fabricIp} --ctrl-loss-tmo=-1 \
+        --hostnqn=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostnqn".text)} \
+        --hostid=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostid".text)} \
+        --tos=${toString (config.sconfig.roceQos.dscp * 4 + 2)}
+      ${config.systemd.package}/bin/udevadm wait --timeout=60 ${volumeDevice}
+      mkfs.xfs -f -L ${hostName}-nix ${volumeDevice}
+    '';
+  };
+
+  boot.initrd.systemd.services.strix-netboot-seed = {
+    description = "Copy this Strix system closure into the fresh Nix store";
+    requires = [ "sysroot-nix.mount" "network-online.target" ];
+    after = [ "sysroot-nix.mount" "network-online.target" ];
+    requiredBy = [ "initrd-fs.target" "initrd-find-nixos-closure.service" ];
+    before = [ "initrd-fs.target" "initrd-find-nixos-closure.service" "sysroot-tmp.mount" ];
+    unitConfig.DefaultDependencies = false;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      TimeoutStartSec = "30min";
+    };
+    script = ''
+      set -euo pipefail
+      registration=
+      for option in $(cat /proc/cmdline); do
+        case "$option" in
+          nix_registration=*) registration="''${option#nix_registration=}" ;;
+        esac
+      done
+      case "$registration" in
+        /nix/store/*/registration) ;;
+        *) echo "missing netboot closure registration" >&2; exit 1 ;;
+      esac
+      source=/run/strix-bootstrap-store
+      mkdir -p "$source" /sysroot/nix/store
+      mount -t nfs4 -o ${lib.concatStringsSep "," (nfsBootOptions ++ [ "ro" "nocto" "actimeo=600" ])} \
+        ${trexIp}:/nix-store "$source"
+      trap 'umount "$source"' EXIT
+      closure="$source/''${registration#/nix/store/}"
+      closure="''${closure%/registration}"
+      # Read immutable paths directly from trex. Parallel copies hide NFS
+      # metadata latency without packing a new archive for every generation.
+      while IFS= read -r path; do
+        printf '%s\0' "$source/''${path#/nix/store/}"
+      done < "$closure/store-paths" | \
+        xargs -0 -r -n 1 -P 8 cp -a --no-preserve=ownership -t /sysroot/nix/store --
+      cp "$closure/registration" /run/strix-nix-registration
+      mkdir -p /sysroot/nix/tmp
+      chmod 1777 /sysroot/nix/tmp
+      sync -f /sysroot/nix
+    '';
+  };
 
   # The rescue unit embeds an absolute `ip` path. Initrd systemd units retain
   # their script, but not arbitrary store references made by that script.
@@ -275,6 +344,24 @@ in
       matchConfig.MACAddress = bootMacMatch;
       linkConfig.Name = "eno1";
     };
+    links."10-cx5-fabric" = lib.mkIf (!sharesFabric) {
+      matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
+      linkConfig.Name = "cx5fabric0";
+    };
+    networks."15-cx5-fabric" = lib.mkIf (!sharesFabric) {
+      matchConfig.Name = "cx5fabric0";
+      address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
+      networkConfig = {
+        DHCP = "no";
+        IPv6AcceptRA = false;
+        LinkLocalAddressing = "no";
+        KeepConfiguration = "static";
+      };
+      linkConfig = {
+        MTUBytes = "9000";
+        RequiredForOnline = "routable";
+      };
+    };
     networks."10-lan" = {
       matchConfig.Name = "eno1";
       address = [
@@ -285,9 +372,8 @@ in
       gateway = [ network.routerIp ];
       networkConfig = {
         DHCP = "no";
-        # The Nix store is already live over NFS when initrd-networkd stops.
-        # Preserve the static address across switch-root; otherwise removing
-        # it deadlocks stage 2 before its own networkd can restore the link.
+        # Preserve the addresses across switch-root, including the store's
+        # RDMA address on machines where LAN and fabric share a port.
         KeepConfiguration = "static";
       };
       linkConfig.RequiredForOnline = "routable";
@@ -346,10 +432,8 @@ in
     }
   ];
 
-  # The store db lives in tmpfs and starts empty every boot. The iPXE
-  # script passes nix_registration=<closureInfo>/registration (a path
-  # inside the NFS store) so the booted closure can be registered before
-  # nix-daemon starts. Mirrors nixpkgs' netboot register-nix-paths unit.
+  # The freshly formatted /nix has no database. Register exactly the closure
+  # copied by stage 1 before starting the daemon, then root the booted system.
   systemd.services.strix-register-nix-paths = {
     description = "Register netboot Nix store paths";
     unitConfig.DefaultDependencies = false;
@@ -368,19 +452,8 @@ in
       RemainAfterExit = true;
     };
     script = ''
-      reg=""
-      for o in $(cat /proc/cmdline); do
-        case "$o" in
-          nix_registration=*) reg="''${o#nix_registration=}" ;;
-        esac
-      done
-
-      if [ -n "$reg" ] && [ -e "$reg" ]; then
-        ${lib.getExe' config.nix.package "nix-store"} --load-db < "$reg"
-      else
-        echo "no nix_registration= on the kernel cmdline; store db left empty" >&2
-      fi
-
+      set -eu
+      ${lib.getExe' config.nix.package "nix-store"} --load-db < /run/strix-nix-registration
       touch /etc/NIXOS
       ${lib.getExe' config.nix.package "nix-env"} -p /nix/var/nix/profiles/system --set /run/current-system
     '';

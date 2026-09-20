@@ -2,14 +2,12 @@
   description = "satanic.link fleet: NixOS (x86/aarch64/riscv), nix-darwin, OpenWrt and RouterOS configs, deployed with colmena";
 
   inputs = {
-    nixpkgs.follows = "nix-strix-halo/nixpkgs";
+    # The fleet owns its base system pin. Consume nix-strix-halo's selected
+    # packages and modules without inheriting its development nixpkgs pin.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # Fast-moving leaf applications only. The fleet nixpkgs (via
-    # nix-strix-halo) predates both the ESPHome MIPI presets and the Go 1.27
-    # toolchain required by Qui 1.27. Advancing the whole fleet for those would
-    # unnecessarily rebuild the kernel, ZFS and ROCm, so keep a small unstable
-    # package set here (the historical input name is retained).
-    nixpkgs-esphome.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Keep the historical application input name, using the fleet package set.
+    nixpkgs-esphome.follows = "nixpkgs";
 
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
@@ -37,7 +35,7 @@
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     # No nixpkgs follow: its flake eagerly instantiates x86_64-darwin, which
-    # nixpkgs 26.11 (via nix-strix-halo) no longer supports.
+    # nixpkgs 26.11 no longer supports.
     vscode-server.url = "github:nix-community/nixos-vscode-server";
 
     nix-ai-tools.url = "github:numtide/nix-ai-tools";
@@ -76,7 +74,8 @@
       # Keep the experimental host kernel and management module isolated from
       # the fleet's production Halo overlay. This branch can advance without
       # pulling unrelated NPU/ROCm package changes onto the strix-4 canary.
-      url = "git+file:///mnt/Home/src/nix-strix-halo?ref=codex/multikernel-7.0-mk2&rev=909c744e17b87be7d2b6ef3243a405a8823d7d9d&shallow=1";
+      # Same reviewed tree with the stdenv.hostPlatform API migration.
+      url = "git+file:///mnt/Home/src/nix-strix-halo?ref=ci/multikernel-platform-predicates&rev=4a19717e771150820e4b3995bcf527da34ec8e1b&shallow=1";
       flake = false;
     };
 
@@ -152,12 +151,8 @@
     };
 
     hellas = {
-      # Catena provider cutover, including the one-connection Open binding.
-      url = "git+file:///mnt/Home/src/hellas-catena-cutover?ref=grw/catena-cutover&rev=55c9233fbc6eddb297c429ea7c3ff12e8ef69b13&shallow=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
-      inputs.catena-runner.follows = "catena-runner";
-      inputs.exploratory-catena.follows = "exploratory-catena";
+      # Paid gateway and Strix providers share one protocol/toolchain revision.
+      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&shallow=1";
     };
 
     nanokvm = {
@@ -212,12 +207,6 @@
       flake = false;
     };
 
-    # DisplayLink EVDI kernel module — track upstream for nix flake update
-    evdi-src = {
-      url = "github:DisplayLink/evdi";
-      flake = false;
-    };
-
     mt7927.url = "github:cmspam/mt7927-nixos";
     mt7927.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -265,10 +254,8 @@
           linuxPackages_multikernel = final.linuxPackagesFor linux-multikernel;
         }
       )
-      # Keep fast-moving media applications on the existing unstable package
-      # input instead of advancing the fleet-wide nixpkgs pin (kernel, ZFS
-      # and ROCm) merely for two web services. Qui 1.27 additionally requires
-      # the Go 1.27 toolchain supplied by this package set.
+      # These media applications use the fleet's unstable package set through
+      # the historical input alias; Qui requires its Go 1.27 toolchain.
       (final: _prev: let
         leafPkgs = inputs.nixpkgs-esphome.legacyPackages.${final.stdenv.hostPlatform.system};
       in {
@@ -279,7 +266,14 @@
         pexctl = inputs.atlas.packages.${final.stdenv.hostPlatform.system}.pexctl;
       })
       inputs.rust-overlay.overlays.default
-      inputs.hellas.overlays.default
+      # The pinned Hellas overlay still uses the deprecated final.system.
+      (final: _prev: {
+        hellas = inputs.hellas.packages.${final.stdenv.hostPlatform.system};
+        hellasLib = import (inputs.hellas + "/nix/lib") {
+          pkgs = final;
+          inherit (inputs.hellas.inputs) nix-strix-halo;
+        };
+      })
       # Experimental NVIDIA DOCA-OFED packages. Keep the overlay before the
       # custom kernel definitions so its packagesFor extension also applies
       # to linux_7_2_rc2; hosts opt in to the modules separately.
@@ -343,43 +337,40 @@
               };
           };
       })
-      # OpenZFS 2.4.99 for kernel 7.2-rc support (remove when nixpkgs zfs_unstable >= 2.5).
-      # nixpkgs' postPatch pins the Linux-Maximum META check to 7.0 and still
-      # references the pre-2.4.99 libshare paths; retarget both for the openzfs
-      # master snapshot, and temporarily lift its declared maximum for 7.2-rc.
+      # OpenZFS master, including Linux 7.2 support. Keep nixpkgs' kernel
+      # compatibility checks: the updated snapshot declares 7.2 support in
+      # META itself. Adapt the renamed libshare paths and remove the obsolete
+      # helper-path rewrite: snapshot mounts now happen inside the kernel.
       (final: prev: let
+        zfsVersion = "2.4.99";
         fixPostPatch = pp:
           builtins.replaceStrings
           [
-            "7\\.0"
+            ''
+              substituteInPlace ./module/os/linux/zfs/zfs_ctldir.c \
+                --replace-fail '"/usr/bin/env", "umount"' '"${prev.util-linux}/bin/umount", "-n"' \
+                --replace-fail '"/usr/bin/env", "mount"'  '"${prev.util-linux}/bin/mount", "-n"'
+            ''
             "./lib/libshare/os/linux/nfs.c"
             "./lib/libshare/smb.h"
-            "echo 'Supported Kernel versions:'"
           ]
           [
-            "7\\.2"
+            ""
             "./lib/libzfs/os/linux/libzfs_share_nfs.c"
             "./lib/libzfs/libzfs_share.h"
-            ''
-              sed -i -E 's/^Linux-Maximum:.*/Linux-Maximum: 7.2/' META
-              echo 'Supported Kernel versions:'
-            ''
           ]
           pp;
-        zfsOverride = old: {
-          version = "2.4.99";
+        zfsSourceOverride = old: {
+          version = zfsVersion;
+          name = builtins.replaceStrings [old.version] [zfsVersion] old.name;
           src = inputs.openzfs;
           postPatch = fixPostPatch old.postPatch;
-          meta = old.meta // {broken = false;};
+        };
+        zfsOverride = old: zfsSourceOverride old // {
           passthru =
             old.passthru
             // {
-              userspaceTools = old.passthru.userspaceTools.overrideAttrs (uOld: {
-                version = "2.4.99";
-                src = inputs.openzfs;
-                postPatch = fixPostPatch uOld.postPatch;
-                meta = uOld.meta // {broken = false;};
-              });
+              userspaceTools = old.passthru.userspaceTools.overrideAttrs zfsSourceOverride;
             };
         };
         extendLp = ps:
@@ -393,24 +384,6 @@
           prev.linuxKernel
           // {
             packages = builtins.mapAttrs (n: extendLp) prev.linuxKernel.packages;
-          };
-      })
-      # EVDI (DisplayLink) kernel module from upstream source
-      (final: prev: let
-        evdiOverride = old: {
-          src = inputs.evdi-src;
-          version = inputs.evdi-src.shortRev or "unstable";
-          patches = [];
-        };
-        extendLpEvdi = ps:
-          ps.extend (lpF: lpP: {
-            evdi = lpP.evdi.overrideAttrs evdiOverride;
-          });
-      in {
-        linuxKernel =
-          prev.linuxKernel
-          // {
-            packages = builtins.mapAttrs (n: extendLpEvdi) prev.linuxKernel.packages;
           };
       })
       # nixpkgs uses requireFile for the proprietary DisplayLink archive,
@@ -588,7 +561,7 @@
     # Darwin-only modules must be excluded here: everything left in
     # moduleAttrs is imported into *every* NixOS host via nixosModule below,
     # and a module that defines `launchd.*` fails evaluation on Linux where
-    # that option does not exist. An `stdenv.isDarwin` guard inside mkIf does
+    # that option does not exist. An `stdenv.hostPlatform.isDarwin` guard inside mkIf does
     # not help — mkIf defers the value, not the option path. Darwin hosts pick
     # these up by explicit path import instead (see darwin-configuration.nix
     # for xmrig-darwin, mbp.nix for llama-server-darwin).

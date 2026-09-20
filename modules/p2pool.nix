@@ -6,6 +6,10 @@
 }: let
   cfg = config.services.p2pool;
 in {
+  # The fleet module also supplies merge-mining and mtail integration.
+  # Newer nixpkgs ships the same option namespace; keep one provider.
+  disabledModules = [ "services/networking/p2pool.nix" ];
+
   options = {
     services.p2pool = {
       enable = lib.mkEnableOption "Monero P2Pool node daemon";

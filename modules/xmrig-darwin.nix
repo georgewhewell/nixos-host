@@ -70,7 +70,7 @@ in {
     };
   };
 
-  config = lib.mkIf (pkgs.stdenv.isDarwin && cfg.enable) (let
+  config = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin && cfg.enable) (let
     hostName = let
       hn = lib.attrByPath ["networking" "hostName"] null config;
     in if hn != null then hn else cfg.rigId;

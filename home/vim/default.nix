@@ -28,7 +28,7 @@
         jq
         rage
       ]
-      ++ lib.optionals (pkgs.stdenv.isLinux) [
+      ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux) [
         pre-commit
       ];
   };

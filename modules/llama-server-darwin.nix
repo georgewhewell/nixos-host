@@ -102,7 +102,7 @@ in {
     };
   };
 
-  config = lib.mkIf (pkgs.stdenv.isDarwin && cfg.enable) (let
+  config = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin && cfg.enable) (let
     flags =
       [
         "--model"

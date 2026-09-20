@@ -206,7 +206,7 @@
       # pinentry that works under both Wayland and X11; pinentry-mac on Darwin.
       # When there's no display (SSH'd into the desktop), fall back to TTY.
       pinentrySelect =
-        if pkgs.stdenv.isDarwin
+        if pkgs.stdenv.hostPlatform.isDarwin
         then "${pkgs.pinentry_mac}/bin/pinentry-mac"
         else pkgs.writeShellScript "pinentry-graphical" ''
           if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; then
@@ -225,12 +225,12 @@
       StreamLocalBindUnlink = "yes";
       RemoteForward = [
         "/run/user/1000/gnupg/S.gpg-agent ${
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then "/Users/grw/.gnupg/S.gpg-agent.extra"
           else "/run/user/1000/gnupg/S.gpg-agent.extra"
         }"
         "/run/user/1000/gnupg/S.gpg-agent.ssh ${
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then "/Users/grw/.gnupg/S.gpg-agent.ssh"
           else "/run/user/1000/gnupg/S.gpg-agent.ssh"
         }"
@@ -242,7 +242,7 @@
     export GPG_TTY=$(tty)
 
     ${
-      if pkgs.stdenv.isLinux
+      if pkgs.stdenv.hostPlatform.isLinux
       then ''
         # On Linux, use forwarded GPG agent socket if available AND we're in SSH session
         if [[ -n "$SSH_CONNECTION" ]] && [[ -S "/run/user/1000/gnupg/S.gpg-agent.ssh" ]]; then
@@ -261,15 +261,15 @@
   # to inject PASSWORD_STORE_DIR (XDG location) and PATH (gpg/pass).
   home.packages = with pkgs; [
     (
-      if pkgs.stdenv.isDarwin
+      if pkgs.stdenv.hostPlatform.isDarwin
       then pinentry_mac
       else pinentry-qt
     )
-  ] ++ lib.optionals pkgs.stdenv.isLinux [
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     pkgs.pass-secret-service
   ];
 
-  systemd.user.services."dbus-org.freedesktop.secrets" = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services."dbus-org.freedesktop.secrets" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Expose libsecret D-Bus API with pass as backend";
     Service = {
       BusName = "org.freedesktop.secrets";
@@ -284,6 +284,6 @@
     };
   };
 
-  services.keybase.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
-  services.kbfs.enable = pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64;
+  services.keybase.enable = pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isx86_64;
+  services.kbfs.enable = pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isx86_64;
 }

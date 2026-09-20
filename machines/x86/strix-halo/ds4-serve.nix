@@ -13,7 +13,7 @@ let
   hostName = "strix-${toString index}";
   self = network.hosts.${hostName};
   netboot = self.netboot or false;
-  servingEnabled = netboot && (self.strix.ds4Serve or true);
+  servingEnabled = netboot && (self.strix.ds4Serve or false);
   productionPackages = inputs.nix-strix-halo-ds4.packages.${pkgs.stdenv.hostPlatform.system};
   server = productionPackages.sglang-dsv4-halo4;
   agent = productionPackages.ds4-opencode;
@@ -30,9 +30,8 @@ let
   cacheDir = "/mnt/Home/services/ds4-production/${hostName}/cache";
 in
 {
-  # ExecStart roots the complete server closure in the netboot image. The
-  # existing closureInfo registration makes it valid before nix-daemon starts,
-  # so a client never needs to copy it into the 2 GiB writable overlay.
+  # ExecStart includes the complete server closure in the boot seed, making
+  # it available in the private store before nix-daemon starts.
   environment.systemPackages = [ agent ];
   environment.variables = {
     DS4_OPENAI_BASE_URL = "http://${coordinator}:30000/v1";

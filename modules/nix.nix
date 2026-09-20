@@ -1,6 +1,9 @@
 # Common Nix settings for all systems (NixOS and Darwin)
-{ lib, network, ... }: {
+{ lib, pkgs, network, ... }: {
   nix = {
+    # Match ax102's srvos policy across the Linux and Darwin builder fleet.
+    package = pkgs.nixVersions.latest;
+
     optimise.automatic = lib.mkDefault true;
 
     settings = {

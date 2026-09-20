@@ -92,38 +92,13 @@ self: super: {
     '';
   });
 
-  # Fix mtail cross-compilation - upstream vendor directory is out of sync
-  mtail = super.mtail.overrideAttrs (old: {
-    proxyVendor = true;
-    vendorHash = "sha256-9XEg7Io3yi/6PKgc0oKmTWNYACOLf8FfKM/c15jXOUQ=";
-  });
-
-  # CGAL 6.2 omits the required trailing NUL from its SHF_STRINGS
-  # .debug_gdb_scripts section, which lld 21 correctly rejects. Backport
-  # CGAL eb2257df4da4; drop once nixpkgs carries it or updates past 6.2.
-  cgal = super.cgal.overrideAttrs (old: {
-    patches = (old.patches or []) ++ [
-      ../packages/patches/cgal-gdb-autoload-null-terminator.patch
-    ];
-  });
-
-  # The nixpkgs pin predates #537721: VTK 9.5.2 uses mutable char ** for
-  # metadata that GDAL 3.13 made const. Drop after updating past 7daae245.
-  vtk = super.vtk.overrideAttrs (old: {
-    patches = (old.patches or []) ++ [
-      (super.fetchpatch {
-        name = "fix-gdal-3.13-const-conversion.patch";
-        url = "https://github.com/Kitware/VTK/commit/2395603fdddc40c29efc64c632ae98225ca2a58e.patch";
-        hash = "sha256-Gcnt1JXWPkhfNLhtk9SXYqx/0cLkjO4xiRfR8YiaY8I=";
-      })
-    ];
-  });
-
-  # FreeCAD now generates its thumbnailer paths through CMake, so nixpkgs'
-  # older bare-path substitution no longer matches. Drop after 7452b6fd8be2.
-  freecad = super.freecad.overrideAttrs (_: {
-    postInstall = null;
-  });
+  # Older board package sets need this cross-compilation fix. Current
+  # nixpkgs already uses proxyVendor with the hash for its newer release.
+  mtail = super.mtail.overrideAttrs (old:
+    super.lib.optionalAttrs (!(old.proxyVendor or false)) {
+      proxyVendor = true;
+      vendorHash = "sha256-9XEg7Io3yi/6PKgc0oKmTWNYACOLf8FfKM/c15jXOUQ=";
+    });
 
   apple-health-ingester = super.callPackage ../packages/apple-health-ingester {};
 
