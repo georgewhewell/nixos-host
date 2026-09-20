@@ -76,7 +76,7 @@ in
         "/var/lib/hellas-gateway/$node-work.json" > "/run/hellas-gateway/$node-work.json"
     done
     ${pkgs.jq}/bin/jq \
-      '.providers |= map(.work_config |= sub("^/var/lib/hellas-gateway/"; "/run/hellas-gateway/")) | .timeout_secs = 3600 | .terminal_blocks = 32768 | .payment_blocks = 1024' \
+      '.providers |= map(.work_config |= sub("^/var/lib/hellas-gateway/"; "/run/hellas-gateway/")) | .timeout_secs = 3600 | .terminal_blocks = 4096 | .payment_blocks = 1024' \
       /var/lib/hellas-gateway/providers.json > /run/hellas-gateway/providers.json
     credential=/var/lib/hellas-gateway/bearer-token
     if [ ! -e "$credential" ]; then
