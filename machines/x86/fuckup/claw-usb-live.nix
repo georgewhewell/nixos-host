@@ -19,6 +19,10 @@ let
 
   clawCfg = inputs.self.nixosConfigurations.claw;
   clawTargetIp = clawCfg.config.deployment.targetHost;
+  # Link-local address derived from protocol.hostMac (02:1a:11:00:01:02).
+  # Keep it static: this host disables automatic IPv6 link-local generation
+  # for USB gadget interfaces, and the address must survive re-enumeration.
+  clawHostLinkLocal = "fe80::1a:11ff:fe00:102";
 
   # Same composition as the nanokvm flake's nfsLiveArtifacts for the
   # picoclaw.mainline.live.usb-lcd catalog entry, but built from the
@@ -148,15 +152,17 @@ in
   # without forcing evaluation of every workstation package on fuckup.
   system.build.clawUsbLive = clawUsbLive;
 
-  # Beat profiles/thunderbolt-bridge.nix's generic 50-cdc-* rules. Without
-  # this persistent match, networkd briefly enslaves the Claw gadget to
-  # br0.lan before the boot runner can install its runtime override. The
-  # target's initrd RX guard sees that no-reply interval, re-probes DWC2, and
-  # destroys the very NFS transport it is trying to recover. Match the wire
-  # protocol's host MAC so this covers both ECM/cdc_ether and NCM/cdc_ncm.
-  systemd.network.networks."20-claw-usb" = {
+  # Win ahead of both profiles/thunderbolt-bridge.nix's generic 50-cdc-*
+  # rules and the USB runner's compatibility 00-nanokvm-usb0 runtime file.
+  # Networkd uses only the first matching .network file, so this rule owns
+  # the whole control link across each gadget re-enumeration. Match the wire
+  # protocol's host MAC so this covers both ECM/cdc_ether and CDC-NCM.
+  systemd.network.networks."00-claw-usb" = {
     matchConfig.MACAddress = protocol.hostMac;
-    address = [ "${protocol.hostIp}/${protocol.prefix}" ];
+    address = [
+      "${protocol.hostIp}/${protocol.prefix}"
+      "${clawHostLinkLocal}/64"
+    ];
     networkConfig = {
       DHCP = "no";
       IPv6AcceptRA = false;
