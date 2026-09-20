@@ -42,6 +42,26 @@ in
   };
   systemd.tmpfiles.rules = [ "d /tmp/hellas 0700 hellas hellas -" ];
 
+  # Hellas keeps metrics on loopback. Publish only to trex's scraper using
+  # socket-level BPF filtering: these diskless hosts disable the host firewall.
+  systemd.sockets.hellas-metrics = {
+    wantedBy = [ "sockets.target" ];
+    listenStreams = [ "${network.primaryIp network.hosts.${hostName}}:9400" ];
+    socketConfig = {
+      FreeBind = true;
+      IPAddressDeny = "any";
+      IPAddressAllow = network.primaryIp network.hosts.trex;
+    };
+  };
+  systemd.services.hellas-metrics = {
+    after = [ "hellas.service" ];
+    serviceConfig = {
+      ExecStart = "${config.systemd.package}/lib/systemd/systemd-socket-proxyd 127.0.0.1:9400";
+      DynamicUser = true;
+      NoNewPrivileges = true;
+    };
+  };
+
   services.hellas = {
     enable = true;
     port = 31145;

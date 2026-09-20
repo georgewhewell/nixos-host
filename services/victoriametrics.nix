@@ -266,11 +266,10 @@
     {
       job_name = "hellas-node";
       scrape_interval = "10s";
-      static_configs = [
-        {
-          targets = ["127.0.0.1:9400"];
-        }
-      ];
+      static_configs = map (host: {
+        targets = ["${network.primaryIp network.hosts.${host}}:9400"];
+        labels.instance = host;
+      }) [ "strix-1" "strix-2" "strix-4" ];
     }
     {
       job_name = "apcupsd";

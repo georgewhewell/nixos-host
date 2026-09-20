@@ -526,12 +526,31 @@ in {
   # Password-protect the LAN-exposed opencode-server (see the unit above).
   # opencode reads OPENCODE_SERVER_PASSWORD from the environment; render it from
   # sops into an EnvironmentFile so the secret never lands in the store.
-  sops.secrets.opencode-server-password = mkSecret "opencode-server-password" {};
+  sops.secrets.opencode-server-password = mkSecret "opencode-server-password" {
+    owner = "grw";
+  };
   sops.templates."opencode-server-env".content = ''
     OPENCODE_SERVER_PASSWORD=${config.sops.placeholder."opencode-server-password"}
   '';
   systemd.services.opencode-server.serviceConfig.EnvironmentFile =
     config.sops.templates."opencode-server-env".path;
+  # The ordinary attach/run client uses the same upstream password variable.
+  # Read it only when launching OpenCode, never into the store or shell profile.
+  home-manager.users.grw.programs.opencode.package = lib.mkForce (let
+    package = inputs.nix-ai-tools.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+  in pkgs.symlinkJoin {
+    name = "${package.name}-server-auth";
+    inherit (package) version meta;
+    paths = [ package ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram "$out/bin/opencode" --run ${lib.escapeShellArg ''
+        if [ -z "''${OPENCODE_SERVER_PASSWORD+x}" ] && [ -r ${config.sops.secrets.opencode-server-password.path} ]; then
+          export OPENCODE_SERVER_PASSWORD="$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.opencode-server-password.path})"
+        fi
+      ''}
+    '';
+  });
 
   # Give kimi-server a fixed password from sops instead of relying on the
   # random bearer token it prints at startup. kimi reads KIMI_CODE_PASSWORD
