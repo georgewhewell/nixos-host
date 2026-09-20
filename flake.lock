@@ -1159,10 +1159,10 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1789886164,
-        "narHash": "sha256-XpwXvSOII4ttxFtTI2vLwd+hb7cSObLbBmfxupcb6U0=",
+        "lastModified": 1789896302,
+        "narHash": "sha256-eTram/vHMMuwaVUJ3EQec+wOS8tRhfhp6ibiSgpzEAw=",
         "ref": "codex/strix-paid-gateway",
-        "rev": "869dab8aeb6e9980ec9385572d0dded62f762c6c",
+        "rev": "ca35497843da4b87224841c6e22638553ebf2040",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
