@@ -69,6 +69,7 @@ in {
     ../../../profiles/wireless.nix
     ../../../profiles/router/ap.nix
     ../../../services/buildfarm-slave.nix
+    ../../../services/hydra-builder-slave.nix
     ../../../services/kvm.nix
   ];
 

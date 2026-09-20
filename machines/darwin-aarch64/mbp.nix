@@ -14,6 +14,10 @@ in {
   ];
 
   networking.hostName = "mbp";
+  # Dedicated Thunderbolt link between MBP and Goblin; no default route.
+  system.activationScripts.postActivation.text = ''
+    /usr/sbin/networksetup -setmanual "Thunderbolt Bridge" 10.55.0.1 255.255.255.252 ""
+  '';
   ids.gids.nixbld = 350;
   environment.enableAllTerminfo = lib.mkForce false;
 

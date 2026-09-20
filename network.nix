@@ -261,7 +261,7 @@ lib: rec {
       strixHaloRunner
       // {
         ipv4 = "192.168.23.136";
-        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILK1X7cjrqtB/Yvlkq0kvNix/9t6TNxV9BhzyabPXpWt";
+        publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC3yLn8cnBVB/cJCdTP0AdkPjTkpHmXiP0s+xHPWZ+mq";
         maxJobs = 1;
         speedFactor = 32;
         systems = ["x86_64-linux"];
@@ -287,7 +287,7 @@ lib: rec {
       gpus = [];
     };
     goblin = {
-      ipv4 = "192.168.23.247";
+      ipv4 = primaryIp hosts.goblin;
       publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDRJYI4x/nKcftcIo6pmy9gRR0NznkFUQ3eliggcGY9N";
       maxJobs = 1;
       speedFactor = 96;
@@ -309,6 +309,9 @@ lib: rec {
       wg = "10.101.0.1";
     };
     builders = {
+      rock-5b = {
+        ipv4 = primaryIp hosts."rock-5b";
+      };
       trex = {
         ipv4 = "192.168.23.8";
       };
@@ -539,6 +542,12 @@ lib: rec {
       addresses = {lan = 24;};
     };
     goblin = {
+      mac = "1c:1d:d3:e9:2b:31";
+      # Match the DHCP ID even when macOS rotates its private Wi-Fi MAC.
+      dhcpClientId = "goblin";
+      addresses = {wifi = 247;};
+    };
+    goblin-ethernet = {
       mac = "1c:1d:d3:eb:67:55";
       addresses = {lan = 247;};
     };
@@ -1199,7 +1208,7 @@ lib: rec {
   # line, so each NIC resolves to the host's primary IP rather than a pool lease.
   toDnsmasqDhcpHost =
     lib.mapAttrsToList
-    (name: h: "${lib.concatStringsSep "," ([h.mac] ++ (h.extraMacs or []))},${primaryIp h}")
+    (name: h: "${if h ? dhcpClientId then "id:${h.dhcpClientId}" else lib.concatStringsSep "," ([h.mac] ++ (h.extraMacs or []))},${primaryIp h}")
     (lib.filterAttrs (_: h: (h.mac or null) != null) hosts);
 
   # dnsmasq address shape: ["/fqdn/ip" ...]. Each host (and each of its

@@ -33,6 +33,47 @@ in {
   ];
 
   networking.hostName = "goblin";
+  # Dedicated Thunderbolt link between MBP and Goblin; no default route.
+  system.activationScripts.postActivation.text = ''
+    /usr/sbin/networksetup -setmanual "Thunderbolt Bridge" 10.55.0.2 255.255.255.252 ""
+  '';
+  networking.computerName = "goblin";
+  networking.localHostName = "goblin";
+  # Wi-Fi is on VLAN 50, not the wired LAN. Obtain the address, default
+  # route and DNS from DHCP instead of retaining an old manual LAN address.
+  networking.knownNetworkServices = [ "Wi-Fi" ];
+  networking.dhcpClientId = "goblin";
+
+  nix.linux-builder = {
+    enable = true;
+    maxJobs = 1;
+    supportedFeatures = [ ];
+    config = { lib, ... }: {
+      imports = [ ../../services/hydra-builder-slave.nix ];
+      virtualisation = {
+        cores = 6;
+        darwin-builder = {
+          memorySize = 12 * 1024;
+          diskSize = 16 * 1024;
+        };
+        # Access the VM through Goblin's authenticated SSH connection.
+        forwardPorts = lib.mkForce [ {
+          from = "host";
+          host.address = "127.0.0.1";
+          host.port = 31022;
+          guest.port = 22;
+        } ];
+      };
+      nix.settings = {
+        max-jobs = 1;
+        cores = 6;
+      };
+    };
+  };
+  launchd.daemons.linux-builder.serviceConfig = {
+    StandardOutPath = "/var/log/linux-builder.log";
+    StandardErrorPath = "/var/log/linux-builder.error.log";
+  };
   ids.gids.nixbld = 350;
   environment.enableAllTerminfo = lib.mkForce false;
 
