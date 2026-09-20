@@ -6,7 +6,7 @@ let
     (name: network.primaryIp network.hosts.${name});
 in
 {
-  imports = [ inputs.hellas.nixosModules.default ];
+  imports = [ inputs.hellas-gateway.nixosModules.default ];
 
   home-manager.users.grw = { lib, ... }: {
     programs.opencode.telemetry.enable = true;

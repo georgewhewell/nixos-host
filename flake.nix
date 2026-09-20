@@ -151,8 +151,18 @@
     };
 
     hellas = {
-      # Paid gateway and Strix providers share one protocol/toolchain revision.
-      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&shallow=1";
+      # Provider revisions are carried by the served Strix boot images. Keep
+      # this pin independent of gateway-only client changes so deploying trex
+      # does not rebuild every image.
+      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=d583a2ef7ad9c2fd4a8f6858520618c3b676d1f3&shallow=1";
+    };
+
+    hellas-gateway = {
+      # The gateway is deployed independently of the netboot providers.
+      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=95a82e33923ec6a86ff81abdb70e0a362eaccde8&shallow=1";
+      inputs.nixpkgs.follows = "hellas/nixpkgs";
+      inputs.rust-overlay.follows = "hellas/rust-overlay";
+      inputs.nix-strix-halo.follows = "hellas/nix-strix-halo";
     };
 
     nanokvm = {

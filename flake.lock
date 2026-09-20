@@ -1159,16 +1159,17 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1789946342,
-        "narHash": "sha256-VqU/Xk17fIbqEpvgU4hDN1+BVDNuhgfgQLuBYoN1VWE=",
+        "lastModified": 1789942509,
+        "narHash": "sha256-EHhGGb1ZgbQWX9qtmcyWosT4iuSDdAnd/Bhyv7kfzoA=",
         "ref": "codex/strix-paid-gateway",
-        "rev": "95a82e33923ec6a86ff81abdb70e0a362eaccde8",
+        "rev": "d583a2ef7ad9c2fd4a8f6858520618c3b676d1f3",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
       },
       "original": {
         "ref": "codex/strix-paid-gateway",
+        "rev": "d583a2ef7ad9c2fd4a8f6858520618c3b676d1f3",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
@@ -1199,6 +1200,38 @@
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-ai-video"
+      }
+    },
+    "hellas-gateway": {
+      "inputs": {
+        "nix-strix-halo": [
+          "hellas",
+          "nix-strix-halo"
+        ],
+        "nixpkgs": [
+          "hellas",
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "hellas",
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789946342,
+        "narHash": "sha256-VqU/Xk17fIbqEpvgU4hDN1+BVDNuhgfgQLuBYoN1VWE=",
+        "ref": "codex/strix-paid-gateway",
+        "rev": "95a82e33923ec6a86ff81abdb70e0a362eaccde8",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
+      },
+      "original": {
+        "ref": "codex/strix-paid-gateway",
+        "rev": "95a82e33923ec6a86ff81abdb70e0a362eaccde8",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
       }
     },
     "home-manager": {
@@ -2708,6 +2741,7 @@
         "firefox-addons": "firefox-addons",
         "hellas": "hellas",
         "hellas-ai-video": "hellas-ai-video",
+        "hellas-gateway": "hellas-gateway",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
         "linux-rockchip-src": "linux-rockchip-src",
