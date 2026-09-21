@@ -1,10 +1,10 @@
 {
-  "model": "hellas/Qwen3.6-35B-A3B",
-  "small_model": "hellas/Qwen3.6-35B-A3B",
+  "model": "hellas/SmolLM2-135M-Instruct",
+  "small_model": "hellas/SmolLM2-135M-Instruct",
   "provider": {
     "hellas": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "Hellas on Strix",
+      "name": "Hellas on Trex",
       "options": {
         "baseURL": "http://192.168.23.8:8080/v1",
         "apiKey": "{file:/run/hellas-gateway/client-token}",
@@ -13,13 +13,13 @@
         "chunkTimeout": 3600000
       },
       "models": {
-        "Qwen3.6-35B-A3B": {
-          "name": "Qwen3.6-35B-A3B",
+        "SmolLM2-135M-Instruct": {
+          "name": "SmolLM2-135M-Instruct",
           "limit": {
-            "context": 32768,
-            "output": 4096
+            "context": 8192,
+            "output": 512
           },
-          "tool_call": true,
+          "tool_call": false,
           "reasoning": false
         }
       }

@@ -1,9 +1,87 @@
-{ config, inputs, lib, network, pkgs, ... }:
+{
+  config,
+  inputs,
+  lib,
+  network,
+  pkgs,
+  ...
+}:
 let
-  model = import ../hellas-model.nix;
-  executionPolicy = pkgs.writeText "hellas-qwen3-policy.json" (builtins.toJSON model.execution);
-  nodes = lib.genAttrs [ "strix-1" "strix-2" "strix-3" "strix-4" ]
-    (name: network.primaryIp network.hosts.${name});
+  model = {
+    name = "SmolLM2-135M-Instruct";
+    contentRoot = "/mnt/Home/models/hellas/smollm2-135m-instruct";
+    environment = "/mnt/Home/models/hellas/smollm2-135m-instruct/model.environment";
+    tokenizer = "/mnt/Home/models/hellas/smollm2-135m-instruct/tokenizer.json";
+    chatTemplate = "smollm2";
+    contextTokens = 8192;
+    outputTokens = 512;
+    stopTokens = [ 2 ];
+    manifest = "27ee6352beace2cdd9011392a4a8a3b505fe74de7737a01d2c6029916852d002";
+  };
+  nodes = lib.genAttrs [ "strix-1" "strix-2" "strix-3" "strix-4" ] (
+    name: network.primaryIp network.hosts.${name}
+  );
+  gatewayCli = "${config.services.hellas.gateway.package}/bin/hellas-cli";
+  smollmContent = pkgs.writeShellScript "hellas-smollm2-content" ''
+    set -eu
+
+    root=${lib.escapeShellArg model.contentRoot}
+    ${pkgs.coreutils}/bin/install -d -m 0755 "$root"
+
+    install_source() {
+      expected=$1
+      source=$2
+      target=$3
+      if [ -e "$target" ]; then
+        printf '%s  %s\n' "$expected" "$target" | ${pkgs.coreutils}/bin/sha256sum --check --strict
+      else
+        ${pkgs.coreutils}/bin/install -m 0444 "$source" "$target"
+      fi
+      ${pkgs.coreutils}/bin/chmod 0444 "$target"
+    }
+
+    download() {
+      expected=$1
+      url=$2
+      target=$3
+      if [ -e "$target" ]; then
+        printf '%s  %s\n' "$expected" "$target" | ${pkgs.coreutils}/bin/sha256sum --check --strict
+        ${pkgs.coreutils}/bin/chmod 0444 "$target"
+        return
+      fi
+      temporary=$(${pkgs.coreutils}/bin/mktemp "$target.download.XXXXXX")
+      ${pkgs.curl}/bin/curl --fail --location --retry 4 --retry-all-errors --output "$temporary" "$url"
+      printf '%s  %s\n' "$expected" "$temporary" | ${pkgs.coreutils}/bin/sha256sum --check --strict
+      ${pkgs.coreutils}/bin/chmod 0444 "$temporary"
+      ${pkgs.coreutils}/bin/mv -n -- "$temporary" "$target"
+      printf '%s  %s\n' "$expected" "$target" | ${pkgs.coreutils}/bin/sha256sum --check --strict
+    }
+
+    install_source \
+      438723c4b22d74dbd17cba314421f589c1d9d686542d3444d69919767fedec7d \
+      ${lib.escapeShellArg "${inputs.catena-runner}/models/smollm2/smollm2.hex"} \
+      "$root/smollm2.hex"
+    ${pkgs.coreutils}/bin/install -m 0444 \
+      ${lib.escapeShellArg "${inputs.hellas-gateway}/examples/smollm2.environment.toml"} \
+      "$root/smollm2.toml"
+
+    download \
+      5af571cbf074e6d21a03528d2330792e532ca608f24ac70a143f6b369968ab8c \
+      https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/12fd25f77366fa6b3b4b768ec3050bf629380bac/model.safetensors?download=true \
+      "$root/model.safetensors"
+    download \
+      9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c \
+      https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct/resolve/12fd25f77366fa6b3b4b768ec3050bf629380bac/tokenizer.json?download=true \
+      "$root/tokenizer.json"
+
+    ${gatewayCli} environment build \
+      --program "$root/smollm2.hex" \
+      --settings "$root/smollm2.toml" \
+      --out "$root/model.environment"
+    ${gatewayCli} environment inspect --environment "$root/model.environment" \
+      | ${pkgs.gnugrep}/bin/grep -Fq ${lib.escapeShellArg model.manifest}
+    ${pkgs.coreutils}/bin/chmod 0444 "$root/model.environment"
+  '';
 in
 {
   imports = [ inputs.hellas-gateway.nixosModules.default ];
@@ -33,27 +111,35 @@ in
 
   # The general Home export squashes every client to UID 1000. Private
   # payment identities and journals need each node's actual service UID.
-  fileSystems = lib.mapAttrs' (name: _: lib.nameValuePair "/export/hellas/${name}" {
-    device = "/mnt/Home/hellas/${name}";
-    fsType = "none";
-    options = [ "bind" ];
-    depends = [ "/mnt/Home" ];
-  }) nodes // {
-    "/var/lib/hellas-gateway" = {
-      device = "/mnt/Home/hellas/gateway";
-      fsType = "none";
-      options = [ "bind" ];
-      depends = [ "/mnt/Home" ];
+  fileSystems =
+    lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair "/export/hellas/${name}" {
+        device = "/mnt/Home/hellas/${name}";
+        fsType = "none";
+        options = [ "bind" ];
+        depends = [ "/mnt/Home" ];
+      }
+    ) nodes
+    // {
+      "/var/lib/hellas-gateway" = {
+        device = "/mnt/Home/hellas/gateway";
+        fsType = "none";
+        options = [ "bind" ];
+        depends = [ "/mnt/Home" ];
+      };
     };
-  };
   services.nfs.server.exports = ''
     /export/hellas 192.168.23.0/24(rw,nohide,all_squash,no_subtree_check)
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: ip:
-      "/export/hellas/${name} ${ip}(rw,sync,nohide,no_subtree_check,root_squash)"
-    ) nodes)}
+    ${lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        name: ip: "/export/hellas/${name} ${ip}(rw,sync,nohide,no_subtree_check,root_squash)"
+      ) nodes
+    )}
   '';
-  systemd.services.nfs-server.unitConfig.RequiresMountsFor =
-    lib.mapAttrsToList (name: _: "/export/hellas/${name}") nodes;
+  systemd.services.nfs-server.unitConfig.RequiresMountsFor = lib.mapAttrsToList (
+    name: _: "/export/hellas/${name}"
+  ) nodes;
 
   users.groups.hellas-gateway.gid = 4950;
   users.users.hellas-gateway = {
@@ -68,48 +154,38 @@ in
     serviceName = "hellas-trex";
     sampleRate = 1.0;
   };
-  systemd.services.hellas-gateway.preStart = ''
-    umask 077
-    for node in strix-1 strix-2 strix-4; do
-      ${pkgs.jq}/bin/jq --slurpfile execution ${executionPolicy} \
-        '.policies.execution += $execution[0] | .poll_ms = 1000' \
-        "/var/lib/hellas-gateway/$node-work.json" > "/run/hellas-gateway/$node-work.json"
-    done
-    # Cold model loading can take longer than 4,096 devnet blocks. Keep the
-    # terminal and settlement windows comfortably past that path; the renewed
-    # provider bonds have a 900,000-block horizon.
-    ${pkgs.jq}/bin/jq \
-      '.providers |= map(.work_config |= sub("^/var/lib/hellas-gateway/"; "/run/hellas-gateway/")) | .timeout_secs = 3600 | .terminal_blocks = 16384 | .payment_blocks = 4096' \
-      /var/lib/hellas-gateway/providers.json > /run/hellas-gateway/providers.json
-    credential=/var/lib/hellas-gateway/bearer-token
-    if [ ! -e "$credential" ]; then
-      umask 077
-      ${pkgs.openssl}/bin/openssl rand -hex 32 > "$credential"
-    fi
-  '';
-  systemd.services.hellas-gateway.serviceConfig = {
-    # environment build publishes owner-only files. Share this model descriptor
-    # with the dedicated gateway user; account files keep their private modes.
-    # Even a no-op chmod changes ctime and invalidates the providers' content
-    # index. Repair permissions only when necessary.
-    ExecStartPre = [ "+${pkgs.writeShellScript "hellas-model-permissions" ''
-      set -eu
-      if [ "$(${pkgs.coreutils}/bin/stat -c %a ${lib.escapeShellArg model.environment})" != 644 ]; then
-        ${pkgs.coreutils}/bin/chmod 0644 ${lib.escapeShellArg model.environment}
-      fi
-    ''}" ];
-    DynamicUser = lib.mkForce false;
-    # Ownership and lifecycle belong to the NAS directory and bind mount.
-    StateDirectory = lib.mkForce [];
-    User = "hellas-gateway";
-    Group = "hellas-gateway";
-    TimeoutStopSec = 3660;
-    RuntimeDirectory = "hellas-gateway";
-    RuntimeDirectoryMode = "0755";
-    ExecStartPost = [ "+${pkgs.coreutils}/bin/install -m 0600 -o grw -g users /var/lib/hellas-gateway/bearer-token /run/hellas-gateway/client-token" ];
+  systemd.services.hellas-smollm2-content = {
+    description = "Provision the pinned SmolLM2 Instruct content";
+    before = [ "hellas-gateway.service" ];
+    requiredBy = [ "hellas-gateway.service" ];
+    unitConfig.RequiresMountsFor = model.contentRoot;
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      exec ${smollmContent}
+    '';
+  };
+  systemd.services.hellas-gateway = {
+    requires = [ "hellas-smollm2-content.service" ];
+    after = [ "hellas-smollm2-content.service" ];
+    serviceConfig = {
+      DynamicUser = lib.mkForce false;
+      # Ownership and lifecycle belong to the NAS directory and bind mount.
+      StateDirectory = lib.mkForce [ ];
+      User = "hellas-gateway";
+      Group = "hellas-gateway";
+      RuntimeDirectory = "hellas-gateway";
+      RuntimeDirectoryMode = lib.mkForce "0755";
+      ExecStartPost = [
+        "+${pkgs.coreutils}/bin/install -m 0600 -o grw -g users /var/lib/hellas-gateway/bearer-token /run/hellas-gateway/client-token"
+      ];
+    };
   };
 
   services.hellas = {
+    environment.HIP_VISIBLE_DEVICES = "0";
     gateway = {
       enable = true;
       host = "192.168.23.8";
@@ -120,8 +196,9 @@ in
       model = model.name;
       defaultMaxTokens = model.outputTokens;
       stopTokenIds = model.stopTokens;
-      paidWorkConfig = "/run/hellas-gateway/providers.json";
-      paidWorkJournalRoots = [ "/var/lib/hellas-gateway/work" ];
+      local = true;
+      contentRoots = [ model.contentRoot ];
+      contentIndex = "/var/lib/hellas-gateway/content.index";
       bearerTokenFile = "/var/lib/hellas-gateway/bearer-token";
     };
   };

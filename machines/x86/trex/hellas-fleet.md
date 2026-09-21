@@ -1,21 +1,21 @@
 # Hellas paid inference fleet
 
-Trex runs `hellas-gateway.service` on `192.168.23.8:8080`. Its stable private
-bearer credential is `/var/lib/hellas-gateway/bearer-token`. Systemd supplies
-an owner-only copy for grw at `/run/hellas-gateway/client-token`.
+Trex runs `hellas-gateway.service` on `192.168.23.8:8080`. While the Strix
+fleet is unavailable it executes `SmolLM2-135M-Instruct` locally on Trex's
+Radeon RX 5600 XT. Its stable private bearer credential is
+`/var/lib/hellas-gateway/bearer-token`; systemd supplies an owner-only copy for
+grw at `/run/hellas-gateway/client-token`.
 
 Run normal `opencode` in the directory where you want to work. Home Manager
-configures its default model as `hellas/Qwen3.6-35B-A3B` and reads the credential
-from that runtime file. Sessions are interactive, with tool calls and streaming.
-No custom launcher, short-answer agent, or tool restriction is installed.
+configures its default model as `hellas/SmolLM2-135M-Instruct` and reads the
+credential from that runtime file. It streams normal chat replies. This small
+fallback does not advertise tools; switch back to the Qwen model when the paid
+Strix providers return.
 
 Chat templates and incremental tool parsing belong to the shared
-`hellas-presentation` model adapter. The gateway routes token-native execution,
-verifies streamed signatures, and pays completed work. A provider reserves
-credit before releasing its first signed token; final HTTP completion follows
-payment acknowledgement. Dropping the HTTP client leaves accepted work running
-so it can still be collected and paid. Channel connections stay open and follow
-finalized blocks while idle.
+`hellas-presentation` model adapter. The local gateway supplies the explicit
+SmolLM2 template and invokes Catena directly; the paid provider pool is not
+configured while its hosts have no network link.
 
 `../hellas-model.nix` defines the fleet's Qwen model, 32K context, 4096-token
 output ceiling, stop tokens and execution identities. Services merge this
@@ -39,10 +39,8 @@ Strix-4 proposal after restart: one `AcceptWork` call returned `Expired` in
 had repeatedly spent about four seconds waiting for readiness on this same
 proposal. Its retained journal was preserved throughout recovery.
 
-Strix-1, Strix-2 and Strix-4 run `hellas.service` on their APUs, UDP 31145.
-The wrapper selects the APU by its KFD device ID, including on Strix-2 where
-four V620s precede it. Those V620s retain their existing Qwen service.
-Strix-3 is bricked and excluded from the active gateway pool.
+Strix-1, Strix-2 and Strix-4 retain their Hellas identities and payment state
+on the NFS exports, but are not in the active gateway pool. Strix-3 is bricked.
 DeepSeek serving is disabled by default; enabling it requires an explicit
 `strix.ds4Serve = true` in the host inventory.
 

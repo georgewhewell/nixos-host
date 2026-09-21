@@ -159,7 +159,7 @@
 
     hellas-gateway = {
       # The gateway is deployed independently of the netboot providers.
-      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=770ad90f558e4054ee296400a9e3c9419fffb96c&shallow=1";
+      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=a284cee5d54023e16ddadcc3b4796cce805ec8f3&shallow=1";
       inputs.nixpkgs.follows = "hellas/nixpkgs";
       inputs.rust-overlay.follows = "hellas/rust-overlay";
       inputs.nix-strix-halo.follows = "hellas/nix-strix-halo";
