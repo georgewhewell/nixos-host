@@ -1218,17 +1218,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1789965096,
-        "narHash": "sha256-iOMxfDlsduqqqd2UxbwlJ7CIYmF2ALpaokHojusiNmI=",
+        "lastModified": 1789966407,
+        "narHash": "sha256-m9qIC0fXGRQIDU5WBELknKhyXBXQ+6HBeGm2vffM1Ig=",
         "ref": "codex/strix-paid-gateway",
-        "rev": "81b45e6174cbc4b841356f518ab7030578be05cf",
+        "rev": "770ad90f558e4054ee296400a9e3c9419fffb96c",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
       },
       "original": {
         "ref": "codex/strix-paid-gateway",
-        "rev": "81b45e6174cbc4b841356f518ab7030578be05cf",
+        "rev": "770ad90f558e4054ee296400a9e3c9419fffb96c",
         "shallow": true,
         "type": "git",
         "url": "file:///mnt/Home/src/hellas-strix-paid-gateway"
