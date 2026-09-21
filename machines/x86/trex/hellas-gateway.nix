@@ -75,8 +75,11 @@ in
         '.policies.execution += $execution[0] | .poll_ms = 1000' \
         "/var/lib/hellas-gateway/$node-work.json" > "/run/hellas-gateway/$node-work.json"
     done
+    # Cold model loading can take longer than 4,096 devnet blocks. Keep the
+    # terminal and settlement windows comfortably past that path; the renewed
+    # provider bonds have a 900,000-block horizon.
     ${pkgs.jq}/bin/jq \
-      '.providers |= map(.work_config |= sub("^/var/lib/hellas-gateway/"; "/run/hellas-gateway/")) | .timeout_secs = 3600 | .terminal_blocks = 4096 | .payment_blocks = 1024' \
+      '.providers |= map(.work_config |= sub("^/var/lib/hellas-gateway/"; "/run/hellas-gateway/")) | .timeout_secs = 3600 | .terminal_blocks = 16384 | .payment_blocks = 4096' \
       /var/lib/hellas-gateway/providers.json > /run/hellas-gateway/providers.json
     credential=/var/lib/hellas-gateway/bearer-token
     if [ ! -e "$credential" ]; then
