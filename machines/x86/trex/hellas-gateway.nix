@@ -190,6 +190,7 @@ in
       enable = true;
       host = "192.168.23.8";
       port = 8080;
+      allowRemote = true;
       causalLmEnvironment = model.environment;
       tokenizer = model.tokenizer;
       chatTemplate = model.chatTemplate;
