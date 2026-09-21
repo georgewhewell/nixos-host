@@ -593,7 +593,11 @@ in {
   fileSystems."/models" = {
     device = "/mnt/optane/models";
     fsType = "none";
-    options = ["bind" "nofail" "x-systemd.requires-mounts-for=/mnt/optane/models"];
+    options = [
+      "bind"
+      "x-systemd.requires-mounts-for=/mnt/optane/models"
+      "x-systemd.wanted-by=mnt-optane-models.mount"
+    ];
   };
 
   system.stateVersion = "24.11";

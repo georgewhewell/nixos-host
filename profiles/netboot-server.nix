@@ -183,8 +183,21 @@ in
   fileSystems."/export/strix-models" = {
     device = "/models";
     fsType = "none";
-    options = [ "bind" "nofail" ];
+    options = [ "bind" "x-systemd.wanted-by=models.mount" ];
     depends = [ "/models" ];
+  };
+
+  # SPDK can become ready after NFS starts. Follow the recovered mount and
+  # publish it without restarting NFS or interrupting clients copying stores.
+  systemd.services.strix-models-nfs-export = {
+    wantedBy = [ "export-strix\\x2dmodels.mount" ];
+    bindsTo = [ "export-strix\\x2dmodels.mount" ];
+    after = [ "export-strix\\x2dmodels.mount" "nfs-server.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.nfs-utils}/bin/exportfs -ra";
+    };
   };
 
   # Netboot clients have tmpfs roots. Keep their read-only boot-time EFI
