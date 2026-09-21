@@ -154,7 +154,7 @@
       # Provider revisions are carried by the served Strix boot images. Keep
       # this pin independent of gateway-only client changes so deploying trex
       # does not rebuild every image.
-      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=d583a2ef7ad9c2fd4a8f6858520618c3b676d1f3&shallow=1";
+      url = "git+file:///mnt/Home/src/hellas-strix-paid-gateway?ref=codex/strix-paid-gateway&rev=b0bb7940734d90fd90af9b1e7de6468148c430d3&shallow=1";
     };
 
     hellas-gateway = {
