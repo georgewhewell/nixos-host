@@ -12,6 +12,9 @@
     colmena.url = "github:zhaofengli/colmena";
     colmena.inputs.nixpkgs.follows = "nixpkgs";
 
+    quota-exporter.url = "github:georgewhewell/quota-exporter";
+    quota-exporter.inputs.nixpkgs.follows = "nixpkgs";
+
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -253,6 +256,7 @@
     # Unified overlay list - applied consistently across all outputs
     allOverlays = [
       (composeManyExtensions localOverlays)
+      inputs.quota-exporter.overlays.default
       (import (inputs.nix-strix-halo-multikernel + "/overlays/multikernel.nix"))
       (
         final: prev: let

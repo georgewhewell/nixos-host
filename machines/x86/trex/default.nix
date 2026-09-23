@@ -448,7 +448,15 @@ in {
 
   # LLM subscription quota metrics from ~grw CLI credentials,
   # scraped into local victoriametrics (services/victoriametrics.nix)
-  services.llm-quota-exporter.enable = true;
+  services.llm-quota-exporter = {
+    enable = true;
+    # Both active logins live here. Explicit paths are independent of the
+    # interactive ~/.codex symlink and keep account labels stable.
+    openaiAccounts = {
+      company = "/home/grw/.codex-accounts/company";
+      personal = "/home/grw/.codex-accounts/personal";
+    };
+  };
 
   imports = with inputs.nixos-hardware.nixosModules; [
     common-cpu-amd

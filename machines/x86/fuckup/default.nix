@@ -33,13 +33,6 @@ in
 
   system.stateVersion = "25.05";
 
-  # Personal Codex quota is read from this host's live credential. Keeping
-  # the exporter beside the token avoids cloning a rotating OAuth credential.
-  services.llm-quota-exporter = {
-    enable = true;
-    providers = "openai";
-  };
-
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
 

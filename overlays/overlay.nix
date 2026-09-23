@@ -155,7 +155,6 @@ self: super: {
 
   bambu-camera = super.callPackage ../packages/bambu-camera { };
   hostapd-exporter = super.callPackage ../packages/hostapd-exporter {};
-  llm-quota-exporter = super.callPackage ../packages/llm-quota-exporter {};
   gpsd-prometheus-exporter = super.callPackage ../packages/gpsd-prometheus-exporter {};
 
   # gpsd from upstream master rather than the 3.27.5 release nixpkgs carries.

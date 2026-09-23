@@ -201,23 +201,6 @@
         {
           targets = ["trex:9184"];
         }
-        {
-          targets = ["fuckup:9184"];
-        }
-      ];
-      metric_relabel_configs = [
-        {
-          source_labels = ["instance" "provider"];
-          regex = "trex:9184;openai";
-          target_label = "provider";
-          replacement = "openai-company";
-        }
-        {
-          source_labels = ["instance" "provider"];
-          regex = "fuckup:9184;openai";
-          target_label = "provider";
-          replacement = "openai-personal";
-        }
       ];
     }
     {
