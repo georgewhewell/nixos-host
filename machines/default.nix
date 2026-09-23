@@ -224,6 +224,9 @@ in {
   router-usb = sys "x86_64-linux" ./x86/router;
   n100 = sys "x86_64-linux" ./x86/n100;
 
+  # NixOS-WSL distro inside the Windows build VM on fuckup.
+  windows-wsl = sys "x86_64-linux" ./wsl/windows;
+
   # NVIDIA GPU machine
   fuckup = sysCuda "x86_64-linux" ./x86/fuckup;
 
