@@ -435,6 +435,24 @@ lib: rec {
       mac = "52:6f:35:ab:31:cf";
       addresses = {fabric = 207;};
     };
+    # Windows build VM on fuckup (machines/x86/fuckup/windows-vm.nix), on
+    # ConnectX VF 1 via macvtap. MAC carried over from its libvirt life on
+    # trex. The IP is also set statically inside Windows. Replacing `lan` with
+    # a `builders` address moves the VF onto that VLAN (fabric-rdma-vf.nix),
+    # once the gateway, switches and VPP ACLs carry it.
+    windows = {
+      mac = "52:54:00:f7:90:e7";
+      addresses = {lan = 6;};
+      # NixOS-WSL (machines/wsl/windows) sits behind WSL2's NAT. Its sshd
+      # listens on innerPort, which wslrelay mirrors to Windows' loopback; a
+      # wildcard portproxy publishes that as port. They differ because the
+      # portproxy cannot share a port with wslrelay's loopback listener, and
+      # a proxy pinned to the LAN address loses a boot race with the address.
+      wslSsh = {
+        port = 2222;
+        innerPort = 2223;
+      };
+    };
     # CRS510-8XS-2XQ. Same board-name convention; old alias retained.
     "mikrotik-crs510" = {
       mac = "48:a9:8a:93:42:4c";

@@ -132,6 +132,7 @@ in
     # inputs.nix-strix-halo.nixosModules.tuning
 
     ./fabric-rdma-vf.nix
+    ./windows-vm.nix
     ./nvme-models.nix
     ./claw-usb-live.nix
   ];

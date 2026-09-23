@@ -13,6 +13,16 @@
   pfName = "cx4fabric0";
   vfName = "cx4rdma0";
   rdma = network.hosts."fuckup-rdma";
+  # VF 1 belongs to the Windows build VM (windows-vm.nix), attached as a
+  # macvtap. The PF tags it into the guest's VLAN in hardware, so the guest
+  # never shares br0.lan with the workstation. Untagged (LAN) until the
+  # builders VLAN exists on the gateway.
+  winVfName = "cx4win0";
+  win = network.hosts.windows;
+  winVlan =
+    if win.addresses ? builders
+    then network.vlans.builders.id
+    else null;
 in {
   # Deterministic PF name, applied by udev at device-add from silicon
   # identity. Mirrors the strix 10-cx5-fabric rule.
@@ -39,9 +49,10 @@ in {
 
   # Keep the workstation's live 25G PF in br0.lan and create one host VF for
   # RoCE.  A VF is necessary because a Linux bridge has no verbs device, while
-  # the mlx5 VF has its own in-kernel RDMA CM endpoint.
+  # the mlx5 VF has its own in-kernel RDMA CM endpoint. VF 1 is the Windows
+  # VM's NIC.
   systemd.services.fuckup-rdma-vf = {
-    description = "Create fuckup's host RoCE SR-IOV VF";
+    description = "Create fuckup's RoCE and Windows VM SR-IOV VFs";
     wantedBy = ["network-pre.target"];
     before = [
       "network-pre.target"
@@ -79,38 +90,49 @@ in {
         exit 1
       }
 
+      # mlx5 can only change the VF count through zero, which destroys every
+      # VF (and with VF 0 the NVMe/RDMA models controller). Only ever do that
+      # when the count is actually wrong; a steady-state restart is a no-op.
       sriov=/sys/class/net/$pf/device/sriov_numvfs
       current=$(<"$sriov")
-      if [[ "$current" == 0 ]]; then
-        echo 1 >"$sriov"
-      elif [[ "$current" != 1 ]]; then
-        echo "$pf already has $current VFs; refusing to change it" >&2
-        exit 1
+      if [[ "$current" != 2 ]]; then
+        [[ "$current" == 0 ]] || echo 0 >"$sriov"
+        echo 2 >"$sriov"
       fi
 
-      # Locate the VF through the PF's own virtfn0 link, whatever udev called
+      # Locate each VF through the PF's own virtfnN link, whatever udev called
       # it — VF names are PCI-derived and exactly as fragile as PF names.
-      vfdev=
-      for _ in {1..50}; do
-        vfdev=$(ls "/sys/class/net/$pf/device/virtfn0/net" 2>/dev/null | head -n1 || true)
-        [[ -n "$vfdev" ]] && break
-        sleep 0.1
-      done
-      [[ -n "$vfdev" ]] || {
-        echo "VF netdev did not appear under $pf/device/virtfn0" >&2
-        exit 1
+      # Stable names for the networkd matches below; idempotent.
+      name_vf() {
+        local idx=$1 want=$2 vfdev=
+        for _ in {1..50}; do
+          vfdev=$(ls "/sys/class/net/$pf/device/virtfn$idx/net" 2>/dev/null | head -n1 || true)
+          [[ -n "$vfdev" ]] && break
+          sleep 0.1
+        done
+        [[ -n "$vfdev" ]] || {
+          echo "VF netdev did not appear under $pf/device/virtfn$idx" >&2
+          exit 1
+        }
+        if [[ "$vfdev" != "$want" ]]; then
+          ip link set "$vfdev" down
+          ip link set "$vfdev" name "$want"
+        fi
       }
-
-      # Stable VF name for the 05-fuckup-rdma-vf networkd match; idempotent.
-      if [[ "$vfdev" != "${vfName}" ]]; then
-        ip link set "$vfdev" down
-        ip link set "$vfdev" name ${vfName}
-      fi
+      name_vf 0 ${vfName}
+      name_vf 1 ${winVfName}
 
       ip link set "$pf" vf 0 \
         mac ${rdma.mac} \
         spoofchk off \
         trust on
+
+      # The guest is untrusted: spoof checking on, no promiscuous/trust.
+      ip link set "$pf" vf 1 \
+        mac ${win.mac} \
+        vlan ${if winVlan == null then "0" else toString winVlan} \
+        spoofchk on \
+        trust off
     '';
   };
 
@@ -140,6 +162,46 @@ in {
       # Aquantia) was raised to 9000 -- a Linux bridge adopts the *minimum*
       # MTU of its ports.
       MTUBytes = "9000";
+      ActivationPolicy = "up";
+      RequiredForOnline = "no";
+    };
+    networkConfig = {
+      LinkLocalAddressing = "no";
+      IPv6AcceptRA = false;
+    };
+  };
+
+  # In legacy SR-IOV mode the ConnectX eswitch forwards by MAC: the PF vport
+  # receives only the PF's own MAC (plus its unicast list), and bridge
+  # promiscuity does not reach into the eswitch. br0.lan has a networkd-
+  # generated MAC, so frames from a VF to this host (the Windows VM replying
+  # to fuckup, e.g. the Hydra jump) left through the uplink, which will not
+  # hairpin them back. Put the bridge MAC on the PF's unicast list.
+  systemd.services.fuckup-pf-bridge-mac = {
+    description = "Deliver br0.lan's MAC to the ConnectX PF vport";
+    wantedBy = ["multi-user.target"];
+    bindsTo = ["sys-subsystem-net-devices-br0.lan.device"];
+    after = [
+      "sys-subsystem-net-devices-br0.lan.device"
+      "fuckup-rdma-vf.service"
+    ];
+    partOf = ["fuckup-rdma-vf.service"];
+    path = [pkgs.iproute2];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      mac=$(</sys/class/net/br0.lan/address)
+      bridge fdb replace "$mac" dev ${pfName} self local
+    '';
+  };
+
+  # The Windows VM's VF carries no host addressing; it exists only as the
+  # macvtap lower device. Sorts before 10-mlx5 for the same reason as above.
+  systemd.network.networks."05-fuckup-win-vf" = {
+    matchConfig.Name = winVfName;
+    linkConfig = {
       ActivationPolicy = "up";
       RequiredForOnline = "no";
     };
