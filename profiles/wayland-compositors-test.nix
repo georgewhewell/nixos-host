@@ -53,27 +53,26 @@ in {
   # GNOME (Wayland session). Mutter + gnome-shell + portals.
   services.desktopManager.gnome.enable = true;
 
-  environment.systemPackages = [
+  environment.systemPackages =
     # niri ships its own `niri` binary; wrap it to match the start-* pattern.
-    (mkStart {
+    lib.optional config.programs.niri.enable (mkStart {
       name = "niri";
       desktop = "niri";
       exec = "${pkgs.niri}/bin/niri --session";
     })
 
-    (mkStart {
+    ++ lib.optional config.services.desktopManager.plasma6.enable (mkStart {
       name = "plasma";
       desktop = "KDE";
       exec = "${pkgs.kdePackages.plasma-workspace}/bin/startplasma-wayland";
     })
 
-    (mkStart {
+    ++ lib.optional config.services.desktopManager.gnome.enable (mkStart {
       name = "gnome";
       desktop = "GNOME";
       # Use gnome-session with explicit "gnome" target.
       exec = "${pkgs.gnome-session}/bin/gnome-session --session=gnome";
     })
-  ]
   # Apps the niri default config binds to (otherwise Mod+T / Mod+D do nothing).
-  ++ (with pkgs; [fuzzel swaylock]);
+  ++ lib.optionals config.programs.niri.enable (with pkgs; [fuzzel swaylock]);
 }

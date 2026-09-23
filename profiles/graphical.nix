@@ -1,4 +1,4 @@
-{lib, pkgs, ...}: {
+{config, lib, pkgs, ...}: {
   sconfig.pipewire = true;
   # hardware.pulseaudio.enable = true;
 
@@ -29,13 +29,15 @@
   # services.flatpak.enable = true;
   xdg.portal = {
     enable = true;
-    extraPortals = lib.mkForce (with pkgs; [
-      xdg-desktop-portal-gnome
-      xdg-desktop-portal-gtk
-      kdePackages.xdg-desktop-portal-kde
-      xdg-desktop-portal-hyprland
-      xdg-desktop-portal-wlr
-    ]);
+    extraPortals = lib.mkForce (
+      (with pkgs; [
+        xdg-desktop-portal-gtk
+        kdePackages.xdg-desktop-portal-kde
+      ])
+      ++ lib.optional config.services.desktopManager.gnome.enable pkgs.xdg-desktop-portal-gnome
+      ++ lib.optional config.programs.hyprland.enable pkgs.xdg-desktop-portal-hyprland
+      ++ lib.optional (config.programs.niri.enable || config.systemd.user.services.sway.enable) pkgs.xdg-desktop-portal-wlr
+    );
     config = {
       common.default = "*";
       KDE.default = [

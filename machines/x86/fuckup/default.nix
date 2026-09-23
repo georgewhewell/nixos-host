@@ -186,6 +186,14 @@ in
     , pkgs
     , ...
     }: {
+      # These compositors are unused here. Excluding the Hyprland module also
+      # removes its idle daemon and Grimblast, which pulls Hyprland back in.
+      disabledModules = [../../../home/hyprland.nix];
+      wayland.windowManager.sway.enable = lib.mkForce false;
+      # Plasma supplies its own panel and notification service.
+      programs.waybar.enable = lib.mkForce false;
+      services.mako.enable = lib.mkForce false;
+
       home.activation.kwinGameInput = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 \
           --file "$HOME/.config/kwinrc" \
@@ -219,6 +227,14 @@ in
         Install.WantedBy = [ "default.target" ];
       };
     };
+
+  # profiles/graphical.nix also provides its own Sway service independently
+  # of Home Manager. Disable that copy as well.
+  systemd.user.services.sway.enable = lib.mkForce false;
+  systemd.user.targets.sway-session.enable = lib.mkForce false;
+  programs.hyprland.enable = lib.mkForce false;
+  programs.niri.enable = lib.mkForce false;
+  services.desktopManager.gnome.enable = lib.mkForce false;
 
   networking.firewall.allowedTCPPorts = [ 8080 8081 ];
 
