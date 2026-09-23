@@ -632,6 +632,17 @@
     deployableNixosConfigurations =
       builtins.removeAttrs nixosConfigurations imageOnlyNixosConfigurations;
 
+    # Windows hosts described in Nix, converged over OpenSSH (windows/).
+    windowsConfigurations = let
+      evalWindows = import ./windows {
+        inherit (nixpkgs) lib;
+        pkgs = pkgsFor "x86_64-linux";
+        specialArgs = {inherit network nixosConfigurations;};
+      };
+    in {
+      win10 = evalWindows "win10" ./windows/machines/win10.nix;
+    };
+
     colmena =
       {
         meta = {
@@ -689,6 +700,7 @@
       nixosConfigurations
       imageOnlyNixosConfigurations
       deployableNixosConfigurations
+      windowsConfigurations
       colmena
       ;
 
@@ -713,6 +725,8 @@
             inherit inputs pkgs system network;
           };
         in {
+          # `nix run .#deploy-win10 [-- --dry-run | --wsl-image]`
+          deploy-win10 = windowsConfigurations.win10.config.build.deploy;
           openwrt-unifiac-pro = import ./machines/openwrt-mips/unifi-ac-pro {
             inherit pkgs;
             openwrt-imagebuilder = inputs.openwrt-imagebuilder;
