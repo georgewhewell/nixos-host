@@ -57,6 +57,14 @@ in {
     max-jobs = 4;
     cores = 12;
     system-features = ["big-parallel" "wsl"];
+    # Let sandboxed `wsl` builds run Windows executables through WSL
+    # interop: the binfmt handler is /init, which reaches Windows over the
+    # socket in /run/WSL. Such builds must set WSL_INTEROP=/run/WSL/1_interop
+    # and exec the .exe from a directory that also exists outside the
+    # sandbox (`/` or /nix/store) -- interop translates the cwd to a Windows
+    # path and fails with EINVAL on the sandbox-only /build. Verified
+    # 2026-09-23 with a store-path whoami.exe.
+    extra-sandbox-paths = ["/init" "/run/WSL"];
   };
 
   deployment = {
