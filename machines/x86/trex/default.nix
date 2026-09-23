@@ -265,10 +265,9 @@ in {
 
   # OpenCode server (`opencode serve`): REST API and built-in web UI. It can
   # execute shell commands as grw, so keep Basic authentication enabled through
-  # OPENCODE_SERVER_PASSWORD below. The LAN binding remains an explicit trust
-  # decision: revisit it (localhost plus an authenticated proxy) before this box
-  # ever faces a less-trusted network. ~grw/.local/share/opencode holds auth and
-  # sessions.
+  # OPENCODE_SERVER_PASSWORD below. Bind loopback so access goes through the
+  # HTTPS vhost in services/nginx.nix, restricted to LAN and WireGuard clients.
+  # ~grw/.local/share/opencode holds auth and sessions.
   systemd.services.opencode-server = {
     description = "OpenCode server (REST API and web UI)";
     after = ["network-online.target"];
@@ -285,7 +284,7 @@ in {
       in
         "${opencode}/bin/opencode serve --print-logs --log-level INFO "
         + "--port 58640 "
-        + "--hostname ${network.primaryIp self}";
+        + "--hostname 127.0.0.1";
       Restart = "on-failure";
       RestartSec = "10s";
     };
@@ -531,7 +530,7 @@ in {
   hardware.cpu.amd.ryzen-smu.enable = false;
   programs.ryzen-monitor-ng.enable = false;
 
-  # Password-protect the LAN-exposed opencode-server (see the unit above).
+  # Password-protect opencode-server behind the private HTTPS proxy above.
   # opencode reads OPENCODE_SERVER_PASSWORD from the environment; render it from
   # sops into an EnvironmentFile so the secret never lands in the store.
   sops.secrets.opencode-server-password = mkSecret "opencode-server-password" {

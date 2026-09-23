@@ -15,7 +15,7 @@
   # Internal-only services: no public A/AAAA records, so HTTP-01 can't renew.
   # Their certs use DNS-01 against Cloud DNS via lego's gcloud provider, reusing
   # the GCP ADC (authorized_user) stored in sops as acme-gcp-adc.
-  internalCerts = ["radarr" "sonarr" "autobrr" "cache" "dsh"];
+  internalCerts = ["radarr" "sonarr" "autobrr" "cache" "dsh" "opencode"];
   gcpAcmeEnv = pkgs.writeText "acme-gcloud.env" ''
     GCE_PROJECT=domain-owner
     GOOGLE_APPLICATION_CREDENTIALS=${config.sops.secrets.acme-gcp-adc.path}
@@ -114,6 +114,9 @@ in {
       name = network.publicFqdn name;
       value = {
         dnsProvider = "gcloud";
+        # Check the public challenge record, bypassing split DNS and its
+        # cached negative answers for these otherwise internal-only names.
+        dnsResolver = "1.1.1.1:53";
         environmentFile = gcpAcmeEnv;
         group = "nginx";
       };
@@ -243,6 +246,25 @@ in {
     # unrelated vhost's certificate. Needs no cert, so nothing to renew.
     rejectSSL = true;
     locations."/".return = "444";
+  };
+
+  # OpenCode's HTTP backend stays on loopback. DNS-01 provides a trusted
+  # certificate without publishing an A/AAAA record or opening the app to WAN
+  # clients; the source allow-list also rejects requests with a forged Host/SNI.
+  # OpenCode itself retains the Basic authentication configured in its unit.
+  services.nginx.virtualHosts.${network.publicFqdn "opencode"} = {
+    forceSSL = true;
+    useACMEHost = network.publicFqdn "opencode";
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:58640";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        ${lanOnly}
+      '';
+    };
   };
 
   # DeepSeek Harness web UI (dsh-web on trex, see machines/x86/trex/default.nix).
