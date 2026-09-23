@@ -19,6 +19,12 @@ in {
     /usr/sbin/networksetup -setmanual "Thunderbolt Bridge" 10.55.0.1 255.255.255.252 ""
   '';
   ids.gids.nixbld = 350;
+  # Store optimisation hard-links every store file into /nix/store/.links
+  # (millions of entries). syspolicyd's Gatekeeper checks of unsigned Nix
+  # executables then enumerate that directory endlessly (getdirentries64 on
+  # .links, a full core for weeks), during Metal benchmarks too.
+  nix.optimise.automatic = lib.mkForce false;
+  nix.settings.auto-optimise-store = lib.mkForce false;
   environment.enableAllTerminfo = lib.mkForce false;
 
   # mbp is a laptop; `pmset autorestart` (power.restartAfterPowerFailure, set by
