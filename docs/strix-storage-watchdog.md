@@ -49,7 +49,8 @@ on trex. This tests detection without rebooting trex.
 The signed images are published on trex and signature-verified by the boot
 router. Strix-2's router and origin payload hashes both equal
 `88edfd9e26d5f82167f77c4507b19fe373d28cf07071ee7bd6289ec3f81c8dce`.
-Its first boot with this image remains to be observed after the user's reset.
+Strix-2 became reachable on its previous image while publication was finishing,
+so its remaining reboot was performed through the real watchdog test below.
 
 The runtime service is active with successful heartbeat updates on Strix-1,
 3 and 4. Their initrd changes apply on their next boot. Strix-1 retains the
@@ -61,7 +62,26 @@ credential and decrypt its MQTT secret. The sealed credential path is identical
 in its old and new systems. SSH and the storage watchdog remain functional;
 the identity/secret issue is separate from this recovery policy.
 
+At 22:55:46 UTC, Strix-2's live probe service was deliberately stopped with
+SIGSTOP. Its final heartbeat was 22:55:37. At 22:57:37 PID 1 logged a
+120-second watchdog timeout, terminated the probe and marked it
+`Result=watchdog`. The configured action rebooted the machine without a manual
+reset. Router logs record fresh PXE/DHCP and retrieval of the new signed UKI
+at 22:58:08–30. It returned to SSH with a new boot ID and system
+`v4fm1y71j57i57yddlhw3ravh7amlggg-nixos-system-strix-2-26.11.20260916.b1b8759`.
+
+Its new boot log records loading SP5100 at 2.3 seconds and starting the
+60-second hardware watchdog in the initrd at 7.9 seconds. The watchdog
+remained active through the switch to the normal system; the runtime
+storage service resumed successful heartbeats. Nodes 1, 3 and 4 stayed up.
+Logs are `watchdog-real-reboot-start.txt`, `watchdog-real-reboot-strix2.log`
+and `watchdog-real-reboot-result.txt` under `/tmp/glm53-runtime`.
+
 Build, signed-generation and rollback records are under
 `/tmp/glm53-runtime/watchdog-deployments.json` on trex. Previous signed
 generations are retained. The deployment is based on the existing signed-boot
 work at `9e8b467`; the unrelated main checkout is not modified.
+
+GitHub rejected pushing this branch because pre-existing ancestor commits
+contain OAuth credentials in the quota exporter. No protection was bypassed.
+The watchdog changes and their tests are committed locally.
