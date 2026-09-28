@@ -851,6 +851,12 @@
       x86_64-linux = let
         pkgs = pkgsFor "x86_64-linux";
       in {
+        strix-secure-boot-publisher = import ./tests/secure-boot-publisher.nix { inherit pkgs; };
+        strix-secure-boot-config = import ./tests/secure-boot-config.nix {
+          inherit pkgs;
+          lib = nixpkgs.lib;
+          configurations = self.nixosConfigurations;
+        };
         mtail-xmrig = pkgs.testers.runNixOSTest (import ./tests/mtail-xmrig.nix {inherit pkgs;});
         beegfs = pkgs.testers.runNixOSTest (import ./tests/beegfs.nix {inherit pkgs;});
       };

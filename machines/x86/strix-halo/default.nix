@@ -18,7 +18,7 @@ let
   # Temporarily disable the custom Thunderbolt kernels and RDMA module.
   # To restore them, use `builtins.elem index [ 1 2 3 ]`.
   enableUsb4Rdma = false;
-  enableCx5Fabric = builtins.elem index [ 1 2 3 4 ];
+  enableCx5Fabric = builtins.elem index [ 1 2 3 4 ] && (self.strix.cx5Fabric or true);
   enableSharedCx5 = enableCx5Fabric;
   netbootSharesFabric = netboot && (self.netbootSharesFabric or false);
   trainPrimaryInInitrd = netboot && (self.strix.forcePrimaryFabricLink or false);
@@ -166,6 +166,8 @@ in
   };
 
   system.stateVersion = "24.11";
+
+  strix.secureBoot.enable = self.strix.secureBoot or false;
 
   hardware.amdgpu.v620PowerCap = lib.mkIf (self.strix ? v620) {
     enable = true;
@@ -441,16 +443,14 @@ in
     };
   };
 
-  # Each node has its OWN ConnectX-5; they do not share one. Verified
-  # 2026-07-30 with mstflint: strix-1's card is base GUID 1c34da0300611298 and
-  # strix-2's is 1c34da03006112b0 -- different cards, both the SharedIO
-  # "Adapter Kit" SKU (PSID LNV0000000012), i.e. a two-card kit joined by an
-  # interlink cable, which has been disconnected.
-  #
-  # The multi-host/Socket-Direct functions are also already disabled in
-  # firmware on both: HOST_CHAINING_MODE=DISABLED, MULTI_PORT_VHCA_EN=False,
-  # PF_SD_GROUP=0. So forcing one node's link cannot disturb another's, and
-  # there is nothing left to turn off. Do NOT "disable" PORT_OWNER looking for
+  # The operator confirmed on 2026-09-28 that strix-1/2 share a NIC, as do
+  # strix-3/4. Earlier notes inferred independence from host-visible GUIDs;
+  # that inference was wrong. Strix-3/4 both report base GUID
+  # b8599f030054dbe4, and strix-3 loses jumbo traffic while strix-4 is in
+  # firmware. Treat port resets and firmware initialization as potentially
+  # affecting the peer, including its RDMA root. See docs/strix-secure-boot.md.
+  # HOST_CHAINING_MODE=DISABLED, MULTI_PORT_VHCA_EN=False and PF_SD_GROUP=0
+  # do not establish physical independence. Do NOT "disable" PORT_OWNER looking for
   # a multi-host switch: True means this host owns its own physical port, and
   # clearing it surrenders port control.
   #
@@ -593,6 +593,7 @@ in
 
     inputs.disko.nixosModules.disko
     ../../../profiles/nix-strix-halo.nix
+    ../../../profiles/secure-boot.nix
     inputs.nix-strix-halo.nixosModules.benchmark-runner
     inputs.nix-strix-halo.nixosModules.rpc-server
     inputs.nix-strix-halo.nixosModules.fastflowlm
@@ -636,6 +637,12 @@ in
   # Writing the EC power mode restores the board's stock SMU limits. Apply
   # RyzenAdj afterwards so the configured package limits win deterministically.
   systemd.services.ryzenadj.after = [ "ec-su-axb35-config.service" ];
+
+  # Keep Strix-1 operational while isolating its firmware
+  # power-tuning fault. Monitoring stays enabled; other hosts keep tuning.
+  systemd.services.ryzenadj.enable = lib.mkIf (!(self.strix.automaticPowerTuning or true)) false;
+  systemd.services.curve-optimizer-mqtt.enable = lib.mkIf (!(self.strix.automaticPowerTuning or true)) false;
+  systemd.services.ec-su-axb35-config.enable = lib.mkIf (!(self.strix.automaticPowerTuning or true)) false;
 
   services.ryzenadj = {
     enable = true;
@@ -808,7 +815,11 @@ in
   # to ${vllmFabricInterface}. RDMA needs a verbs device, so this can never
   # silently fall back to the 2.5G Realtek — if the fabric address is not on the
   # ConnectX, the connection simply does not happen.
-  fileSystems."/models" = lib.mkIf enableCx5Fabric {
+  fileSystems."/models" = lib.mkMerge [ (lib.mkIf (netboot && !enableCx5Fabric) {
+    device = "${network.primaryIp network.hosts.trex}:/strix-models";
+    fsType = "nfs4";
+    options = [ "ro" "vers=4.2" "hard" "nconnect=8" "noatime" "_netdev" "nofail" ];
+  }) (lib.mkIf enableCx5Fabric {
     device = modelsDevice;
     fsType = "xfs";
     options = [
@@ -823,7 +834,7 @@ in
       "x-systemd.after=nvme-trex-models.service"
       "x-systemd.device-timeout=30s"
     ];
-  };
+  }) ];
 
   # Every client of one target needs its own host NQN, or the target treats them
   # as multiple paths from a single host. Derived from the hostname so it is
@@ -1263,7 +1274,7 @@ in
         # Give the inventory-selected ConnectX port its fabric (RoCE) address.
         # Its permanent MAC is renamed to cx5fabric0 by 10-cx5-fabric.link, so
         # PCI enumeration and the unused second PF cannot redirect the address.
-        "15-cx5-fabric" = {
+        "15-cx5-fabric" = lib.mkIf enableCx5Fabric {
           matchConfig.Name = vllmFabricInterface;
           address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
           networkConfig = {
@@ -1297,7 +1308,7 @@ in
           };
         };
 
-        "16-shared-cx5-unaddressed" = {
+        "16-shared-cx5-unaddressed" = lib.mkIf enableCx5Fabric {
           # Driver= cannot match here: networkd resolves it with a single
           # ethtool call keyed to the ifname it holds at that instant, never
           # retried, and systemd-networkd.socket's buffered netlink replay

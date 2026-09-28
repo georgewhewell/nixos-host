@@ -989,6 +989,7 @@ in {
       mode = "2755";
     }
     "/var/log/netconsole"
+    "/var/lib/strix-secure-boot"
   ];
 
   # systemd uses this host key to decrypt libvirt's encrypted credential.

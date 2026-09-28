@@ -13,6 +13,8 @@ let
     lib.unique ([ bootMac bootLinuxMac ] ++ (self.extraMacs or [ ]));
   bootMacCandidateArgs = lib.escapeShellArgs bootMacCandidates;
   sharesFabric = self.netbootSharesFabric or false;
+  netbootStorage = self.netbootStorage or "rdma";
+  useRdma = netbootStorage == "rdma";
   firmwareSnapshotDir = "/var/lib/bios-setup-var/snapshots";
   storage = import ../machines/x86/trex/spdk-storage-constants.nix;
   volume = storage.netbootVolume hostName;
@@ -68,21 +70,37 @@ let
   '';
 in
 {
-  # Kernel+initrd arrive via iPXE/HTTP. A private SPDK volume is formatted
+  assertions = [ {
+    assertion = config.strix.secureBoot.enable;
+    message = "${hostName}: Strix netboot requires a signed UKI; raw kernel/initrd boot is retired.";
+  } {
+    assertion = builtins.elem netbootStorage [ "rdma" "nfs" ];
+    message = "${hostName}: netbootStorage must be rdma or nfs";
+  } {
+    assertion = !useRdma || (self.strix.cx5Fabric or true);
+    message = "${hostName}: RDMA netboot requires the ConnectX fabric";
+  } ];
+
+  # A signed UKI arrives via signed iPXE/HTTP. A private SPDK volume is formatted
   # every boot and seeded with only this system's closure, then used for
   # /nix and build scratch. The ordinary root remains disposable tmpfs.
 
   # No local bootloader: the boot chain is firmware PXE -> iPXE -> HTTP.
   # switch-to-configuration still needs an install hook so colmena's
   # `switch` action succeeds; the real "bootloader update" is
-  # `strix-netboot-update` on trex.
+  # signed publication on Trex followed by a router cache refresh.
   boot.loader.grub.enable = false;
   boot.loader.external = {
     enable = true;
     installHook = "${pkgs.coreutils}/bin/true";
   };
 
-  boot.tmp.useTmpfs = lib.mkForce false;
+  boot.tmp.useTmpfs = lib.mkForce (!useRdma);
+  # A LAN client sees Trex's complete read-only store. Local maintenance
+  # would scan that shared store and create overlay whiteouts; the writable
+  # layer is discarded on reboot anyway.
+  nix.gc.automatic = lib.mkIf (!useRdma) (lib.mkForce false);
+  nix.optimise.automatic = lib.mkIf (!useRdma) (lib.mkForce false);
 
   fileSystems."/" = {
     fsType = "tmpfs";
@@ -91,18 +109,40 @@ in
     options = [ "mode=0755" "size=2G" ];
   };
 
-  fileSystems."/nix" = {
+  fileSystems."/nix" = lib.mkIf useRdma {
     device = volumeDevice;
     fsType = "xfs";
     options = [ "noatime" "_netdev" "x-systemd.device-timeout=180s" ];
     neededForBoot = true;
   };
 
-  fileSystems."/tmp" = {
+  fileSystems."/tmp" = lib.mkIf useRdma {
     device = "/nix/tmp";
     fsType = "none";
     options = [ "bind" ];
     depends = [ "/nix" ];
+    neededForBoot = true;
+  };
+
+  # Explicit LAN-only mode for hosts without a fabric adapter. Keep Trex's
+  # store read-only and bound local writes with a disposable RAM overlay.
+  fileSystems."/nix/.ro-store" = lib.mkIf (!useRdma) {
+    device = "${trexIp}:/nix-store";
+    fsType = "nfs4";
+    options = nfsBootOptions ++ [ "ro" "nocto" "actimeo=600" ];
+    neededForBoot = true;
+  };
+  fileSystems."/nix/.rw-store" = lib.mkIf (!useRdma) {
+    fsType = "tmpfs";
+    options = [ "mode=0755" "size=2G" ];
+    neededForBoot = true;
+  };
+  fileSystems."/nix/store" = lib.mkIf (!useRdma) {
+    overlay = {
+      lowerdir = [ "/nix/.ro-store" ];
+      upperdir = "/nix/.rw-store/store";
+      workdir = "/nix/.rw-store/work";
+    };
     neededForBoot = true;
   };
 
@@ -149,7 +189,7 @@ in
   };
 
   boot.supportedFilesystems = [ "nfs" ];
-  boot.initrd.supportedFilesystems = [ "nfs" "xfs" ];
+  boot.initrd.supportedFilesystems = [ "nfs" ] ++ (if useRdma then [ "xfs" ] else [ "overlay" ]);
   boot.initrd.availableKernelModules = [
     "r8169"
     "mlx5_core"
@@ -171,7 +211,7 @@ in
 
   # The fixed namespace UUID belongs only to this host's disposable volume.
   # This runs in stage 1 on every boot, before anything can mount /nix.
-  boot.initrd.systemd.services.strix-netboot-volume = {
+  boot.initrd.systemd.services.strix-netboot-volume = lib.mkIf useRdma {
     description = "Connect and format the private Strix netboot volume";
     requires = [ "network-online.target" ];
     after = [ "network-online.target" ];
@@ -187,17 +227,30 @@ in
       set -euo pipefail
       # The store uses RDMA before stage 2 can apply the fabric's QoS policy.
       ${lib.optionalString config.sconfig.roceQos.enable config.systemd.services.roce-qos.script}
-      nvme connect --transport=rdma --traddr=${rdmaAddress} --trsvcid=4420 \
-        --nqn=${volume.nqn} --host-traddr=${fabricIp} --ctrl-loss-tmo=-1 \
-        --hostnqn=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostnqn".text)} \
-        --hostid=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostid".text)} \
-        --tos=${toString (config.sconfig.roceQos.dscp * 4 + 2)}
+      # Applying pause/PFC policy can briefly retrain the ConnectX link after
+      # network-online. A single connect then fails with ECONNRESET and leaves
+      # the diskless host in emergency mode (Strix-1, 2026-09-28). Retry the
+      # initial connection; ctrl-loss-tmo only helps an established controller.
+      connected=false
+      for attempt in $(seq 1 30); do
+        if nvme connect --transport=rdma --traddr=${rdmaAddress} --trsvcid=4420 \
+          --nqn=${volume.nqn} --host-traddr=${fabricIp} --ctrl-loss-tmo=-1 \
+          --hostnqn=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostnqn".text)} \
+          --hostid=${lib.escapeShellArg (lib.removeSuffix "\n" config.environment.etc."nvme/hostid".text)} \
+          --tos=${toString (config.sconfig.roceQos.dscp * 4 + 2)}; then
+          connected=true
+          break
+        fi
+        echo "netboot RDMA connection attempt $attempt failed; retrying" >&2
+        sleep 2
+      done
+      "$connected"
       ${config.systemd.package}/bin/udevadm wait --timeout=60 ${volumeDevice}
       mkfs.xfs -f -L ${hostName}-nix ${volumeDevice}
     '';
   };
 
-  boot.initrd.systemd.services.strix-netboot-seed = {
+  boot.initrd.systemd.services.strix-netboot-seed = lib.mkIf useRdma {
     description = "Copy this Strix system closure into the fresh Nix store";
     requires = [ "sysroot-nix.mount" "network-online.target" ];
     after = [ "sysroot-nix.mount" "network-online.target" ];
@@ -344,11 +397,11 @@ in
       matchConfig.MACAddress = bootMacMatch;
       linkConfig.Name = "eno1";
     };
-    links."10-cx5-fabric" = lib.mkIf (!sharesFabric) {
+    links."10-cx5-fabric" = lib.mkIf (useRdma && !sharesFabric) {
       matchConfig.PermanentMACAddress = self.strix.cx5FabricMac;
       linkConfig.Name = "cx5fabric0";
     };
-    networks."15-cx5-fabric" = lib.mkIf (!sharesFabric) {
+    networks."15-cx5-fabric" = lib.mkIf (useRdma && !sharesFabric) {
       matchConfig.Name = "cx5fabric0";
       address = [ (network.cidrOf "fabric" self.addresses.fabric) ];
       networkConfig = {
@@ -451,43 +504,26 @@ in
       Type = "oneshot";
       RemainAfterExit = true;
     };
-    script = ''
+    script = if useRdma then ''
       set -eu
       ${lib.getExe' config.nix.package "nix-store"} --load-db < /run/strix-nix-registration
       touch /etc/NIXOS
       ${lib.getExe' config.nix.package "nix-env"} -p /nix/var/nix/profiles/system --set /run/current-system
+    '' else ''
+      set -eu
+      registration=
+      for option in $(cat /proc/cmdline); do
+        case "$option" in
+          nix_registration=*) registration="''${option#nix_registration=}" ;;
+        esac
+      done
+      case "$registration" in
+        /nix/store/*/registration) ;;
+        *) echo "missing netboot closure registration" >&2; exit 1 ;;
+      esac
+      ${lib.getExe' config.nix.package "nix-store"} --load-db < "$registration"
+      touch /etc/NIXOS
+      ${lib.getExe' config.nix.package "nix-env"} -p /nix/var/nix/profiles/system --set /run/current-system
     '';
   };
-
-  # Everything iPXE needs to boot this host, served by trex's nginx:
-  #   strix-netboot-update <host> refreshes /var/lib/strix-netboot/<host>.
-  # The out-link doubles as the GC root keeping the closure in trex's store.
-  system.build.strixNetboot =
-    let
-      closure = pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; };
-      ipxeScript = pkgs.writeText "netboot-${hostName}.ipxe" ''
-        #!ipxe
-        kernel kernel init=${config.system.build.toplevel}/init initrd=initrd ${toString config.boot.kernelParams} nix_registration=${closure}/registration
-        initrd initrd
-        boot
-      '';
-    in
-    pkgs.linkFarm "strix-netboot-${hostName}" [
-      {
-        name = "kernel";
-        path = "${config.system.build.kernel}/${config.system.boot.loader.kernelFile}";
-      }
-      {
-        name = "initrd";
-        path = "${config.system.build.initialRamdisk}/initrd";
-      }
-      {
-        name = "netboot.ipxe";
-        path = ipxeScript;
-      }
-      {
-        name = "registration";
-        path = "${closure}/registration";
-      }
-    ];
 }

@@ -76,10 +76,8 @@ in {
   deployment.targetHost = network.primaryIp self;
   deployment.targetUser = "grw";
 
-  # Follow the OTG cable.  Only the FAEX9 boards (strix-1, strix-2) cannot
-  # netboot without this disk; strix-3/strix-4 are Bosgame BeyondMax and PXE
-  # natively, so parking the cable there needs no rebuild.
-  services.kvmBootstrap.targetHost = "strix-1";
+  # Follow the OTG cable: a signed recovery UKI embeds its host identity.
+  services.kvmBootstrap.targetHost = "strix-2";
 
   sconfig = {
     profile = "server";
@@ -309,6 +307,7 @@ in {
   };
 
   environment.persistence.${persist}.directories = [
+    "/var/lib/kvm-bootstrap"
     "/var/lib/bluetooth"
     # Keep the iPhone trust record across the tmpfs root.  The USB Ethernet
     # function normally appears without manual pairing, but retaining lockdown

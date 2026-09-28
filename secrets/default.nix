@@ -2,6 +2,12 @@
 # Encrypted YAML files are in this directory
 # sops-nix will decrypt them at activation time to /run/secrets/
 {
+  strix-secure-boot-db-key = {
+    sopsFile = ./strix-secure-boot.yaml;
+    key = "strix-secure-boot-db-key";
+    path = "/run/secrets/strix-secure-boot-db-key";
+    mode = "0400";
+  };
   # Crypto secrets (trex + router)
   # Used by Lighthouse beacon and Reth execution client for JWT authentication
   lighthouse-jwt = {

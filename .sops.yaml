@@ -38,6 +38,15 @@ keys:
   - &grw_gpg_new 2CA3E8ADF4A11935CC7554069BA899CFBEE59D40  # George Whewell (yk5c)
 
 creation_rules:
+  # Firmware signing key: only the publisher and operator recovery keys.
+  - path_regex: secrets/strix-secure-boot\.yaml$
+    key_groups:
+      - age:
+          - *trex
+        pgp:
+          - *grw_gpg
+          - *grw_gpg_new
+
   # Crypto services - trex and router (merge mining)
   - path_regex: secrets/crypto\.yaml$
     key_groups:

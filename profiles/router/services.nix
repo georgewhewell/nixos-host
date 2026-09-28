@@ -23,50 +23,79 @@
   standbyDnsIp = network.primaryIp network.hosts.k3;
   trexIp = network.primaryIp network.hosts.trex;
   netbootBaseUrl = "http://${serviceIp}/strix-netboot";
-  netbootIpxeUrl = "${netbootBaseUrl}/ipxe/snponly.efi";
-
-  netbootIpxe = pkgs.ipxe.override {
-    additionalTargets = { "bin-x86_64-efi/snponly.efi" = null; };
-    embedScript =
-      let
-        chainUrl = "${netbootBaseUrl}/by-mac/\${net0/mac}.ipxe";
-      in
-      pkgs.writeText "strix-router-embed.ipxe" ''
+  secureHosts = lib.filterAttrs (_: h: h.strix.secureBoot or false) netbootHosts;
+  secureState = "/var/lib/strix-secure-boot";
+  secureCertificate = ../../secrets/strix-secure-boot-db.pem;
+  secureOrigin = "http://${trexIp}:${toString network.netbootHttpPort}/hosts/secure";
+  secureIpxeUrl = "${netbootBaseUrl}/secure/snponly-secure.efi";
+  secureByMac = pkgs.linkFarm "strix-secure-router-selectors" (lib.concatLists (
+    lib.mapAttrsToList (name: host: map (mac: {
+      name = "${mac}.ipxe";
+      path = pkgs.writeText "secure-router-${name}.ipxe" ''
         #!ipxe
-        dhcp || exit
-        chain ${chainUrl} ||
-        sleep 3
-        chain ${chainUrl} ||
-        sleep 3
-        chain ${chainUrl} ||
-        exit
+        chain --name @0 ${netbootBaseUrl}/secure/${name}/current/boot.efi
       '';
-  };
-
-  netbootByMac = pkgs.linkFarm "strix-router-netboot-by-mac" (
-    lib.concatLists (
-      lib.mapAttrsToList
-        (
-          name: h:
-            map
-              (mac: {
-                name = "${mac}.ipxe";
-                path = pkgs.writeText "router-chain-${name}-${mac}.ipxe" ''
-                  #!ipxe
-                  chain ${netbootBaseUrl}/hosts/${name}/netboot.ipxe
-                '';
-              })
-              (netbootMacs h)
-        )
-        netbootHosts
-    )
-  );
-
-  netbootTftpRoot = pkgs.runCommand "strix-router-netboot-tftp-root" { } ''
-    mkdir -p "$out"
-    cp ${netbootIpxe}/snponly.efi "$out/snponly.efi"
-  '';
+    }) (netbootMacs host)) secureHosts
+  ));
 in {
+  assertions = [ {
+    assertion = builtins.attrNames netbootHosts == builtins.attrNames secureHosts;
+    message = "All Strix netboot clients must enable firmware Secure Boot.";
+  } ];
+
+  environment.persistence.${config.sconfig.impermanence.persistentStoragePath}.directories =
+    lib.optionals (secureHosts != {}) [ secureState ];
+  systemd.tmpfiles.rules = lib.optionals (secureHosts != {}) [
+    "d ${secureState} 0755 root root -"
+    # Remove the old unsigned TFTP alias on existing installations.
+    "r ${secureState}/snponly.efi - - - -"
+  ];
+  systemd.services.strix-secure-boot-sync-ipxe = lib.mkIf (secureHosts != {}) {
+    description = "Cache verified Strix Secure Boot loaders and UKIs";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    unitConfig.RequiresMountsFor = [ secureState ];
+    serviceConfig = {
+      Type = "oneshot";
+      Restart = "on-failure";
+      RestartSec = 15;
+    };
+    script = ''
+      set -euo pipefail
+      mkdir -p ${secureState}
+      stage=$(${pkgs.coreutils}/bin/mktemp -d ${secureState}/.sync.XXXXXX)
+      trap 'rm -rf "$stage"' EXIT
+      ${pkgs.curl}/bin/curl --fail --silent --show-error --max-time 60 \
+        --output "$stage/ipxe.efi" ${secureOrigin}/ipxe/snponly.efi
+      ${pkgs.sbsigntool}/bin/sbverify --cert ${secureCertificate} "$stage/ipxe.efi"
+      ${lib.concatMapStringsSep "\n" (name: ''
+        mkdir "$stage/${name}"
+        ${pkgs.curl}/bin/curl --fail --silent --show-error --max-time 120 \
+          --output "$stage/${name}/boot.efi" ${secureOrigin}/${name}/current/boot.efi
+        ${pkgs.sbsigntool}/bin/sbverify --cert ${secureCertificate} "$stage/${name}/boot.efi"
+        ${pkgs.binutils}/bin/objcopy --dump-section .cmdline="$stage/cmdline" \
+          "$stage/${name}/boot.efi" "$stage/inspected.efi"
+        # Host identity is checked inside the signed payload, not HTTP metadata.
+        tr -d '\000' < "$stage/cmdline" | ${pkgs.gnugrep}/bin/grep -Eq \
+          '^init=/nix/store/[a-z0-9]{32}-nixos-system-${name}-[^ /]+/init '
+        hash=$(sha256sum "$stage/${name}/boot.efi" | cut -d' ' -f1)
+        mkdir -p ${secureState}/${name}/generations
+        generation=${secureState}/${name}/generations/$hash
+        chmod 0755 "$stage/${name}"
+        chmod 0644 "$stage/${name}/boot.efi"
+        if [ -e "$generation" ]; then
+          ${pkgs.diffutils}/bin/cmp "$stage/${name}/boot.efi" "$generation/boot.efi"
+        else
+          mv -T "$stage/${name}" "$generation"
+        fi
+        ln -s "generations/$hash" "$stage/current"
+        mv -Tf "$stage/current" ${secureState}/${name}/current
+      '') (builtins.attrNames secureHosts)}
+      chmod 0644 "$stage/ipxe.efi"
+      mv -T "$stage/ipxe.efi" ${secureState}/snponly-secure.efi
+    '';
+  };
   boot.initrd.kernelModules = [
     "nf_tables"
     "nft_compat"
@@ -131,7 +160,7 @@ in {
       ];
       # Netboot is restricted to the four tagged Strix MACs. Native UEFI HTTP
       # clients retain the URI offer; the firmware's earlier PXE attempt gets
-      # snponly.efi over TFTP and iPXE immediately switches back to HTTP.
+      # signed iPXE over TFTP, which immediately switches back to HTTP.
       "dhcp-mac" = lib.concatLists (
         lib.mapAttrsToList
           (_: h: map (mac: "set:netboot,${mac}") (netbootMacs h))
@@ -139,10 +168,10 @@ in {
       );
       "dhcp-vendorclass" = [ "set:httpboot,HTTPClient" ];
       enable-tftp = true;
-      tftp-root = "${netbootTftpRoot}";
-      "dhcp-boot" = [
-        "tag:netboot,tag:httpboot,${netbootIpxeUrl},,${serviceIp}"
-        "tag:netboot,tag:!httpboot,snponly.efi,,${serviceIp}"
+      tftp-root = secureState;
+      "dhcp-boot" = lib.optionals (secureHosts != {}) [
+        "tag:netboot,tag:httpboot,${secureIpxeUrl},,${serviceIp}"
+        "tag:netboot,tag:!httpboot,snponly-secure.efi,,${serviceIp}"
       ];
       "dhcp-option-force" = [ "tag:httpboot,60,HTTPClient" ];
       # Generated from network.nix hosts that have a MAC address.
@@ -173,18 +202,11 @@ in {
           port = 80;
         }
       ];
-      locations."/strix-netboot/ipxe/" = {
-        alias = "${netbootIpxe}/";
+      locations."/strix-netboot/secure/" = lib.mkIf (secureHosts != {}) {
+        alias = "${secureState}/";
       };
-      locations."/strix-netboot/by-mac/" = {
-        alias = "${netbootByMac}/";
-      };
-      locations."/strix-netboot/hosts/" = {
-        proxyPass = "http://${trexIp}/hosts/";
-        extraConfig = ''
-          proxy_set_header Host ${trexIp};
-          proxy_buffering off;
-        '';
+      locations."/strix-netboot/secure/by-mac/" = lib.mkIf (secureHosts != {}) {
+        alias = "${secureByMac}/";
       };
     };
   };

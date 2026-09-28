@@ -5,82 +5,30 @@
   pkgs,
   ...
 }: let
-  # Which machine this KVM is currently cabled to.  The bootstrap iPXE chains
-  # a per-MAC script, so an image built for one host will boot *any* host it is
-  # plugged into as that host.  Keep this in step with the physical OTG cable.
+  # Signed recovery UKIs embed a host identity. Keep this aligned with the
+  # physical HDMI/OTG cable and provision the matching image on the KVM.
   targetHost = config.services.kvmBootstrap.targetHost;
-  targetMac = network.hosts.${targetHost}.mac;
-
-  # The FAEX9 firmware's bundled Realtek UNDI driver returns before it ever
-  # sends DHCP.  Present a tiny, read-only native-driver iPXE disk from the
-  # Rock instead; it shares the existing OTG cable with HID and replaces the
-  # physical recovery USB disk.
-  # iPXE's cross package pulls syslinux merely to support legacy BIOS disk
-  # images.  This build emits only x86_64 UEFI, so an empty share directory is
-  # sufficient and avoids trying to execute/build x86 syslinux on the ARM KVM.
-  x86SyslinuxStub = pkgs.runCommand "x86-ipxe-syslinux-stub" {} ''
-    mkdir -p "$out/share/syslinux"
-  '';
-
-  targetIpxe =
-    (pkgs.pkgsCross.gnu64.ipxe.override {
-      syslinux = x86SyslinuxStub;
-      enableDefaultPlatformTargets = false;
-      additionalTargets = {"bin-x86_64-efi/ipxe.efi" = null;};
-      firmwareBinary = "ipxe.efi";
-      embedScript = pkgs.writeText "${targetHost}-kvm-bootstrap.ipxe" ''
-        #!ipxe
-        echo ${targetHost} KVM bootstrap: native Realtek driver
-        # Interface numbering is firmware-state dependent: the physical rescue
-        # stick once saw the Realtek as net3, while the same machine currently
-        # exposes only net0..net2.  Let iPXE try every interface and keep the
-        # first successful lease instead of pinning a transient enumeration.
-        dhcp || goto failed
-        chain http://${network.routerIp}/strix-netboot/by-mac/${targetMac}.ipxe ||
-        sleep 3
-        chain http://${network.routerIp}/strix-netboot/by-mac/${targetMac}.ipxe || goto failed
-        exit
-
-        :failed
-        echo KVM bootstrap failed; dropping to the iPXE shell
-        shell
-      '';
-    }).overrideAttrs (old: {
-      # The package normally exposes this versioned legacy-PXE alias.  That
-      # output is deliberately absent in this UEFI-only build.
-      postInstall = (old.postInstall or "") + ''
-        rm -f "$out/undionly.kpxe.0"
-      '';
-    });
-
-  targetIpxeDisk = pkgs.runCommand "${targetHost}-kvm-ipxe.img" {
-    nativeBuildInputs = [pkgs.coreutils pkgs.dosfstools pkgs.mtools pkgs.parted];
-  } ''
-    truncate -s 32M "$out"
-    parted --script "$out" \
-      mklabel gpt \
-      mkpart ESP fat32 1MiB 31MiB \
-      set 1 esp on
-
-    # FAEX9 does not accept a FAT superfloppy as a removable UEFI device.
-    # Give it the conventional GPT + EFI System Partition layout instead.
-    truncate -s 30M esp.img
-    mkfs.vfat -F 16 -n KVMIPXE esp.img
-    mmd -i esp.img ::/EFI ::/EFI/BOOT
-    mcopy -i esp.img ${targetIpxe}/ipxe.efi ::/EFI/BOOT/BOOTX64.EFI
-    dd if=esp.img of="$out" bs=1M seek=1 conv=notrunc status=none
-  '';
+  secureHosts = lib.filterAttrs (_: h: h.strix.secureBoot or false) network.hosts;
 in {
+  options.services.kvmBootstrap.imageFile = lib.mkOption {
+    type = lib.types.str;
+    default = "/var/lib/kvm-bootstrap/${targetHost}-secure.img";
+    description = ''
+      Read-only GPT recovery image exposed over USB. For a Secure Boot target,
+      provision a signed UKI image with strix-secure-boot-recovery and select
+      its persistent absolute path here. Never put private signing keys on
+      the KVM. The public enrollment certificate is included in that image.
+    '';
+  };
   options.services.kvmBootstrap.targetHost = lib.mkOption {
-    type = lib.types.enum (builtins.attrNames network.hosts);
+    type = lib.types.enum (builtins.attrNames secureHosts);
     default = "strix-2";
     example = "strix-1";
     description = ''
-      Host the KVM's OTG cable is plugged into.  The bootstrap iPXE disk
-      chains that host's per-MAC netboot script, so a mismatch silently boots
-      the attached machine as somebody else -- on 2026-08-17 an image built
-      for strix-2 brought strix-1 up as strix-2.  Only FAEX9 boards need this
-      at all; their firmware Realtek UNDI returns before sending DHCP.
+      Secure Boot host attached to the KVM's HDMI/OTG cable. The signed
+      recovery image embeds its host identity, so an image for another host
+      would boot the attached machine with that host's network and storage
+      configuration. Provision the matching image whenever moving the cable.
     '';
   };
 
@@ -158,7 +106,7 @@ in {
     #   - ECM   (CDC ethernet, lets host reach rock-5b over USB)
     #   - HID 0 (boot keyboard, 8-byte reports → /dev/hidg0)
     #   - HID 1 (boot mouse,    4-byte reports → /dev/hidg1)
-    #   - read-only 32 MiB native-driver iPXE disk for services.kvmBootstrap.targetHost
+    #   - read-only signed UKI recovery disk for services.kvmBootstrap.targetHost
     boot.kernelModules = ["libcomposite" "usb_f_mass_storage"];
 
     systemd.services.kvm-usb-gadget = {
@@ -166,6 +114,7 @@ in {
       wantedBy = ["multi-user.target"];
       after = ["sys-kernel-config.mount" "systemd-modules-load.service"];
       requires = ["sys-kernel-config.mount"];
+      unitConfig.RequiresMountsFor = [ config.services.kvmBootstrap.imageFile ];
 
       serviceConfig = {
         Type = "oneshot";
@@ -228,7 +177,7 @@ in {
           mkdir functions/mass_storage.usb0
           echo 1 > functions/mass_storage.usb0/lun.0/ro
           echo 1 > functions/mass_storage.usb0/lun.0/removable
-          echo ${targetIpxeDisk} > functions/mass_storage.usb0/lun.0/file
+          echo ${lib.escapeShellArg config.services.kvmBootstrap.imageFile} > functions/mass_storage.usb0/lun.0/file
           ln -s functions/mass_storage.usb0 configs/c.1/mass_storage.usb0
 
           ls /sys/class/udc > UDC

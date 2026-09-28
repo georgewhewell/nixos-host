@@ -9,13 +9,7 @@ let
   nanokvmUsbCidr = "10.55.0.0/24";
   trexIp = network.primaryIp network.hosts.trex;
   port = network.netbootHttpPort;
-  httpAuthority =
-    if port == 80
-    then trexIp
-    else "${trexIp}:${toString port}";
-
   netbootHosts = lib.filterAttrs (_: h: h.netboot or false) network.hosts;
-  netbootMacs = h: [ h.mac ] ++ (h.extraMacs or [ ]);
   storage = import ../machines/x86/trex/spdk-storage-constants.nix;
   rdmaAddress = network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
 
@@ -64,91 +58,21 @@ let
     '';
   };
 
-  # iPXE binary fetched by the firmware's UEFI HTTP boot client (the
-  # router's dnsmasq hands out its URL). snponly.efi rides the firmware's
-  # own SNP driver, so no native NIC driver is needed. The embedded script
-  # retries a few times and then exits so the firmware boot order can fall
-  # through to local disk if this server is unreachable.
-  netbootIpxe = pkgs.ipxe.override {
-    additionalTargets = { "bin-x86_64-efi/snponly.efi" = null; };
-    embedScript =
-      let
-        chainUrl = "http://${httpAuthority}/by-mac/\${net0/mac}.ipxe";
-      in
-      pkgs.writeText "strix-embed.ipxe" ''
-        #!ipxe
-        dhcp || exit
-        chain ${chainUrl} ||
-        sleep 3
-        chain ${chainUrl} ||
-        sleep 3
-        chain ${chainUrl} ||
-        exit
-      '';
-  };
-
-  # Firmware PXE loads iPXE with an embedded script that chains to
-  # http://trex:<port>/by-mac/<mac>.ipxe; these per-MAC stubs redirect to
-  # the host's current netboot.ipxe under /var/lib/strix-netboot.
-  byMac = pkgs.linkFarm "strix-netboot-by-mac" (
-    lib.concatLists (
-      lib.mapAttrsToList
-        (
-          name: h:
-            map
-              (mac: {
-                name = "${mac}.ipxe";
-                path = pkgs.writeText "chain-${name}-${mac}.ipxe" ''
-                  #!ipxe
-                  chain http://${httpAuthority}/hosts/${name}/netboot.ipxe
-                '';
-              })
-              (netbootMacs h)
-        )
-        netbootHosts
-    )
-  );
-
-  stateDir = "/var/lib/strix-netboot";
   firmwareSnapshotStateDir = "/var/lib/strix-firmware-snapshots";
-
-  # Every netboot host's boot image is part of this host's system closure.
-  # Expose them through stable /etc links: putting their changing store paths
-  # directly in tmpfiles.d makes every image refresh restart sysinit, which
-  # needlessly tears down /tmp and D-Bus on a running boot server.
-  netbootImages = lib.mapAttrs
-    (name: _: inputs.self.nixosConfigurations.${name}.config.system.build.strixNetboot)
-    netbootHosts;
 
   # The Claw receives its kernel/initrd from fuckup over USB, but mounts this
   # host's /nix/store over trusted WiFi. Keep its complete system closure on
   # trex and GC-rooted by the deployed trex generation.
   clawSystem = inputs.self.nixosConfigurations.claw.config.system.build.toplevel;
-
-  # Ad-hoc escape hatch: rebuild a single host's image from a checkout on
-  # this machine. Its out-link replaces the deployed symlink until the next
-  # activation resets it. Builds against the checkout's flake.lock, so a
-  # drifted local path input needs `nix flake lock --update-input <name>
-  # --allow-dirty-locks` first.
-  strixNetbootUpdate = pkgs.writeShellScriptBin "strix-netboot-update" ''
-    set -euo pipefail
-
-    host="''${1:?usage: strix-netboot-update <host> [flake-path]}"
-    flake="''${2:-/mnt/Home/src/nixos-config}"
-
-    mkdir -p ${stateDir}
-    rm -f "${stateDir}/$host"
-    exec nix --extra-experimental-features 'nix-command flakes' build -L \
-      --out-link "${stateDir}/$host" \
-      "$flake#nixosConfigurations.$host.config.system.build.strixNetboot"
-  '';
 in
 {
-  environment.etc = lib.mapAttrs'
-    (name: image: lib.nameValuePair "strix-netboot/${name}" { source = image; })
-    netbootImages;
+  imports = [ ./secure-boot-server.nix ];
+  assertions = [ {
+    assertion = lib.all (h: h.strix.secureBoot or false) (builtins.attrValues netbootHosts);
+    message = "All Strix netboot clients must enable firmware Secure Boot.";
+  } ];
 
-  # iPXE loads the kernel/initrd over HTTP. Each Strix copies its system
+  # Signed iPXE loads a signed UKI over HTTP. Each Strix copies its system
   # closure from NFS into its freshly formatted private NVMe/RDMA volume.
   # Model storage uses the separate pinned read-only snapshot.
 
@@ -214,10 +138,13 @@ in
   system.activationScripts.strixNetbootDirs = {
     deps = [ "etc" ];
     text = ''
-      mkdir -p ${stateDir} ${firmwareSnapshotStateDir} /models
+      mkdir -p ${firmwareSnapshotStateDir} /models
+      # Remove only the former public raw-boot links; keep signed generations
+      # and all storage volumes and firmware snapshots.
       ${lib.concatMapStringsSep "\n"
-        (name: "ln -sfnT /etc/strix-netboot/${name} ${stateDir}/${name}")
+        (name: "rm -f /var/lib/strix-netboot/${name}")
         (builtins.attrNames netbootHosts)}
+      rm -f /var/lib/strix-netboot/secure
       # NFSv4 clients must traverse the pseudoroot parent before the more
       # specific per-host no_root_squash export takes effect. Permit traversal
       # without allowing directory listing; host directories remain mode 0700.
@@ -265,19 +192,10 @@ in
         inherit port;
       }
     ];
-    locations."/ipxe/" = {
-      alias = "${netbootIpxe}/";
-    };
-    locations."/by-mac/" = {
-      alias = "${byMac}/";
-    };
-    locations."/hosts/" = {
-      alias = "${stateDir}/";
-      extraConfig = "autoindex on;";
+    locations."/hosts/secure/" = {
+      alias = "/var/lib/strix-secure-boot/";
     };
   };
 
   networking.firewall.allowedTCPPorts = [ port ];
-
-  environment.systemPackages = [ strixNetbootUpdate ];
 }

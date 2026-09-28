@@ -621,9 +621,10 @@ lib: rec {
     #  - beegfsDiskSerial: each node's dedicated 4 TB BeeGFS NVMe, by serial
     #    (CX5/SSD PCIe enumeration order differs between the four boxes, so
     #    destructive disko runs must never address by nvme0n1).
-    #  - cx5Port: which port of this node's own ConnectX-5 is cabled. Each node
-    #    has its own card (verified 2026-07-30, distinct base GUIDs), not a
-    #    shared multi-host adapter; see the note in machines/x86/strix-halo.
+    #  - cx5Port: which ConnectX-5 port is cabled. The operator confirmed
+    #    shared NICs for pairs strix-1/2 and strix-3/4 on 2026-09-28.
+    #    Different host-visible identities do not imply independent ports.
+    #    See docs/strix-secure-boot.md before resetting links.
     #  - ryzenAdj: package power limits (1/2 sustain more than 3/4).
     "strix-1" = {
       # eno1 burned-in MAC (confirmed via ethtool -P); the firmware PXE
@@ -673,6 +674,11 @@ lib: rec {
         # Serving is disabled on Strix-1 by operator request; do not start
         # the coordinator or open its inference listener on this host.
         ds4Serve = false;
+        # Firmware Secure Boot; runtime storage remains independent.
+        secureBoot = true;
+        # SMU/PSP timeouts appeared during tuning startup on the enforced
+        # canary. GPU/NPU telemetry is healthy with these writes paused.
+        automaticPowerTuning = false;
         cx5Port = 1;
         # 2026-09-16 physical canary audit: only the Ethernet-mode CX5
         # (:b4/:b5, MT27800) enumerates; the previously selected CX7
@@ -698,8 +704,9 @@ lib: rec {
       mac = "84:47:09:68:79:a6";
       # extraMacs REMOVED 2026-08-08. It listed 1c:34:da:61:12:99/:9c/:9d,
       # which `ethtool -P` proved are in *strix-1's* chassis (this host holds
-      # :b0/:b1 and :b4/:b5 -- two independent CX5 ASICs, confirmed live
-      # 2026-08-08 19:39). Keeping them here had one real, non-theoretical
+      # :b0/:b1 and :b4/:b5, observed live 2026-08-08 19:39). These
+      # host-visible identities do not establish NIC independence. Keeping
+      # the other host's MACs here had one real, non-theoretical
       # effect: the router emitted
       #   dhcp-host=84:47:09:68:79:a6,1c:34:da:61:12:99,:9c,:9d,192.168.23.192
       # so strix-1's CX5 ports took strix-2's LAN address on any DHCP they did.
@@ -750,9 +757,10 @@ lib: rec {
       # eno1, and eno1 here is the 2.5G Realtek, so the RoCE address landed on
       # the slow NIC with no verbs device -- NVMe-oF could never bind it. With
       # the flag gone, 10-cx5-fabric renames the CX5 to cx5fabric0 and
-      # 15-cx5-fabric gives it the fabric address at MTU 9000. The NFS netboot
-      # root is unaffected: it runs over eno1's *LAN* address to 192.168.23.8.
+      # 15-cx5-fabric gives it the fabric address at MTU 9000 for its RDMA
+      # boot and models volumes. Port changes can also affect strix-1.
       strix = {
+        secureBoot = true;
         beegfsDiskSerial = "A632B32900P0HW";
         beegfsFsUUID = "f5284213-637e-4911-bad0-0dbc77fcf9ca";
         # Passive V620 cooling cannot sustain the stock 4 x 250 W load.
@@ -766,10 +774,11 @@ lib: rec {
         # 192.168.25.208 NVMe/RDMA export. Matching its permanent MAC keeps the
         # cx5fabric0 name stable across PCI enumeration and future reboots.
         cx5FabricMac = "1c:34:da:61:12:b1";
-        # This netboot root is on eno1, so resetting the independent CX5 before
-        # network-online cannot strand NFS. The DAC path needs the explicit
-        # 100G force after PCI resets; it previously received that through the
-        # secondary-rail unit before this port became the primary.
+        # Train this rail before connecting this host's RDMA boot volume.
+        # The DAC path needs the explicit 100G force after PCI resets; it
+        # previously received that through the secondary-rail unit before
+        # this port became primary. The NIC is shared with strix-1, so this
+        # operation may also affect the peer's active storage connection.
         forcePrimaryFabricLink = true;
         ryzenAdj = {
           # stapm = 75000;
@@ -797,14 +806,15 @@ lib: rec {
       #
       # Live host enumeration after the 2026-08-14 PCIe rework supersedes the
       # earlier switch-table inference: :e8/:e9 are local ConnectX-5 ports on
-      # strix-3. The BlueField remains present but is not the host data path.
+      # strix-3. These same ConnectX-5 identities were verified after the
+      # adapter was restored on 2026-09-28; netboot uses the fleet RDMA path.
       strix = {
+        secureBoot = true;
         beegfsDiskSerial = "A632B32900OYLN";
         beegfsFsUUID = "596ed632-efbc-4038-9fca-b5400f41d24d";
         cx5Port = 1;
-        # The BlueField remains separately managed, but the host fabric seen
-        # after the 2026-08-14 PCIe rework is this dual-port ConnectX-5.
-        bluefield = true;
+        # Only the dual-port ConnectX-5 is currently present in this host.
+        bluefield = false;
         # Live permanent MACs, carrier, and LLDP verified 2026-08-14. As on
         # the other nodes, f1np1 is the primary rail and f0np0 is rail 2.
         cx5FabricMac = "b8:59:9f:54:db:e9";
@@ -835,6 +845,7 @@ lib: rec {
       # Live 2026-08-14 enumeration shows this chassis owns :e4/:e5; the old
       # switch-table inference that also assigned :e8/:e9 here was wrong.
       strix = {
+        secureBoot = true;
         beegfsDiskSerial = "A632B32900OZJS";
         beegfsFsUUID = "608e561f-e19a-4199-984f-b950fccce3e3";
         cx5Port = 1;
