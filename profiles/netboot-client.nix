@@ -70,6 +70,8 @@ let
   '';
 in
 {
+  imports = [ ./strix-storage-watchdog.nix ];
+
   assertions = [ {
     assertion = config.strix.secureBoot.enable;
     message = "${hostName}: Strix netboot requires a signed UKI; raw kernel/initrd boot is retired.";
