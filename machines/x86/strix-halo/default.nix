@@ -49,7 +49,22 @@ let
 
   # trex's models export. The constants file is the single pin shared by the
   # target and every client; see machines/x86/trex/spdk-storage-constants.nix.
-  modelsStorage = import ../trex/spdk-storage-constants.nix;
+  modelsStorage =
+    let
+      legacy = import ../trex/spdk-storage-constants.nix;
+    in
+    if index == 2 then
+      legacy // {
+        # Only Strix-2's runtime /models input advances here. Trex already
+        # publishes this immutable snapshot under its versioned NQN.
+        modelsSnapshot = {
+          name = "models-20260929-215109";
+          uuid = "c609331f-926a-4791-8ac4-b143a66a9af5";
+        };
+        modelsNqn = "nqn.2026-07.link.satanic.trex:models-c609331f-926a-4791-8ac4-b143a66a9af5";
+      }
+    else
+      legacy;
   modelsDevice = "/dev/disk/by-id/nvme-uuid.${modelsStorage.modelsSnapshot.uuid}";
   modelsTargetAddress =
     network.ipOf "fabric" network.hosts."trex-rdma".addresses.fabric;
