@@ -754,6 +754,8 @@ in
 
   benchmark.runners.strix-halo = {
     requireIommuOff = false;
+    # Bind only the shared lease inode, not the host's writable /tmp directory.
+    extraSandboxPaths = ["/run/benchmark-gpu.lock=/tmp/ds41-gpu.lock"];
     gpus = [
       {
         type = "amd";
@@ -1063,6 +1065,9 @@ in
   # authorized_keys after dropping privileges from root.
   systemd.tmpfiles.rules = [
     "d /etc/ssh 0755 root root -"
+    # No truncation, replacement or expiry: serving and Nix builds must keep
+    # locking the same inode. Read-only access is sufficient for flock.
+    "f /tmp/ds41-gpu.lock 0644 root root -"
   ];
 
   # Point all HuggingFace tooling at the read-only /models snapshot and keep
