@@ -13,7 +13,7 @@ keys:
   # Re-enroll + updatekeys if an fTPM gets cleared.
   - &strix-1 age1px4mw2en26u28wrm5uzypcteyntlfx363uwqj2pv076jed8jefzscyfx07  # strix-1
   - &strix-2 age1tfmx4spearunynffkj6xg4ccyfxmztan8ydhstr0z2zrmt4chusq4ex5c6  # strix-2
-  - &strix-3 age1edvqxtg7a28w3sjvl2g59cz9sh2l9n5zsl8ad0x20cdqvqnyg9aqc970x6  # strix-3
+  - &strix-3 age188jywwyq0jqc0g2lhq0k82h2x36rlt84fmnrej0rhdrvpsywl57qsfyl36  # strix-3
   - &strix-4 age1xn4v4pxxvs2mtphvd0wy95qde0q7cuvj4nht8gt7y7wnmhd2nusss7h9en  # strix-4
   - &rock-5b age10zjqq6aevnwg9xkmpeq40u9utx8k09gw5r4qkrkvrc9hmjdv8szqre99zq  # rock-5b (192.168.23.18)
   - &k3 age1kkmcu5p7m29ecutynunv4js4w2t9zckrnys5svhzwyxjzh6lgfpqeurhyx      # k3 (192.168.23.19)
