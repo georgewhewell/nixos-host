@@ -1,6 +1,6 @@
-# DeepSeek-V4 production serving on the four Strix Halo APUs. The packaged
-# launcher owns the exact rank -> host -> GPU/BDF safety checks; this module
-# supplies only the fleet rank and normal NixOS lifecycle.
+# DeepSeek-V4.1 serving candidate on the four Strix Halo APUs. The packaged
+# launcher validates the model snapshot and takes the shared GPU lock; this
+# module supplies the qualified fleet rank order and normal NixOS lifecycle.
 index:
 {
   lib,
@@ -15,31 +15,24 @@ let
   netboot = self.netboot or false;
   servingEnabled = netboot && (self.strix.ds4Serve or false);
   productionPackages = inputs.nix-strix-halo-ds4.packages.${pkgs.stdenv.hostPlatform.system};
-  server = productionPackages.sglang-dsv4-halo4;
-  agent = productionPackages.ds4-opencode;
+  server = productionPackages.ds41-node;
   nodeRank =
     {
-      "1" = 0;
-      "3" = 1;
+      "1" = 3;
+      "3" = 0;
       "2" = 2;
-      "4" = 3;
+      "4" = 1;
     }
     .${toString index};
-  coordinator = network.ipOf "fabric" network.hosts.strix-1.addresses.fabric;
-  model = "/models/DeepSeek-V4-Flash-0731-hf-9e165c30";
+  coordinator = network.ipOf "fabric" network.hosts.strix-3.addresses.fabric;
+  # The existing /models mount pins the same RO snapshot UUID/NQN as the
+  # qualified launcher. Its preflight verifies that identity, not an alias.
+  model = "/models/DeepSeek-V4.1-Flash-hf-dba1be0a";
   cacheDir = "/mnt/Home/services/ds4-production/${hostName}/cache";
 in
 {
-  # ExecStart includes the complete server closure in the boot seed, making
-  # it available in the private store before nix-daemon starts.
-  environment.systemPackages = [ agent ];
-  environment.variables = {
-    DS4_OPENAI_BASE_URL = "http://${coordinator}:30000/v1";
-    DS4_OPENAI_MODEL = "deepseek-v4-flash";
-  };
-
   systemd.services.ds4-serve = lib.mkIf servingEnabled {
-    description = "Serve DeepSeek-V4 on Strix Halo rank ${toString nodeRank}";
+    description = "Serve DeepSeek-V4.1 on Strix Halo rank ${toString nodeRank}";
     wantedBy = [ "multi-user.target" ];
     wants = [
       "network-online.target"
@@ -60,21 +53,18 @@ in
       StartLimitIntervalSec = "1h";
     };
     environment = {
-      DS4_MODEL = model;
-      DS4_DIST_INIT_ADDR = "${coordinator}:29500";
-      DS4_NODE_RANK = toString nodeRank;
-      DS4_FABRIC_IFACE = "cx5fabric0";
-      # Keep the unauthenticated OpenAI endpoint on the private model fabric;
-      # it must not also listen on the LAN or Thunderbolt links.
-      DS4_HOST = network.ipOf "fabric" self.addresses.fabric;
-      DS4_CONTEXT_LENGTH = "65536";
-      DS4_PORT = "30000";
-      DS4_SERVED_MODEL_NAME = "deepseek-v4-flash";
+      DS41_MODEL_PATH = model;
+      DS41_HEAD_ADDR = "${coordinator}:51041";
+      DS41_NODE_RANK = toString nodeRank;
+      # The head API remains on strix-3 localhost; clients use an explicit
+      # tunnel to 127.0.0.1:31041, not the old fabric-wide port 30000.
+      DS41_PORT = "31041";
+      # The launcher creates runtime-specific compiler namespaces below this
+      # persistent root. Do not reuse the old unversioned Triton directory.
+      DS41_CACHE_ROOT = "${cacheDir}/gfx1151";
       HOME = cacheDir;
-      XDG_CACHE_HOME = cacheDir;
       XDG_RUNTIME_DIR = "/run/ds4-production";
       HF_HOME = "${cacheDir}/huggingface";
-      TRITON_CACHE_DIR = "${cacheDir}/triton";
     };
     serviceConfig = {
       Type = "simple";
@@ -83,8 +73,9 @@ in
       RuntimeDirectory = "ds4-production";
       RuntimeDirectoryMode = "0700";
       ExecStartPre = [
-        "${pkgs.coreutils}/bin/mkdir -p ${cacheDir}/huggingface ${cacheDir}/triton"
+        "${pkgs.coreutils}/bin/mkdir -p ${cacheDir}/huggingface"
       ];
+      # ExecStart retains the complete qualified runtime in the system closure.
       ExecStart = lib.getExe server;
       Restart = "on-failure";
       RestartPreventExitStatus = "2";
@@ -95,12 +86,10 @@ in
       LimitMEMLOCK = "infinity";
       TasksMax = "infinity";
       NoNewPrivileges = true;
-      PrivateTmp = true;
+      # /tmp/ds41-gpu.lock must be the same inode used by manual/component jobs.
+      # The launcher owns the flock lifetime; never remove the lock file.
+      PrivateTmp = false;
       UMask = "0077";
     };
   };
-
-  networking.firewall.interfaces.cx5fabric0.allowedTCPPorts = lib.mkIf (servingEnabled && index == 1) [
-    30000
-  ];
 }

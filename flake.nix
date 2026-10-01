@@ -106,11 +106,9 @@
     };
 
     nix-strix-halo-ds4 = {
-      # Reviewed DS4 production server and OpenCode client. Keep this separate
-      # from both the fleet host modules and the V620/Qwen serving input.
-      url = "git+file:///mnt/Home/src/nix-strix-halo?ref=prod/ds4-agent&rev=8e6cc4f0f03088d22743d9e1a3db841e067971d9&shallow=1";
-      inputs.nixpkgs.follows = "nix-strix-halo/nixpkgs";
-      inputs.thunderbolt-ibverbs.follows = "thunderbolt-ibverbs-kernel";
+      # Keep the qualified V4.1 launcher/runtime closure independent of the
+      # fleet package set. No follows overrides: use this commit's own lock.
+      url = "github:hellas-ai/nix-strix-halo/4078aa340fd2d4c24b9fb673926d46af19955c70";
     };
 
     atlas = {
