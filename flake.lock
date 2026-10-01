@@ -2182,17 +2182,17 @@
         "xrt-src": "xrt-src_3"
       },
       "locked": {
-        "lastModified": 1790836145,
-        "narHash": "sha256-RkU1q4nDkGTyMKsefmaIZGPtTJfnwgnZOcOk4wbtj8c=",
+        "lastModified": 1790840172,
+        "narHash": "sha256-UMYe4EQPd9fIpvrS2+iqgu16TmfLfumm2yVGt8N0B9o=",
         "owner": "hellas-ai",
         "repo": "nix-strix-halo",
-        "rev": "4078aa340fd2d4c24b9fb673926d46af19955c70",
+        "rev": "e54bbb405b2c958332dd3e25e37779b9b66201cb",
         "type": "github"
       },
       "original": {
         "owner": "hellas-ai",
         "repo": "nix-strix-halo",
-        "rev": "4078aa340fd2d4c24b9fb673926d46af19955c70",
+        "rev": "e54bbb405b2c958332dd3e25e37779b9b66201cb",
         "type": "github"
       }
     },

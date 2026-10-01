@@ -108,7 +108,7 @@
     nix-strix-halo-ds4 = {
       # Keep the qualified V4.1 launcher/runtime closure independent of the
       # fleet package set. No follows overrides: use this commit's own lock.
-      url = "github:hellas-ai/nix-strix-halo/4078aa340fd2d4c24b9fb673926d46af19955c70";
+      url = "github:hellas-ai/nix-strix-halo/e54bbb405b2c958332dd3e25e37779b9b66201cb";
     };
 
     atlas = {
